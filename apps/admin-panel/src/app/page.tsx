@@ -36,6 +36,7 @@ import {
   ArrowLeft,
   Eye
 } from 'lucide-react';
+import { SplashScreenManager } from './components/SplashScreenManager';
 
 interface CategoryItem {
   id: string;
@@ -971,6 +972,7 @@ export default function EnterpriseSuperAdminDashboard() {
     { key: 'panchangam', label: `Panchangam & Festivals (${stats?.activeFestivals ?? festivals.length})`, icon: Calendar },
     { key: 'audio', label: `Audio Library (${stats?.totalAudioFiles ?? audioList.length})`, icon: Music },
     { key: 'cms', label: `CMS Pages (${stats?.publishedCmsPages ?? cmsPages.length})`, icon: FileText },
+    { key: 'splash', label: 'Splash Screen', icon: ImageIcon },
     { key: 'languages', label: `Languages (${stats?.totalLanguages ?? languages.length} in DB)`, icon: Globe },
     { key: 'users', label: `User Management (${stats?.totalUsers ?? users.length})`, icon: Users },
     { key: 'dashboard', label: 'Dashboard Overview', icon: LayoutDashboard },
@@ -1178,6 +1180,9 @@ export default function EnterpriseSuperAdminDashboard() {
         </header>
 
         <div className="p-8 space-y-6 max-w-7xl w-full mx-auto">
+          {/* TAB: DYNAMIC SPLASH SCREEN MANAGEMENT */}
+          {activeTab === 'splash' && <SplashScreenManager />}
+
           {/* TAB 1: CATEGORIES */}
           {activeTab === 'categories' && (
             <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] overflow-hidden space-y-0">

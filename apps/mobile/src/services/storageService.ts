@@ -8,6 +8,7 @@ const STORAGE_KEYS = {
   LAST_DETAIL: '@ayyappa_last_detail',
   DOWNLOADED_AUDIO_PREFIX: '@ayyappa_downloaded_audio_',
   AUDIO_PROGRESS_PREFIX: '@ayyappa_audio_progress_',
+  CACHED_SPLASH_META: '@ayyappa_cached_splash_meta',
 };
 
 export interface PersistedNavigationState {
@@ -185,6 +186,24 @@ export const StorageService = {
         initialScreen: 'language',
         activeDetail: null,
       };
+    }
+  },
+
+  // Dynamic Splash Screen Offline Caching
+  async getCachedSplash(): Promise<any | null> {
+    try {
+      const data = await AsyncStorage.getItem(STORAGE_KEYS.CACHED_SPLASH_META);
+      return data ? JSON.parse(data) : null;
+    } catch {
+      return null;
+    }
+  },
+
+  async saveCachedSplash(meta: any): Promise<void> {
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.CACHED_SPLASH_META, JSON.stringify(meta));
+    } catch (e) {
+      console.warn('Failed to cache splash metadata', e);
     }
   },
 };

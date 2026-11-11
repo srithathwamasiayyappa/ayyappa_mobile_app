@@ -261,4 +261,18 @@ export const ApiService = {
       templeTimings: 'Morning: 3:00 AM – 1:00 PM | Evening: 3:00 PM – 11:00 PM (Harivarasanam)',
     };
   },
+
+  // 12. Dynamic Splash: Get currently published active splash asset from MariaDB
+  async getActiveSplash(platform: string = Platform.OS) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/mobile/splash/active?platform=${platform}`);
+      if (res.ok) {
+        const json = await res.json();
+        return json.data || null;
+      }
+    } catch (e) {
+      // Offline / Network fail - caller falls back to cached/bundled asset
+    }
+    return null;
+  },
 };

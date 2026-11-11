@@ -1,131 +1,97 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   StyleSheet,
   View,
-  Platform,
-  Text,
+  Image,
+  ActivityIndicator,
   TouchableOpacity,
+  Text,
+  StatusBar,
+  Dimensions,
+  Platform,
 } from 'react-native';
-import { SPLASH_VIDEO_BASE64 } from '../../../assets/splashVideoData';
+import { ApiService } from '../../../services/api';
+import { StorageService } from '../../../services/storageService';
+
+const { width, height } = Dimensions.get('window');
+
+// Bundled high-resolution fallback artwork (Guaranteed 100% offline reliability)
+const BUNDLED_FALLBACK_IMAGE = require('../../../../assets/splash_devotional.jpg');
 
 interface SplashScreenProps {
   onFinish: () => void;
 }
 
-export const SplashScreen: React.FC<SplashScreenProps> = ({
-  onFinish,
-}) => {
-  const videoRef = useRef<HTMLVideoElement | null>(null);
+export const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
+  const [imageSource, setImageSource] = useState<any>(BUNDLED_FALLBACK_IMAGE);
+  const [isDynamicLoaded, setIsDynamicLoaded] = useState<boolean>(false);
 
   useEffect(() => {
-    if (Platform.OS === 'web' && videoRef.current) {
-      const vid = videoRef.current;
-      vid.currentTime = 0;
-      vid.muted = false;
-      vid.defaultMuted = false;
-      vid.volume = 1.0;
+    let isMounted = true;
 
-      // AudioContext + Web Audio API ensures audio starts without browser policy blocking
-      let audioCtx: any = null;
+    async function resolveSplashArtwork() {
       try {
-        const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
-        if (AudioContextClass) {
-          audioCtx = new AudioContextClass();
-          if (audioCtx.state === 'suspended') {
-            audioCtx.resume().catch(() => {});
+        // Step 1: Restore previously cached dynamic splash metadata from storage
+        const cached = await StorageService.getCachedSplash();
+        if (cached && cached.imageUrl && isMounted) {
+          setImageSource({ uri: cached.imageUrl });
+        }
+
+        // Step 2: Fetch latest published splash metadata from MariaDB API
+        const activeSplash = await ApiService.getActiveSplash(Platform.OS);
+        if (activeSplash && activeSplash.imageUrl && isMounted) {
+          // If version is updated or newly published, update the display and persist to cache
+          if (!cached || cached.version !== activeSplash.version || cached.imageUrl !== activeSplash.imageUrl) {
+            setImageSource({ uri: activeSplash.imageUrl });
+            await StorageService.saveCachedSplash(activeSplash);
+            setIsDynamicLoaded(true);
           }
         }
-      } catch (e) {}
-
-      // Play with unmuted audio immediately
-      const playPromise = vid.play();
-      if (playPromise !== undefined) {
-        playPromise
-          .then(() => {
-            vid.muted = false;
-            vid.volume = 1.0;
-          })
-          .catch(() => {
-            // If browser autoplay policy strictly demands gesture, play muted first then unmute immediately on any interaction
-            vid.muted = true;
-            vid.play().then(() => {
-              // Attempt immediate unmute
-              vid.muted = false;
-              vid.volume = 1.0;
-            }).catch(() => {});
-
-            const enableSound = () => {
-              if (vid) {
-                vid.muted = false;
-                vid.volume = 1.0;
-                if (audioCtx && audioCtx.state === 'suspended') {
-                  audioCtx.resume().catch(() => {});
-                }
-                if (vid.paused && !vid.ended) {
-                  vid.play().catch(() => {});
-                }
-              }
-            };
-            window.addEventListener('pointerdown', enableSound, { once: true });
-            window.addEventListener('click', enableSound, { once: true });
-            window.addEventListener('touchstart', enableSound, { once: true });
-            window.addEventListener('keydown', enableSound, { once: true });
-          });
+      } catch (err) {
+        // Safe fail-closed: Retain bundled fallback or cached asset
+        console.log('Splash resolution notice (using bundled asset):', err);
       }
-
-      // Transition to Auth / Home when video finishes
-      const fallbackTimer = setTimeout(() => {
-        onFinish();
-      }, 7500);
-
-      return () => {
-        clearTimeout(fallbackTimer);
-      };
-    } else {
-      const timer = setTimeout(() => {
-        onFinish();
-      }, 4500);
-      return () => clearTimeout(timer);
     }
+
+    resolveSplashArtwork();
+
+    // Devotional welcome duration (3.8 seconds), transitioning cleanly to Auth / Home
+    const timer = setTimeout(() => {
+      if (isMounted) {
+        onFinish();
+      }
+    }, 3800);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
   }, [onFinish]);
 
   return (
     <View style={styles.container}>
-      {Platform.OS === 'web' ? (
-        <div
-          style={{
-            width: '100%',
-            height: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            position: 'relative',
-            backgroundColor: '#000000',
-          }}
-        >
-          <video
-            ref={videoRef}
-            src={SPLASH_VIDEO_BASE64}
-            autoPlay
-            playsInline
-            controls={false}
-            disablePictureInPicture
-            disableRemotePlayback
-            onEnded={onFinish}
-            style={{
-              width: '100vw',
-              height: '100vh',
-              objectFit: 'contain',
-              backgroundColor: '#000000',
-              border: 'none',
-              outline: 'none',
-              userSelect: 'none',
-            }}
-          />
-        </div>
-      ) : (
-        <View style={styles.container} />
-      )}
+      <StatusBar barStyle="light-content" backgroundColor="#000000" translucent={false} />
+
+      {/* Full-Screen Devotional Artwork */}
+      <Image
+        source={imageSource}
+        style={styles.splashImage}
+        resizeMode="contain"
+      />
+
+      {/* Top Right Quick Skip Button */}
+      <TouchableOpacity
+        style={styles.skipBtn}
+        activeOpacity={0.7}
+        onPress={onFinish}
+      >
+        <Text style={styles.skipText}>Skip &gt;</Text>
+      </TouchableOpacity>
+
+      {/* Bottom Devotional Golden Indicator */}
+      <View style={styles.loaderContainer}>
+        <ActivityIndicator size="small" color="#FFD54F" />
+      </View>
     </View>
   );
 };
@@ -138,5 +104,34 @@ const styles = StyleSheet.create({
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
+    position: 'relative',
+  },
+  splashImage: {
+    width: '100%',
+    height: '100%',
+  },
+  skipBtn: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 50 : 20,
+    right: 18,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 213, 79, 0.4)',
+    zIndex: 20,
+  },
+  skipText: {
+    color: '#FFD54F',
+    fontSize: 12,
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
+  },
+  loaderContainer: {
+    position: 'absolute',
+    bottom: 30,
+    alignSelf: 'center',
+    zIndex: 10,
   },
 });
