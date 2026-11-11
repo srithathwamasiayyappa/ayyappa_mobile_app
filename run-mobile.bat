@@ -5,13 +5,18 @@ echo ================================================================
 echo       SARANAM AYYAPPA ANDROID MOBILE APP LAUNCHER
 echo ================================================================
 echo.
-echo Starting Expo Metro Bundler for Android Phone / Emulator...
-echo (Scan the QR code in Expo Go or run on connected device)
-echo.
+
+:: Add Android SDK platform-tools to PATH so adb works
+set "PATH=%LOCALAPPDATA%\Android\Sdk\platform-tools;%PATH%"
 
 set "PNPM_CMD=C:\Users\THATIPALLY VINOD\AppData\Roaming\npm\pnpm.cmd"
 cd /d "%~dp0apps\mobile"
-"%PNPM_CMD%" run android
+
+echo Starting Expo Metro Bundler...
+echo - To open in Expo Go: Scan the QR code shown below with Expo Go on your phone.
+echo - To open over USB: Unlock your phone screen, allow USB debugging, then press 'a'.
+echo.
+
+npx expo start -c
 
 pause
-

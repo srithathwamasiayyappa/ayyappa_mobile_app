@@ -13,69 +13,99 @@ import { SupportedLanguage } from '../../../types';
 
 interface Props {
   onLanguageSelected: (lang: SupportedLanguage) => void;
+  onBack?: () => void;
+  currentLanguage?: SupportedLanguage;
 }
 
 interface LanguageOption {
   code: SupportedLanguage;
   name: string;
+  subname: string;
 }
 
-export const LanguageSelectionScreen: React.FC<Props> = ({ onLanguageSelected }) => {
+export const LanguageSelectionScreen: React.FC<Props> = ({
+  onLanguageSelected,
+  onBack,
+  currentLanguage = 'te',
+}) => {
   const languages: LanguageOption[] = [
-    { code: 'te', name: 'తెలుగు — Telugu' },
-    { code: 'kn', name: 'ಕನ್ನಡ — Kannada' },
-    { code: 'en', name: 'English' },
-    { code: 'ta', name: 'தமிழ் — Tamil' },
-    { code: 'hi', name: 'हिन्दी — Hindi' },
+    { code: 'te', name: 'తెలుగు', subname: 'Telugu' },
+    { code: 'kn', name: 'ಕನ್ನಡ', subname: 'Kannada' },
+    { code: 'en', name: 'English', subname: 'English' },
+    { code: 'ta', name: 'தமிழ்', subname: 'Tamil' },
+    { code: 'hi', name: 'हिन्दी', subname: 'Hindi' },
   ];
 
-  // No language selected by default
-  const [selected, setSelected] = useState<SupportedLanguage | null>(null);
+  const [selected, setSelected] = useState<SupportedLanguage>(currentLanguage);
 
   const handleSelect = (lang: SupportedLanguage) => {
     setSelected(lang);
-    setTimeout(() => {
-      onLanguageSelected(lang);
-    }, 280);
+  };
+
+  const handleConfirm = () => {
+    onLanguageSelected(selected);
   };
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#E65100" />
+      <StatusBar barStyle="light-content" backgroundColor="#D84315" translucent={false} />
 
       {/* Devotional Orange Header Bar */}
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Chose your language</Text>
+          {onBack ? (
+            <TouchableOpacity onPress={onBack} style={styles.backBtn} activeOpacity={0.7}>
+              <Text style={styles.backText}>&lt; Back</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={{ width: 16 }} />
+          )}
+          <Text style={styles.headerTitle}>Choose your language</Text>
+          <View style={{ width: onBack ? 60 : 16 }} />
         </View>
       </SafeAreaView>
 
-      {/* EXACT GLOBAL DEVOTIONAL BACKGROUND (Soft texture, no dark geometric overlays, no notification bar) */}
+      {/* Devotional Golden Sacred Background */}
       <DevotionalBackground>
-        <View style={styles.listWrapper}>
-          {languages.map((item) => {
-            const isSelected = selected === item.code;
-            return (
-              <TouchableOpacity
-                key={item.code}
-                style={styles.itemRow}
-                activeOpacity={0.7}
-                onPress={() => handleSelect(item.code)}
-              >
-                <Text style={styles.languageText}>{item.name}</Text>
-
-                {/* Circular Radio Badge */}
-                <View
-                  style={[
-                    styles.radioCircle,
-                    isSelected && styles.radioCircleSelected,
-                  ]}
+        <View style={styles.contentWrapper}>
+          <View style={styles.cardContainer}>
+            {languages.map((item) => {
+              const isSelected = selected === item.code;
+              return (
+                <TouchableOpacity
+                  key={item.code}
+                  style={[styles.itemRow, isSelected && styles.itemRowSelected]}
+                  activeOpacity={0.7}
+                  onPress={() => handleSelect(item.code)}
                 >
-                  {isSelected && <Text style={styles.checkmarkIcon}>✓</Text>}
-                </View>
-              </TouchableOpacity>
-            );
-          })}
+                  <View style={styles.textColumn}>
+                    <Text style={styles.languageText}>
+                      {item.name} — {item.subname}
+                    </Text>
+                  </View>
+
+                  {/* Circular Radio Badge */}
+                  <View
+                    style={[
+                      styles.radioCircle,
+                      isSelected && styles.radioCircleSelected,
+                    ]}
+                  >
+                    {isSelected && <View style={styles.radioInnerDot} />}
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* Prominent Continue Button */}
+          <TouchableOpacity
+            style={styles.continueBtn}
+            activeOpacity={0.85}
+            onPress={handleConfirm}
+          >
+            <Text style={styles.continueBtnText}>Continue / కొనసాగించండి →</Text>
+          </TouchableOpacity>
         </View>
       </DevotionalBackground>
     </View>
@@ -85,18 +115,19 @@ export const LanguageSelectionScreen: React.FC<Props> = ({ onLanguageSelected })
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5A623',
+    backgroundColor: '#D84315',
     width: '100%',
     height: '100%',
   },
   safeArea: {
-    backgroundColor: '#E65100',
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
+    backgroundColor: '#D84315',
   },
   header: {
     height: 56,
-    backgroundColor: '#E65100',
-    justifyContent: 'center',
+    backgroundColor: '#D84315',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
     elevation: 4,
     shadowColor: '#000',
@@ -104,50 +135,100 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3,
   },
+  backBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+  },
+  backText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
   headerTitle: {
     color: '#FFFFFF',
-    fontSize: 21,
+    fontSize: 20,
     fontWeight: 'bold',
     letterSpacing: 0.2,
+    flex: 1,
+    textAlign: 'center',
   },
-  listWrapper: {
-    width: '100%',
-    backgroundColor: 'transparent',
+  contentWrapper: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 24,
+    justifyContent: 'space-between',
+  },
+  cardContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.75)',
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#D84315',
+    overflow: 'hidden',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
   },
   itemRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    height: 52,
+    paddingHorizontal: 18,
+    height: 60,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(70, 30, 0, 0.45)',
+    borderBottomColor: 'rgba(216, 67, 21, 0.2)',
     backgroundColor: 'transparent',
+  },
+  itemRowSelected: {
+    backgroundColor: 'rgba(255, 243, 224, 0.9)',
+  },
+  textColumn: {
+    flex: 1,
   },
   languageText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#000000',
+    color: '#212121',
     letterSpacing: 0.3,
   },
   radioCircle: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     borderWidth: 2,
-    borderColor: '#1E1E1E',
-    backgroundColor: 'transparent',
+    borderColor: '#D84315',
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
   },
   radioCircleSelected: {
-    backgroundColor: '#1E1E1E',
-    borderColor: '#1E1E1E',
+    borderColor: '#D84315',
   },
-  checkmarkIcon: {
+  radioInnerDot: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#D84315',
+  },
+  continueBtn: {
+    backgroundColor: '#D84315',
+    borderRadius: 10,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.5,
+    marginTop: 20,
+  },
+  continueBtnText: {
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: 17,
     fontWeight: 'bold',
-    lineHeight: 14,
+    letterSpacing: 0.5,
   },
 });

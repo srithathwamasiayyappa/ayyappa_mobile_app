@@ -1,29 +1,29 @@
 import React from 'react';
-import { View, StyleSheet, Image } from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 
 interface Props {
   children: React.ReactNode;
 }
 
 /**
- * PURE FLAWLESS DEVOTIONAL BACKGROUND
- * Uses the clean bottom section of the authentic master_bg.jpg texture,
- * completely bypassing the top text area so that 'English'/'Telugu' from the screenshot
- * NEVER appears underneath any screen or list row.
+ * Authentic Devotional Sacred Background
+ * Renders a pristine golden-amber devotional gradient with sacred warmth,
+ * with ZERO ghost text, screenshot artifacts, or resolution stretching.
  */
 export const DevotionalBackground: React.FC<Props> = ({ children }) => {
   return (
     <View style={styles.container}>
-      <View style={styles.imageClipper}>
-        <Image
-          source={require('../../assets/images/master_bg.jpg')}
-          style={styles.backgroundImage}
-          resizeMode="cover"
-        />
-      </View>
-      <View style={styles.content}>
-        {children}
-      </View>
+      <LinearGradient
+        colors={['#F7A71E', '#FBB829', '#FFA000', '#F59E0B', '#E67E22']}
+        locations={[0, 0.25, 0.5, 0.75, 1]}
+        style={StyleSheet.absoluteFillObject}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+      />
+      {/* Sacred subtle warm overlay for optimal readability */}
+      <View style={styles.overlay} />
+      <View style={styles.content}>{children}</View>
     </View>
   );
 };
@@ -34,18 +34,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5A623',
     width: '100%',
     height: '100%',
-    overflow: 'hidden',
+    position: 'relative',
   },
-  imageClipper: {
+  overlay: {
     ...StyleSheet.absoluteFillObject,
-    overflow: 'hidden',
-  },
-  backgroundImage: {
-    width: '100%',
-    height: '135%', // Enlarged vertically
-    top: '-32%',    // Shifts the image UP by 32%, completely eliminating the top text area where 'English'/'Telugu' were printed!
+    backgroundColor: 'rgba(255, 248, 225, 0.08)',
   },
   content: {
     flex: 1,
+    zIndex: 1,
   },
 });

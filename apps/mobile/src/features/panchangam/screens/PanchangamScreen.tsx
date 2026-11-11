@@ -162,7 +162,7 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     backgroundColor: '#E65100',
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
+    
   },
   header: {
     height: 52,

@@ -96,7 +96,7 @@ export default function App() {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="light" />
+      <StatusBar style="light" backgroundColor="#D84315" translucent={false} />
       {currentScreen === 'splash' && (
         <SplashScreen onFinish={handleSplashFinish} />
       )}
@@ -107,7 +107,11 @@ export default function App() {
         />
       )}
       {currentScreen === 'language' && (
-        <LanguageSelectionScreen onLanguageSelected={handleLanguageSelect} />
+        <LanguageSelectionScreen
+          currentLanguage={selectedLanguage}
+          onLanguageSelected={handleLanguageSelect}
+          onBack={handleBackToHome}
+        />
       )}
       {currentScreen === 'home' && (
         <HomeScreen
