@@ -1,0 +1,36 @@
+{
+  "expo": {
+    "name": "Saranam Ayyappa",
+    "slug": "saranam-ayyappa",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.jpg",
+      "resizeMode": "cover",
+      "backgroundColor": "#300305"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.saranam.ayyappa"
+    },
+    "android": {
+      "package": "com.saranam.ayyappa",
+      "googleServicesFile": "./google-services.json",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#000000"
+      },
+      "permissions": [
+        "INTERNET",
+        "ACCESS_NETWORK_STATE"
+      ]
+    },
+    "extra": {
+      "eas": {
+        "projectId": ""
+      }
+    }
+  }
+}

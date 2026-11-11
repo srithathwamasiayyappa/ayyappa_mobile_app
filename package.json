@@ -1,0 +1,9 @@
+{
+  "name": "ayyappa-aradhana",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
+}
+

@@ -1,0 +1,247 @@
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model AdminUser {
+  id           Int          @id @default(autoincrement())
+  email        String       @unique @db.VarChar(150)
+  passwordHash String       @map("password_hash") @db.VarChar(255)
+  fullName     String       @map("full_name") @db.VarChar(100)
+  role         String       @default("SUPER_ADMIN") @db.VarChar(50)
+  isActive     Boolean      @default(true) @map("is_active")
+  lastLoginAt  DateTime?    @map("last_login_at")
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  auditLogs    AdminAuditLog[]
+
+  @@map("admin_users")
+}
+
+model AdminAuditLog {
+  id          Int        @id @default(autoincrement())
+  adminId     Int?       @map("admin_id")
+  action      String     @db.VarChar(100)
+  targetType  String     @map("target_type") @db.VarChar(50)
+  targetId    String?    @map("target_id") @db.VarChar(100)
+  detailsJson String?    @map("details_json") @db.Text
+  ipAddress   String?    @map("ip_address") @db.VarChar(50)
+  createdAt   DateTime   @default(now()) @map("created_at")
+
+  admin       AdminUser? @relation(fields: [adminId], references: [id], onDelete: SetNull)
+
+  @@map("admin_audit_logs")
+}
+
+model AppUser {
+  id            Int       @id @default(autoincrement())
+  phoneNumber   String?   @unique @map("phone_number") @db.VarChar(20)
+  email         String?   @unique @db.VarChar(150)
+  passwordHash  String?   @map("password_hash") @db.VarChar(255)
+  fullName      String?   @map("full_name") @db.VarChar(100)
+  googleId      String?   @unique @map("google_id") @db.VarChar(150)
+  deviceUuid    String?   @unique @map("device_uuid") @db.VarChar(100)
+  preferredLang String    @default("te") @map("preferred_lang") @db.VarChar(10)
+  isSuspended   Boolean   @default(false) @map("is_suspended")
+  lastActiveAt  DateTime? @map("last_active_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@map("app_users")
+}
+
+model ContactInquiry {
+  id        Int      @id @default(autoincrement())
+  name      String   @db.VarChar(100)
+  email     String?  @db.VarChar(150)
+  phone     String   @db.VarChar(20)
+  message   String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("contact_inquiries")
+}
+
+model Language {
+  id                   Int                    @id @default(autoincrement())
+  code                 String                 @unique @db.VarChar(10) // 'te', 'kn', 'en', 'ta', 'hi'
+  name                 String                 @db.VarChar(50)
+  createdAt            DateTime               @default(now()) @map("created_at")
+  updatedAt            DateTime               @updatedAt @map("updated_at")
+
+  contentTranslations  ContentTranslation[]
+  festivalTranslations FestivalTranslation[]
+  panchangamTranslations PanchangamTranslation[]
+
+  @@map("languages")
+}
+
+model AppSetting {
+  id          Int      @id @default(autoincrement())
+  key         String   @unique @db.VarChar(100)
+  value       String   @db.Text
+  description String?  @db.VarChar(255)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("app_settings")
+}
+
+model AppVersion {
+  id               Int      @id @default(autoincrement())
+  platform         String   @db.VarChar(20)
+  versionCode      Int      @map("version_code")
+  versionName      String   @map("version_name") @db.VarChar(50)
+  forceUpdate      Boolean  @default(false) @map("force_update")
+  releaseNotes     String?  @map("release_notes") @db.Text
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  @@map("app_versions")
+}
+
+model ContentCategory {
+  id           Int                  @id @default(autoincrement())
+  slug         String               @unique @db.VarChar(100)
+  displayOrder Int                  @default(0) @map("display_order")
+  isAudio      Boolean              @default(false) @map("is_audio")
+  isArchived   Boolean              @default(false) @map("is_archived")
+  parentId     Int?                 @map("parent_id")
+  createdAt    DateTime             @default(now()) @map("created_at")
+  updatedAt    DateTime             @updatedAt @map("updated_at")
+
+  parent       ContentCategory?     @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  subcategories ContentCategory[]   @relation("CategoryHierarchy")
+
+  translations ContentTranslation[]
+  devotionalContents DevotionalContent[]
+
+  @@map("content_categories")
+}
+
+model ContentTranslation {
+  id          Int              @id @default(autoincrement())
+  categoryId  Int              @map("category_id")
+  languageId  Int              @map("language_id")
+  title       String           @db.VarChar(255)
+  description String?          @db.Text
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+
+  category    ContentCategory  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  language    Language         @relation(fields: [languageId], references: [id], onDelete: Cascade)
+
+  @@unique([categoryId, languageId])
+  @@map("content_translations")
+}
+
+model MediaAsset {
+  id          Int          @id @default(autoincrement())
+  title       String       @db.VarChar(255)
+  fileUrl     String       @map("file_url") @db.VarChar(500)
+  mimeType    String       @map("mime_type") @db.VarChar(100)
+  fileSize    Int?         @map("file_size")
+  assetType   String       @default("IMAGE") @map("asset_type") @db.VarChar(50) // 'IMAGE', 'AUDIO', 'ICON'
+  createdAt   DateTime     @default(now()) @map("created_at")
+
+  audioTracks AudioTrack[]
+
+  @@map("media_assets")
+}
+
+model AudioTrack {
+  id           Int         @id @default(autoincrement())
+  title        String      @db.VarChar(255)
+  artist       String?     @db.VarChar(255)
+  durationSec  Int         @default(0) @map("duration_sec")
+  mediaAssetId Int         @map("media_asset_id")
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+
+  mediaAsset   MediaAsset  @relation(fields: [mediaAssetId], references: [id], onDelete: Cascade)
+
+  @@map("audio_tracks")
+}
+
+model DevotionalContent {
+  id           Int             @id @default(autoincrement())
+  categoryId   Int             @map("category_id")
+  slug         String          @db.VarChar(100)
+  title        String          @db.VarChar(255)
+  sacredText   String?         @map("sacred_text") @db.Text
+  meaning      String?         @db.Text
+  displayOrder Int             @default(0) @map("display_order")
+  isPublished  Boolean         @default(true) @map("is_published")
+  createdAt    DateTime        @default(now()) @map("created_at")
+  updatedAt    DateTime        @updatedAt @map("updated_at")
+
+  category     ContentCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@map("devotional_contents")
+}
+
+model Festival {
+  id           Int                   @id @default(autoincrement())
+  festivalDate DateTime              @map("festival_date") @db.Date
+  slug         String                @db.VarChar(100)
+  isPublished  Boolean               @default(true) @map("is_published")
+  sourceNote   String?               @map("source_note") @db.VarChar(255)
+  createdAt    DateTime              @default(now()) @map("created_at")
+  updatedAt    DateTime              @updatedAt @map("updated_at")
+
+  translations FestivalTranslation[]
+
+  @@map("festivals")
+}
+
+model FestivalTranslation {
+  id          Int      @id @default(autoincrement())
+  festivalId  Int      @map("festival_id")
+  languageId  Int      @map("language_id")
+  name        String   @db.VarChar(255)
+  description String?  @db.Text
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  festival    Festival @relation(fields: [festivalId], references: [id], onDelete: Cascade)
+  language    Language @relation(fields: [languageId], references: [id], onDelete: Cascade)
+
+  @@unique([festivalId, languageId])
+  @@map("festival_translations")
+}
+
+model PanchangamEntry {
+  id           Int                     @id @default(autoincrement())
+  calendarDate DateTime                @unique @map("calendar_date") @db.Date
+  latitude     Decimal?                @db.Decimal(10, 8)
+  longitude    Decimal?                @db.Decimal(11, 8)
+  locationName String                  @default("Hyderabad") @map("location_name") @db.VarChar(100)
+  createdAt    DateTime                @default(now()) @map("created_at")
+  updatedAt    DateTime                @updatedAt @map("updated_at")
+
+  translations PanchangamTranslation[]
+
+  @@map("panchangam_entries")
+}
+
+model PanchangamTranslation {
+  id                   Int             @id @default(autoincrement())
+  entryId              Int             @map("entry_id")
+  languageId           Int             @map("language_id")
+  samvatsaram          String          @db.VarChar(100)
+  paksham              String          @db.VarChar(100)
+  tithi                String          @db.VarChar(100)
+  nakshatram           String          @db.VarChar(100)
+  vaaram               String          @db.VarChar(50)
+  ayanaRitu            String?         @map("ayana_ritu") @db.VarChar(150)
+  detailsJson          String?         @map("details_json") @db.Text
+  createdAt            DateTime        @default(now()) @map("created_at")
+
+  entry                PanchangamEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  language             Language        @relation(fields: [languageId], references: [id], onDelete: Cascade)
+
+  @@unique([entryId, languageId])
+  @@map("panchangam_translations")
+}
