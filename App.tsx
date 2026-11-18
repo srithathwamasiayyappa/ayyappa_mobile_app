@@ -702,6 +702,7 @@ export default function App() {
             currentUser={currentUser}
             currentDeity={currentDeity}
             selectedRole={selectedRole}
+            userRole={selectedRole}
             onRoleSwitch={(role) => {
               setSelectedRole(role);
               StorageService.setPendingRole(role);

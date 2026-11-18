@@ -11,12 +11,14 @@ import {
   ActivityIndicator,
   BackHandler,
   Modal,
+  TextInput,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { ApiService } from '../../../services/api';
 import { SupportedLanguage, PanchangamData } from '../../../types';
 import { CITIES_LIST, PanchangamLocalEngine } from '../../../utils/panchangam';
+import { LocationService, UserLiveLocation } from '../../../services/locationService';
 
 interface Props {
   currentLanguage: SupportedLanguage;
@@ -211,6 +213,10 @@ export const PanchangamScreen: React.FC<Props> = ({
 }) => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedCity, setSelectedCity] = useState<string>('Hyderabad');
+  const [liveLocation, setLiveLocation] = useState<UserLiveLocation | null>(null);
+  const [detectingLocation, setDetectingLocation] = useState<boolean>(false);
+  const [isLiveActive, setIsLiveActive] = useState<boolean>(false);
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const [showCityModal, setShowCityModal] = useState<boolean>(false);
   const [data, setData] = useState<PanchangamData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -224,6 +230,75 @@ export const PanchangamScreen: React.FC<Props> = ({
     });
     return () => backSub.remove();
   }, [onBack]);
+
+  // Load saved location on startup and auto-detect live location
+  useEffect(() => {
+    let isMounted = true;
+    async function initLocation() {
+      try {
+        const saved = await LocationService.getSavedLocation();
+        if (saved && isMounted) {
+          setSelectedCity(saved.cityName);
+          setLiveLocation(saved);
+          setIsLiveActive(Boolean(saved.isLive));
+        }
+
+        // Auto-refresh live coordinates in background if none or previously live
+        if (!saved || saved.isLive) {
+          setDetectingLocation(true);
+          const live = await LocationService.detectLiveLocation();
+          if (isMounted && live) {
+            setSelectedCity(live.cityName);
+            setLiveLocation(live);
+            setIsLiveActive(true);
+          }
+        }
+      } catch (e) {
+        console.warn('[Panchangam] Location init note:', e);
+      } finally {
+        if (isMounted) setDetectingLocation(false);
+      }
+    }
+    initLocation();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Handle user explicitly requesting live GPS location detection
+  const handleDetectLiveLocation = useCallback(async () => {
+    try {
+      setDetectingLocation(true);
+      const live = await LocationService.detectLiveLocation();
+      if (live) {
+        setSelectedCity(live.cityName);
+        setLiveLocation(live);
+        setIsLiveActive(true);
+        setShowCityModal(false);
+      }
+    } catch (e) {
+      console.warn('[Panchangam] Live location detection error:', e);
+    } finally {
+      setDetectingLocation(false);
+    }
+  }, []);
+
+  // Handle user selecting a specific city from the catalog
+  const handleSelectCity = useCallback(async (cityName: string) => {
+    setSelectedCity(cityName);
+    setIsLiveActive(false);
+    setShowCityModal(false);
+    const updatedLoc: UserLiveLocation = {
+      cityName,
+      displayName: cityName,
+      lat: 17.385,
+      lng: 78.4867,
+      isLive: false,
+      updatedAt: Date.now(),
+    };
+    setLiveLocation(updatedLoc);
+    await LocationService.saveLocation(updatedLoc);
+  }, []);
 
   // Is today's date selected?
   const isToday = useMemo(() => {
@@ -270,7 +345,7 @@ export const PanchangamScreen: React.FC<Props> = ({
     setSelectedDate(new Date());
   }, []);
 
-  // Fetch or calculate Panchangam for the selected date & city
+  // Fetch or calculate Panchangam for the selected date & city with live coordinates
   useEffect(() => {
     let isMounted = true;
     async function loadData() {
@@ -278,16 +353,18 @@ export const PanchangamScreen: React.FC<Props> = ({
         setLoading(true);
         const pad = (n: number) => String(n).padStart(2, '0');
         const dateIso = `${selectedDate.getFullYear()}-${pad(selectedDate.getMonth() + 1)}-${pad(selectedDate.getDate())}`;
+        const customCoords = isLiveActive && liveLocation ? { lat: liveLocation.lat, lng: liveLocation.lng } : undefined;
 
         // Attempt server API first; fallback is automatic in ApiService
-        const res = await ApiService.getPanchangam(currentLanguage, dateIso, selectedCity);
+        const res = await ApiService.getPanchangam(currentLanguage, dateIso, selectedCity, customCoords);
         if (isMounted) {
           setData(res);
         }
       } catch (e) {
         console.warn('API error, relying on local calculation engine:', e);
         if (isMounted) {
-          const fallback = PanchangamLocalEngine.calculate(selectedDate, selectedCity, currentLanguage);
+          const customCoords = isLiveActive && liveLocation ? { lat: liveLocation.lat, lng: liveLocation.lng } : undefined;
+          const fallback = PanchangamLocalEngine.calculate(selectedDate, selectedCity, currentLanguage, customCoords);
           setData(fallback);
         }
       } finally {
@@ -298,13 +375,14 @@ export const PanchangamScreen: React.FC<Props> = ({
     return () => {
       isMounted = false;
     };
-  }, [selectedDate, selectedCity, currentLanguage]);
+  }, [selectedDate, selectedCity, currentLanguage, isLiveActive, liveLocation]);
 
   // Fallback to local engine immediately if data is null
   const displayData = useMemo(() => {
     if (data) return data;
-    return PanchangamLocalEngine.calculate(selectedDate, selectedCity, currentLanguage);
-  }, [data, selectedDate, selectedCity, currentLanguage]);
+    const customCoords = isLiveActive && liveLocation ? { lat: liveLocation.lat, lng: liveLocation.lng } : undefined;
+    return PanchangamLocalEngine.calculate(selectedDate, selectedCity, currentLanguage, customCoords);
+  }, [data, selectedDate, selectedCity, currentLanguage, isLiveActive, liveLocation]);
 
   // Row items matching the approved reference layout in exact order:
   // 1. Tithi
@@ -363,10 +441,21 @@ export const PanchangamScreen: React.FC<Props> = ({
 
   // Localized city name
   const currentCityObj = useMemo(() => {
-    return CITIES_LIST.find((c) => c.name === selectedCity) || CITIES_LIST[0];
+    return CITIES_LIST.find((c) => c.name.toLowerCase() === selectedCity.toLowerCase());
   }, [selectedCity]);
 
   const localizedCityName = useMemo(() => {
+    if (isLiveActive && liveLocation?.cityName) {
+      const match = CITIES_LIST.find((c) => c.name.toLowerCase() === liveLocation.cityName.toLowerCase());
+      if (match) {
+        if (currentLanguage === 'te') return match.nameTe;
+        if (currentLanguage === 'kn') return match.nameKn;
+        if (currentLanguage === 'ta') return match.nameTa;
+        if (currentLanguage === 'hi') return match.nameHi;
+      }
+      return liveLocation.cityName;
+    }
+    if (!currentCityObj) return selectedCity;
     switch (currentLanguage) {
       case 'te':
         return currentCityObj.nameTe;
@@ -379,7 +468,21 @@ export const PanchangamScreen: React.FC<Props> = ({
       default:
         return currentCityObj.name;
     }
-  }, [currentCityObj, currentLanguage]);
+  }, [currentCityObj, currentLanguage, isLiveActive, liveLocation, selectedCity]);
+
+  // Filter cities for selection modal
+  const filteredCities = useMemo(() => {
+    if (!searchQuery.trim()) return CITIES_LIST;
+    const q = searchQuery.toLowerCase().trim();
+    return CITIES_LIST.filter(
+      (c) =>
+        c.name.toLowerCase().includes(q) ||
+        (c.nameTe && c.nameTe.includes(q)) ||
+        (c.nameKn && c.nameKn.includes(q)) ||
+        (c.nameTa && c.nameTa.includes(q)) ||
+        (c.nameHi && c.nameHi.includes(q))
+    );
+  }, [searchQuery]);
 
   return (
     <View style={styles.container}>
@@ -427,13 +530,20 @@ export const PanchangamScreen: React.FC<Props> = ({
       {/* Location / City Selector Bar */}
       <View style={styles.locationBar}>
         <TouchableOpacity
-          style={styles.locationPill}
+          style={[styles.locationPill, isLiveActive && styles.locationPillLive]}
           activeOpacity={0.75}
           onPress={() => setShowCityModal(true)}
         >
-          <Text style={styles.locationPin}>📍</Text>
-          <Text style={styles.locationText}>{localizedCityName}</Text>
-          <Text style={styles.locationChevron}>▾</Text>
+          <Text style={styles.locationPin}>{isLiveActive ? '🎯' : '📍'}</Text>
+          <Text style={styles.locationText}>
+            {localizedCityName}
+            {isLiveActive ? ' (Live GPS)' : ''}
+          </Text>
+          {detectingLocation ? (
+            <ActivityIndicator size="small" color="#173D32" style={{ marginLeft: 6 }} />
+          ) : (
+            <Text style={styles.locationChevron}>▾</Text>
+          )}
         </TouchableOpacity>
 
         {!isToday && (
@@ -565,7 +675,7 @@ export const PanchangamScreen: React.FC<Props> = ({
       </ScrollView>
 
       {/* =========================================================================
-          CITY SELECTION MODAL
+          LIVE GPS & CITY SELECTION MODAL
          ========================================================================= */}
       <Modal
         visible={showCityModal}
@@ -578,30 +688,105 @@ export const PanchangamScreen: React.FC<Props> = ({
           activeOpacity={1}
           onPress={() => setShowCityModal(false)}
         >
-          <View style={styles.modalContent}>
+          <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
+            {/* Header */}
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                {currentLanguage === 'te'
-                  ? 'నగరం / స్థలాన్ని ఎంచుకోండి'
-                  : currentLanguage === 'kn'
-                  ? 'ನಗರ / ಸ್ಥಳವನ್ನು ಆಯ್ಕೆಮಾಡಿ'
-                  : currentLanguage === 'ta'
-                  ? 'நகரத்தைத் தேர்ந்தெடுக்கவும்'
-                  : currentLanguage === 'hi'
-                  ? 'शहर चुनें'
-                  : 'Select Location'}
-              </Text>
+              <View>
+                <Text style={styles.modalTitle}>
+                  {currentLanguage === 'te'
+                    ? 'పంచాంగ స్థలాన్ని ఎంచుకోండి'
+                    : currentLanguage === 'kn'
+                    ? 'ಪಂಚಾಂಗ ಸ್ಥಳವನ್ನು ಆಯ್ಕೆಮಾಡಿ'
+                    : currentLanguage === 'ta'
+                    ? 'பஞ்சாங்க இடத்தை தேர்ந்தெடுக்கவும்'
+                    : currentLanguage === 'hi'
+                    ? 'पंचांग स्थान चुनें'
+                    : 'Select Location'}
+                </Text>
+                <Text style={styles.modalSubTitle}>
+                  {currentLanguage === 'te'
+                    ? 'ఖచ్చితమైన సూర్యోదయ, సూర్యాస్తమయ గణనలు'
+                    : 'Accurate sunrise & sunset timings for your spot'}
+                </Text>
+              </View>
               <TouchableOpacity
                 onPress={() => setShowCityModal(false)}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                style={styles.modalCloseBtn}
               >
                 <Text style={styles.modalCloseText}>✕</Text>
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.cityList}>
-              {CITIES_LIST.map((city) => {
-                const isSelected = city.name === selectedCity;
+            {/* LIVE GPS DETECTION BUTTON */}
+            <TouchableOpacity
+              style={[styles.liveGpsCard, isLiveActive && styles.liveGpsCardActive]}
+              activeOpacity={0.85}
+              onPress={handleDetectLiveLocation}
+              disabled={detectingLocation}
+            >
+              <View style={styles.liveGpsIconWrap}>
+                {detectingLocation ? (
+                  <ActivityIndicator size="small" color="#173D32" />
+                ) : (
+                  <Text style={styles.liveGpsEmoji}>🎯</Text>
+                )}
+              </View>
+              <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Text style={styles.liveGpsTitle}>
+                    {currentLanguage === 'te'
+                      ? 'నా లైవ్ లొకేషన్ ఉపయోగించండి'
+                      : currentLanguage === 'kn'
+                      ? 'ನನ್ನ ಲೈವ್ ಸ್ಥಳವನ್ನು ಬಳಸಿ'
+                      : currentLanguage === 'ta'
+                      ? 'எனது நேரடி இருப்பிடத்தைப் பயன்படுத்து'
+                      : currentLanguage === 'hi'
+                      ? 'मेरा लाइव स्थान उपयोग करें'
+                      : 'Use Current Live Location'}
+                  </Text>
+                  {isLiveActive && (
+                    <View style={styles.activeLiveBadge}>
+                      <Text style={styles.activeLiveBadgeText}>LIVE</Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={styles.liveGpsSubtitle} numberOfLines={1}>
+                  {detectingLocation
+                    ? 'Detecting current GPS & coordinates...'
+                    : isLiveActive && liveLocation
+                    ? `Live: ${liveLocation.displayName || liveLocation.cityName}`
+                    : 'Auto-detect coordinates for exact local timings'}
+                </Text>
+              </View>
+            </TouchableOpacity>
+
+            {/* Search Input Bar */}
+            <View style={styles.searchBarContainer}>
+              <Text style={styles.searchIcon}>🔍</Text>
+              <TextInput
+                style={styles.searchInput}
+                placeholder={
+                  currentLanguage === 'te'
+                    ? 'నగరం పేరు వెతకండి...'
+                    : 'Search city or town...'
+                }
+                placeholderTextColor="#888"
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                clearButtonMode="while-editing"
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setSearchQuery('')}>
+                  <Text style={{ color: '#888', paddingHorizontal: 6, fontWeight: '700' }}>✕</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* City List */}
+            <ScrollView style={styles.cityList} keyboardShouldPersistTaps="handled">
+              {filteredCities.map((city) => {
+                const isSelected = !isLiveActive && city.name.toLowerCase() === selectedCity.toLowerCase();
                 let cName = city.name;
                 if (currentLanguage === 'te') cName = city.nameTe;
                 else if (currentLanguage === 'kn') cName = city.nameKn;
@@ -616,10 +801,7 @@ export const PanchangamScreen: React.FC<Props> = ({
                       isSelected && styles.cityItemSelected,
                     ]}
                     activeOpacity={0.7}
-                    onPress={() => {
-                      setSelectedCity(city.name);
-                      setShowCityModal(false);
-                    }}
+                    onPress={() => handleSelectCity(city.name)}
                   >
                     <Text
                       style={[
@@ -723,6 +905,10 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingHorizontal: 12,
     paddingVertical: 4.5,
+  },
+  locationPillLive: {
+    backgroundColor: '#E8F5E9',
+    borderColor: '#81C784',
   },
   locationPin: {
     fontSize: 12,
@@ -943,7 +1129,7 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     width: '100%',
-    maxHeight: '60%',
+    maxHeight: '82%',
     backgroundColor: '#FFFDF9',
     borderRadius: 20,
     borderWidth: 1.5,
@@ -955,24 +1141,109 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingBottom: 12,
+    paddingBottom: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#F0E0CB',
   },
   modalTitle: {
     fontFamily: Platform.select({ ios: 'Poppins-Bold', android: 'Poppins_700Bold', web: 'Poppins, sans-serif', default: 'Poppins_700Bold' }),
-    fontSize: 17,
+    fontSize: 16.5,
     fontWeight: '700',
     color: '#0C251E',
   },
+  modalSubTitle: {
+    fontSize: 11.5,
+    color: '#666',
+    marginTop: 2,
+  },
+  modalCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F5ECE0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   modalCloseText: {
-    fontSize: 18,
+    fontSize: 15,
     color: '#173D32',
     fontWeight: '700',
-    padding: 4,
+  },
+  liveGpsCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F9F5',
+    borderWidth: 1.5,
+    borderColor: '#A5D6A7',
+    borderRadius: 14,
+    padding: 12,
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  liveGpsCardActive: {
+    backgroundColor: '#E8F5E9',
+    borderColor: '#2E7D32',
+  },
+  liveGpsIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#FFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: '#C8E6C9',
+  },
+  liveGpsEmoji: {
+    fontSize: 18,
+  },
+  liveGpsTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#173D32',
+    marginRight: 6,
+  },
+  liveGpsSubtitle: {
+    fontSize: 11,
+    color: '#555',
+    marginTop: 2,
+  },
+  activeLiveBadge: {
+    backgroundColor: '#2E7D32',
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 6,
+  },
+  activeLiveBadgeText: {
+    color: '#FFF',
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  searchBarContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F7EFE3',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E2D1BA',
+    paddingHorizontal: 10,
+    paddingVertical: Platform.OS === 'ios' ? 8 : 4,
+    marginVertical: 6,
+  },
+  searchIcon: {
+    fontSize: 14,
+    marginRight: 6,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 13.5,
+    color: '#0C251E',
+    paddingVertical: 2,
   },
   cityList: {
-    marginTop: 8,
+    marginTop: 6,
   },
   cityItem: {
     flexDirection: 'row',

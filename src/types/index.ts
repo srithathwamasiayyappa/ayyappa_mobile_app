@@ -260,5 +260,69 @@ export interface FestivalItem {
   year?: number;
 }
 
+export interface DharmaKarthaDashboardStats {
+  managedTemples: number;
+  pendingUpdates: number;
+  activeFestivals: number;
+}
+
+export interface DharmaKarthaProfile {
+  id: number;
+  fullName: string;
+  city: string;
+  state: string;
+  role: string;
+  designation?: string;
+  avatarUrl?: string;
+}
+
+export interface DharmaKarthaTemple {
+  id: number;
+  slug: string;
+  name: string;
+  alternateName?: string;
+  primaryDeity: string;
+  shortDescription?: string;
+  about?: string;
+  history?: string;
+  speciality?: string;
+  country?: string;
+  state?: string;
+  district?: string;
+  city: string;
+  address?: string;
+  pincode?: string;
+  latitude?: number;
+  longitude?: number;
+  mapsUrl?: string;
+  officePhone?: string;
+  officialEmail?: string;
+  officialWebsite?: string;
+  heroImageUrl?: string;
+  gopuramImageUrl?: string;
+  status: 'PUBLISHED' | 'PENDING_APPROVAL' | 'DRAFT';
+  isVerified: boolean;
+  membershipRole: 'OWNER' | 'ADMIN';
+  membershipStatus: 'APPROVED' | 'PENDING';
+}
+
+export interface RegisterMandirPayload {
+  classification: string;
+  name: string;
+  alternateName?: string;
+  primaryDeity: string;
+  state: string;
+  city: string;
+  district?: string;
+  address: string;
+  shortDescription?: string;
+  about?: string;
+  history?: string;
+  speciality?: string;
+  officePhone?: string;
+  officialEmail?: string;
+  officialWebsite?: string;
+}
+
 
 

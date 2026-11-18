@@ -337,12 +337,25 @@ export const AuthScreen: React.FC<Props> = ({
         return;
       }
 
-      const res = await FirebasePhoneAuthService.sendPhoneOtp(phoneE164);
+      let sendMsg = '';
+      try {
+        const res = await FirebasePhoneAuthService.sendPhoneOtp(phoneE164);
+        sendMsg = res?.message || check?.message || `OTP sent successfully to +91 ${clean10}`;
+      } catch (fbErr: any) {
+        console.warn('[AuthScreen] Firebase Phone Auth failed, trying backend SMS OTP fallback:', fbErr?.message);
+        try {
+          const apiRes = await ApiService.sendOtp(clean10, 'register');
+          sendMsg = apiRes?.message || `OTP sent successfully via SMS to +91 ${clean10}`;
+        } catch (apiErr: any) {
+          throw new Error(apiErr?.message || fbErr?.message || 'Failed to send verification OTP.');
+        }
+      }
+
       setOtpIntent('register');
       setResendCooldown(30);
       setOtpCode('');
       setCurrentStep('VERIFY_OTP');
-      showToast(res?.message || check?.message || `OTP sent successfully to +91 ${clean10}`, 'success');
+      showToast(sendMsg, 'success');
     } catch (err: any) {
       const errMsg = err?.message || 'Failed to send verification OTP.';
       if (errMsg.toLowerCase().includes('already registered')) {
@@ -397,12 +410,25 @@ export const AuthScreen: React.FC<Props> = ({
         return;
       }
 
-      const res = await FirebasePhoneAuthService.sendPhoneOtp(phoneE164);
+      let sendMsg = '';
+      try {
+        const res = await FirebasePhoneAuthService.sendPhoneOtp(phoneE164);
+        sendMsg = res?.message || check?.message || `OTP sent successfully to +91 ${clean10}`;
+      } catch (fbErr: any) {
+        console.warn('[AuthScreen] Firebase Phone Auth failed, trying backend SMS OTP fallback:', fbErr?.message);
+        try {
+          const apiRes = await ApiService.sendOtp(clean10, 'login');
+          sendMsg = apiRes?.message || `OTP sent successfully via SMS to +91 ${clean10}`;
+        } catch (apiErr: any) {
+          throw new Error(apiErr?.message || fbErr?.message || 'Failed to send OTP. Please check mobile number.');
+        }
+      }
+
       setOtpIntent('login');
       setResendCooldown(30);
       setOtpCode('');
       setCurrentStep('VERIFY_OTP');
-      showToast(res?.message || check?.message || `OTP sent successfully to +91 ${clean10}`, 'success');
+      showToast(sendMsg, 'success');
     } catch (err: any) {
       showToast(err?.message || 'Failed to send OTP. Please check mobile number.', 'error');
     } finally {
@@ -418,9 +444,17 @@ export const AuthScreen: React.FC<Props> = ({
     const phoneE164 = `+91${clean}`;
     setLoading(true);
     try {
-      const res = await FirebasePhoneAuthService.sendPhoneOtp(phoneE164);
+      let sendMsg = '';
+      try {
+        const res = await FirebasePhoneAuthService.sendPhoneOtp(phoneE164);
+        sendMsg = res?.message || `New OTP sent to +91 ${clean}!`;
+      } catch (fbErr: any) {
+        console.warn('[AuthScreen] Firebase Resend OTP failed, trying backend SMS OTP fallback:', fbErr?.message);
+        const apiRes = await ApiService.sendOtp(clean, otpIntent);
+        sendMsg = apiRes?.message || `New OTP sent via SMS to +91 ${clean}!`;
+      }
       setResendCooldown(30);
-      showToast(res?.message || `New OTP sent to ${phoneE164}!`, 'info');
+      showToast(sendMsg, 'info');
     } catch (err: any) {
       showToast(err?.message || 'Failed to resend OTP.', 'error');
     } finally {
