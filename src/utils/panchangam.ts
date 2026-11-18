@@ -2,12 +2,29 @@ import { SupportedLanguage, PanchangamData } from '../types';
 
 export const CITIES_LIST = [
   { name: 'Hyderabad', nameTe: 'హైదరాబాద్', nameKn: 'ಹೈದರಾಬಾದ್', nameTa: 'ஹைதராபாத்', nameHi: 'हैदराबाद' },
+  { name: 'Sabarimala', nameTe: 'శబరిమల', nameKn: 'ಶಬರಿಮಲೆ', nameTa: 'சபரிமலை', nameHi: 'सबरीमाला' },
   { name: 'Vijayawada', nameTe: 'విజయవాడ', nameKn: 'ವಿಜಯವಾಡ', nameTa: 'விஜயவாடா', nameHi: 'विजयवाड़ा' },
   { name: 'Visakhapatnam', nameTe: 'విశాఖపట్నం', nameKn: 'ವಿಶಾಖಪಟ್ಟಣ', nameTa: 'விசாகப்பட்டினம்', nameHi: 'विशाखापत्तनम' },
   { name: 'Tirupati', nameTe: 'తిరుపతి', nameKn: 'ತಿರುಪತಿ', nameTa: 'திருப்பதி', nameHi: 'तिरुपति' },
   { name: 'Bengaluru', nameTe: 'బెంగళూరు', nameKn: 'ಬೆಂಗಳೂರು', nameTa: 'பெங்களூரு', nameHi: 'बेंगलुरु' },
   { name: 'Chennai', nameTe: 'చెన్నై', nameKn: 'ಚೆನ್ನೈ', nameTa: 'சென்னை', nameHi: 'चेन्नई' },
-  { name: 'Sabarimala', nameTe: 'శబరిమల', nameKn: 'ಶಬರಿಮಲೆ', nameTa: 'சபரிமலை', nameHi: 'सबरीमाला' },
+  { name: 'Kochi', nameTe: 'కొచ్చి', nameKn: 'ಕೊಚ್ಚಿ', nameTa: 'கொச்சி', nameHi: 'कोच्चि' },
+  { name: 'Thiruvananthapuram', nameTe: 'తిరువనంతపురం', nameKn: 'ತಿರುವನಂತಪುರಂ', nameTa: 'திருவனந்தபுரம்', nameHi: 'तिरुवनंतपुरम' },
+  { name: 'Warangal', nameTe: 'వరంగల్', nameKn: 'ವರಂಗಲ್', nameTa: 'வாரங்கல்', nameHi: 'वारंगल' },
+  { name: 'Guntur', nameTe: 'గుంటూరు', nameKn: 'ಗುಂಟೂರು', nameTa: 'குண்டூர்', nameHi: 'गुंटूर' },
+  { name: 'Rajahmundry', nameTe: 'రాజమండ్రి', nameKn: 'ರಾಜಮಂಡ್ರಿ', nameTa: 'ராஜமன்றி', nameHi: 'राजमुंदरी' },
+  { name: 'Nellore', nameTe: 'నెల్లూరు', nameKn: 'ನೆಲ್ಲೂರು', nameTa: 'நெல்லூர்', nameHi: 'नेल्लोर' },
+  { name: 'Kurnool', nameTe: 'కర్నూలు', nameKn: 'ಕರ್ನೂಲು', nameTa: 'கர்னூல்', nameHi: 'कुरनूल' },
+  { name: 'Nizamabad', nameTe: 'నిజామాబాద్', nameKn: 'ನಿಜಾಮಾಬಾದ್', nameTa: 'நிஜாமாபாத்', nameHi: 'निज़ामाबाद' },
+  { name: 'Karimnagar', nameTe: 'కరీంనగర్', nameKn: 'ಕರೀಂನಗರ', nameTa: 'கரீம்நகர்', nameHi: 'करीमनगर' },
+  { name: 'Mysore', nameTe: 'మైసూరు', nameKn: 'ಮೈಸೂರು', nameTa: 'மைசூர்', nameHi: 'मैसूर' },
+  { name: 'Mangalore', nameTe: 'మంగళూరు', nameKn: 'ಮಂಗಳೂರು', nameTa: 'மங்களூர்', nameHi: 'मंगलौर' },
+  { name: 'Madurai', nameTe: 'మధురై', nameKn: 'ಮಧುರೈ', nameTa: 'மதுரை', nameHi: 'मदुरै' },
+  { name: 'Coimbatore', nameTe: 'కోయంబత్తూర్', nameKn: 'ಕೊಯಮತ್ತೂರು', nameTa: 'கோயம்புத்தூர்', nameHi: 'कोयंबटूर' },
+  { name: 'Mumbai', nameTe: 'ముంబై', nameKn: 'ಮುಂಬೈ', nameTa: 'மும்பை', nameHi: 'मुंबई' },
+  { name: 'Delhi', nameTe: 'ఢిల్లీ', nameKn: 'ದೆಹಲಿ', nameTa: 'தில்லி', nameHi: 'दिल्ली' },
+  { name: 'Varanasi', nameTe: 'వారణాసి', nameKn: 'ವಾರಣಾಸಿ', nameTa: 'வாரணாசி', nameHi: 'वाराणसी' },
+  { name: 'Kolkata', nameTe: 'కోల్‌కతా', nameKn: 'ಕೋಲ್ಕತ್ತಾ', nameTa: 'கொல்கத்தா', nameHi: 'कोलकाता' },
 ];
 
 export const TITHI_NAMES = {
@@ -167,12 +184,29 @@ export const WEEKDAYS = {
 
 const CITY_COORDS: Record<string, { lat: number; lng: number }> = {
   Hyderabad: { lat: 17.385, lng: 78.4867 },
+  Sabarimala: { lat: 9.4398, lng: 77.0805 },
   Vijayawada: { lat: 16.5062, lng: 80.648 },
   Visakhapatnam: { lat: 17.6868, lng: 83.2185 },
   Tirupati: { lat: 13.6288, lng: 79.4192 },
   Bengaluru: { lat: 12.9716, lng: 77.5946 },
   Chennai: { lat: 13.0827, lng: 80.2707 },
-  Sabarimala: { lat: 9.4398, lng: 77.0805 },
+  Kochi: { lat: 9.9312, lng: 76.2673 },
+  Thiruvananthapuram: { lat: 8.5241, lng: 76.9366 },
+  Warangal: { lat: 17.9689, lng: 79.5941 },
+  Guntur: { lat: 16.3067, lng: 80.4365 },
+  Rajahmundry: { lat: 17.0005, lng: 81.804 },
+  Nellore: { lat: 14.4426, lng: 79.9865 },
+  Kurnool: { lat: 15.8281, lng: 78.0373 },
+  Nizamabad: { lat: 18.6725, lng: 78.0941 },
+  Karimnagar: { lat: 18.4386, lng: 79.1288 },
+  Mysore: { lat: 12.2958, lng: 76.6394 },
+  Mangalore: { lat: 12.9141, lng: 74.856 },
+  Madurai: { lat: 9.9252, lng: 78.1198 },
+  Coimbatore: { lat: 11.0168, lng: 76.9558 },
+  Mumbai: { lat: 19.076, lng: 72.8777 },
+  Delhi: { lat: 28.6139, lng: 77.209 },
+  Varanasi: { lat: 25.3176, lng: 82.9739 },
+  Kolkata: { lat: 22.5726, lng: 88.3639 },
 };
 
 export class PanchangamLocalEngine {
@@ -300,8 +334,13 @@ export class PanchangamLocalEngine {
     });
   }
 
-  public static calculate(targetDate: Date = new Date(), cityName = 'Hyderabad', lang: SupportedLanguage = 'te'): PanchangamData {
-    const coords = CITY_COORDS[cityName] || CITY_COORDS.Hyderabad;
+  public static calculate(
+    targetDate: Date = new Date(),
+    cityName = 'Hyderabad',
+    lang: SupportedLanguage = 'te',
+    customCoords?: { lat: number; lng: number }
+  ): PanchangamData {
+    const coords = customCoords || CITY_COORDS[cityName] || CITY_COORDS.Hyderabad;
     const l = (['te', 'kn', 'en', 'ta', 'hi'].includes(lang) ? lang : 'te') as SupportedLanguage;
 
     const sun = this.getSunTimes(targetDate, coords.lat, coords.lng);

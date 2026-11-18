@@ -19,4 +19,7 @@ config.resolver.nodeModulesPaths = [
 // Enable SVG / module extensions
 config.resolver.sourceExts.push('mjs', 'cjs');
 
+// Prevent OneDrive / Windows EBUSY and UNKNOWN (-4094) file lock crashes
+config.maxWorkers = 2;
+
 module.exports = config;

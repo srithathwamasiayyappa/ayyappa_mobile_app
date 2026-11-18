@@ -202,12 +202,18 @@ export const ApiService = {
     return items;
   },
 
-  // 2. Fetch Panchangam with Instant High-Precision Astronomical Fallback
-  async getPanchangam(lang: SupportedLanguage, dateIso?: string, city = 'Hyderabad'): Promise<PanchangamData> {
+  // 2. Fetch Panchangam with Instant High-Precision Astronomical Fallback & Live Coordinates
+  async getPanchangam(
+    lang: SupportedLanguage,
+    dateIso?: string,
+    city = 'Hyderabad',
+    customCoords?: { lat: number; lng: number }
+  ): Promise<PanchangamData> {
     try {
+      const coordParams = customCoords ? `&lat=${customCoords.lat}&lng=${customCoords.lng}` : '';
       const url = dateIso
-        ? `${API_BASE_URL}/panchangam?lang=${lang}&date=${dateIso}&city=${city}`
-        : `${API_BASE_URL}/panchangam?lang=${lang}&city=${city}`;
+        ? `${API_BASE_URL}/panchangam?lang=${lang}&date=${dateIso}&city=${encodeURIComponent(city)}${coordParams}`
+        : `${API_BASE_URL}/panchangam?lang=${lang}&city=${encodeURIComponent(city)}${coordParams}`;
       const res = await fetch(url);
       if (res.ok) {
         return await res.json();
@@ -216,7 +222,7 @@ export const ApiService = {
       // Fallback
     }
     const targetDate = dateIso ? new Date(dateIso) : new Date();
-    return PanchangamLocalEngine.calculate(targetDate, city, lang);
+    return PanchangamLocalEngine.calculate(targetDate, city, lang, customCoords);
   },
 
   // 3. Fetch Devotional Categories dynamically from DB via API (Strictly NO fallback, static, or fake data)
