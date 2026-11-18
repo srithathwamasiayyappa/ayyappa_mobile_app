@@ -15,6 +15,10 @@ import {
   MainTab,
   DevotionalNotification,
   BookmarkItem,
+  DharmaKarthaDashboardStats,
+  DharmaKarthaProfile,
+  DharmaKarthaTemple,
+  RegisterMandirPayload,
 } from '../types';
 import { PanchangamLocalEngine } from '../utils/panchangam';
 import {
@@ -1111,6 +1115,170 @@ export const ApiService = {
     }
 
     return fallbackTabs;
+  },
+
+  // =========================================================================
+  // 21. DHARMA KARTHA DASHBOARD & TEMPLE MANAGEMENT APIS (DB-BOUND VIA CPANEL)
+  // Strictly fetches from MariaDB via backendapis.saranamayyappa.in
+  // =========================================================================
+
+  // 21.1 Fetch Dharma Kartha Dashboard Stats (Managed Temples, Pending Updates, Active Festivals)
+  async getDharmaKarthaStats(userId: number = 1): Promise<DharmaKarthaDashboardStats> {
+    const url = `${API_BASE_URL}/dharma-kartha/dashboard?userId=${userId}`;
+    const res = await fetch(url, {
+      headers: {
+        'x-user-id': String(userId),
+        Accept: 'application/json',
+      },
+    });
+    if (!res.ok) {
+      throw new Error(`Failed to fetch Dharma Kartha stats (HTTP ${res.status})`);
+    }
+    const json = await res.json();
+    return json?.data || { managedTemples: 0, pendingUpdates: 0, activeFestivals: 0 };
+  },
+
+  // 21.2 Fetch Dharma Kartha Profile (Name, City, Role, Designation, Avatar)
+  async getDharmaKarthaProfile(userId: number = 1): Promise<DharmaKarthaProfile | null> {
+    const url = `${API_BASE_URL}/dharma-kartha/profile?userId=${userId}`;
+    const res = await fetch(url, {
+      headers: {
+        'x-user-id': String(userId),
+        Accept: 'application/json',
+      },
+    });
+    if (!res.ok) {
+      throw new Error(`Failed to fetch Dharma Kartha profile (HTTP ${res.status})`);
+    }
+    const json = await res.json();
+    return json?.profile || null;
+  },
+
+  // 21.3 Fetch Authorized Temples Managed by this Dharma Kartha
+  async getDharmaKarthaTemples(userId: number = 1): Promise<DharmaKarthaTemple[]> {
+    const url = `${API_BASE_URL}/dharma-kartha/temples?userId=${userId}`;
+    const res = await fetch(url, {
+      headers: {
+        'x-user-id': String(userId),
+        Accept: 'application/json',
+      },
+    });
+    if (!res.ok) {
+      throw new Error(`Failed to fetch Dharma Kartha temples (HTTP ${res.status})`);
+    }
+    const json = await res.json();
+    return json?.temples || [];
+  },
+
+  // 21.4 Register a Holy Mandir for Super Admin Verification
+  async registerMandir(payload: RegisterMandirPayload, userId: number = 1): Promise<{ success: boolean; message: string; temple?: any }> {
+    const url = `${API_BASE_URL}/dharma-kartha/temples?userId=${userId}`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-id': String(userId),
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({
+        name: payload.name.trim(),
+        templeType: payload.classification,
+        alternateName: payload.alternateName?.trim(),
+        primaryDeity: payload.primaryDeity,
+        state: payload.state,
+        city: payload.city.trim(),
+        district: payload.district?.trim(),
+        address: payload.address.trim(),
+        shortDescription: payload.shortDescription?.trim(),
+        about: payload.about?.trim(),
+        history: payload.history?.trim(),
+        speciality: payload.speciality?.trim(),
+        officePhone: payload.officePhone?.trim(),
+        officialEmail: payload.officialEmail?.trim(),
+        officialWebsite: payload.officialWebsite?.trim(),
+      }),
+    });
+    const json = await res.json();
+    if (!res.ok || json.success === false) {
+      throw new Error(json?.message || `Failed to submit temple registration (HTTP ${res.status})`);
+    }
+    return json;
+  },
+
+  // 21.5 Update Managed Temple Details (About, Speciality, Contact, etc.)
+  async updateTemple(templeId: number, updateData: any, userId: number = 1): Promise<{ success: boolean; message: string; temple?: any }> {
+    const url = `${API_BASE_URL}/dharma-kartha/temples/${templeId}?userId=${userId}`;
+    const res = await fetch(url, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-id': String(userId),
+        Accept: 'application/json',
+      },
+      body: JSON.stringify(updateData),
+    });
+    const json = await res.json();
+    if (!res.ok || json.success === false) {
+      throw new Error(json?.message || `Failed to update temple (HTTP ${res.status})`);
+    }
+    return json;
+  },
+
+  // 21.6 Add / Update Temple Darshan & Aarti Timings
+  async addTempleTiming(templeId: number, body: any, userId: number = 1): Promise<{ success: boolean; message: string }> {
+    const url = `${API_BASE_URL}/dharma-kartha/temples/${templeId}/timings?userId=${userId}`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-id': String(userId),
+        Accept: 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+    const json = await res.json();
+    if (!res.ok || json.success === false) {
+      throw new Error(json?.message || `Failed to add temple timing (HTTP ${res.status})`);
+    }
+    return json;
+  },
+
+  // 21.7 Add / Update Temple Festivals
+  async addTempleFestival(templeId: number, body: any, userId: number = 1): Promise<{ success: boolean; message: string }> {
+    const url = `${API_BASE_URL}/dharma-kartha/festivals?userId=${userId}`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-id': String(userId),
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({ templeId, ...body }),
+    });
+    const json = await res.json();
+    if (!res.ok || json.success === false) {
+      throw new Error(json?.message || `Failed to add temple festival (HTTP ${res.status})`);
+    }
+    return json;
+  },
+
+  // 21.8 Upload Sanctum Media / Gallery Photos
+  async uploadTempleMedia(body: any, userId: number = 1): Promise<{ success: boolean; message: string }> {
+    const url = `${API_BASE_URL}/dharma-kartha/media?userId=${userId}`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-id': String(userId),
+        Accept: 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+    const json = await res.json();
+    if (!res.ok || json.success === false) {
+      throw new Error(json?.message || `Failed to upload temple media (HTTP ${res.status})`);
+    }
+    return json;
   },
 };
 

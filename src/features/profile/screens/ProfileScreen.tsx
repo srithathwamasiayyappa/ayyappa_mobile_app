@@ -21,11 +21,13 @@ import Svg, { Path, Circle, Rect, G } from 'react-native-svg';
 import { ApiService } from '../../../services/api';
 import { StorageService } from '../../../services/storageService';
 import { SupportedLanguage, DevoteeProfile, BookmarkItem, DeityItem } from '../../../types';
+import { DharmaKarthaDashboardScreen } from '../../dharma-kartha/screens/DharmaKarthaDashboardScreen';
 
 interface Props {
   currentLanguage: SupportedLanguage;
   currentUser?: any;
   currentDeity?: DeityItem | null;
+  userRole?: 'DEVOTEE' | 'DHARMA_KARTHA' | 'CUSTOMER';
   onOpenEditProfile: () => void;
   onOpenNotifications: () => void;
   onOpenTerms: () => void;
@@ -504,6 +506,7 @@ export const ProfileScreen: React.FC<Props> = ({
   currentLanguage,
   currentUser,
   currentDeity,
+  userRole,
   onOpenEditProfile,
   onOpenNotifications,
   onOpenTerms,
@@ -516,6 +519,16 @@ export const ProfileScreen: React.FC<Props> = ({
   onBack,
   onNavigateDestination,
 }) => {
+  const [activeRole, setActiveRole] = useState<'DEVOTEE' | 'DHARMA_KARTHA'>(
+    userRole === 'DHARMA_KARTHA' || currentUser?.role === 'DHARMA_KARTHA' ? 'DHARMA_KARTHA' : 'DEVOTEE'
+  );
+
+  useEffect(() => {
+    if (userRole === 'DHARMA_KARTHA' || currentUser?.role === 'DHARMA_KARTHA') {
+      setActiveRole('DHARMA_KARTHA');
+    }
+  }, [userRole, currentUser?.role]);
+
   const [profile, setProfile] = useState<DevoteeProfile | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
@@ -731,6 +744,26 @@ export const ProfileScreen: React.FC<Props> = ({
     }
   };
 
+  // If active role is DHARMA_KARTHA, render dynamic Dharma Kartha Dashboard matching web portal
+  if (activeRole === 'DHARMA_KARTHA') {
+    return (
+      <DharmaKarthaDashboardScreen
+        currentLanguage={currentLanguage}
+        currentUser={currentUser}
+        onOpenEditProfile={onOpenEditProfile}
+        onOpenNotifications={onOpenNotifications}
+        onOpenTerms={onOpenTerms}
+        onOpenPrivacyPolicy={onOpenPrivacyPolicy}
+        onOpenAbout={onOpenAbout}
+        onLogout={onLogout}
+        onSwitchToDevotee={() => setActiveRole('DEVOTEE')}
+        onSelectTempleDetail={(temple) => {
+          onNavigateDestination?.('temple_detail', { id: temple.slug || String(temple.id), title: temple.name });
+        }}
+      />
+    );
+  }
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="light-content" backgroundColor="#0C251E" translucent={false} />
@@ -823,6 +856,36 @@ export const ProfileScreen: React.FC<Props> = ({
             )}
           </View>
         </View>
+
+        {/* Dharma Kartha Dashboard Entry Card */}
+        <TouchableOpacity
+          style={styles.dharmaPortalCard}
+          activeOpacity={0.88}
+          onPress={() => setActiveRole('DHARMA_KARTHA')}
+        >
+          <LinearGradient
+            colors={['#FFFBF0', '#FFF5DE']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.dharmaPortalGradient}
+          >
+            <View style={styles.dharmaPortalIconBox}>
+              <Text style={{ fontSize: 22 }}>🛕</Text>
+            </View>
+            <View style={{ flex: 1, marginRight: 8 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={styles.dharmaPortalTitle}>Dharma Kartha Dashboard</Text>
+                <View style={styles.dharmaPortalBadge}>
+                  <Text style={styles.dharmaPortalBadgeText}>MANDIR ADMIN</Text>
+                </View>
+              </View>
+              <Text style={styles.dharmaPortalSubtitle}>
+                Manage your temples, timings, aarti & sacred festivals
+              </Text>
+            </View>
+            <Text style={styles.dharmaPortalChevron}>›</Text>
+          </LinearGradient>
+        </TouchableOpacity>
 
         {/* 6 PROFILE MENU CARDS (Exact match with reference image) */}
         <View style={styles.menuListContainer}>
@@ -2014,5 +2077,62 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#215344',
     textDecorationLine: 'underline',
+  },
+  dharmaPortalCard: {
+    borderRadius: 16,
+    marginBottom: 16,
+    overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: '#E8D2A3',
+    ...Platform.select({
+      ios: { shadowColor: '#DFA62E', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 5 },
+      android: { elevation: 2 },
+    }),
+  },
+  dharmaPortalGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+  },
+  dharmaPortalIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#FAF4E6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+    borderWidth: 1,
+    borderColor: '#EBDCB9',
+  },
+  dharmaPortalTitle: {
+    fontSize: 14.5,
+    fontWeight: '700',
+    color: '#0C251E',
+  },
+  dharmaPortalBadge: {
+    backgroundColor: '#FFE6B0',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 0.8,
+    borderColor: '#DFA62E',
+  },
+  dharmaPortalBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#B37812',
+    letterSpacing: 0.5,
+  },
+  dharmaPortalSubtitle: {
+    fontSize: 11.5,
+    color: '#65776F',
+    marginTop: 2,
+    lineHeight: 15,
+  },
+  dharmaPortalChevron: {
+    fontSize: 22,
+    color: '#CAA049',
+    fontWeight: '600',
   },
 });

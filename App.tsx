@@ -692,6 +692,7 @@ export default function App() {
             currentLanguage={selectedLanguage}
             currentUser={currentUser}
             currentDeity={currentDeity}
+            userRole={selectedRole}
             onOpenEditProfile={() => navigateTo('edit_profile')}
             onOpenNotifications={() => navigateTo('notifications')}
             onOpenTerms={() => navigateTo('terms')}
