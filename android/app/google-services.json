@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "999029802299",
+    "project_id": "srithathwamasiayyappa-6a56f",
+    "storage_bucket": "srithathwamasiayyappa-6a56f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:999029802299:android:12a65a07d104a494cc631e",
+        "android_client_info": {
+          "package_name": "com.saranam.ayyappa"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDWLl90R09PLwdgk9gT6TfsdTPRqaQFAec"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

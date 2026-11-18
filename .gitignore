@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Testing & Coverage
+coverage/
+
+# Expo & Builds
+.expo/
+dist/
+web-build/
+
+# Android build artifacts and caches
+android/.gradle/
+android/build/
+android/app/build/
+android/.idea/
+android/*.iml
+android/app/*.iml
+android/local.properties
+android/release-signing.properties
+*.apk
+*.aab
+*.keystore
+*.jks
+*.p8
+*.p12
+*.key
+
+# Backup & Temp
+*.bak
+*.bak.*
+*.tmp
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*

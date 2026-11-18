@@ -1,0 +1,23 @@
+# OSX
+#
+.DS_Store
+
+# Android/IntelliJ
+#
+build/
+.idea
+.gradle
+local.properties
+*.iml
+*.hprof
+.cxx/
+
+# Bundle artifacts
+*.jsbundle
+
+# Android Keystore & Secret files (Never commit to Git)
+*.keystore
+saranam-release.keystore
+signing.properties
+release-signing.properties
+
