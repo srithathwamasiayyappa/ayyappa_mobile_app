@@ -56,6 +56,7 @@ import { NotificationsScreen } from './src/features/profile/screens/Notification
 import { AboutScreen } from './src/features/home/screens/AboutScreen';
 import { ContactScreen } from './src/features/contact/screens/ContactScreen';
 import { PanchangamScreen } from './src/features/panchangam/screens/PanchangamScreen';
+import { FestivalsScreen } from './src/features/festivals/screens/FestivalsScreen';
 import { DetailScreen } from './src/features/devotional-content/screens/DetailScreen';
 import { CategoryListingScreen } from './src/features/services/screens/CategoryListingScreen';
 import { PoojaDetailScreen } from './src/features/services/screens/PoojaDetailScreen';
@@ -443,6 +444,8 @@ export default function App() {
       navigateTo('food_donation', { id, title: title || 'Food Donation (Annadanam)' });
     } else if (id === 'donations' || id === 'donation' || id === 'seva-booking') {
       navigateTo('donations', { id, title: title || 'Donations' });
+    } else if (id === 'festivals' || id === 'festival' || id === 'festivals-calendar' || id === 'temple-festivals') {
+      navigateTo('festivals', { id, title: title || 'Festivals & Sacred Days' });
     } else {
       const listingCategories = ['pooja-vidhanam', 'astothrams', 'slokas'];
       if (listingCategories.includes(id)) {
@@ -468,6 +471,10 @@ export default function App() {
 
   const handleOpenPanchangam = () => {
     navigateTo('panchangam');
+  };
+
+  const handleOpenFestivals = () => {
+    navigateTo('festivals');
   };
 
   const handleBackToHome = () => {
@@ -509,6 +516,7 @@ export default function App() {
     currentScreen === 'services' ||
     currentScreen === 'temples' ||
     currentScreen === 'panchangam' ||
+    currentScreen === 'festivals' ||
     currentScreen === 'profile' ||
     currentScreen === 'category_listing' ||
     currentScreen === 'bhajans_songs' ||
@@ -671,6 +679,7 @@ export default function App() {
             onOpenContactScreen={handleOpenContact}
             onOpenDetail={handleOpenDetail}
             onOpenPanchangam={handleOpenPanchangam}
+            onOpenFestivals={handleOpenFestivals}
             onNavigateToCategories={() => handleTabChange('categories')}
             onOpenNotifications={() => navigateTo('notifications')}
             onOpenProfile={() => navigateTo('profile')}
@@ -692,6 +701,16 @@ export default function App() {
             currentLanguage={selectedLanguage}
             currentUser={currentUser}
             currentDeity={currentDeity}
+            selectedRole={selectedRole}
+            onRoleSwitch={(role) => {
+              setSelectedRole(role);
+              StorageService.setPendingRole(role);
+              if (currentUser) {
+                const u = { ...currentUser, role };
+                setCurrentUser(u);
+                StorageService.setStoredUser(u);
+              }
+            }}
             onOpenEditProfile={() => navigateTo('edit_profile')}
             onOpenNotifications={() => navigateTo('notifications')}
             onOpenTerms={() => navigateTo('terms')}
@@ -705,6 +724,7 @@ export default function App() {
             }}
             onLogout={handleLogout}
             onBack={handleGoBack}
+            onOpenFestivals={handleOpenFestivals}
             onNavigateDestination={(screen, detail) => {
               navigateTo(screen as MobileScreen, detail || null);
             }}
@@ -760,6 +780,13 @@ export default function App() {
 
         {currentScreen === 'panchangam' && (
           <PanchangamScreen
+            currentLanguage={selectedLanguage}
+            onBack={handleGoBack}
+          />
+        )}
+
+        {currentScreen === 'festivals' && (
+          <FestivalsScreen
             currentLanguage={selectedLanguage}
             onBack={handleGoBack}
           />

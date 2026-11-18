@@ -249,4 +249,16 @@ export interface BookmarkItem {
   savedAt: string;
 }
 
+export interface FestivalItem {
+  slug: string;
+  name: string;
+  date: string;
+  weekday?: string;
+  category: string;
+  city?: string;
+  description?: string;
+  year?: number;
+}
+
+
 

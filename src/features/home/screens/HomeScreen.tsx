@@ -176,6 +176,7 @@ interface Props {
   onOpenContactScreen?: () => void;
   onOpenDetail?: (id: string, title: string) => void;
   onOpenPanchangam?: () => void;
+  onOpenFestivals?: () => void;
   onNavigateToCategories?: () => void;
   onOpenNotifications?: () => void;
   onOpenProfile?: () => void;
@@ -238,6 +239,7 @@ export const HomeScreen: React.FC<Props> = ({
   onOpenContactScreen,
   onOpenDetail,
   onOpenPanchangam,
+  onOpenFestivals,
   onNavigateToCategories,
   onOpenNotifications,
   onOpenProfile,
@@ -696,6 +698,27 @@ export const HomeScreen: React.FC<Props> = ({
               >
                 <Text style={styles.drawerMenuIcon}>📅</Text>
                 <Text style={styles.drawerMenuText}>Today's Panchangam</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.drawerMenuItem}
+                onPress={() => {
+                  setDrawerOpen(false);
+                  onOpenFestivals?.();
+                }}
+              >
+                <Text style={styles.drawerMenuIcon}>🪔</Text>
+                <Text style={styles.drawerMenuText}>
+                  {currentLanguage === 'te'
+                    ? 'పండుగలు & విశేష దినాలు'
+                    : currentLanguage === 'kn'
+                    ? 'ಹಬ್ಬಗಳು & ವಿಶೇಷ ದಿನಗಳು'
+                    : currentLanguage === 'ta'
+                    ? 'திருவிழாக்கள் & சிறப்பு நாட்கள்'
+                    : currentLanguage === 'hi'
+                    ? 'त्यौहार एवं विशेष दिन'
+                    : 'Festivals & Sacred Days'}
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity

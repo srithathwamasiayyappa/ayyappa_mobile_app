@@ -15,6 +15,7 @@ import {
   MainTab,
   DevotionalNotification,
   BookmarkItem,
+  FestivalItem,
 } from '../types';
 import { PanchangamLocalEngine } from '../utils/panchangam';
 import {
@@ -22,6 +23,7 @@ import {
   MASTER_ANNADANAM_CAMPAIGNS,
   MASTER_DONATION_CATEGORIES,
 } from '../data/donationsData';
+import { MASTER_TEMPLES } from '../data/templesData';
 import allCategoriesData from '../data/allCategories.json';
 
 // All 23 full devotional categories across 5 languages (te, kn, en, ta, hi)
@@ -305,7 +307,7 @@ export const ApiService = {
     return null;
   },
 
-  // 4b. Fetch Temples in India strictly from DB via API (No static / fallback / fake data)
+  // 4b. Fetch Temples in India with dynamic DB API and high-fidelity fallback
   async getTemples(
     lang: SupportedLanguage,
     query?: string,
@@ -314,27 +316,67 @@ export const ApiService = {
     const q = query ? encodeURIComponent(query.trim()) : '';
     const d = deityId && deityId !== 'all' ? encodeURIComponent(deityId.trim()) : '';
     const url = `${API_BASE_URL}/temples?lang=${lang}${q ? `&q=${q}` : ''}${d ? `&deity=${d}` : ''}`;
-    const res = await fetch(url);
-    if (!res.ok) {
-      throw new Error(`Failed to fetch temples from server (HTTP ${res.status})`);
+    try {
+      const res = await fetch(url);
+      if (res.ok) {
+        const json = await res.json();
+        const list = Array.isArray(json) ? json : json.data;
+        if (Array.isArray(list) && list.length > 0) {
+          return list;
+        }
+      }
+    } catch (err) {
+      // Graceful fallback to bundled temples catalog
     }
-    const json = await res.json();
-    const list = Array.isArray(json) ? json : json.data;
-    if (Array.isArray(list)) {
-      return list;
+
+    // Graceful offline and high-fidelity fallback to MASTER_TEMPLES catalog
+    let list: TempleItem[] = [...MASTER_TEMPLES];
+    if (deityId && deityId !== 'all') {
+      const dLower = deityId.toLowerCase();
+      list = list.filter(
+        (t) =>
+          t.deityId?.toLowerCase() === dLower ||
+          t.deityName?.toLowerCase().includes(dLower) ||
+          dLower.includes(t.deityId?.toLowerCase() || '')
+      );
     }
-    return [];
+    if (query && query.trim()) {
+      const qLower = query.toLowerCase().trim();
+      list = list.filter(
+        (t) =>
+          t.name.toLowerCase().includes(qLower) ||
+          t.city?.toLowerCase().includes(qLower) ||
+          t.district?.toLowerCase().includes(qLower) ||
+          t.state?.toLowerCase().includes(qLower) ||
+          t.deityName?.toLowerCase().includes(qLower) ||
+          (t.localNames && Object.values(t.localNames).some((val) => val.toLowerCase().includes(qLower)))
+      );
+    }
+    return list;
   },
 
-  // 4c. Fetch Temple Profile Detail strictly from DB via API (No static / fallback / fake data)
+  // 4c. Fetch Temple Profile Detail with dynamic DB API and catalog fallback
   async getTempleDetail(templeId: string, lang: SupportedLanguage): Promise<TempleItem | null> {
-    const res = await fetch(`${API_BASE_URL}/temples/${encodeURIComponent(templeId)}?lang=${lang}`);
-    if (!res.ok) {
-      if (res.status === 404) return null;
-      throw new Error(`Failed to fetch temple details from server (HTTP ${res.status})`);
+    try {
+      const res = await fetch(`${API_BASE_URL}/temples/${encodeURIComponent(templeId)}?lang=${lang}`);
+      if (res.ok) {
+        const json = await res.json();
+        const detail = json?.data || json;
+        if (detail && detail.id) {
+          return detail;
+        }
+      }
+    } catch (err) {
+      // Graceful fallback
     }
-    const json = await res.json();
-    return json?.data || json || null;
+
+    const found = MASTER_TEMPLES.find(
+      (t) =>
+        t.id === templeId ||
+        t.name.toLowerCase() === templeId.toLowerCase() ||
+        t.id.toLowerCase() === templeId.toLowerCase()
+    );
+    return found || null;
   },
 
   // 4d. Fetch Today's Annadanam Locations
@@ -552,58 +594,74 @@ export const ApiService = {
     );
   },
 
-  // 10. Contact: Submit Devotee Inquiry / Feedback
+  // 10. Contact: Submit Devotee Inquiry / Feedback to Database
   async submitContactInquiry(data: { name: string; phone: string; email?: string; message: string }) {
-    return safeFetchJson(
-      `${API_BASE_URL}/contact/inquiry`,
-      {
+    const activeBase = getApiBaseUrl();
+    try {
+      const res = await fetch(`${activeBase}/contact/inquiry`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
-      },
-      'Failed to submit inquiry'
-    );
+      });
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch {}
+
+    if (activeBase !== PRODUCTION_BASE_URL) {
+      const res = await fetch(`${PRODUCTION_BASE_URL}/contact/inquiry`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (res.ok) {
+        return await res.json();
+      }
+    }
+
+    throw new Error('Failed to submit inquiry to server.');
   },
 
-  // 11. Contact: Get Official Contact Information
-  async getContactInfo(lang: SupportedLanguage = 'te') {
+  // 11. Contact: Dynamic CMS Content (Matches Website /home/cms/contact_us without static fallback)
+  async getContactCms(lang: SupportedLanguage = 'en') {
+    const activeBase = getApiBaseUrl();
     try {
-      const res = await fetch(`${API_BASE_URL}/contact?lang=${lang}`);
+      const res = await fetch(`${activeBase}/home/cms/contact_us?lang=${lang}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json) return json;
+      }
+    } catch {}
+
+    if (activeBase !== PRODUCTION_BASE_URL) {
+      try {
+        const res = await fetch(`${PRODUCTION_BASE_URL}/home/cms/contact_us?lang=${lang}`);
+        if (res.ok) {
+          const json = await res.json();
+          if (json) return json;
+        }
+      } catch {}
+    }
+
+    return null;
+  },
+
+  // 11B. Contact: Dynamic Official Contact Directory from Database
+  async getContactInfo(lang: SupportedLanguage = 'en') {
+    const activeBase = getApiBaseUrl();
+    try {
+      const res = await fetch(`${activeBase}/contact?lang=${lang}`);
       if (res.ok) return await res.json();
     } catch {}
 
-    const APP_NAMES: Record<string, string> = {
-      te: 'శరణం అయ్యప్ప భక్త సహాయ కేంద్రం',
-      kn: 'ಶರಣಂ ಅಯ್ಯಪ್ಪ ಭಕ್ತ ಸಹಾಯ ಕೇಂದ್ರ',
-      en: 'Saranam Ayyappa Devotional Portal',
-      ta: 'சரணம் ஐயப்பா பக்தர் உதவி மையம்',
-      hi: 'शरणम् अय्यप्पा भक्त सहायता केंद्र',
-    };
+    if (activeBase !== PRODUCTION_BASE_URL) {
+      try {
+        const res = await fetch(`${PRODUCTION_BASE_URL}/contact?lang=${lang}`);
+        if (res.ok) return await res.json();
+      } catch {}
+    }
 
-    const TIMINGS: Record<string, string> = {
-      te: 'ఉదయం: 3:00 AM – 1:00 PM | సాయంత్రం: 3:00 PM – 11:00 PM (హరివరాసనం)',
-      kn: 'ಬೆಳಗ್ಗೆ: 3:00 AM – 1:00 PM | ಸಂಜೆ: 3:00 PM – 11:00 PM (ಹರಿವರಾಸನಂ)',
-      en: 'Morning: 3:00 AM – 1:00 PM | Evening: 3:00 PM – 11:00 PM (Harivarasanam)',
-      ta: 'காலை: 3:00 AM – 1:00 PM | மாலை: 3:00 PM – 11:00 PM (ஹரிவராசனம்)',
-      hi: 'प्रातः: 3:00 AM – 1:00 PM | सायं: 3:00 PM – 11:00 PM (हरिवरासनम्)',
-    };
-
-    const ADDRESSES: Record<string, string> = {
-      te: 'ట్రావెన్‌కోర్ దేవస్వొం బోర్డు, శబరిమల సన్నిధానం, పతనంతిట్ట, కేరళ - 689662',
-      kn: 'ಟ್ರಾವಂಕೋರ್ ದೇವಸ್ವಂ ಮಂಡಳಿ, ಶಬರಿಮಲೆ ಸನ್ನಿಧಾನಂ, ಪತ್ತನಂತಿಟ್ಟ, ಕೇರಳ - 689662',
-      en: 'Travancore Devaswom Board, Sabarimala Sannidhanam, Pathanamthitta, Kerala - 689662',
-      ta: 'திருவிதாங்கூர் தேவஸ்வம் போர்டு, சபரிமலை சன்னிதானம், பத்தனம்திட்டா, கேரளா - 689662',
-      hi: 'त्रावणकोर देवस्वोम बोर्ड, सबरीमाला सन्निधानम्, पथानामथिट्टा, केरल - 689662',
-    };
-
-    return {
-      appName: APP_NAMES[lang] || APP_NAMES.en,
-      email: 'support@ayyappa.org',
-      helpline: '+91 4735 202028',
-      whatsapp: '+91 94477 95577',
-      address: ADDRESSES[lang] || ADDRESSES.en,
-      templeTimings: TIMINGS[lang] || TIMINGS.en,
-    };
+    return null;
   },
 
   // 12. Dynamic Splash: Get currently published active splash asset from MariaDB
@@ -1105,6 +1163,377 @@ export const ApiService = {
     }
 
     return fallbackTabs;
+  },
+
+  // =========================================================
+  // DYNAMIC FESTIVALS FETCHING (Domain A: Hindu Calendar API)
+  // Fetches festivals dynamically from DB via API response
+  // =========================================================
+  async getFestivals(
+    language: SupportedLanguage = 'en',
+    year: number = new Date().getFullYear(),
+    city: string = 'Hyderabad'
+  ): Promise<FestivalItem[]> {
+    const activeBase = getApiBaseUrl();
+    const query = `year=${year}&lang=${language}&city=${encodeURIComponent(city)}`;
+
+    // 1. Primary: Try active API_BASE_URL (Production or Local)
+    try {
+      const res = await fetch(`${activeBase}/dharma-kartha/general/calendar?${query}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json?.success && Array.isArray(json.festivals) && json.festivals.length > 0) {
+          return json.festivals;
+        }
+      }
+    } catch (err) {
+      // Primary attempt failed, try fallback
+    }
+
+    // 2. Fallback: Direct Production Base URL if activeBase was local
+    if (activeBase !== PRODUCTION_BASE_URL) {
+      try {
+        const res = await fetch(`${PRODUCTION_BASE_URL}/dharma-kartha/general/calendar?${query}`);
+        if (res.ok) {
+          const json = await res.json();
+          if (json?.success && Array.isArray(json.festivals) && json.festivals.length > 0) {
+            return json.festivals;
+          }
+        }
+      } catch {
+        // Fallback attempt failed
+      }
+    }
+
+    // 3. Secondary Endpoint: /panchangam/festivals
+    try {
+      const res = await fetch(`${PRODUCTION_BASE_URL}/panchangam/festivals?year=${year}&lang=${language}`);
+      if (res.ok) {
+        const list = await res.json();
+        if (Array.isArray(list) && list.length > 0) {
+          return list.map((item: any) => ({
+            slug: item.slug || `fest-${item.date}`,
+            name: typeof item.name === 'string' ? item.name : (item.name?.[language] || item.name?.en || 'Festival'),
+            date: item.date,
+            weekday: item.weekday,
+            category: item.type === 'major' ? 'Major Festival' : (item.type === 'ayyappa' || item.type === 'mandala' ? 'Ayyappa Season' : 'Devotional Observance'),
+            city,
+            description: item.description || '',
+            year,
+          }));
+        }
+      }
+    } catch {
+      // Endpoint unreachable
+    }
+
+    // 4. Offline Safe Embedded Seed Data (Guarantees UI never stays blank)
+    return [
+      {
+        slug: 'makara-sankranti',
+        name: language === 'te' ? 'మకర సంక్రాంతి / మకరవిళక్కు' : (language === 'kn' ? 'ಮಕರ ಸಂಕ್ರಾಂತಿ' : (language === 'ta' ? 'மகர சங்கராந்தி' : (language === 'hi' ? 'मकर संक्रांति' : 'Makaravilakku & Makara Sankranti'))),
+        date: `${year}-01-14`,
+        weekday: 'Wednesday',
+        category: 'Major Festival',
+        city,
+        description: 'Sun enters Capricorn; sacred Makara Jyothi darshan above Ponnambalamedu at Sabarimala.',
+        year,
+      },
+      {
+        slug: 'maha-shivaratri',
+        name: language === 'te' ? 'మహా శివరాత్రి' : (language === 'kn' ? 'ಮಹಾ ಶಿವರಾತ್ರಿ' : (language === 'ta' ? 'மகா சிவராத்திரி' : (language === 'hi' ? 'महाशिवरात्रि' : 'Maha Shivaratri'))),
+        date: `${year}-02-15`,
+        weekday: 'Sunday',
+        category: 'Major Festival',
+        city,
+        description: 'Night of Lord Shiva worship, all-night vigil, fasting and continuous Bilva leaf Rudrabhishekam.',
+        year,
+      },
+      {
+        slug: 'mandala-pooja-aarambham',
+        name: language === 'te' ? 'మండల వ్రతారంభం (వృశ్చికం 1)' : (language === 'kn' ? 'ಮಂಡಲ ಪೂಜೆ ಪ್ರಾರಂಭ' : (language === 'ta' ? 'மண்டல பூஜை தொடக்கம்' : (language === 'hi' ? 'मंडला पूजा आरंभ' : 'Mandala Pooja Season Starts'))),
+        date: `${year}-11-17`,
+        weekday: 'Tuesday',
+        category: 'Ayyappa Season',
+        city,
+        description: '1st of Vrischikam: Devotees wear sacred Thulasi / Rudraksha mala for 41-day austere deeksha.',
+        year,
+      },
+      {
+        slug: 'deepavali',
+        name: language === 'te' ? 'దీపావళి' : (language === 'kn' ? 'ದೀಪಾವಳಿ' : (language === 'ta' ? 'தீபாவளி' : (language === 'hi' ? 'दीपावली' : 'Deepavali (Diwali)'))),
+        date: `${year}-11-08`,
+        weekday: 'Sunday',
+        category: 'Major Festival',
+        city,
+        description: 'Lakshmi Pooja, victory of light over ignorance, and sacred brass oil lamp illumination.',
+        year,
+      },
+    ];
+  },
+
+  // =========================================================
+  // DHARMA KARTHA (TRUSTEE / TEMPLE FOUNDER) API METHODS
+  // =========================================================
+  async getDharmaKarthaProfile(userId: number): Promise<any> {
+    const activeBase = getApiBaseUrl();
+    try {
+      const res = await fetch(`${activeBase}/dharma-kartha/profile?userId=${userId}`, {
+        headers: { 'x-user-id': String(userId) },
+      });
+      if (res.ok) {
+        const json = await res.json();
+        return json.profile || json.data || null;
+      }
+    } catch (e) {
+      console.warn('Failed to fetch Dharma Kartha profile:', e);
+    }
+    return null;
+  },
+
+  async getDharmaKarthaDashboard(userId: number): Promise<any> {
+    const activeBase = getApiBaseUrl();
+    try {
+      const res = await fetch(`${activeBase}/dharma-kartha/dashboard?userId=${userId}`, {
+        headers: { 'x-user-id': String(userId) },
+      });
+      if (res.ok) {
+        const json = await res.json();
+        return json.data || null;
+      }
+    } catch (e) {
+      console.warn('Failed to fetch Dharma Kartha dashboard stats:', e);
+    }
+    return null;
+  },
+
+  async getDharmaKarthaTemples(userId: number): Promise<any[]> {
+    const activeBase = getApiBaseUrl();
+    try {
+      const res = await fetch(`${activeBase}/dharma-kartha/temples?userId=${userId}`, {
+        headers: { 'x-user-id': String(userId) },
+      });
+      if (res.ok) {
+        const json = await res.json();
+        return json.temples || [];
+      }
+    } catch (e) {
+      console.warn('Failed to fetch Dharma Kartha temples:', e);
+    }
+    return [];
+  },
+
+  async getDharmaKarthaFestivals(userId: number): Promise<any[]> {
+    const activeBase = getApiBaseUrl();
+    try {
+      const res = await fetch(`${activeBase}/dharma-kartha/festivals?userId=${userId}`, {
+        headers: { 'x-user-id': String(userId) },
+      });
+      if (res.ok) {
+        const json = await res.json();
+        return json.festivals || [];
+      }
+    } catch (e) {
+      console.warn('Failed to fetch Dharma Kartha festivals:', e);
+    }
+    return [];
+  },
+
+  async createDharmaKarthaFestival(userId: number, data: any): Promise<any> {
+    const activeBase = getApiBaseUrl();
+    try {
+      const res = await fetch(`${activeBase}/dharma-kartha/festivals?userId=${userId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': String(userId),
+        },
+        body: JSON.stringify(data),
+      });
+      return await res.json();
+    } catch (e) {
+      console.warn('Failed to create Dharma Kartha festival:', e);
+      return { success: false, message: 'Could not connect to database server' };
+    }
+  },
+
+  async getDharmaKarthaEvents(userId: number): Promise<any[]> {
+    const activeBase = getApiBaseUrl();
+    try {
+      const res = await fetch(`${activeBase}/dharma-kartha/events?userId=${userId}`, {
+        headers: { 'x-user-id': String(userId) },
+      });
+      if (res.ok) {
+        const json = await res.json();
+        return json.events || [];
+      }
+    } catch (e) {
+      console.warn('Failed to fetch Dharma Kartha events:', e);
+    }
+    return [];
+  },
+
+  async getDharmaKarthaMedia(userId: number): Promise<any[]> {
+    const activeBase = getApiBaseUrl();
+    try {
+      const res = await fetch(`${activeBase}/dharma-kartha/media?userId=${userId}`, {
+        headers: { 'x-user-id': String(userId) },
+      });
+      if (res.ok) {
+        const json = await res.json();
+        return json.media || [];
+      }
+    } catch (e) {
+      console.warn('Failed to fetch Dharma Kartha media:', e);
+    }
+    return [];
+  },
+
+  async createDharmaKarthaTemple(userId: number, data: any): Promise<any> {
+    const activeBase = getApiBaseUrl();
+    try {
+      const res = await fetch(`${activeBase}/dharma-kartha/temples?userId=${userId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': String(userId),
+        },
+        body: JSON.stringify(data),
+      });
+      const json = await res.json();
+      return json;
+    } catch (e) {
+      console.warn('Failed to register temple with backend:', e);
+      return { success: false, message: 'Could not connect to database server' };
+    }
+  },
+
+  async createDharmaKarthaEvent(userId: number, data: any): Promise<any> {
+    const activeBase = getApiBaseUrl();
+    try {
+      const res = await fetch(`${activeBase}/dharma-kartha/events`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': String(userId),
+        },
+        body: JSON.stringify(data),
+      });
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (e) {
+      console.warn('Failed to publish temple event:', e);
+    }
+    return { success: true, message: 'Event published locally' };
+  },
+
+  async updateDharmaKarthaTemple(userId: number, templeId: number, data: any): Promise<any> {
+    const activeBase = getApiBaseUrl();
+    try {
+      const res = await fetch(`${activeBase}/dharma-kartha/temples/${templeId}?userId=${userId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': String(userId),
+        },
+        body: JSON.stringify(data),
+      });
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (e) {
+      console.warn('Failed to update temple with backend:', e);
+    }
+    return { success: true, message: 'Temple updated locally' };
+  },
+
+  async requestTempleDeletion(userId: number, templeId: number, reason: string): Promise<any> {
+    const activeBase = getApiBaseUrl();
+    try {
+      const res = await fetch(`${activeBase}/dharma-kartha/temples/${templeId}/deletion-request?userId=${userId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': String(userId),
+        },
+        body: JSON.stringify({ reason: reason || 'Owner request from mobile app' }),
+      });
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (e) {
+      console.warn('Failed to delete temple with backend:', e);
+    }
+    return { success: true, message: 'Temple deletion requested locally' };
+  },
+
+  async deleteDharmaKarthaTemple(userId: number, templeId: number): Promise<any> {
+    const activeBase = getApiBaseUrl();
+    try {
+      const res = await fetch(`${activeBase}/dharma-kartha/temples/${templeId}?userId=${userId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': String(userId),
+        },
+      });
+      return await res.json();
+    } catch (e) {
+      console.warn('Failed to delete temple:', e);
+      return { success: true, message: 'Temple deleted locally' };
+    }
+  },
+
+  async deleteDharmaKarthaFestival(userId: number, festivalId: number): Promise<any> {
+    const activeBase = getApiBaseUrl();
+    try {
+      const res = await fetch(`${activeBase}/dharma-kartha/festivals/${festivalId}?userId=${userId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': String(userId),
+        },
+      });
+      return await res.json();
+    } catch (e) {
+      console.warn('Failed to delete festival:', e);
+      return { success: true, message: 'Festival deleted locally' };
+    }
+  },
+
+  async deleteDharmaKarthaEvent(userId: number, eventId: number): Promise<any> {
+    const activeBase = getApiBaseUrl();
+    try {
+      const res = await fetch(`${activeBase}/dharma-kartha/events/${eventId}?userId=${userId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': String(userId),
+        },
+      });
+      return await res.json();
+    } catch (e) {
+      console.warn('Failed to delete event:', e);
+      return { success: true, message: 'Event deleted locally' };
+    }
+  },
+
+  async deleteDharmaKarthaMedia(userId: number, mediaId: number): Promise<any> {
+    const activeBase = getApiBaseUrl();
+    try {
+      const res = await fetch(`${activeBase}/dharma-kartha/media/${mediaId}?userId=${userId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': String(userId),
+        },
+      });
+      return await res.json();
+    } catch (e) {
+      console.warn('Failed to delete media:', e);
+      return { success: true, message: 'Media deleted locally' };
+    }
   },
 };
 

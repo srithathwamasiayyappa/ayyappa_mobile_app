@@ -73,6 +73,7 @@ export const ChooseDeityScreen: React.FC<ChooseDeityScreenProps> = ({
   const [selectedDeity, setSelectedDeity] = useState<DeityItem | null>(null);
   const [allDeitiesModalVisible, setAllDeitiesModalVisible] = useState<boolean>(false);
   const [comingSoonToast, setComingSoonToast] = useState<string | null>(null);
+  const [showAllDeities, setShowAllDeities] = useState<boolean>(false);
 
   // Fetch featured deities directly from DB via API
   const loadFeaturedDeities = async () => {
@@ -168,9 +169,22 @@ export const ChooseDeityScreen: React.FC<ChooseDeityScreenProps> = ({
     onContinue(selectedDeity);
   };
 
-  // Check if selected deity is outside the 6 featured cards
+  // Catalog of all deities when expanded (from API or bundled catalog)
+  const allDeitiesList =
+    featuredDeities.length > 6
+      ? featuredDeities
+      : (ALL_DEITIES_CATALOG && ALL_DEITIES_CATALOG.length > 6
+          ? (ALL_DEITIES_CATALOG as DeityItem[])
+          : featuredDeities);
+
+  // Initial state strictly renders 6 cards only; expands to all upon tapping "View All Deities"
+  const displayedDeities = showAllDeities
+    ? allDeitiesList
+    : featuredDeities.slice(0, 6);
+
+  // Check if selected deity is outside the 6 initial cards
   const isCustomSelected = Boolean(
-    selectedDeity && !featuredDeities.some((d) => d.id === selectedDeity.id)
+    selectedDeity && !featuredDeities.slice(0, 6).some((d) => d.id === selectedDeity.id)
   );
 
   // Helper for localized deity name
@@ -245,7 +259,7 @@ export const ChooseDeityScreen: React.FC<ChooseDeityScreenProps> = ({
             </View>
           ) : (
             <View style={styles.cardsGrid}>
-              {featuredDeities.map((deity) => {
+              {displayedDeities.map((deity) => {
                 const isComingSoon = isDeityComingSoon(deity);
                 const isSelected = selectedDeity?.id === deity.id;
                 const displayName = getDeityDisplayName(deity);
@@ -331,13 +345,13 @@ export const ChooseDeityScreen: React.FC<ChooseDeityScreenProps> = ({
             </View>
           )}
 
-          {/* 7. View All Deities Button */}
+          {/* 7. View All Deities Button (Expands 6 cards to show all deities dynamically on this screen) */}
           <TouchableOpacity
             style={styles.viewAllButton}
-            onPress={() => setAllDeitiesModalVisible(true)}
+            onPress={() => setShowAllDeities((prev) => !prev)}
             activeOpacity={0.85}
             accessibilityRole="button"
-            accessibilityLabel="View All Deities"
+            accessibilityLabel={showAllDeities ? 'Show Fewer Deities' : 'View All Deities'}
           >
             {/* Left 9-Dot Grid Icon */}
             <View style={styles.viewAllIconWrapper}>
@@ -354,10 +368,14 @@ export const ChooseDeityScreen: React.FC<ChooseDeityScreenProps> = ({
               </Svg>
             </View>
 
-            <Text style={styles.viewAllButtonText}>View All Deities</Text>
+            <Text style={styles.viewAllButtonText}>
+              {showAllDeities ? 'Show Fewer Deities' : 'View All Deities'}
+            </Text>
 
-            {/* Right Chevron */}
-            <Text style={styles.viewAllChevron}>›</Text>
+            {/* Right Chevron / Indicator */}
+            <Text style={styles.viewAllChevron}>
+              {showAllDeities ? '▲' : '›'}
+            </Text>
           </TouchableOpacity>
 
           {/* 8. Full-Width Deep Green Continue Button */}
@@ -421,11 +439,12 @@ export const ChooseDeityScreen: React.FC<ChooseDeityScreenProps> = ({
             </TouchableOpacity>
           </View>
 
-          {SCREEN_HEIGHT < 720 ? (
+          {SCREEN_HEIGHT < 720 || showAllDeities ? (
             <ScrollView
               contentContainerStyle={styles.scrollContentContainer}
               showsVerticalScrollIndicator={false}
               bounces={false}
+              keyboardShouldPersistTaps="handled"
             >
               {contentBody}
             </ScrollView>
