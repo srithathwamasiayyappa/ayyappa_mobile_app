@@ -33,7 +33,6 @@ interface Props {
   onOpenPrivacyPolicy: () => void;
   onOpenAbout: () => void;
   onLogout: () => void;
-  onSwitchToDevotee?: () => void;
   onSelectTempleDetail?: (temple: any) => void;
 }
 
@@ -191,12 +190,6 @@ export const DharmaKarthaDashboardScreen: React.FC<Props> = ({
 
           <Text style={styles.profileName}>{displayName}</Text>
           <Text style={styles.profileLocation}>{displayLocation}</Text>
-
-          {onSwitchToDevotee && (
-            <TouchableOpacity style={styles.switchRoleBtn} onPress={onSwitchToDevotee}>
-              <Text style={styles.switchRoleBtnText}>Switch to Devotee View ⇄</Text>
-            </TouchableOpacity>
-          )}
         </View>
 
         {/* 🪷 Manage Your Temples Banner */}

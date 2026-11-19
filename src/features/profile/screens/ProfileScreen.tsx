@@ -727,23 +727,13 @@ export const ProfileScreen: React.FC<Props> = ({
   onNavigateDestination,
   onRoleSwitch,
 }) => {
-  const initialRole = selectedRole || userRole;
-  const [activeRole, setActiveRole] = useState<'DEVOTEE' | 'DHARMA_KARTHA'>(
-    initialRole === 'DHARMA_KARTHA' || currentUser?.role === 'DHARMA_KARTHA' ? 'DHARMA_KARTHA' : 'DEVOTEE'
-  );
-
-  useEffect(() => {
-    const curRole = selectedRole || userRole;
-    if (curRole === 'DHARMA_KARTHA' || currentUser?.role === 'DHARMA_KARTHA') {
-      setActiveRole('DHARMA_KARTHA');
-    }
-  }, [selectedRole, userRole, currentUser?.role]);
+  // Strictly determine active role dynamically from logged-in user credentials
+  const effectiveRole = (currentUser?.role || selectedRole || userRole || '').toUpperCase();
+  const isDharmaKartha = effectiveRole === 'DHARMA_KARTHA';
+  const activeRole: 'DEVOTEE' | 'DHARMA_KARTHA' = isDharmaKartha ? 'DHARMA_KARTHA' : 'DEVOTEE';
 
   const [profile, setProfile] = useState<DevoteeProfile | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
-
-  // Dynamic Role State strictly synchronized with authentication & selection
-  const isDharmaKartha = activeRole === 'DHARMA_KARTHA';
 
   // Dharma Kartha Dynamic Data States (Live from DB API)
   const [dkLoading, setDkLoading] = useState(false);
@@ -920,15 +910,6 @@ export const ProfileScreen: React.FC<Props> = ({
     return key;
   };
 
-  // Synchronize active role whenever currentUser or selectedRole updates
-  useEffect(() => {
-    if (currentUser?.role === 'DHARMA_KARTHA' || selectedRole === 'DHARMA_KARTHA') {
-      setActiveRole('DHARMA_KARTHA');
-    } else if (currentUser?.role === 'DEVOTEE' || currentUser?.role === 'CUSTOMER') {
-      setActiveRole('DEVOTEE');
-    }
-  }, [currentUser?.role, selectedRole]);
-
   // Load Dharma Kartha Live Data from DB API when active role is DHARMA_KARTHA
   useEffect(() => {
     if (activeRole === 'DHARMA_KARTHA') {
@@ -961,18 +942,6 @@ export const ProfileScreen: React.FC<Props> = ({
       });
     }
   }, [activeRole, currentUser?.id]);
-
-  const handleRoleToggle = (targetRole: 'DEVOTEE' | 'DHARMA_KARTHA') => {
-    setActiveRole(targetRole);
-    StorageService.setPendingRole(targetRole);
-    if (currentUser) {
-      const updatedUser = { ...currentUser, role: targetRole };
-      StorageService.setStoredUser(updatedUser);
-    }
-    if (onRoleSwitch) {
-      onRoleSwitch(targetRole);
-    }
-  };
 
   const fetchDkTemples = async () => {
     const uid = currentUser?.id ? Number(currentUser.id) : 1;
@@ -1566,7 +1535,6 @@ export const ProfileScreen: React.FC<Props> = ({
         onOpenPrivacyPolicy={onOpenPrivacyPolicy}
         onOpenAbout={onOpenAbout}
         onLogout={onLogout}
-        onSwitchToDevotee={() => setActiveRole('DEVOTEE')}
         onSelectTempleDetail={(temple) => {
           const tData: TempleItem = {
             id: temple.slug || String(temple.id),
@@ -1671,17 +1639,6 @@ export const ProfileScreen: React.FC<Props> = ({
               </Text>
             </View>
 
-            {/* Role Switcher Pill (Matching Website Dual-Role Experience) */}
-            <TouchableOpacity
-              style={styles.roleSwitchBtn}
-              activeOpacity={0.8}
-              onPress={() => handleRoleToggle(isDharmaKartha ? 'DEVOTEE' : 'DHARMA_KARTHA')}
-            >
-              <Text style={styles.roleSwitchBtnText}>
-                {isDharmaKartha ? t('switchToDevotee') : t('switchToDharmaKartha')}
-              </Text>
-            </TouchableOpacity>
-
             <Text style={styles.devoteeName} numberOfLines={1}>
               {displayName}
             </Text>
@@ -1709,41 +1666,6 @@ export const ProfileScreen: React.FC<Props> = ({
             )}
           </View>
         </View>
-
-        {/* Dharma Kartha Dashboard Entry Card (for Devotee mode) */}
-        {!isDharmaKartha && (
-          <TouchableOpacity
-            style={styles.dharmaPortalCard}
-            activeOpacity={0.88}
-            onPress={() => {
-              setActiveRole('DHARMA_KARTHA');
-              onRoleSwitch?.('DHARMA_KARTHA');
-            }}
-          >
-            <LinearGradient
-              colors={['#FFFBF0', '#FFF5DE']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.dharmaPortalGradient}
-            >
-              <View style={styles.dharmaPortalIconBox}>
-                <Text style={{ fontSize: 22 }}>🛕</Text>
-              </View>
-              <View style={{ flex: 1, marginRight: 8 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Text style={styles.dharmaPortalTitle}>Dharma Kartha Dashboard</Text>
-                  <View style={styles.dharmaPortalBadge}>
-                    <Text style={styles.dharmaPortalBadgeText}>MANDIR ADMIN</Text>
-                  </View>
-                </View>
-                <Text style={styles.dharmaPortalSubtitle}>
-                  Manage your temples, timings, aarti & sacred festivals
-                </Text>
-              </View>
-              <Text style={styles.dharmaPortalChevron}>›</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        )}
 
         {/* DHARMA KARTHA SACRED TRUSTEE MANDIR DASHBOARD (Rendered exclusively for Dharma Kartha) */}
         {isDharmaKartha && (
