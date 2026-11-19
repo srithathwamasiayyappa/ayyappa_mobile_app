@@ -744,10 +744,7 @@ export default function App() {
             onLogout={handleLogout}
             onBack={handleGoBack}
             onOpenFestivals={handleOpenFestivals}
-            onNavigateDestination={(screen, detail, data) => {
-              if (data && screen === 'temple_detail') {
-                setActiveTempleData(data);
-              }
+            onNavigateDestination={(screen: string, detail?: { id: string; title: string }) => {
               navigateTo(screen as MobileScreen, detail || null);
             }}
           />
@@ -994,10 +991,7 @@ export default function App() {
             currentUser={currentUser}
             userRole={selectedRole === 'DHARMA_KARTHA' ? 'DHARMA_KARTHA' : 'CUSTOMER'}
             onBack={handleGoBack}
-            onNavigateDestination={(screen, detail, data) => {
-              if (data && screen === 'temple_detail') {
-                setActiveTempleData(data);
-              }
+            onNavigateDestination={(screen: string, detail?: { id: string; title: string }) => {
               navigateTo(screen as MobileScreen, detail || null);
             }}
           />

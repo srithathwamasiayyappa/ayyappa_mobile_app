@@ -22,7 +22,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle, Rect, G } from 'react-native-svg';
 import { ApiService } from '../../../services/api';
 import { StorageService } from '../../../services/storageService';
-import { SupportedLanguage, DevoteeProfile, BookmarkItem, DeityItem } from '../../../types';
+import { SupportedLanguage, DevoteeProfile, BookmarkItem, DeityItem, TempleItem } from '../../../types';
 import { DharmaKarthaDashboardScreen } from '../../dharma-kartha/screens/DharmaKarthaDashboardScreen';
 import { DevotionalDialog, DevotionalDialogType } from '../../../components/common/DevotionalDialog';
 
@@ -1589,8 +1589,7 @@ export const ProfileScreen: React.FC<Props> = ({
         await Promise.allSettled([
           currentUser?.id ? ApiService.getDevoteeProfile(currentUser.id, targetLang) : Promise.resolve(null),
           ApiService.getCategories(targetLang),
-          ApiService.getServices(targetLang),
-          ApiService.getTemples({ lang: targetLang }),
+          ApiService.getTemples(targetLang),
         ]);
       } catch (e) {
         console.warn('Failed to fetch data dynamically in new language:', e);

@@ -36,6 +36,7 @@ import { SupportedLanguage, RashiItem, NakshatraItem, DevoteeProfile, DeityItem 
 import { Toast } from '../../../components/common/Toast';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 interface Props {
   currentLanguage: SupportedLanguage;

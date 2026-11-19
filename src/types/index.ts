@@ -94,6 +94,10 @@ export interface TempleContact {
 
 export interface TempleItem {
   id: string;
+  dbId?: number | string;
+  slug?: string;
+  originalName?: string;
+  isActive?: boolean;
   name: string;
   localNames?: Record<string, string>;
   deityId: string;
@@ -277,6 +281,7 @@ export interface DharmaKarthaProfile {
   role: string;
   designation?: string;
   avatarUrl?: string;
+  profileImageUrl?: string;
 }
 
 export interface DharmaKarthaTemple {
@@ -303,7 +308,7 @@ export interface DharmaKarthaTemple {
   officialWebsite?: string;
   heroImageUrl?: string;
   gopuramImageUrl?: string;
-  status: 'PUBLISHED' | 'PENDING_APPROVAL' | 'DRAFT';
+  status: 'PUBLISHED' | 'PENDING_APPROVAL' | 'PENDING' | 'REJECTED' | 'DRAFT';
   isVerified: boolean;
   membershipRole: 'OWNER' | 'ADMIN';
   membershipStatus: 'APPROVED' | 'PENDING';

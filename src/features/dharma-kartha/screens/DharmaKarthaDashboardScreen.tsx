@@ -33,6 +33,7 @@ interface Props {
   onOpenPrivacyPolicy: () => void;
   onOpenAbout: () => void;
   onLogout: () => void;
+  onSwitchToDevotee?: () => void;
   onSelectTempleDetail?: (temple: any) => void;
 }
 
