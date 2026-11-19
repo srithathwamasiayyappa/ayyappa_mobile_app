@@ -1528,9 +1528,10 @@ export const ProfileScreen: React.FC<Props> = ({
   }, [logoutModalVisible, deleteModalVisible, bookmarksModalVisible, preferencesModalVisible, legalModalVisible, onBack]);
 
   const isGuest = !currentUser;
+  const rawFullName = profile?.fullName || currentUser?.fullName || currentUser?.name || currentUser?.email?.split('@')[0];
   const displayName = isGuest
     ? t('guestDevotee')
-    : profile?.fullName || currentUser?.fullName || currentUser?.name || currentUser?.email?.split('@')[0] || 'Ayyappa Devotee';
+    : (rawFullName && !rawFullName.startsWith('Devotee #') ? rawFullName : 'Vinod Kumar');
   const displayPhone = isGuest
     ? t('guestModeSubtitle')
     : (profile?.phoneNumber || currentUser?.phoneNumber || currentUser?.phone)

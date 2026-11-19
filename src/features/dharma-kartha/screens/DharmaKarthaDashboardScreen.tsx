@@ -137,7 +137,8 @@ export const DharmaKarthaDashboardScreen: React.FC<Props> = ({
     );
   }
 
-  const displayName = profile?.fullName || currentUser?.fullName || currentUser?.name || 'vinod';
+  const rawName = profile?.fullName || currentUser?.fullName || currentUser?.name;
+  const displayName = (rawName && !rawName.startsWith('Devotee #')) ? rawName : 'Vinod Kumar';
   const displayLocation = `${profile?.city || 'Hyderabad'}, India • Lord Ayyappa`;
 
   return (
