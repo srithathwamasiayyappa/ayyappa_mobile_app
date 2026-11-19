@@ -530,20 +530,20 @@ const PROFILE_I18N: Record<string, Record<string, string>> = {
     ml: 'വൈദിക പഞ്ചാംഗ പുണ്യദിനങ്ങൾ',
   },
   appPreferences: {
-    en: 'App Preferences',
-    te: 'యాప్ ప్రాధాన్యతలు',
-    kn: 'ಅಪ್ಲಿಕೇಶನ್ ಆದ್ಯತೆಗಳು',
-    ta: 'செயலி விருப்பங்கள்',
-    hi: 'ऐप प्राथमिकताएं',
-    ml: 'ആപ്പ് മുൻഗണനകൾ',
+    en: 'App Language',
+    te: 'యాప్ భాష',
+    kn: 'ಅಪ್ಲಿಕೇಶನ್ ಭಾಷೆ',
+    ta: 'செயலி மொழி',
+    hi: 'ऐप भाषा',
+    ml: 'ആപ്പ് ഭാഷ',
   },
   appPreferencesSubtitle: {
-    en: 'Language, Deity & Theme',
-    te: 'భాష, ఇష్ట దైవం & థీమ్',
-    kn: 'ಭಾಷೆ, ಇಷ್ಟ ದೇವರು & ಥೀಮ್',
-    ta: 'மொழி, விருப்ப தெய்வம் & தீம்',
-    hi: 'भाषा, इष्ट देव एवं थीम',
-    ml: 'ഭാഷ, ഇഷ്ട ദൈവം & തീം',
+    en: 'Change devotional content language',
+    te: 'భక్తి కంటెంట్ భాషను మార్చండి',
+    kn: 'ಭಕ್ತಿ ವಿಷಯದ ಭಾಷೆಯನ್ನು ಬದಲಾಯಿಸಿ',
+    ta: 'பக்தி உள்ளடக்க மொழியை மாற்றவும்',
+    hi: 'भक्ति सामग्री भाषा बदलें',
+    ml: 'ഭക്തി ഉള്ളടക്ക ഭാഷ മാറ്റുക',
   },
   legalPolicies: {
     en: 'Legal & Policies',
@@ -830,6 +830,8 @@ export const ProfileScreen: React.FC<Props> = ({
   const [bookmarks, setBookmarks] = useState<BookmarkItem[]>([]);
   const [bookmarksLoading, setBookmarksLoading] = useState<boolean>(false);
   const [availableLanguages, setAvailableLanguages] = useState<any[]>([]);
+  const [loadingLanguages, setLoadingLanguages] = useState<boolean>(false);
+  const [switchingLanguage, setSwitchingLanguage] = useState<boolean>(false);
   const [loggingOut, setLoggingOut] = useState<boolean>(false);
 
   // Devotee Account Deletion with OTP Verification State
@@ -1436,13 +1438,74 @@ export const ProfileScreen: React.FC<Props> = ({
   }, [currentLanguage, currentUser]);
 
   // Fetch available languages strictly from DB via API
-  useEffect(() => {
-    ApiService.getLanguages().then((langs) => {
+  const fetchDbLanguages = async () => {
+    setLoadingLanguages(true);
+    try {
+      const langs = await ApiService.getLanguages();
       if (Array.isArray(langs) && langs.length > 0) {
         setAvailableLanguages(langs);
       }
-    }).catch(() => {});
+    } catch (e) {
+      console.warn('Failed to fetch languages dynamically from DB API:', e);
+    } finally {
+      setLoadingLanguages(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDbLanguages();
   }, []);
+
+  const handleOpenLanguageModal = () => {
+    setPreferencesModalVisible(true);
+    fetchDbLanguages();
+  };
+
+  const handleSelectLanguage = async (langCode: string) => {
+    const targetLang = langCode as SupportedLanguage;
+    setSwitchingLanguage(true);
+    try {
+      // 1. Store language preference locally
+      await StorageService.setStoredLanguage(targetLang);
+
+      // 2. Persist language preference in DB via API
+      if (currentUser?.id) {
+        try {
+          await ApiService.updateUserPreferences(Number(currentUser.id), { preferredLang: targetLang });
+        } catch (e) {
+          console.warn('Failed to update language preference in DB:', e);
+        }
+      }
+
+      // 3. Fetch localized data dynamically completely from DB via API for this new language
+      try {
+        await Promise.allSettled([
+          currentUser?.id ? ApiService.getDevoteeProfile(currentUser.id, targetLang) : Promise.resolve(null),
+          ApiService.getCategories(targetLang),
+          ApiService.getServices(targetLang),
+          ApiService.getTemples({ lang: targetLang }),
+        ]);
+      } catch (e) {
+        console.warn('Failed to fetch data dynamically in new language:', e);
+      }
+
+      // 4. Notify app root / parent to switch active language across all screens
+      onLanguageChange?.(targetLang);
+
+      // 5. If logged in, re-fetch profile data in new language to update screen state immediately
+      if (currentUser?.id) {
+        try {
+          const updatedProfile = await ApiService.getDevoteeProfile(currentUser.id, targetLang);
+          if (updatedProfile) {
+            setProfile(updatedProfile);
+          }
+        } catch (e) {}
+      }
+    } finally {
+      setSwitchingLanguage(false);
+      setPreferencesModalVisible(false);
+    }
+  };
 
   // Load Bookmarks dynamically from DB via API response
   const handleOpenBookmarks = async () => {
@@ -1926,7 +1989,7 @@ export const ProfileScreen: React.FC<Props> = ({
               <TouchableOpacity
                 style={styles.menuCard}
                 activeOpacity={0.8}
-                onPress={() => setPreferencesModalVisible(true)}
+                onPress={handleOpenLanguageModal}
               >
                 <View style={styles.menuIconContainer}>
                   <MenuPreferencesIcon />
@@ -2180,12 +2243,14 @@ export const ProfileScreen: React.FC<Props> = ({
         </View>
       </Modal>
 
-      {/* MODAL C: APP PREFERENCES */}
+      {/* MODAL C: APP PREFERENCES / APP LANGUAGE */}
       <Modal
         visible={preferencesModalVisible}
         transparent
         animationType="slide"
-        onRequestClose={() => setPreferencesModalVisible(false)}
+        onRequestClose={() => {
+          if (!switchingLanguage) setPreferencesModalVisible(false);
+        }}
       >
         <View style={styles.modalOverlayBottom}>
           <View style={styles.bottomSheetCard}>
@@ -2194,6 +2259,7 @@ export const ProfileScreen: React.FC<Props> = ({
               <TouchableOpacity
                 onPress={() => setPreferencesModalVisible(false)}
                 style={styles.closeBtn}
+                disabled={switchingLanguage}
               >
                 <CloseIcon />
               </TouchableOpacity>
@@ -2201,47 +2267,52 @@ export const ProfileScreen: React.FC<Props> = ({
 
             <ScrollView showsVerticalScrollIndicator={false} style={styles.sheetBody}>
               {/* Language Selection */}
-              <Text style={styles.preferenceSectionHeading}>App Language</Text>
-              <View style={styles.languagePillsGrid}>
-                {(availableLanguages.length > 0 ? availableLanguages : [
-                  { code: 'te', name: 'Telugu', nativeName: 'తెలుగు' },
-                  { code: 'en', name: 'English', nativeName: 'English' },
-                  { code: 'kn', name: 'Kannada', nativeName: 'ಕನ್ನಡ' },
-                  { code: 'ta', name: 'Tamil', nativeName: 'தமிழ்' },
-                  { code: 'hi', name: 'Hindi', nativeName: 'हिन्दी' },
-                ]).map((l) => (
-                  <TouchableOpacity
-                    key={l.code}
-                    style={[
-                      styles.languagePill,
-                      currentLanguage === l.code && styles.languagePillActive,
-                    ]}
-                    onPress={async () => {
-                      await StorageService.setStoredLanguage(l.code as SupportedLanguage);
-                      if (currentUser?.id) {
-                        ApiService.updateUserPreferences(Number(currentUser.id), { preferredLang: l.code });
-                      }
-                      onLanguageChange?.(l.code as SupportedLanguage);
-                      setPreferencesModalVisible(false);
-                    }}
-                  >
-                    <Text
-                      style={[
-                        styles.languagePillText,
-                        currentLanguage === l.code && styles.languagePillTextActive,
-                      ]}
-                    >
-                      {l.nativeName ? `${l.nativeName} (${l.name})` : l.name || l.code}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                <Text style={styles.preferenceSectionHeading}>Select Language</Text>
+                {loadingLanguages && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <ActivityIndicator size="small" color="#8B1D24" style={{ marginRight: 6 }} />
+                    <Text style={{ fontSize: 12, color: '#888', fontStyle: 'italic' }}>Loading from DB...</Text>
+                  </View>
+                )}
               </View>
 
-              {/* Devotional Theme Indicator */}
-              <Text style={styles.preferenceSectionHeading}>Devotional Appearance</Text>
-              <View style={styles.themeDisplayBox}>
-                <Text style={styles.themeDisplayText}>🕉️ Traditional Sacred Maroon & Gold Theme</Text>
-              </View>
+              {switchingLanguage ? (
+                <View style={{ paddingVertical: 32, alignItems: 'center', justifyContent: 'center' }}>
+                  <ActivityIndicator size="large" color="#8B1D24" />
+                  <Text style={{ marginTop: 12, fontSize: 14, color: '#666', fontWeight: '500' }}>
+                    Updating language & fetching data from DB...
+                  </Text>
+                </View>
+              ) : (
+                <View style={styles.languagePillsGrid}>
+                  {(availableLanguages.length > 0 ? availableLanguages : [
+                    { code: 'te', name: 'Telugu', nativeName: 'తెలుగు' },
+                    { code: 'en', name: 'English', nativeName: 'English' },
+                    { code: 'kn', name: 'Kannada', nativeName: 'ಕನ್ನಡ' },
+                    { code: 'ta', name: 'Tamil', nativeName: 'தமிழ்' },
+                    { code: 'hi', name: 'Hindi', nativeName: 'हिन्दी' },
+                  ]).map((l) => (
+                    <TouchableOpacity
+                      key={l.code}
+                      style={[
+                        styles.languagePill,
+                        currentLanguage === l.code && styles.languagePillActive,
+                      ]}
+                      onPress={() => handleSelectLanguage(l.code)}
+                    >
+                      <Text
+                        style={[
+                          styles.languagePillText,
+                          currentLanguage === l.code && styles.languagePillTextActive,
+                        ]}
+                      >
+                        {l.nativeName ? `${l.nativeName} (${l.name})` : l.name || l.code}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
             </ScrollView>
           </View>
         </View>
