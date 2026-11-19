@@ -574,12 +574,12 @@ const PROFILE_I18N: Record<string, Record<string, string>> = {
     ml: 'നിബന്ധനകൾ, സ്വകാര്യത & കൂടുതൽ',
   },
   aboutApp: {
-    en: 'About App',
-    te: 'యాప్ గురించి',
-    kn: 'ಅಪ್ಲಿಕೇಶನ್ ಬಗ್ಗೆ',
-    ta: 'செயலி பற்றி',
-    hi: 'ऐप के बारे में',
-    ml: 'ആപ്പിനെക്കുറിച്ച്',
+    en: 'About',
+    te: 'గురించి',
+    kn: 'ಬಗ್ಗೆ',
+    ta: 'பற்றி',
+    hi: 'के बारे में',
+    ml: 'വിവരം',
   },
   logout: {
     en: 'Logout',
@@ -1947,7 +1947,7 @@ export const ProfileScreen: React.FC<Props> = ({
         {/* 6 PROFILE MENU CARDS (Exact match with reference image) */}
         {/* ROLE-BASED PROFILE MENUS (Strictly distinguished between Customer and Dharma Kartha) */}
         <View style={styles.menuListContainer}>
-          {/* Row 1: Edit Profile (Common to Both Roles) */}
+          {/* 1. Edit Profile */}
           <TouchableOpacity
             style={styles.menuCard}
             activeOpacity={0.8}
@@ -1965,7 +1965,7 @@ export const ProfileScreen: React.FC<Props> = ({
             </View>
           </TouchableOpacity>
 
-          {/* Row 2: Bookmarks (Common to Both Roles) */}
+          {/* 2. My Bookmarks */}
           <TouchableOpacity
             style={styles.menuCard}
             activeOpacity={0.8}
@@ -1983,209 +1983,43 @@ export const ProfileScreen: React.FC<Props> = ({
             </View>
           </TouchableOpacity>
 
-          {/* ===================== DHARMA KARTHA SPECIFIC MENU OPTIONS ===================== */}
-          {isDharmaKartha ? (
-            <>
-              {/* Trustee Option 1: Manage Your Temples */}
-              <TouchableOpacity
-                style={styles.menuCard}
-                activeOpacity={0.8}
-                onPress={handleOpenManageTemples}
-              >
-                <View style={styles.menuIconContainer}>
-                  <MenuTemplesIcon />
-                </View>
-                <View style={styles.menuTextContainer}>
-                  <Text style={styles.menuTitle}>{t('manageYourTemples')}</Text>
-                  <Text style={styles.menuSubtitle}>{t('manageYourTemplesSubtitle')}</Text>
-                </View>
-                <View style={styles.chevronContainer}>
-                  <ChevronRightIcon />
-                </View>
-              </TouchableOpacity>
+          {/* 3. Notifications */}
+          <TouchableOpacity
+            style={styles.menuCard}
+            activeOpacity={0.8}
+            onPress={onOpenNotifications}
+          >
+            <View style={styles.menuIconContainer}>
+              <MenuNotificationsIcon />
+            </View>
+            <View style={styles.menuTextContainer}>
+              <Text style={styles.menuTitle}>{t('notifications')}</Text>
+              <Text style={styles.menuSubtitle}>{t('notificationsSubtitle')}</Text>
+            </View>
+            <View style={styles.chevronContainer}>
+              <ChevronRightIcon />
+            </View>
+          </TouchableOpacity>
 
-              {/* Trustee Option 2: Add / Manage Mandir */}
-              <TouchableOpacity
-                style={styles.menuCard}
-                activeOpacity={0.8}
-                onPress={() => setAddMandirModalVisible(true)}
-              >
-                <View style={styles.menuIconContainer}>
-                  <MenuAddMandirIcon />
-                </View>
-                <View style={styles.menuTextContainer}>
-                  <Text style={styles.menuTitle}>{t('addManageMandir')}</Text>
-                  <Text style={styles.menuSubtitle}>{t('addManageMandirSubtitle')}</Text>
-                </View>
-                <View style={styles.chevronContainer}>
-                  <ChevronRightIcon />
-                </View>
-              </TouchableOpacity>
+          {/* 4. App Language */}
+          <TouchableOpacity
+            style={styles.menuCard}
+            activeOpacity={0.8}
+            onPress={handleOpenLanguageModal}
+          >
+            <View style={styles.menuIconContainer}>
+              <MenuPreferencesIcon />
+            </View>
+            <View style={styles.menuTextContainer}>
+              <Text style={styles.menuTitle}>{t('appPreferences')}</Text>
+              <Text style={styles.menuSubtitle}>{t('appPreferencesSubtitle')}</Text>
+            </View>
+            <View style={styles.chevronContainer}>
+              <ChevronRightIcon />
+            </View>
+          </TouchableOpacity>
 
-              {/* Trustee Option 3: Manage Events */}
-              <TouchableOpacity
-                style={styles.menuCard}
-                activeOpacity={0.8}
-                onPress={handleOpenManageEvents}
-              >
-                <View style={styles.menuIconContainer}>
-                  <MenuEventsIcon />
-                </View>
-                <View style={styles.menuTextContainer}>
-                  <Text style={styles.menuTitle}>{t('manageEvents')}</Text>
-                  <Text style={styles.menuSubtitle}>{t('manageEventsSubtitle')}</Text>
-                </View>
-                <View style={styles.chevronContainer}>
-                  <ChevronRightIcon />
-                </View>
-              </TouchableOpacity>
-
-              {/* Trustee Option 4: Festivals & Sacred Days */}
-              <TouchableOpacity
-                style={styles.menuCard}
-                activeOpacity={0.8}
-                onPress={handleOpenManageFestivals}
-              >
-                <View style={styles.menuIconContainer}>
-                  <MenuFestivalsIcon />
-                </View>
-                <View style={styles.menuTextContainer}>
-                  <Text style={styles.menuTitle}>{t('festivals')}</Text>
-                  <Text style={styles.menuSubtitle}>{t('festivalsSubtitle')}</Text>
-                </View>
-                <View style={styles.chevronContainer}>
-                  <ChevronRightIcon />
-                </View>
-              </TouchableOpacity>
-
-              {/* Trustee Option 5: Sacred Gallery */}
-              <TouchableOpacity
-                style={styles.menuCard}
-                activeOpacity={0.8}
-                onPress={() => setGalleryModalVisible(true)}
-              >
-                <View style={styles.menuIconContainer}>
-                  <MenuGalleryIcon />
-                </View>
-                <View style={styles.menuTextContainer}>
-                  <Text style={styles.menuTitle}>{t('sacredGallery')}</Text>
-                  <Text style={styles.menuSubtitle}>{t('sacredGallerySubtitle')}</Text>
-                </View>
-                <View style={styles.chevronContainer}>
-                  <ChevronRightIcon />
-                </View>
-              </TouchableOpacity>
-            </>
-          ) : (
-            /* ===================== CUSTOMER (DEVOTEE) SPECIFIC MENU OPTIONS ===================== */
-            <>
-              {/* Customer Option 1: Notifications */}
-              <TouchableOpacity
-                style={styles.menuCard}
-                activeOpacity={0.8}
-                onPress={onOpenNotifications}
-              >
-                <View style={styles.menuIconContainer}>
-                  <MenuNotificationsIcon />
-                </View>
-                <View style={styles.menuTextContainer}>
-                  <Text style={styles.menuTitle}>{t('notifications')}</Text>
-                  <Text style={styles.menuSubtitle}>{t('notificationsSubtitle')}</Text>
-                </View>
-                <View style={styles.chevronContainer}>
-                  <ChevronRightIcon />
-                </View>
-              </TouchableOpacity>
-
-              {/* Customer Option 2: Festivals & Sacred Days */}
-              <TouchableOpacity
-                style={styles.menuCard}
-                activeOpacity={0.8}
-                onPress={() => {
-                  if (onOpenFestivals) onOpenFestivals();
-                  else if (onNavigateDestination) onNavigateDestination('festivals');
-                }}
-              >
-                <View style={styles.menuIconContainer}>
-                  <MenuFestivalsIcon />
-                </View>
-                <View style={styles.menuTextContainer}>
-                  <Text style={styles.menuTitle}>{t('festivals')}</Text>
-                  <Text style={styles.menuSubtitle}>{t('festivalsSubtitle')}</Text>
-                </View>
-                <View style={styles.chevronContainer}>
-                  <ChevronRightIcon />
-                </View>
-              </TouchableOpacity>
-
-              {/* Customer Option 3: App Preferences */}
-              <TouchableOpacity
-                style={styles.menuCard}
-                activeOpacity={0.8}
-                onPress={handleOpenLanguageModal}
-              >
-                <View style={styles.menuIconContainer}>
-                  <MenuPreferencesIcon />
-                </View>
-                <View style={styles.menuTextContainer}>
-                  <Text style={styles.menuTitle}>{t('appPreferences')}</Text>
-                  <Text style={styles.menuSubtitle}>{t('appPreferencesSubtitle')}</Text>
-                </View>
-                <View style={styles.chevronContainer}>
-                  <ChevronRightIcon />
-                </View>
-              </TouchableOpacity>
-
-              {/* Customer Option 4: Delete Account */}
-              {!isGuest && (
-                <TouchableOpacity
-                  style={[styles.menuCard, styles.deleteAccountCard]}
-                  activeOpacity={0.8}
-                  onPress={() => {
-                    setDeleteReason('');
-                    setDeleteOtp('');
-                    setDeleteError(null);
-                    setDeleteSuccess(null);
-                    setDeleteStep('REASON');
-                    setDeleteModalVisible(true);
-                  }}
-                >
-                  <View style={styles.menuIconContainer}>
-                    <MenuDeleteAccountIcon />
-                  </View>
-                  <View style={styles.menuTextContainer}>
-                    <Text style={[styles.menuTitle, { color: '#B71C1C' }]}>{t('deleteAccount')}</Text>
-                    <Text style={styles.menuSubtitle}>{t('deleteAccountSubtitle')}</Text>
-                  </View>
-                  <View style={styles.chevronContainer}>
-                    <ChevronRightIcon />
-                  </View>
-                </TouchableOpacity>
-              )}
-            </>
-          )}
-
-          {/* Row: Notifications (for Dharma Kartha) */}
-          {isDharmaKartha && (
-            <TouchableOpacity
-              style={styles.menuCard}
-              activeOpacity={0.8}
-              onPress={onOpenNotifications}
-            >
-              <View style={styles.menuIconContainer}>
-                <MenuNotificationsIcon />
-              </View>
-              <View style={styles.menuTextContainer}>
-                <Text style={styles.menuTitle}>{t('notifications')}</Text>
-                <Text style={styles.menuSubtitle}>Trustee alerts & devotee requests</Text>
-              </View>
-              <View style={styles.chevronContainer}>
-                <ChevronRightIcon />
-              </View>
-            </TouchableOpacity>
-          )}
-
-          {/* Legal & Policies */}
+          {/* 5. Legal & Policies */}
           <TouchableOpacity
             style={styles.menuCard}
             activeOpacity={0.8}
@@ -2203,7 +2037,7 @@ export const ProfileScreen: React.FC<Props> = ({
             </View>
           </TouchableOpacity>
 
-          {/* About App */}
+          {/* 6. About */}
           <TouchableOpacity
             style={styles.menuCard}
             activeOpacity={0.8}
@@ -2221,7 +2055,34 @@ export const ProfileScreen: React.FC<Props> = ({
             </View>
           </TouchableOpacity>
 
-          {/* Logout (Devotee & Dharma Kartha) */}
+          {/* 7. Delete Account */}
+          {!isGuest && (
+            <TouchableOpacity
+              style={[styles.menuCard, styles.deleteAccountCard]}
+              activeOpacity={0.8}
+              onPress={() => {
+                setDeleteReason('');
+                setDeleteOtp('');
+                setDeleteError(null);
+                setDeleteSuccess(null);
+                setDeleteStep('REASON');
+                setDeleteModalVisible(true);
+              }}
+            >
+              <View style={styles.menuIconContainer}>
+                <MenuDeleteAccountIcon />
+              </View>
+              <View style={styles.menuTextContainer}>
+                <Text style={[styles.menuTitle, { color: '#B71C1C' }]}>{t('deleteAccount')}</Text>
+                <Text style={styles.menuSubtitle}>{t('deleteAccountSubtitle')}</Text>
+              </View>
+              <View style={styles.chevronContainer}>
+                <ChevronRightIcon />
+              </View>
+            </TouchableOpacity>
+          )}
+
+          {/* 8. Logout */}
           {!isGuest && (
             <TouchableOpacity
               style={styles.menuCard}
