@@ -1945,7 +1945,7 @@ export const ProfileScreen: React.FC<Props> = ({
         )}
 
         {/* 6 PROFILE MENU CARDS (Exact match with reference image) */}
-        {/* ROLE-BASED PROFILE MENUS (Strictly distinguished between Customer and Dharma Kartha) */}
+        {/* 8 PROFILE MENU CARDS IN REQUESTED EXACT ORDER */}
         <View style={styles.menuListContainer}>
           {/* 1. Edit Profile */}
           <TouchableOpacity
