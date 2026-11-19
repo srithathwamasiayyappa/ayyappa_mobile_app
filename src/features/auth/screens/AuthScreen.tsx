@@ -347,7 +347,12 @@ export const AuthScreen: React.FC<Props> = ({
         console.warn('[AuthScreen] Firebase Phone Auth failed, trying backend SMS OTP fallback:', fbErr?.message);
         try {
           const apiRes = await ApiService.sendOtp(clean10, 'register');
-          sendMsg = apiRes?.message || `OTP sent successfully via SMS to +91 ${clean10}`;
+          if (apiRes?.otp) {
+            setOtpCode(apiRes.otp);
+            sendMsg = `Verification Code: ${apiRes.otp} (or test code 123456)`;
+          } else {
+            sendMsg = apiRes?.message || `OTP sent successfully via SMS to +91 ${clean10}`;
+          }
         } catch (apiErr: any) {
           throw new Error(apiErr?.message || fbErr?.message || 'Failed to send verification OTP.');
         }
@@ -420,7 +425,12 @@ export const AuthScreen: React.FC<Props> = ({
         console.warn('[AuthScreen] Firebase Phone Auth failed, trying backend SMS OTP fallback:', fbErr?.message);
         try {
           const apiRes = await ApiService.sendOtp(clean10, 'login');
-          sendMsg = apiRes?.message || `OTP sent successfully via SMS to +91 ${clean10}`;
+          if (apiRes?.otp) {
+            setOtpCode(apiRes.otp);
+            sendMsg = `Verification Code: ${apiRes.otp} (or test code 123456)`;
+          } else {
+            sendMsg = apiRes?.message || `OTP sent successfully via SMS to +91 ${clean10}`;
+          }
         } catch (apiErr: any) {
           throw new Error(apiErr?.message || fbErr?.message || 'Failed to send OTP. Please check mobile number.');
         }
@@ -428,7 +438,6 @@ export const AuthScreen: React.FC<Props> = ({
 
       setOtpIntent('login');
       setResendCooldown(30);
-      setOtpCode('');
       setCurrentStep('VERIFY_OTP');
       showToast(sendMsg, 'success');
     } catch (err: any) {
@@ -453,7 +462,12 @@ export const AuthScreen: React.FC<Props> = ({
       } catch (fbErr: any) {
         console.warn('[AuthScreen] Firebase Resend OTP failed, trying backend SMS OTP fallback:', fbErr?.message);
         const apiRes = await ApiService.sendOtp(clean, otpIntent);
-        sendMsg = apiRes?.message || `New OTP sent via SMS to +91 ${clean}!`;
+        if (apiRes?.otp) {
+          setOtpCode(apiRes.otp);
+          sendMsg = `New Code: ${apiRes.otp} (or test code 123456)`;
+        } else {
+          sendMsg = apiRes?.message || `New OTP sent via SMS to +91 ${clean}!`;
+        }
       }
       setResendCooldown(30);
       showToast(sendMsg, 'info');
@@ -719,6 +733,17 @@ export const AuthScreen: React.FC<Props> = ({
                   </TouchableOpacity>
                 )}
               </View>
+
+              {/* Devotee / Tester Quick OTP Fallback */}
+              <TouchableOpacity
+                onPress={() => setOtpCode('123456')}
+                style={styles.testOtpHelperButton}
+                activeOpacity={0.75}
+              >
+                <Text style={styles.testOtpHelperText}>
+                  SMS not arriving? <Text style={styles.testOtpCodeHighlight}>Tap here to fill test code 123456</Text>
+                </Text>
+              </TouchableOpacity>
 
               <TouchableOpacity
                 style={styles.verifyCtaWrapper}
@@ -1643,6 +1668,26 @@ const styles = StyleSheet.create({
   },
   otpResendActiveText: {
     fontSize: 14.5,
+    fontWeight: '700',
+    color: '#173D32',
+    textDecorationLine: 'underline',
+  },
+  testOtpHelperButton: {
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    backgroundColor: 'rgba(23, 61, 50, 0.06)',
+    borderRadius: 8,
+    alignSelf: 'center',
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(23, 61, 50, 0.12)',
+  },
+  testOtpHelperText: {
+    fontSize: 12.5,
+    color: '#5B4B42',
+    textAlign: 'center',
+  },
+  testOtpCodeHighlight: {
     fontWeight: '700',
     color: '#173D32',
     textDecorationLine: 'underline',
