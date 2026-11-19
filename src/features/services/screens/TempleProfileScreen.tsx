@@ -96,7 +96,7 @@ const LiveBroadcastIcon = () => (
   </Svg>
 );
 
-type TempleTab = 'about' | 'history' | 'speciality' | 'timings' | 'contact';
+type TempleTab = 'about' | 'speciality' | 'timings' | 'festivals' | 'media' | 'contact';
 
 // Multilingual translations
 const UI_TRANSLATIONS: Record<string, Record<string, string>> = {
@@ -107,14 +107,6 @@ const UI_TRANSLATIONS: Record<string, Record<string, string>> = {
     ta: 'அறிமுகம்',
     hi: 'परिचय',
     ml: 'വിവരണം',
-  },
-  historyTab: {
-    en: 'History',
-    te: 'చరిత్ర',
-    kn: 'ಇತಿಹಾಸ',
-    ta: 'வரலாறு',
-    hi: 'इतिहास',
-    ml: 'ചരിത്രം',
   },
   specialityTab: {
     en: 'Speciality',
@@ -132,6 +124,22 @@ const UI_TRANSLATIONS: Record<string, Record<string, string>> = {
     hi: 'समय',
     ml: 'സമയങ്ങൾ',
   },
+  festivalsTab: {
+    en: 'Festivals',
+    te: 'ఉత్సవాలు',
+    kn: 'ಉತ್ಸವಗಳು',
+    ta: 'திருவிழாக்கள்',
+    hi: 'उत्सव',
+    ml: 'ഉത്സവങ്ങൾ',
+  },
+  mediaTab: {
+    en: 'Media',
+    te: 'గ్యాలరీ',
+    kn: 'ಚಿತ್ರಶಾಲೆ',
+    ta: 'புகைப்படங்கள்',
+    hi: 'चित्रशाला',
+    ml: 'ചിത്രശാല',
+  },
   contactTab: {
     en: 'Contact',
     te: 'సంప్రదించండి',
@@ -148,13 +156,21 @@ const UI_TRANSLATIONS: Record<string, Record<string, string>> = {
     hi: 'मंदिर का विवरण',
     ml: 'ക്ഷേത്രത്തെക്കുറിച്ച്',
   },
-  historyHeading: {
-    en: 'History',
-    te: 'ప్రాచీన చరిత్ర',
-    kn: 'ಪ್ರಾಚೀನ ಇತಿಹಾಸ',
-    ta: 'புராதன வரலாறு',
-    hi: 'प्राचीन इतिहास',
-    ml: 'ഐതീഹ്യവും ചരിത്രവും',
+  festivalsHeading: {
+    en: 'Sacred Festivals & Celebrations',
+    te: 'ఆలయ పవిత్ర ఉత్సవాలు',
+    kn: 'ದೇವಾಲಯದ ಪವಿತ್ರ ಉತ್ಸವಗಳು',
+    ta: 'புனித திருவிழாக்கள்',
+    hi: 'मंदिर के प्रमुख पावन उत्सव',
+    ml: 'ക്ഷേത്ര ഉത്സവങ്ങൾ',
+  },
+  mediaHeading: {
+    en: 'Sanctum Photos & Media',
+    te: 'గర్భాలయ ఫోటోలు & గ్యాలరీ',
+    kn: 'ಗರ್ಭಗುಡಿ ಚಿತ್ರಶಾಲೆ',
+    ta: 'கருவறை புகைப்படங்கள்',
+    hi: 'गर्भगृह चित्र व मीडिया',
+    ml: 'ഗർഭഗൃഹ ചിത്രങ്ങൾ',
   },
   specialityHeading: {
     en: 'Speciality',
@@ -232,7 +248,57 @@ export const TempleProfileScreen: React.FC<Props> = ({
   const [temple, setTemple] = useState<TempleItem | null>(templeData || null);
   const [loading, setLoading] = useState<boolean>(!templeData);
   const [activeTab, setActiveTab] = useState<TempleTab>('about');
+  const [festivals, setFestivals] = useState<any[]>(templeData?.festivals || []);
+  const [festivalsLoading, setFestivalsLoading] = useState(false);
+  const [mediaList, setMediaList] = useState<any[]>(templeData?.gallery || templeData?.media || []);
+  const [mediaLoading, setMediaLoading] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
+
+  // Dynamic fetch for Festivals and Media for the active temple
+  useEffect(() => {
+    if (!temple) return;
+    const targetId = (temple as any).dbId || temple.id || templeId;
+    let isMounted = true;
+
+    async function loadDynamicDetails() {
+      setFestivalsLoading(true);
+      setMediaLoading(true);
+
+      try {
+        const [festRes, mediaRes] = await Promise.all([
+          ApiService.getTempleFestivals(targetId).catch(() => []),
+          ApiService.getTempleMedia(targetId).catch(() => []),
+        ]);
+        if (isMounted) {
+          if (Array.isArray(festRes) && festRes.length > 0) {
+            setFestivals(festRes);
+          } else if (Array.isArray((temple as any).festivals) && (temple as any).festivals.length > 0) {
+            setFestivals((temple as any).festivals);
+          }
+
+          if (Array.isArray(mediaRes) && mediaRes.length > 0) {
+            setMediaList(mediaRes);
+          } else if (Array.isArray((temple as any).gallery) && (temple as any).gallery.length > 0) {
+            setMediaList((temple as any).gallery);
+          } else if (Array.isArray((temple as any).media) && (temple as any).media.length > 0) {
+            setMediaList((temple as any).media);
+          }
+        }
+      } catch (err) {
+        console.warn('Error fetching dynamic temple festivals/media:', err);
+      } finally {
+        if (isMounted) {
+          setFestivalsLoading(false);
+          setMediaLoading(false);
+        }
+      }
+    }
+
+    loadDynamicDetails();
+    return () => {
+      isMounted = false;
+    };
+  }, [temple, templeId]);
 
   // Android Hardware Back
   useEffect(() => {
@@ -467,7 +533,7 @@ export const TempleProfileScreen: React.FC<Props> = ({
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.tabsScrollContent}
             >
-              {(['about', 'history', 'speciality', 'timings', 'contact'] as TempleTab[]).map(
+              {(['about', 'speciality', 'timings', 'festivals', 'media', 'contact'] as TempleTab[]).map(
                 (tab) => {
                   const isSelected = activeTab === tab;
                   const label =
@@ -515,17 +581,7 @@ export const TempleProfileScreen: React.FC<Props> = ({
               </View>
             )}
 
-            {/* Section 2: History */}
-            {(activeTab === 'history' || !activeTab) && activeTemple.history && (
-              <View style={styles.sectionBlock}>
-                <Text style={styles.sectionHeading}>
-                  {UI_TRANSLATIONS.historyHeading[langKey] || 'History'}
-                </Text>
-                <Text style={styles.sectionParagraph}>{activeTemple.history}</Text>
-              </View>
-            )}
-
-            {/* Section 3: Speciality */}
+            {/* Section 2: Speciality */}
             {(activeTab === 'speciality' || !activeTab) &&
               activeTemple.speciality &&
               activeTemple.speciality.length > 0 && (
@@ -542,7 +598,7 @@ export const TempleProfileScreen: React.FC<Props> = ({
                 </View>
               )}
 
-            {/* Section 4: Timings */}
+            {/* Section 3: Timings */}
             {(activeTab === 'timings' || !activeTab) && (
               <View style={styles.sectionBlock}>
                 <Text style={styles.sectionHeading}>
@@ -587,6 +643,110 @@ export const TempleProfileScreen: React.FC<Props> = ({
                   ℹ️ {UI_TRANSLATIONS.confirmTimingsNotice[langKey] ||
                     'Please confirm timings with the temple before visiting.'}
                 </Text>
+              </View>
+            )}
+
+            {/* Section 4: Dynamic Festivals */}
+            {(activeTab === 'festivals' || !activeTab) && (
+              <View style={styles.sectionBlock}>
+                <Text style={styles.sectionHeading}>
+                  {UI_TRANSLATIONS.festivalsHeading?.[langKey] || 'Sacred Festivals & Celebrations'}
+                </Text>
+
+                {festivalsLoading ? (
+                  <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+                    <ActivityIndicator size="small" color="#173D32" />
+                    <Text style={{ marginTop: 8, fontSize: 12, color: '#71857C' }}>
+                      Loading sacred festival celebrations...
+                    </Text>
+                  </View>
+                ) : festivals && festivals.length > 0 ? (
+                  festivals.map((fest, idx) => (
+                    <View key={fest.id || idx} style={styles.festivalCard}>
+                      <View style={styles.festivalCardHeader}>
+                        <View style={styles.festivalIconBadge}>
+                          <Text style={{ fontSize: 16 }}>🏮</Text>
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.festivalTitle}>{fest.name}</Text>
+                          {fest.period ? (
+                            <Text style={styles.festivalPeriod}>📅 {fest.period}</Text>
+                          ) : null}
+                        </View>
+                      </View>
+                      {fest.description || fest.desc ? (
+                        <Text style={styles.festivalDescription}>
+                          {fest.description || fest.desc}
+                        </Text>
+                      ) : null}
+                    </View>
+                  ))
+                ) : (
+                  <View style={styles.emptyNoticeBox}>
+                    <Text style={styles.emptyNoticeIcon}>🛕</Text>
+                    <Text style={styles.emptyNoticeTitle}>No Festivals Listed Yet</Text>
+                    <Text style={styles.emptyNoticeText}>
+                      Annual festival dates and celebrations will be published by the temple administration.
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
+
+            {/* Section 5: Dynamic Sanctum Media / Gallery */}
+            {(activeTab === 'media' || !activeTab) && (
+              <View style={styles.sectionBlock}>
+                <Text style={styles.sectionHeading}>
+                  {UI_TRANSLATIONS.mediaHeading?.[langKey] || 'Sanctum Photos & Media'}
+                </Text>
+
+                {mediaLoading ? (
+                  <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+                    <ActivityIndicator size="small" color="#173D32" />
+                    <Text style={{ marginTop: 8, fontSize: 12, color: '#71857C' }}>
+                      Loading sanctum photos & media...
+                    </Text>
+                  </View>
+                ) : mediaList && mediaList.length > 0 ? (
+                  <View style={styles.mediaGrid}>
+                    {mediaList.map((item, idx) => {
+                      const imgUri = item.url || item.mediaUrl || item.imageUrl;
+                      return (
+                        <View key={item.id || idx} style={styles.mediaCard}>
+                          {imgUri ? (
+                            <Image
+                              source={{ uri: imgUri }}
+                              style={styles.mediaImage}
+                              resizeMode="cover"
+                            />
+                          ) : (
+                            <View style={[styles.mediaImage, styles.mediaImagePlaceholder]}>
+                              <Text style={{ fontSize: 24 }}>📷</Text>
+                            </View>
+                          )}
+                          <View style={styles.mediaCardInfo}>
+                            <Text style={styles.mediaCardTitle} numberOfLines={1}>
+                              {item.title || 'Sanctum View'}
+                            </Text>
+                            {item.caption ? (
+                              <Text style={styles.mediaCardCaption} numberOfLines={2}>
+                                {item.caption}
+                              </Text>
+                            ) : null}
+                          </View>
+                        </View>
+                      );
+                    })}
+                  </View>
+                ) : (
+                  <View style={styles.emptyNoticeBox}>
+                    <Text style={styles.emptyNoticeIcon}>📷</Text>
+                    <Text style={styles.emptyNoticeTitle}>No Photos Uploaded Yet</Text>
+                    <Text style={styles.emptyNoticeText}>
+                      Sanctum photos and video streams will appear here once uploaded by the temple authorities.
+                    </Text>
+                  </View>
+                )}
               </View>
             )}
 
@@ -1044,6 +1204,121 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     marginLeft: 8,
     letterSpacing: 0.4,
+  },
+
+  // Dynamic Festivals
+  festivalCard: {
+    backgroundColor: '#FFFDF9',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E8CD9C',
+    padding: 12,
+    marginBottom: 10,
+  },
+  festivalCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  festivalIconBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FAF1DE',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  festivalTitle: {
+    fontFamily: Platform.select({ ios: 'Poppins-Bold', android: 'Poppins_700Bold', web: 'Poppins, sans-serif', default: 'Poppins_700Bold' }),
+    fontSize: 14,
+    color: '#0C251E',
+    fontWeight: '700',
+  },
+  festivalPeriod: {
+    fontFamily: Platform.select({ ios: 'Poppins-Regular', android: 'Poppins_400Regular', web: 'Poppins, sans-serif', default: 'Poppins_400Regular' }),
+    fontSize: 12,
+    color: '#C68A1B',
+    marginTop: 2,
+    fontWeight: '600',
+  },
+  festivalDescription: {
+    fontFamily: Platform.select({ ios: 'Poppins-Regular', android: 'Poppins_400Regular', web: 'Poppins, sans-serif', default: 'Poppins_400Regular' }),
+    fontSize: 13,
+    color: '#345147',
+    lineHeight: 18,
+    marginTop: 4,
+  },
+
+  // Dynamic Sanctum Media / Gallery
+  mediaGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  mediaCard: {
+    width: '48%',
+    backgroundColor: '#FFFDF9',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E8CD9C',
+    overflow: 'hidden',
+    marginBottom: 10,
+  },
+  mediaImage: {
+    width: '100%',
+    height: 110,
+    backgroundColor: '#EAE4D8',
+  },
+  mediaImagePlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mediaCardInfo: {
+    padding: 8,
+  },
+  mediaCardTitle: {
+    fontFamily: Platform.select({ ios: 'Poppins-Bold', android: 'Poppins_700Bold', web: 'Poppins, sans-serif', default: 'Poppins_700Bold' }),
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: '#0C251E',
+  },
+  mediaCardCaption: {
+    fontFamily: Platform.select({ ios: 'Poppins-Regular', android: 'Poppins_400Regular', web: 'Poppins, sans-serif', default: 'Poppins_400Regular' }),
+    fontSize: 11,
+    color: '#71857C',
+    marginTop: 2,
+  },
+
+  // Empty notices
+  emptyNoticeBox: {
+    paddingVertical: 20,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FAF5EA',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#EADFC9',
+    marginVertical: 4,
+  },
+  emptyNoticeIcon: {
+    fontSize: 28,
+    marginBottom: 6,
+  },
+  emptyNoticeTitle: {
+    fontFamily: Platform.select({ ios: 'Poppins-Bold', android: 'Poppins_700Bold', web: 'Poppins, sans-serif', default: 'Poppins_700Bold' }),
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#173D32',
+    marginBottom: 4,
+  },
+  emptyNoticeText: {
+    fontFamily: Platform.select({ ios: 'Poppins-Regular', android: 'Poppins_400Regular', web: 'Poppins, sans-serif', default: 'Poppins_400Regular' }),
+    fontSize: 12,
+    color: '#71857C',
+    textAlign: 'center',
+    lineHeight: 17,
   },
 });
 

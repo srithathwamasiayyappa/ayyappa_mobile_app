@@ -116,6 +116,9 @@ export interface TempleItem {
   liveStreamId?: string;
   hasLiveDarshan?: boolean;
   cropIndex?: number;
+  festivals?: any[];
+  gallery?: any[];
+  media?: any[];
 }
 
 export interface DevotionalCategoryItem {

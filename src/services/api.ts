@@ -1805,6 +1805,62 @@ export const ApiService = {
     }
     return json;
   },
+
+  // 21.9 Fetch Dynamic Temple Festivals
+  async getTempleFestivals(templeIdOrSlug: string | number): Promise<any[]> {
+    try {
+      const url = `${API_BASE_URL}/dharma-kartha/public/temples/${encodeURIComponent(String(templeIdOrSlug))}/festivals`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const json = await res.json();
+        if (Array.isArray(json?.festivals)) return json.festivals;
+        if (Array.isArray(json?.data)) return json.data;
+        if (Array.isArray(json)) return json;
+      }
+    } catch {}
+
+    try {
+      const url2 = `${API_BASE_URL}/dharma-kartha/festivals?templeId=${encodeURIComponent(String(templeIdOrSlug))}`;
+      const res2 = await fetch(url2);
+      if (res2.ok) {
+        const json2 = await res2.json();
+        if (Array.isArray(json2?.festivals)) return json2.festivals;
+        if (Array.isArray(json2?.data)) return json2.data;
+        if (Array.isArray(json2)) return json2;
+      }
+    } catch {}
+
+    return [];
+  },
+
+  // 21.10 Fetch Dynamic Temple Media / Gallery
+  async getTempleMedia(templeIdOrSlug: string | number): Promise<any[]> {
+    try {
+      const url = `${API_BASE_URL}/dharma-kartha/public/temples/${encodeURIComponent(String(templeIdOrSlug))}/gallery`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const json = await res.json();
+        if (Array.isArray(json?.media)) return json.media;
+        if (Array.isArray(json?.gallery)) return json.gallery;
+        if (Array.isArray(json?.data)) return json.data;
+        if (Array.isArray(json)) return json;
+      }
+    } catch {}
+
+    try {
+      const url2 = `${API_BASE_URL}/dharma-kartha/media?templeId=${encodeURIComponent(String(templeIdOrSlug))}`;
+      const res2 = await fetch(url2);
+      if (res2.ok) {
+        const json2 = await res2.json();
+        if (Array.isArray(json2?.media)) return json2.media;
+        if (Array.isArray(json2?.gallery)) return json2.gallery;
+        if (Array.isArray(json2?.data)) return json2.data;
+        if (Array.isArray(json2)) return json2;
+      }
+    } catch {}
+
+    return [];
+  },
 };
 
 export const apiService = ApiService;
