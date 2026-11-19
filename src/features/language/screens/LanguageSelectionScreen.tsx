@@ -168,10 +168,23 @@ export const LanguageSelectionScreen: React.FC<Props> = ({
         setSelectedLang(dbLanguages[0].code as SupportedLanguage);
       }
     } catch (err: any) {
-      console.warn('Database languages fetch error:', err);
-      setErrorMessage(
-        err?.message || 'Unable to connect to database. Please check your connection and tap retry.'
-      );
+      console.warn('Database languages fetch error, applying fallback:', err);
+      // Graceful offline fallback to authentic devotional languages
+      const FALLBACK_LANGS: LanguageItem[] = [
+        { id: 1, code: 'te', name: 'Telugu', nativeName: 'తెలుగు', englishName: 'Telugu', displayName: 'తెలుగు — Telugu', continueText: 'కొనసాగించండి' },
+        { id: 2, code: 'en', name: 'English', nativeName: 'English', englishName: 'English', displayName: 'English — English', continueText: 'Continue' },
+        { id: 3, code: 'ta', name: 'Tamil', nativeName: 'தமிழ்', englishName: 'Tamil', displayName: 'தமிழ் — Tamil', continueText: 'தொடரவும்' },
+        { id: 4, code: 'kn', name: 'Kannada', nativeName: 'ಕನ್ನಡ', englishName: 'Kannada', displayName: 'ಕನ್ನಡ — Kannada', continueText: 'ಮುಂದುవರಿಸಿ' },
+        { id: 5, code: 'hi', name: 'Hindi', nativeName: 'हिन्दी', englishName: 'Hindi', displayName: 'हिन्दी — Hindi', continueText: 'जारी रखें' },
+      ];
+      setLanguages(FALLBACK_LANGS);
+      const stored = await StorageService.getStoredLanguage();
+      if (stored && FALLBACK_LANGS.some((l) => l.code === stored)) {
+        setSelectedLang(stored);
+      } else {
+        setSelectedLang('te');
+      }
+      setErrorMessage(null);
     } finally {
       setLoading(false);
     }
