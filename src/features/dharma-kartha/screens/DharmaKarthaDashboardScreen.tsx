@@ -72,6 +72,18 @@ export const DharmaKarthaDashboardScreen: React.FC<Props> = ({
 
   const userId = currentUser?.id ? Number(currentUser.id) : 1;
 
+  // Dynamic counts calculation from both stats API and loaded temple list
+  const dynamicPendingCount = React.useMemo(() => {
+    const pendingTemples = (temples || []).filter(
+      (t) => t.status === 'PENDING_APPROVAL' || t.status === 'PENDING'
+    ).length;
+    return Math.max(stats.pendingUpdates || 0, pendingTemples);
+  }, [stats.pendingUpdates, temples]);
+
+  const dynamicManagedCount = React.useMemo(() => {
+    return Math.max(stats.managedTemples || 0, (temples || []).length);
+  }, [stats.managedTemples, temples]);
+
   // Load all Dharma Kartha dynamic data from DB
   const loadDashboardData = useCallback(async () => {
     try {
@@ -209,7 +221,7 @@ export const DharmaKarthaDashboardScreen: React.FC<Props> = ({
               </Svg>
             </View>
             <Text style={styles.statLabel}>Managed Temples</Text>
-            <Text style={styles.statValue}>{stats.managedTemples}</Text>
+            <Text style={styles.statValue}>{dynamicManagedCount}</Text>
           </View>
 
           {/* Card 2: Pending Updates */}
@@ -221,7 +233,7 @@ export const DharmaKarthaDashboardScreen: React.FC<Props> = ({
               </Svg>
             </View>
             <Text style={styles.statLabel}>Pending Updates</Text>
-            <Text style={styles.statValue}>{stats.pendingUpdates}</Text>
+            <Text style={styles.statValue}>{dynamicPendingCount}</Text>
           </View>
 
           {/* Card 3: Active Festivals */}
