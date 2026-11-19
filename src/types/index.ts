@@ -325,6 +325,7 @@ export interface RegisterMandirPayload {
   officePhone?: string;
   officialEmail?: string;
   officialWebsite?: string;
+  heroImageUrl?: string;
 }
 
 

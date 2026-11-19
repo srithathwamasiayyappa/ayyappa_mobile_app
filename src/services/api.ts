@@ -1721,6 +1721,7 @@ export const ApiService = {
         officePhone: payload.officePhone?.trim(),
         officialEmail: payload.officialEmail?.trim(),
         officialWebsite: payload.officialWebsite?.trim(),
+        heroImageUrl: payload.heroImageUrl?.trim() || '/images/temple-hero.jpg',
       }),
     });
     const json = await res.json();

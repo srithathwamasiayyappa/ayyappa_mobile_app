@@ -11,10 +11,12 @@ import {
   Alert,
   ActivityIndicator,
   Modal,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle } from 'react-native-svg';
-import { ApiService } from '../../../services/api';
+import * as ImagePicker from 'expo-image-picker';
+import { ApiService, API_BASE_URL } from '../../../services/api';
 import { RegisterMandirPayload } from '../../../types';
 
 interface Props {
@@ -100,9 +102,70 @@ export const RegisterMandirScreen: React.FC<Props> = ({ onBack, onSuccess, userI
   const [officialEmail, setOfficialEmail] = useState('');
   const [officialWebsite, setOfficialWebsite] = useState('');
 
+  // Image upload & URL state
+  const [imageInputMode, setImageInputMode] = useState<'URL' | 'FILE'>('URL');
+  const [heroImageUrl, setHeroImageUrl] = useState('');
+  const [uploadingImage, setUploadingImage] = useState(false);
+
   const [submitting, setSubmitting] = useState(false);
   const [showDeityPicker, setShowDeityPicker] = useState(false);
   const [showStatePicker, setShowStatePicker] = useState(false);
+
+  const handlePickImage = async () => {
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permissionResult.granted) {
+        Alert.alert('Permission Required', 'Please grant photo library access to upload a temple image.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [16, 9],
+        quality: 0.7,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        setUploadingImage(true);
+
+        try {
+          if (asset.base64) {
+            const mimeType = asset.mimeType || 'image/jpeg';
+            const base64Data = `data:${mimeType};base64,${asset.base64}`;
+            const uploadRes = await fetch(`${API_BASE_URL}/dharma-kartha/upload-image`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                image: base64Data,
+                fileName: asset.fileName || 'temple_hero.jpg',
+              }),
+            });
+            const uploadJson = await uploadRes.json();
+            if (uploadJson.success && uploadJson.url) {
+              const fullUrl = uploadJson.url.startsWith('http')
+                ? uploadJson.url
+                : `${API_BASE_URL.replace('/api/v1', '')}${uploadJson.url}`;
+              setHeroImageUrl(fullUrl);
+            } else {
+              setHeroImageUrl(asset.uri);
+            }
+          } else {
+            setHeroImageUrl(asset.uri);
+          }
+        } catch {
+          setHeroImageUrl(asset.uri);
+        } finally {
+          setUploadingImage(false);
+        }
+      }
+    } catch (err: any) {
+      Alert.alert('Image Picker Error', err?.message || 'Could not select image.');
+      setUploadingImage(false);
+    }
+  };
 
   const handleSubmit = async () => {
     if (!name.trim()) {
@@ -132,6 +195,7 @@ export const RegisterMandirScreen: React.FC<Props> = ({ onBack, onSuccess, userI
         officePhone: officePhone.trim() || undefined,
         officialEmail: officialEmail.trim() || undefined,
         officialWebsite: officialWebsite.trim() || undefined,
+        heroImageUrl: heroImageUrl.trim() || undefined,
       };
 
       const res = await ApiService.registerMandir(payload, userId);
@@ -366,6 +430,91 @@ export const RegisterMandirScreen: React.FC<Props> = ({ onBack, onSuccess, userI
             value={officialWebsite}
             onChangeText={setOfficialWebsite}
           />
+        </View>
+
+        {/* Section 4: Temple Image (URL & File Upload) */}
+        <View style={styles.formCard}>
+          <Text style={styles.sectionTitle}>📸 4. Temple Image (URL &amp; File Upload)</Text>
+          <Text style={styles.fieldHint}>
+            Provide an authentic image of the temple sanctum or gopuram. Devotees will see this image in the temple directory.
+          </Text>
+
+          {/* Mode Selector Tabs: URL or File */}
+          <View style={styles.imageModeRow}>
+            <TouchableOpacity
+              style={[styles.imageModeBtn, imageInputMode === 'URL' && styles.imageModeBtnActive]}
+              onPress={() => setImageInputMode('URL')}
+            >
+              <Text style={[styles.imageModeBtnText, imageInputMode === 'URL' && styles.imageModeBtnTextActive]}>
+                🌐 Web URL
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.imageModeBtn, imageInputMode === 'FILE' && styles.imageModeBtnActive]}
+              onPress={() => setImageInputMode('FILE')}
+            >
+              <Text style={[styles.imageModeBtnText, imageInputMode === 'FILE' && styles.imageModeBtnTextActive]}>
+                📁 Upload File
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {imageInputMode === 'URL' ? (
+            <View style={{ marginTop: 12 }}>
+              <Text style={styles.fieldLabel}>Image Web Link (URL)</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="https://example.com/temple-photo.jpg"
+                placeholderTextColor="#889A92"
+                autoCapitalize="none"
+                value={heroImageUrl}
+                onChangeText={setHeroImageUrl}
+              />
+            </View>
+          ) : (
+            <View style={{ marginTop: 12 }}>
+              <TouchableOpacity
+                style={styles.filePickerBtn}
+                onPress={handlePickImage}
+                disabled={uploadingImage}
+                activeOpacity={0.8}
+              >
+                {uploadingImage ? (
+                  <View style={styles.filePickerInner}>
+                    <ActivityIndicator size="small" color="#CAA049" />
+                    <Text style={styles.filePickerBtnText}>Uploading image to server...</Text>
+                  </View>
+                ) : (
+                  <View style={styles.filePickerInner}>
+                    <Text style={styles.filePickerIcon}>📷</Text>
+                    <Text style={styles.filePickerBtnText}>
+                      {heroImageUrl ? 'Choose Different Photo' : 'Select Image from Device Gallery'}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Live Preview Box */}
+          {heroImageUrl ? (
+            <View style={styles.previewContainer}>
+              <View style={styles.previewHeader}>
+                <Text style={styles.previewLabel}>Selected Image Preview:</Text>
+                <TouchableOpacity onPress={() => setHeroImageUrl('')}>
+                  <Text style={styles.removeImageText}>✕ Remove</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.previewImgWrap}>
+                <Image
+                  source={{ uri: heroImageUrl }}
+                  style={styles.previewImage}
+                  resizeMode="cover"
+                />
+              </View>
+            </View>
+          ) : null}
         </View>
 
         {/* Actions Row */}
@@ -726,5 +875,92 @@ const styles = StyleSheet.create({
     color: '#FFFDF8',
     fontWeight: '600',
     fontSize: 14,
+  },
+  imageModeRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 4,
+  },
+  imageModeBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: '#E2DAD0',
+    backgroundColor: '#F8F6F1',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  imageModeBtnActive: {
+    borderColor: '#CAA049',
+    backgroundColor: '#FFF8E8',
+  },
+  imageModeBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#65776F',
+  },
+  imageModeBtnTextActive: {
+    color: '#946610',
+    fontWeight: '700',
+  },
+  filePickerBtn: {
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderColor: '#CAA049',
+    borderRadius: 12,
+    paddingVertical: 22,
+    paddingHorizontal: 16,
+    backgroundColor: '#FFFDF8',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  filePickerInner: {
+    alignItems: 'center',
+    gap: 8,
+  },
+  filePickerIcon: {
+    fontSize: 28,
+  },
+  filePickerBtnText: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    color: '#0C251E',
+  },
+  previewContainer: {
+    marginTop: 14,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F0EBE1',
+  },
+  previewHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  previewLabel: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: '#1B3B30',
+  },
+  removeImageText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#DC2626',
+  },
+  previewImgWrap: {
+    width: '100%',
+    height: 180,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: '#1B3B30',
+    borderWidth: 1,
+    borderColor: '#E2DAD0',
+  },
+  previewImage: {
+    width: '100%',
+    height: '100%',
   },
 });

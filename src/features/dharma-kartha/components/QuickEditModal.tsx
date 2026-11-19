@@ -10,10 +10,12 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as ImagePicker from 'expo-image-picker';
 import { DharmaKarthaTemple } from '../../../types';
-import { ApiService } from '../../../services/api';
+import { ApiService, API_BASE_URL } from '../../../services/api';
 
 export type QuickEditSection = 'about' | 'speciality' | 'timings' | 'media' | 'festivals' | 'contact';
 
@@ -62,6 +64,62 @@ export const QuickEditModal: React.FC<Props> = ({
   // Media fields
   const [mediaTitle, setMediaTitle] = useState('');
   const [mediaUrl, setMediaUrl] = useState('');
+  const [mediaMode, setMediaMode] = useState<'URL' | 'FILE'>('URL');
+  const [uploadingMedia, setUploadingMedia] = useState(false);
+
+  const handlePickMediaImage = async () => {
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permissionResult.granted) {
+        Alert.alert('Permission Required', 'Please allow gallery access to upload sanctum media.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.7,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        setUploadingMedia(true);
+        try {
+          if (asset.base64) {
+            const mimeType = asset.mimeType || 'image/jpeg';
+            const base64Data = `data:${mimeType};base64,${asset.base64}`;
+            const uploadRes = await fetch(`${API_BASE_URL}/dharma-kartha/upload-image`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                image: base64Data,
+                fileName: asset.fileName || 'sanctum_media.jpg',
+              }),
+            });
+            const uploadJson = await uploadRes.json();
+            if (uploadJson.success && uploadJson.url) {
+              const fullUrl = uploadJson.url.startsWith('http')
+                ? uploadJson.url
+                : `${API_BASE_URL.replace('/api/v1', '')}${uploadJson.url}`;
+              setMediaUrl(fullUrl);
+            } else {
+              setMediaUrl(asset.uri);
+            }
+          } else {
+            setMediaUrl(asset.uri);
+          }
+        } catch {
+          setMediaUrl(asset.uri);
+        } finally {
+          setUploadingMedia(false);
+        }
+      }
+    } catch (err: any) {
+      Alert.alert('Image Error', err?.message || 'Could not pick image.');
+      setUploadingMedia(false);
+    }
+  };
 
   // Festivals fields
   const [festName, setFestName] = useState('');
@@ -395,14 +453,64 @@ export const QuickEditModal: React.FC<Props> = ({
                   placeholder="e.g. Sanctum Golden Altar"
                 />
 
-                <Text style={styles.label}>Image URL</Text>
-                <TextInput
-                  style={styles.input}
-                  value={mediaUrl}
-                  onChangeText={setMediaUrl}
-                  placeholder="https://... or /images/..."
-                  autoCapitalize="none"
-                />
+                {/* Switcher: URL vs File */}
+                <View style={styles.tabRow}>
+                  <TouchableOpacity
+                    style={[styles.tabBtn, mediaMode === 'URL' && styles.tabBtnActive]}
+                    onPress={() => setMediaMode('URL')}
+                  >
+                    <Text style={[styles.tabBtnText, mediaMode === 'URL' && styles.tabBtnTextActive]}>
+                      🌐 Image URL
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.tabBtn, mediaMode === 'FILE' && styles.tabBtnActive]}
+                    onPress={() => setMediaMode('FILE')}
+                  >
+                    <Text style={[styles.tabBtnText, mediaMode === 'FILE' && styles.tabBtnTextActive]}>
+                      📁 Upload File
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {mediaMode === 'URL' ? (
+                  <>
+                    <Text style={styles.label}>Image URL</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={mediaUrl}
+                      onChangeText={setMediaUrl}
+                      placeholder="https://... or /images/..."
+                      autoCapitalize="none"
+                    />
+                  </>
+                ) : (
+                  <View style={{ marginTop: 10 }}>
+                    <TouchableOpacity
+                      style={styles.pickFileBtn}
+                      onPress={handlePickMediaImage}
+                      disabled={uploadingMedia}
+                    >
+                      {uploadingMedia ? (
+                        <ActivityIndicator size="small" color="#CAA049" />
+                      ) : (
+                        <Text style={styles.pickFileBtnText}>
+                          {mediaUrl ? '📷 Change Photo' : '📷 Choose Photo from Gallery'}
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                {mediaUrl ? (
+                  <View style={styles.imagePreviewWrap}>
+                    <Image source={{ uri: mediaUrl }} style={styles.previewImage} resizeMode="cover" />
+                    <TouchableOpacity style={styles.removeBtn} onPress={() => setMediaUrl('')}>
+                      <Text style={styles.removeBtnText}>✕ Remove</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : null}
               </>
             )}
 
@@ -716,6 +824,75 @@ const styles = StyleSheet.create({
   selectedCheckText: {
     color: '#FFFDF8',
     fontSize: 12,
+    fontWeight: '700',
+  },
+  tabRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  tabBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E2DAD0',
+    backgroundColor: '#F8F6F1',
+    alignItems: 'center',
+  },
+  tabBtnActive: {
+    borderColor: '#CAA049',
+    backgroundColor: '#FFF8E8',
+  },
+  tabBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#65776F',
+  },
+  tabBtnTextActive: {
+    color: '#946610',
+    fontWeight: '700',
+  },
+  pickFileBtn: {
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: '#CAA049',
+    borderRadius: 10,
+    paddingVertical: 14,
+    backgroundColor: '#FFFDF8',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pickFileBtnText: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: '#0C251E',
+  },
+  imagePreviewWrap: {
+    marginTop: 10,
+    position: 'relative',
+    height: 140,
+    borderRadius: 10,
+    overflow: 'hidden',
+    backgroundColor: '#1B3B30',
+  },
+  previewImage: {
+    width: '100%',
+    height: '100%',
+  },
+  removeBtn: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  removeBtnText: {
+    color: '#FFFFFF',
+    fontSize: 11,
     fontWeight: '700',
   },
 });
