@@ -108,8 +108,11 @@ export const RegisterMandirScreen: React.FC<Props> = ({ onBack, onSuccess, userI
   const [uploadingImage, setUploadingImage] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
+  const [showClassificationDropdown, setShowClassificationDropdown] = useState(false);
   const [showDeityPicker, setShowDeityPicker] = useState(false);
   const [showStatePicker, setShowStatePicker] = useState(false);
+
+  const selectedClassification = CLASSIFICATION_OPTIONS.find((c) => c.id === classification) || CLASSIFICATION_OPTIONS[0];
 
   const handlePickImage = async () => {
     try {
@@ -249,27 +252,70 @@ export const RegisterMandirScreen: React.FC<Props> = ({ onBack, onSuccess, userI
           <Text style={styles.fieldLabel}>Select Temple Classification / Type *</Text>
           <Text style={styles.fieldHint}>Indicate whether this is an Independent Main Temple, a Sub Temple under another shrine, or part of a Multi-Temple trust complex.</Text>
 
-          <View style={styles.classificationGrid}>
-            {CLASSIFICATION_OPTIONS.map((item) => {
-              const isSelected = classification === item.id;
-              return (
-                <TouchableOpacity
-                  key={item.id}
-                  style={[styles.classCard, isSelected && styles.classCardSelected]}
-                  activeOpacity={0.8}
-                  onPress={() => setClassification(item.id)}
-                >
-                  <View style={styles.classCardHeader}>
-                    <View style={styles.classIndicator}>
-                      <Text style={styles.classIcon}>🛕</Text>
-                      <Text style={[styles.classTitle, isSelected && styles.classTitleSelected]}>{item.title}</Text>
-                    </View>
-                    {isSelected && <Text style={styles.checkmarkIcon}>✓</Text>}
-                  </View>
-                  <Text style={styles.classDesc}>{item.desc}</Text>
-                </TouchableOpacity>
-              );
-            })}
+          {/* Classification Dropdown */}
+          <View style={styles.classificationDropdownContainer}>
+            <TouchableOpacity
+              style={[
+                styles.classificationDropdownTrigger,
+                showClassificationDropdown && styles.classificationDropdownTriggerOpen,
+              ]}
+              activeOpacity={0.8}
+              onPress={() => setShowClassificationDropdown((prev) => !prev)}
+            >
+              <View style={styles.dropdownSelectedWrap}>
+                <Text style={styles.dropdownTempleIcon}>🛕</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.dropdownSelectedTitle}>
+                    {selectedClassification.title}
+                  </Text>
+                  <Text style={styles.dropdownSelectedDesc} numberOfLines={1}>
+                    {selectedClassification.desc}
+                  </Text>
+                </View>
+              </View>
+              <Text style={styles.dropdownChevron}>
+                {showClassificationDropdown ? '▲' : '▼'}
+              </Text>
+            </TouchableOpacity>
+
+            {showClassificationDropdown && (
+              <View style={styles.classificationDropdownMenu}>
+                {CLASSIFICATION_OPTIONS.map((item) => {
+                  const isSelected = classification === item.id;
+                  return (
+                    <TouchableOpacity
+                      key={item.id}
+                      style={[
+                        styles.classificationDropdownItem,
+                        isSelected && styles.classificationDropdownItemActive,
+                      ]}
+                      activeOpacity={0.75}
+                      onPress={() => {
+                        setClassification(item.id);
+                        setShowClassificationDropdown(false);
+                      }}
+                    >
+                      <View style={styles.dropdownItemInfo}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                          <Text style={{ fontSize: 15 }}>🛕</Text>
+                          <Text style={[styles.dropdownItemTitle, isSelected && styles.dropdownItemTitleActive]}>
+                            {item.title}
+                          </Text>
+                        </View>
+                        <Text style={[styles.dropdownItemDesc, isSelected && styles.dropdownItemDescActive]}>
+                          {item.desc}
+                        </Text>
+                      </View>
+                      {isSelected && (
+                        <View style={styles.dropdownItemCheck}>
+                          <Text style={styles.dropdownCheckmark}>✓</Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
           </View>
 
           {/* Temple Name */}
@@ -685,53 +731,106 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     lineHeight: 16,
   },
-  classificationGrid: {
-    gap: 10,
-    marginBottom: 12,
+  classificationDropdownContainer: {
+    marginBottom: 14,
   },
-  classCard: {
-    borderWidth: 1.5,
-    borderColor: '#E3DC Flora',
+  classificationDropdownTrigger: {
     backgroundColor: '#FFFDF9',
+    borderWidth: 1.5,
+    borderColor: '#DFD8C9',
     borderRadius: 12,
-    padding: 12,
-  },
-  classCardSelected: {
-    borderColor: '#DFA62E',
-    backgroundColor: '#FFF9ED',
-  },
-  classCardHeader: {
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
   },
-  classIndicator: {
+  classificationDropdownTriggerOpen: {
+    borderColor: '#DFA62E',
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+  },
+  dropdownSelectedWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 10,
+    flex: 1,
+    marginRight: 8,
   },
-  classIcon: {
-    fontSize: 16,
+  dropdownTempleIcon: {
+    fontSize: 20,
   },
-  classTitle: {
+  dropdownSelectedTitle: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#1A332B',
   },
-  classTitleSelected: {
+  dropdownSelectedDesc: {
+    fontSize: 11.5,
+    color: '#65776F',
+    marginTop: 2,
+    lineHeight: 15,
+  },
+  dropdownChevron: {
+    fontSize: 11,
     color: '#B27F15',
     fontWeight: '700',
   },
-  checkmarkIcon: {
-    color: '#B27F15',
-    fontSize: 15,
-    fontWeight: 'bold',
+  classificationDropdownMenu: {
+    backgroundColor: '#FFFDF9',
+    borderWidth: 1.5,
+    borderTopWidth: 0,
+    borderColor: '#DFA62E',
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
+    overflow: 'hidden',
   },
-  classDesc: {
-    fontSize: 12,
+  classificationDropdownItem: {
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0EBE1',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  classificationDropdownItemActive: {
+    backgroundColor: '#FFF9ED',
+  },
+  dropdownItemInfo: {
+    flex: 1,
+    marginRight: 8,
+  },
+  dropdownItemTitle: {
+    fontSize: 13.5,
+    fontWeight: '600',
+    color: '#1A332B',
+  },
+  dropdownItemTitleActive: {
+    fontWeight: '700',
+    color: '#B27F15',
+  },
+  dropdownItemDesc: {
+    fontSize: 11,
     color: '#65776F',
-    lineHeight: 16,
+    lineHeight: 14,
+    marginLeft: 22,
+  },
+  dropdownItemDescActive: {
+    color: '#8A6210',
+  },
+  dropdownItemCheck: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#FFF1D1',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dropdownCheckmark: {
+    color: '#B27F15',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   input: {
     backgroundColor: '#FAF8F4',

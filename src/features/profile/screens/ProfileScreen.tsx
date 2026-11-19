@@ -770,6 +770,7 @@ export const ProfileScreen: React.FC<Props> = ({
 
   // Add Mandir Form State (Matching Website Register a Holy Mandir fields)
   const [newMandirType, setNewMandirType] = useState('MAIN_TEMPLE');
+  const [newClassificationOpen, setNewClassificationOpen] = useState(false);
   const [newMandirName, setNewMandirName] = useState('');
   const [newMandirAltName, setNewMandirAltName] = useState('');
   const [newMandirDeity, setNewMandirDeity] = useState('Lord Ayyappa');
@@ -810,6 +811,7 @@ export const ProfileScreen: React.FC<Props> = ({
   const [editMandirModalVisible, setEditMandirModalVisible] = useState(false);
   const [editingTempleId, setEditingTempleId] = useState<number | null>(null);
   const [editMandirType, setEditMandirType] = useState('MAIN_TEMPLE');
+  const [editClassificationOpen, setEditClassificationOpen] = useState(false);
   const [editMandirName, setEditMandirName] = useState('');
   const [editMandirAltName, setEditMandirAltName] = useState('');
   const [editMandirDeity, setEditMandirDeity] = useState('Lord Ayyappa');
@@ -2678,36 +2680,101 @@ export const ProfileScreen: React.FC<Props> = ({
                 </View>
 
                 <Text style={styles.inputLabel}>Temple Classification / Type *</Text>
-                <View style={{ gap: 8, marginBottom: 14 }}>
-                  {[
+                {(() => {
+                  const classificationList = [
                     { id: 'MAIN_TEMPLE', title: 'Main Temple', desc: 'Primary institutional shrine with full sanctum and daily scheduled poojas.' },
                     { id: 'SUB_TEMPLE', title: 'Sub Temple', desc: 'Branch temple or subsidiary shrine affiliated to a central trust.' },
                     { id: 'MULTI_TEMPLE', title: 'Multi-Deity Temple Complex', desc: 'Grand religious complex housing multiple sanctums and deities.' },
                     { id: 'COMMUNITY_TEMPLE', title: 'Community Temple', desc: 'Locally organized bhajana mandiram or residential colony shrine.' },
                     { id: 'HERITAGE_SHRINE', title: 'Heritage Shrine', desc: 'Ancient historic pilgrimage site or forest shrine.' },
-                  ].map(t => {
-                    const isSelected = editMandirType === t.id;
-                    return (
+                  ];
+                  const sel = classificationList.find(t => t.id === editMandirType) || classificationList[0];
+                  return (
+                    <View style={{ marginBottom: 14 }}>
                       <TouchableOpacity
-                        key={t.id}
-                        onPress={() => setEditMandirType(t.id)}
-                        activeOpacity={0.75}
-                        style={[
-                          styles.mandirTypeCard,
-                          isSelected && styles.mandirTypeCardSelected
-                        ]}
+                        onPress={() => setEditClassificationOpen(!editClassificationOpen)}
+                        activeOpacity={0.8}
+                        style={{
+                          backgroundColor: '#FFFDF9',
+                          borderWidth: 1.5,
+                          borderColor: editClassificationOpen ? '#047857' : '#D1D5DB',
+                          borderRadius: 10,
+                          paddingHorizontal: 14,
+                          paddingVertical: 12,
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          borderBottomLeftRadius: editClassificationOpen ? 0 : 10,
+                          borderBottomRightRadius: editClassificationOpen ? 0 : 10,
+                        }}
                       >
-                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
-                          <Text style={[styles.mandirTypeTitle, isSelected && styles.mandirTypeTitleSelected]}>
-                            🛕 {t.title}
-                          </Text>
-                          {isSelected && <Text style={{ color: '#047857', fontWeight: '800' }}>✓</Text>}
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, marginRight: 8 }}>
+                          <Text style={{ fontSize: 18 }}>🛕</Text>
+                          <View style={{ flex: 1 }}>
+                            <Text style={{ fontSize: 14, fontWeight: '700', color: '#111827' }}>
+                              {sel.title}
+                            </Text>
+                            <Text style={{ fontSize: 11, color: '#6B7280', marginTop: 1 }} numberOfLines={1}>
+                              {sel.desc}
+                            </Text>
+                          </View>
                         </View>
-                        <Text style={styles.mandirTypeDesc}>{t.desc}</Text>
+                        <Text style={{ fontSize: 11, color: '#047857', fontWeight: 'bold' }}>
+                          {editClassificationOpen ? '▲' : '▼'}
+                        </Text>
                       </TouchableOpacity>
-                    );
-                  })}
-                </View>
+
+                      {editClassificationOpen && (
+                        <View style={{
+                          backgroundColor: '#FFFDF9',
+                          borderWidth: 1.5,
+                          borderTopWidth: 0,
+                          borderColor: '#047857',
+                          borderBottomLeftRadius: 10,
+                          borderBottomRightRadius: 10,
+                          overflow: 'hidden',
+                        }}>
+                          {classificationList.map(t => {
+                            const isSelected = editMandirType === t.id;
+                            return (
+                              <TouchableOpacity
+                                key={t.id}
+                                onPress={() => {
+                                  setEditMandirType(t.id);
+                                  setEditClassificationOpen(false);
+                                }}
+                                activeOpacity={0.75}
+                                style={{
+                                  paddingHorizontal: 14,
+                                  paddingVertical: 10,
+                                  borderBottomWidth: 1,
+                                  borderBottomColor: '#F3F4F6',
+                                  backgroundColor: isSelected ? '#ECFDF5' : '#FFFDF9',
+                                  flexDirection: 'row',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                }}
+                              >
+                                <View style={{ flex: 1, marginRight: 8 }}>
+                                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                                    <Text style={{ fontSize: 14 }}>🛕</Text>
+                                    <Text style={{ fontSize: 13, fontWeight: isSelected ? '700' : '600', color: isSelected ? '#047857' : '#1F2937' }}>
+                                      {t.title}
+                                    </Text>
+                                  </View>
+                                  <Text style={{ fontSize: 11, color: isSelected ? '#065F46' : '#6B7280', marginLeft: 20 }}>
+                                    {t.desc}
+                                  </Text>
+                                </View>
+                                {isSelected && <Text style={{ color: '#047857', fontWeight: '800', fontSize: 14 }}>✓</Text>}
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </View>
+                      )}
+                    </View>
+                  );
+                })()}
 
                 <Text style={styles.inputLabel}>Temple Name *</Text>
                 <TextInput
@@ -3623,42 +3690,107 @@ export const ProfileScreen: React.FC<Props> = ({
                   <Text style={styles.mandirSectionTitle}>🏛️ 1. Temple Identity &amp; Classification</Text>
                 </View>
 
-                {/* Classification Cards */}
+                {/* Classification Dropdown */}
                 <Text style={styles.inputLabel}>Select Temple Classification / Type *</Text>
                 <Text style={styles.inputHelperText}>
                   Indicate whether this is an independent Main Temple, a Sub-Temple (branch/subsidiary shrine), or part of a Multi-Temple trust complex.
                 </Text>
 
-                <View style={{ gap: 8, marginBottom: 14 }}>
-                  {[
+                {(() => {
+                  const classificationList = [
                     { id: 'MAIN_TEMPLE', title: 'Main Temple', desc: 'Primary institutional shrine with full sanctum and daily scheduled poojas.' },
                     { id: 'SUB_TEMPLE', title: 'Sub Temple', desc: 'Branch temple or subsidiary shrine affiliated to a central trust.' },
                     { id: 'MULTI_TEMPLE', title: 'Multi-Deity Temple Complex', desc: 'Grand religious complex housing multiple sanctums and deities.' },
                     { id: 'COMMUNITY_TEMPLE', title: 'Community Temple', desc: 'Locally organized bhajana mandiram or residential colony shrine.' },
                     { id: 'HERITAGE_SHRINE', title: 'Heritage Shrine', desc: 'Ancient historic pilgrimage site or forest shrine.' },
-                  ].map(t => {
-                    const isSelected = newMandirType === t.id;
-                    return (
+                  ];
+                  const sel = classificationList.find(t => t.id === newMandirType) || classificationList[0];
+                  return (
+                    <View style={{ marginBottom: 14 }}>
                       <TouchableOpacity
-                        key={t.id}
-                        onPress={() => setNewMandirType(t.id)}
-                        activeOpacity={0.75}
-                        style={[
-                          styles.mandirTypeCard,
-                          isSelected && styles.mandirTypeCardSelected
-                        ]}
+                        onPress={() => setNewClassificationOpen(!newClassificationOpen)}
+                        activeOpacity={0.8}
+                        style={{
+                          backgroundColor: '#FFFDF9',
+                          borderWidth: 1.5,
+                          borderColor: newClassificationOpen ? '#047857' : '#D1D5DB',
+                          borderRadius: 10,
+                          paddingHorizontal: 14,
+                          paddingVertical: 12,
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          borderBottomLeftRadius: newClassificationOpen ? 0 : 10,
+                          borderBottomRightRadius: newClassificationOpen ? 0 : 10,
+                        }}
                       >
-                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
-                          <Text style={[styles.mandirTypeTitle, isSelected && styles.mandirTypeTitleSelected]}>
-                            🛕 {t.title}
-                          </Text>
-                          {isSelected && <Text style={{ color: '#047857', fontWeight: '800' }}>✓</Text>}
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, marginRight: 8 }}>
+                          <Text style={{ fontSize: 18 }}>🛕</Text>
+                          <View style={{ flex: 1 }}>
+                            <Text style={{ fontSize: 14, fontWeight: '700', color: '#111827' }}>
+                              {sel.title}
+                            </Text>
+                            <Text style={{ fontSize: 11, color: '#6B7280', marginTop: 1 }} numberOfLines={1}>
+                              {sel.desc}
+                            </Text>
+                          </View>
                         </View>
-                        <Text style={styles.mandirTypeDesc}>{t.desc}</Text>
+                        <Text style={{ fontSize: 11, color: '#047857', fontWeight: 'bold' }}>
+                          {newClassificationOpen ? '▲' : '▼'}
+                        </Text>
                       </TouchableOpacity>
-                    );
-                  })}
-                </View>
+
+                      {newClassificationOpen && (
+                        <View style={{
+                          backgroundColor: '#FFFDF9',
+                          borderWidth: 1.5,
+                          borderTopWidth: 0,
+                          borderColor: '#047857',
+                          borderBottomLeftRadius: 10,
+                          borderBottomRightRadius: 10,
+                          overflow: 'hidden',
+                        }}>
+                          {classificationList.map(t => {
+                            const isSelected = newMandirType === t.id;
+                            return (
+                              <TouchableOpacity
+                                key={t.id}
+                                onPress={() => {
+                                  setNewMandirType(t.id);
+                                  setNewClassificationOpen(false);
+                                }}
+                                activeOpacity={0.75}
+                                style={{
+                                  paddingHorizontal: 14,
+                                  paddingVertical: 10,
+                                  borderBottomWidth: 1,
+                                  borderBottomColor: '#F3F4F6',
+                                  backgroundColor: isSelected ? '#ECFDF5' : '#FFFDF9',
+                                  flexDirection: 'row',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                }}
+                              >
+                                <View style={{ flex: 1, marginRight: 8 }}>
+                                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                                    <Text style={{ fontSize: 14 }}>🛕</Text>
+                                    <Text style={{ fontSize: 13, fontWeight: isSelected ? '700' : '600', color: isSelected ? '#047857' : '#1F2937' }}>
+                                      {t.title}
+                                    </Text>
+                                  </View>
+                                  <Text style={{ fontSize: 11, color: isSelected ? '#065F46' : '#6B7280', marginLeft: 20 }}>
+                                    {t.desc}
+                                  </Text>
+                                </View>
+                                {isSelected && <Text style={{ color: '#047857', fontWeight: '800', fontSize: 14 }}>✓</Text>}
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </View>
+                      )}
+                    </View>
+                  );
+                })()}
 
                 {/* Temple Name */}
                 <Text style={styles.inputLabel}>Temple Name *</Text>
