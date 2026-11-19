@@ -273,16 +273,24 @@ export const DharmaKarthaDashboardScreen: React.FC<Props> = ({
                       <View
                         style={[
                           styles.statusBadge,
-                          temple.status === 'PUBLISHED' ? styles.statusPublished : styles.statusPending,
+                          temple.status === 'PUBLISHED'
+                            ? styles.statusPublished
+                            : temple.status === 'REJECTED'
+                            ? styles.statusRejected
+                            : styles.statusPending,
                         ]}
                       >
                         <Text
                           style={[
                             styles.statusBadgeText,
-                            temple.status === 'PUBLISHED' ? styles.statusPublishedText : styles.statusPendingText,
+                            temple.status === 'PUBLISHED'
+                              ? styles.statusPublishedText
+                              : temple.status === 'REJECTED'
+                              ? styles.statusRejectedText
+                              : styles.statusPendingText,
                           ]}
                         >
-                          {temple.status}
+                          {temple.status === 'PENDING_APPROVAL' ? 'PENDING APPROVAL' : temple.status}
                         </Text>
                       </View>
                     </View>
@@ -779,9 +787,21 @@ const styles = StyleSheet.create({
   },
   statusPending: {
     backgroundColor: '#FFF4DE',
+    borderColor: '#FEE5B5',
+    borderWidth: 1,
   },
   statusPendingText: {
     color: '#B57D18',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  statusRejected: {
+    backgroundColor: '#FDE8E8',
+    borderColor: '#F8B4B4',
+    borderWidth: 1,
+  },
+  statusRejectedText: {
+    color: '#9B1C1C',
     fontSize: 10,
     fontWeight: '700',
   },
