@@ -551,6 +551,7 @@ export const DharmaKarthaDashboardScreen: React.FC<Props> = ({
         visible={editModalVisible}
         section={activeEditSection}
         temple={selectedTemple}
+        temples={temples}
         userId={userId}
         onClose={() => setEditModalVisible(false)}
         onUpdated={() => {

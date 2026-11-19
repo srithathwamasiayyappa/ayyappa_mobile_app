@@ -21,6 +21,7 @@ interface Props {
   visible: boolean;
   section: QuickEditSection | null;
   temple: DharmaKarthaTemple | null;
+  temples?: DharmaKarthaTemple[];
   userId?: number;
   onClose: () => void;
   onUpdated: () => void;
@@ -30,11 +31,17 @@ export const QuickEditModal: React.FC<Props> = ({
   visible,
   section,
   temple,
+  temples = [],
   userId = 1,
   onClose,
   onUpdated,
 }) => {
   const [loading, setLoading] = useState(false);
+
+  // Available temples for selection (user created / managed temples)
+  const availableTemples = temples && temples.length > 0 ? temples : temple ? [temple] : [];
+  const [selectedTargetTemple, setSelectedTargetTemple] = useState<DharmaKarthaTemple | null>(temple);
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
 
   // About / History fields
   const [name, setName] = useState('');
@@ -67,29 +74,50 @@ export const QuickEditModal: React.FC<Props> = ({
   const [website, setWebsite] = useState('');
   const [address, setAddress] = useState('');
 
+  // Reset and initialize selected temple when modal opens or temple prop changes
   useEffect(() => {
-    if (temple) {
-      setName(temple.name || '');
-      setDeity(temple.primaryDeity || '');
-      setShortDesc(temple.shortDescription || '');
-      setAbout(temple.about || '');
-      setHistory(temple.history || '');
-      setSpeciality(temple.speciality || '');
-      setPhone(temple.officePhone || '');
-      setEmail(temple.officialEmail || '');
-      setWebsite(temple.officialWebsite || '');
-      setAddress(temple.address || '');
+    if (visible) {
+      const initial = temple || (temples && temples[0]) || null;
+      setSelectedTargetTemple(initial);
+      setIsPickerOpen(false);
     }
-  }, [temple]);
+  }, [visible, temple, temples]);
 
-  if (!temple || !section) return null;
+  // Sync form inputs with active selected temple
+  useEffect(() => {
+    if (selectedTargetTemple) {
+      setName(selectedTargetTemple.name || '');
+      setDeity(selectedTargetTemple.primaryDeity || '');
+      setShortDesc(selectedTargetTemple.shortDescription || '');
+      setAbout(selectedTargetTemple.about || '');
+      setHistory(selectedTargetTemple.history || '');
+      setSpeciality(selectedTargetTemple.speciality || '');
+      setPhone(selectedTargetTemple.officePhone || '');
+      setEmail(selectedTargetTemple.officialEmail || '');
+      setWebsite(selectedTargetTemple.officialWebsite || '');
+      setAddress(selectedTargetTemple.address || '');
+    }
+  }, [selectedTargetTemple]);
+
+  if (!visible || !section) return null;
+
+  const activeTemple = selectedTargetTemple || temple || (availableTemples[0] || null);
+
+  const handleSelectTemple = (t: DharmaKarthaTemple) => {
+    setSelectedTargetTemple(t);
+    setIsPickerOpen(false);
+  };
 
   const handleSave = async () => {
+    if (!activeTemple) {
+      Alert.alert('Required', 'Please select a temple before saving details.');
+      return;
+    }
     setLoading(true);
     try {
       if (section === 'about') {
         await ApiService.updateTemple(
-          temple.id,
+          activeTemple.id,
           {
             name: name.trim(),
             primaryDeity: deity.trim(),
@@ -101,7 +129,7 @@ export const QuickEditModal: React.FC<Props> = ({
         );
       } else if (section === 'speciality') {
         await ApiService.updateTemple(
-          temple.id,
+          activeTemple.id,
           {
             speciality: speciality.trim(),
           },
@@ -125,7 +153,7 @@ export const QuickEditModal: React.FC<Props> = ({
         }
 
         await ApiService.addTempleTiming(
-          temple.id,
+          activeTemple.id,
           {
             title: timingTitle.trim(),
             timeWindow: constructedWindow,
@@ -144,7 +172,7 @@ export const QuickEditModal: React.FC<Props> = ({
         }
         await ApiService.uploadTempleMedia(
           {
-            templeId: temple.id,
+            templeId: activeTemple.id,
             title: mediaTitle.trim() || 'Sanctum View',
             url: mediaUrl.trim(),
             mediaUrl: mediaUrl.trim(),
@@ -159,7 +187,7 @@ export const QuickEditModal: React.FC<Props> = ({
           return;
         }
         await ApiService.addTempleFestival(
-          temple.id,
+          activeTemple.id,
           {
             name: festName.trim(),
             period: festPeriod.trim() || 'Annual',
@@ -169,7 +197,7 @@ export const QuickEditModal: React.FC<Props> = ({
         );
       } else if (section === 'contact') {
         await ApiService.updateTemple(
-          temple.id,
+          activeTemple.id,
           {
             officePhone: phone.trim(),
             officialEmail: email.trim(),
@@ -217,7 +245,7 @@ export const QuickEditModal: React.FC<Props> = ({
           <View style={styles.header}>
             <View>
               <Text style={styles.title}>{getSectionTitle()}</Text>
-              <Text style={styles.templeSubtitle}>{temple.name}</Text>
+              <Text style={styles.templeSubtitle}>{activeTemple?.name || 'Select Temple'}</Text>
             </View>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
               <Text style={styles.closeText}>✕</Text>
@@ -225,6 +253,66 @@ export const QuickEditModal: React.FC<Props> = ({
           </View>
 
           <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent} showsVerticalScrollIndicator={false}>
+            {/* Temple Selector: User chooses which of their temples to add/edit */}
+            <View style={styles.selectorContainer}>
+              <Text style={styles.selectorLabel}>Select Temple / Mandir</Text>
+              <TouchableOpacity
+                style={styles.selectorButton}
+                activeOpacity={0.8}
+                onPress={() => setIsPickerOpen((prev) => !prev)}
+              >
+                <View style={styles.selectorLeft}>
+                  <View style={styles.templeIconBadge}>
+                    <Text style={styles.templeIcon}>🛕</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.selectorTempleName} numberOfLines={1}>
+                      {activeTemple?.name || 'Select a temple'}
+                    </Text>
+                    <Text style={styles.selectorTempleDetails} numberOfLines={1}>
+                      {activeTemple?.primaryDeity || 'Lord Ayyappa'} • {activeTemple?.city || 'India'}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.selectorArrowBadge}>
+                  <Text style={styles.selectorArrow}>{isPickerOpen ? '▲' : '▼'}</Text>
+                </View>
+              </TouchableOpacity>
+
+              {isPickerOpen && (
+                <View style={styles.pickerDropdown}>
+                  {availableTemples.length === 0 ? (
+                    <Text style={styles.noTemplesText}>No temples registered yet.</Text>
+                  ) : (
+                    availableTemples.map((t) => {
+                      const isSelected = t.id === activeTemple?.id;
+                      return (
+                        <TouchableOpacity
+                          key={String(t.id)}
+                          style={[styles.pickerItem, isSelected && styles.pickerItemSelected]}
+                          activeOpacity={0.7}
+                          onPress={() => handleSelectTemple(t)}
+                        >
+                          <View style={{ flex: 1 }}>
+                            <Text style={[styles.pickerItemName, isSelected && styles.pickerItemNameSelected]}>
+                              {t.name}
+                            </Text>
+                            <Text style={styles.pickerItemSub}>
+                              {t.primaryDeity} • {t.city}, {t.state}
+                            </Text>
+                          </View>
+                          {isSelected ? (
+                            <View style={styles.selectedCheckBadge}>
+                              <Text style={styles.selectedCheckText}>✓</Text>
+                            </View>
+                          ) : null}
+                        </TouchableOpacity>
+                      );
+                    })
+                  )}
+                </View>
+              )}
+            </View>
             {section === 'about' && (
               <>
                 <Text style={styles.label}>Temple Name</Text>
@@ -508,5 +596,126 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#FFFDF8',
+  },
+  selectorContainer: {
+    marginBottom: 12,
+    backgroundColor: '#F9F6F0',
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E8E2D5',
+  },
+  selectorLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#0C251E',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  selectorButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFDF9',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: '#DFD8CA',
+  },
+  selectorLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 8,
+  },
+  templeIconBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#EFE9DD',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  templeIcon: {
+    fontSize: 18,
+  },
+  selectorTempleName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0C251E',
+  },
+  selectorTempleDetails: {
+    fontSize: 11,
+    color: '#71857C',
+    marginTop: 1,
+  },
+  selectorArrowBadge: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#F3EFE6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  selectorArrow: {
+    fontSize: 11,
+    color: '#55665D',
+    fontWeight: '700',
+  },
+  pickerDropdown: {
+    marginTop: 8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#DFD8CA',
+    overflow: 'hidden',
+  },
+  noTemplesText: {
+    padding: 12,
+    fontSize: 13,
+    color: '#71857C',
+    textAlign: 'center',
+  },
+  pickerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0ECE3',
+  },
+  pickerItemSelected: {
+    backgroundColor: '#E8F3EE',
+  },
+  pickerItemName: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#1B3B30',
+  },
+  pickerItemNameSelected: {
+    color: '#0C251E',
+    fontWeight: '700',
+  },
+  pickerItemSub: {
+    fontSize: 11,
+    color: '#71857C',
+    marginTop: 1,
+  },
+  selectedCheckBadge: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#173D32',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  selectedCheckText: {
+    color: '#FFFDF8',
+    fontSize: 12,
+    fontWeight: '700',
   },
 });
