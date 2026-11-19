@@ -170,24 +170,6 @@ export const DharmaKarthaDashboardScreen: React.FC<Props> = ({
             <View style={styles.avatarGlow} />
           </View>
 
-          {/* Golden DHARMA KARTHA Badge */}
-          <View style={styles.roleBadgeContainer}>
-            <LinearGradient
-              colors={['#FFF6E0', '#FFE6B0']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.roleBadge}
-            >
-              <Svg width={12} height={12} viewBox="0 0 24 24" fill="none">
-                <Path d="M12 2 L14 6 H10 Z" fill="#B37812" />
-                <Path d="M8 6 H16 L18 10 H6 Z" fill="#B37812" />
-                <Path d="M5 10 H19 L21 14 H3 Z" fill="#B37812" />
-                <Path d="M4 14 H20 V21 H4 Z" stroke="#B37812" strokeWidth={1.5} />
-              </Svg>
-              <Text style={styles.roleBadgeText}>DHARMA KARTHA</Text>
-            </LinearGradient>
-          </View>
-
           <Text style={styles.profileName}>{displayName}</Text>
           <Text style={styles.profileLocation}>{displayLocation}</Text>
         </View>

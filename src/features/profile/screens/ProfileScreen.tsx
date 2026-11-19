@@ -1632,13 +1632,6 @@ export const ProfileScreen: React.FC<Props> = ({
 
           {/* User Information */}
           <View style={styles.profileInfoContainer}>
-            {/* Strict Dynamic Role Badge */}
-            <View style={isDharmaKartha ? styles.roleBadgeDk : styles.roleBadgeCustomer}>
-              <Text style={isDharmaKartha ? styles.roleBadgeDkText : styles.roleBadgeCustomerText}>
-                {isDharmaKartha ? t('dharmaKarthaRole') : t('customerRole')}
-              </Text>
-            </View>
-
             <Text style={styles.devoteeName} numberOfLines={1}>
               {displayName}
             </Text>
