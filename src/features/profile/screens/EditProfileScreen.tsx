@@ -475,10 +475,11 @@ export const EditProfileScreen: React.FC<Props> = ({
   const [deityModalOpen, setDeityModalOpen] = useState(false);
   const [dobModalOpen, setDobModalOpen] = useState(false);
 
-  // Temp DOB state for modal
-  const [tempDay, setTempDay] = useState('15');
-  const [tempMonth, setTempMonth] = useState('Aug');
-  const [tempYear, setTempYear] = useState('1985');
+  // Temp DOB state for modal - dynamically parsed from devotee DOB if present
+  const parsedDob = currentUser?.dateOfBirth ? String(currentUser.dateOfBirth).split('T')[0].split('-') : null;
+  const [tempDay, setTempDay] = useState(parsedDob && parsedDob[2] ? String(parseInt(parsedDob[2], 10)) : '1');
+  const [tempMonth, setTempMonth] = useState(parsedDob && parsedDob[1] ? MONTHS[parseInt(parsedDob[1], 10) - 1] || 'Jan' : 'Jan');
+  const [tempYear, setTempYear] = useState(parsedDob && parsedDob[0] ? parsedDob[0] : '2000');
 
   // Android Back Handler
   useEffect(() => {
@@ -626,7 +627,11 @@ export const EditProfileScreen: React.FC<Props> = ({
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const asset = result.assets[0];
         setUploadingPhoto(true);
-        const userId = currentUser?.id || 1;
+        const userId = currentUser?.id;
+        if (!userId) {
+          setToastMessage('Please sign in to update your profile photo.');
+          return;
+        }
         const base64Data = asset.base64 ? `data:image/jpeg;base64,${asset.base64}` : asset.uri;
         try {
           const res = await ApiService.uploadDevoteePhoto(userId, base64Data);
@@ -664,7 +669,11 @@ export const EditProfileScreen: React.FC<Props> = ({
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const asset = result.assets[0];
         setUploadingPhoto(true);
-        const userId = currentUser?.id || 1;
+        const userId = currentUser?.id;
+        if (!userId) {
+          setToastMessage('Please sign in to update your profile photo.');
+          return;
+        }
         const base64Data = asset.base64 ? `data:image/jpeg;base64,${asset.base64}` : asset.uri;
         try {
           const res = await ApiService.uploadDevoteePhoto(userId, base64Data);

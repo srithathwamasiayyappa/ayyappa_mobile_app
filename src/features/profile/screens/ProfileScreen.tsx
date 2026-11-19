@@ -1025,7 +1025,12 @@ export const ProfileScreen: React.FC<Props> = ({
         officialWebsite: newMandirWebsite.trim(),
       };
 
-      const uid = currentUser?.id ? Number(currentUser.id) : 1;
+      const uid = currentUser?.id ? Number(currentUser.id) : null;
+      if (!uid) {
+        Alert.alert('Notice', 'Please sign in to register a temple.');
+        setSavingMandir(false);
+        return;
+      }
       const res = await ApiService.createDharmaKarthaTemple(uid, payload);
 
       if (res && res.success === false) {
@@ -1160,7 +1165,12 @@ export const ProfileScreen: React.FC<Props> = ({
 
     setSavingFestival(true);
     try {
-      const uid = currentUser?.id ? Number(currentUser.id) : 1;
+      const uid = currentUser?.id ? Number(currentUser.id) : null;
+      if (!uid) {
+        Alert.alert('Notice', 'Please sign in to register a temple.');
+        setSavingMandir(false);
+        return;
+      }
       const payload = {
         templeId,
         name: newFestivalName.trim(),
@@ -1262,7 +1272,12 @@ export const ProfileScreen: React.FC<Props> = ({
         officialWebsite: editMandirWebsite.trim(),
       };
 
-      const uid = currentUser?.id ? Number(currentUser.id) : 1;
+      const uid = currentUser?.id ? Number(currentUser.id) : null;
+      if (!uid) {
+        Alert.alert('Notice', 'Please sign in to register a temple.');
+        setSavingMandir(false);
+        return;
+      }
       await ApiService.updateDharmaKarthaTemple(uid, editingTempleId, payload);
       await fetchDkTemples();
 
@@ -1289,7 +1304,12 @@ export const ProfileScreen: React.FC<Props> = ({
     }
     setDeletingTempleLoading(true);
     try {
-      const uid = currentUser?.id ? Number(currentUser.id) : 1;
+      const uid = currentUser?.id ? Number(currentUser.id) : null;
+      if (!uid) {
+        Alert.alert('Notice', 'Please sign in to register a temple.');
+        setSavingMandir(false);
+        return;
+      }
       await ApiService.requestTempleDeletion(uid, deletingTemple.id, templeDeleteReason.trim());
       await ApiService.deleteDharmaKarthaTemple(uid, deletingTemple.id);
       await fetchDkTemples();
@@ -1357,7 +1377,12 @@ export const ProfileScreen: React.FC<Props> = ({
           style: 'destructive',
           onPress: async () => {
             try {
-              const uid = currentUser?.id ? Number(currentUser.id) : 1;
+              const uid = currentUser?.id ? Number(currentUser.id) : null;
+      if (!uid) {
+        Alert.alert('Notice', 'Please sign in to register a temple.');
+        setSavingMandir(false);
+        return;
+      }
               await ApiService.deleteDharmaKarthaFestival(uid, fest.id);
               await fetchDkFestivals();
               Alert.alert('Festival Deleted 🙏', `"${fest.name}" has been deleted successfully.`);
@@ -1381,7 +1406,12 @@ export const ProfileScreen: React.FC<Props> = ({
           style: 'destructive',
           onPress: async () => {
             try {
-              const uid = currentUser?.id ? Number(currentUser.id) : 1;
+              const uid = currentUser?.id ? Number(currentUser.id) : null;
+      if (!uid) {
+        Alert.alert('Notice', 'Please sign in to register a temple.');
+        setSavingMandir(false);
+        return;
+      }
               await ApiService.deleteDharmaKarthaEvent(uid, evt.id);
               await fetchDkEvents();
               Alert.alert('Event Deleted 🙏', `"${evt.title}" has been deleted successfully.`);
@@ -1405,7 +1435,12 @@ export const ProfileScreen: React.FC<Props> = ({
           style: 'destructive',
           onPress: async () => {
             try {
-              const uid = currentUser?.id ? Number(currentUser.id) : 1;
+              const uid = currentUser?.id ? Number(currentUser.id) : null;
+      if (!uid) {
+        Alert.alert('Notice', 'Please sign in to register a temple.');
+        setSavingMandir(false);
+        return;
+      }
               await ApiService.deleteDharmaKarthaMedia(uid, m.id);
               await fetchDkMedia();
               Alert.alert('Photo Deleted 🙏', 'Photo has been deleted successfully.');
@@ -1625,7 +1660,11 @@ export const ProfileScreen: React.FC<Props> = ({
   };
 
   const handleSaveAvatar = async (asset: ImagePicker.ImagePickerAsset) => {
-    const userId = currentUser?.id ? Number(currentUser.id) : (profile?.id ? Number(profile.id) : 1);
+    const userId = currentUser?.id ? Number(currentUser.id) : (profile?.id ? Number(profile.id) : null);
+    if (!userId) {
+      Alert.alert('Login Required', 'Please log in to update your profile photo.');
+      return;
+    }
     const base64Data = asset.base64 ? `data:image/jpeg;base64,${asset.base64}` : asset.uri;
     setUploadingAvatar(true);
     try {
@@ -1861,6 +1900,79 @@ export const ProfileScreen: React.FC<Props> = ({
           </View>
         </View>
 
+        {/* SACRED DEVOTEE SPIRITUAL DETAILS CARD (Dynamic from Database) */}
+        {!isGuest && (
+          <View style={styles.devoteeDetailsCard}>
+            <View style={styles.devoteeDetailsHeaderRow}>
+              <View style={styles.devoteeDetailsHeaderTitleRow}>
+                <Text style={{ fontSize: 16, marginRight: 6 }}>🕉️</Text>
+                <Text style={styles.devoteeDetailsHeaderTitle}>
+                  {currentLanguage === 'te' ? 'భక్తుని వివరాలు' : 'Sacred Devotee Details'}
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={onOpenEditProfile}
+                style={styles.devoteeDetailsEditPill}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.devoteeDetailsEditText}>
+                  {currentLanguage === 'te' ? 'సవరించండి ✏️' : 'Edit ✏️'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.devoteeDetailsGrid}>
+              {/* Rashi */}
+              <View style={styles.devoteeGridItem}>
+                <Text style={styles.devoteeGridLabel}>{currentLanguage === 'te' ? 'రాశి (Zodiac)' : 'Rashi (Zodiac)'}</Text>
+                <Text style={styles.devoteeGridValue} numberOfLines={1}>
+                  {profile?.rashiName || currentUser?.rashiName || '—'}
+                </Text>
+              </View>
+
+              {/* Nakshatram */}
+              <View style={styles.devoteeGridItem}>
+                <Text style={styles.devoteeGridLabel}>{currentLanguage === 'te' ? 'నక్షత్రం' : 'Nakshatram'}</Text>
+                <Text style={styles.devoteeGridValue} numberOfLines={1}>
+                  {profile?.nakshatraName || currentUser?.nakshatraName || '—'}
+                </Text>
+              </View>
+
+              {/* DOB */}
+              <View style={styles.devoteeGridItem}>
+                <Text style={styles.devoteeGridLabel}>{currentLanguage === 'te' ? 'పుట్టిన తేదీ' : 'Date of Birth'}</Text>
+                <Text style={styles.devoteeGridValue} numberOfLines={1}>
+                  {profile?.dateOfBirth ? String(profile.dateOfBirth).split('T')[0] : (currentUser?.dateOfBirth ? String(currentUser.dateOfBirth).split('T')[0] : '—')}
+                </Text>
+              </View>
+
+              {/* Gender */}
+              <View style={styles.devoteeGridItem}>
+                <Text style={styles.devoteeGridLabel}>{currentLanguage === 'te' ? 'లింగము' : 'Gender'}</Text>
+                <Text style={styles.devoteeGridValue} numberOfLines={1}>
+                  {profile?.gender || currentUser?.gender || '—'}
+                </Text>
+              </View>
+
+              {/* Location */}
+              <View style={styles.devoteeGridItem}>
+                <Text style={styles.devoteeGridLabel}>{currentLanguage === 'te' ? 'స్థలం' : 'Location'}</Text>
+                <Text style={styles.devoteeGridValue} numberOfLines={1}>
+                  {[profile?.city || currentUser?.city, profile?.state || currentUser?.state].filter(Boolean).join(', ') || '—'}
+                </Text>
+              </View>
+
+              {/* Devotee Since */}
+              <View style={styles.devoteeGridItem}>
+                <Text style={styles.devoteeGridLabel}>{currentLanguage === 'te' ? 'భక్తుని కాలం' : 'Devotee Since'}</Text>
+                <Text style={styles.devoteeGridValue} numberOfLines={1}>
+                  {profile?.devoteeSince || currentUser?.devoteeSince || 'Recent'}
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
+
         {/* DHARMA KARTHA SACRED TRUSTEE MANDIR DASHBOARD (Rendered exclusively for Dharma Kartha) */}
         {isDharmaKartha && (
           <View style={styles.dkTrusteeCard}>
@@ -1871,10 +1983,10 @@ export const ProfileScreen: React.FC<Props> = ({
               </View>
               <View style={styles.dkMandirTextBox}>
                 <Text style={styles.dkMandirTitle} numberOfLines={1}>
-                  {dkTemples[0]?.name || 'Sri Dharma Sastha Mandir'}
+                  {dkTemples[0]?.name || (currentLanguage === 'te' ? 'నమోదు చేసుకున్న మందిరం లేదు' : 'No Registered Mandir')}
                 </Text>
                 <Text style={styles.dkMandirSubtitle}>
-                  Managed by {profile?.city || currentUser?.city || 'Hyderabad'}
+                  {profile?.city || currentUser?.city ? `${profile?.city || currentUser?.city}` : (currentLanguage === 'te' ? 'ధర్మకర్త డాష్‌బోర్డ్' : 'Dharma Kartha Dashboard')}
                 </Text>
               </View>
             </View>
@@ -4053,7 +4165,8 @@ export const ProfileScreen: React.FC<Props> = ({
                 style={[styles.avatarOptionRow, { borderBottomWidth: 0 }]}
                 onPress={async () => {
                   setAvatarModalOpen(false);
-                  const userId = currentUser?.id ? Number(currentUser.id) : 1;
+                  const userId = currentUser?.id ? Number(currentUser.id) : (profile?.id ? Number(profile.id) : null);
+                  if (!userId) return;
                   try {
                     await ApiService.updateDevoteeProfile(userId, { profileImageUrl: null });
                     setProfile((prev: any) => prev ? { ...prev, profileImageUrl: null } : null);
@@ -4262,6 +4375,74 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#0C251E',
     marginLeft: 6,
+  },
+
+  // Sacred Devotee Details Card Styles
+  devoteeDetailsCard: {
+    backgroundColor: '#FFFDF9',
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#E8D8BF',
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#173D32',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  devoteeDetailsHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0E5D4',
+    marginBottom: 12,
+  },
+  devoteeDetailsHeaderTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  devoteeDetailsHeaderTitle: {
+    fontSize: 15.5,
+    fontWeight: '700',
+    color: '#0C251E',
+    letterSpacing: 0.2,
+  },
+  devoteeDetailsEditPill: {
+    backgroundColor: '#FFF5E0',
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#DFA62E',
+  },
+  devoteeDetailsEditText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#8B1D24',
+  },
+  devoteeDetailsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginHorizontal: -4,
+  },
+  devoteeGridItem: {
+    width: '50%',
+    paddingHorizontal: 4,
+    paddingVertical: 7,
+  },
+  devoteeGridLabel: {
+    fontSize: 11.5,
+    color: '#7D6D60',
+    fontWeight: '500',
+    marginBottom: 2,
+  },
+  devoteeGridValue: {
+    fontSize: 14,
+    color: '#0C251E',
+    fontWeight: '700',
   },
 
   // 6 Menu Cards

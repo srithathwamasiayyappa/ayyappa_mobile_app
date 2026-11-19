@@ -150,7 +150,9 @@ export const DharmaKarthaDashboardScreen: React.FC<Props> = ({
 
   const rawName = profile?.fullName || currentUser?.fullName || currentUser?.name;
   const displayName = (rawName && !rawName.startsWith('Devotee #')) ? rawName : (currentUser?.phone || currentUser?.phoneNumber || 'Dharma Kartha');
-  const displayLocation = `${profile?.city || currentUser?.city || 'Hyderabad'}, India • Lord Ayyappa`;
+  const displayLocation = profile?.city || currentUser?.city
+    ? `${profile?.city || currentUser?.city}, India • Lord Ayyappa`
+    : 'Dharma Kartha Trustee • Lord Ayyappa';
   const dkAvatarUri = profile?.profileImageUrl || profile?.avatarUrl || currentUser?.profileImageUrl || currentUser?.avatarUrl;
 
   return (

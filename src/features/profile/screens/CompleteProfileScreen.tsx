@@ -557,7 +557,12 @@ export const CompleteProfileScreen: React.FC<Props> = ({
     }
 
     setSaving(true);
-    const userId = currentUser?.id || 1;
+    const userId = currentUser?.id;
+    if (!userId) {
+      setSaving(false);
+      showToast('Devotee session not found. Please log in first.', 'error');
+      return;
+    }
 
     const payload: Partial<DevoteeProfile> = {
       fullName: trimmedName,
