@@ -211,11 +211,13 @@ export const AuthScreen: React.FC<Props> = ({
   // Devotee Toast Notifications
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  const [toastTitle, setToastTitle] = useState<string | undefined>(undefined);
   const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('success');
 
-  const showToast = (msg: string, type: 'success' | 'error' | 'info' = 'success') => {
+  const showToast = (msg: string, type: 'success' | 'error' | 'info' = 'success', title?: string) => {
     setToastMessage(msg);
     setToastType(type);
+    setToastTitle(title);
     setToastVisible(true);
   };
 
@@ -639,6 +641,7 @@ export const AuthScreen: React.FC<Props> = ({
       {/* Devotee Feedback Toast */}
       <Toast
         visible={toastVisible}
+        title={toastTitle}
         message={toastMessage}
         type={toastType}
         onHide={() => setToastVisible(false)}

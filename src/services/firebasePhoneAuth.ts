@@ -110,7 +110,7 @@ class FirebasePhoneAuthServiceClass {
 
       return {
         success: true,
-        message: `OTP sent to ${phoneE164}. (In Expo Go preview mode, enter verification code: 123456)`,
+        message: `OTP sent to ${phoneE164} • Test Code: 123456`,
       };
     }
 
