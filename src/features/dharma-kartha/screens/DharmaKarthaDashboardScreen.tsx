@@ -358,7 +358,7 @@ export const DharmaKarthaDashboardScreen: React.FC<Props> = ({
             /* Empty State matching image 2 */
             <View style={styles.emptyCard}>
               <View style={styles.emptyIconCircle}>
-                <Svg width={36} height={36} viewBox="0 0 24 24" fill="none">
+                <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
                   <Path d="M12 2 L14 6 H10 Z" fill="#DFA62E" />
                   <Path d="M8 6 H16 L18 10 H6 Z" fill="#DFA62E" />
                   <Path d="M5 10 H19 L21 14 H3 Z" fill="#DFA62E" />
@@ -858,55 +858,56 @@ const styles = StyleSheet.create({
   },
   emptyCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 24,
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#EAE4D5',
   },
   emptyIconCircle: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: '#FAF7F0',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 14,
+    marginBottom: 8,
     borderWidth: 1.5,
     borderColor: '#E8DEC9',
   },
   emptyTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '700',
     color: '#0C251E',
-    marginBottom: 6,
+    marginBottom: 4,
   },
   emptyDesc: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#65776F',
     textAlign: 'center',
-    lineHeight: 17,
-    paddingHorizontal: 16,
-    marginBottom: 16,
+    lineHeight: 15,
+    paddingHorizontal: 8,
+    marginBottom: 10,
   },
   registerCtaBtn: {
-    borderRadius: 12,
+    borderRadius: 10,
     overflow: 'hidden',
   },
   registerCtaBtnGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 18,
-    paddingVertical: 11,
-    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    gap: 6,
   },
   registerCtaBtnIcon: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#0C251E',
     fontWeight: 'bold',
   },
   registerCtaBtnText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
     color: '#0C251E',
   },
