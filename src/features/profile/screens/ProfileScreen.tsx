@@ -17,6 +17,7 @@ import {
   TextInput,
   RefreshControl,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle, Rect, G } from 'react-native-svg';
 import { ApiService } from '../../../services/api';
@@ -115,6 +116,17 @@ const ChevronRightIcon = () => (
 );
 
 // Close (X) Icon
+const CameraBadgeIcon = () => (
+  <Svg width={13} height={13} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2 3h4a2 2 0 0 1 2 2z"
+      fill="#FFFFFF"
+    />
+    <Circle cx="12" cy="13" r="4" fill="#8B1D24" />
+    <Circle cx="12" cy="13" r="2" fill="#FFFFFF" />
+  </Svg>
+);
+
 const CloseIcon = () => (
   <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
     <Path
@@ -832,6 +844,9 @@ export const ProfileScreen: React.FC<Props> = ({
   const [availableLanguages, setAvailableLanguages] = useState<any[]>([]);
   const [loadingLanguages, setLoadingLanguages] = useState<boolean>(false);
   const [switchingLanguage, setSwitchingLanguage] = useState<boolean>(false);
+  const [refreshingProfile, setRefreshingProfile] = useState<boolean>(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState<boolean>(false);
+  const [avatarModalOpen, setAvatarModalOpen] = useState<boolean>(false);
   const [loggingOut, setLoggingOut] = useState<boolean>(false);
 
   // Devotee Account Deletion with OTP Verification State
@@ -1529,6 +1544,110 @@ export const ProfileScreen: React.FC<Props> = ({
     setBookmarksLoading(false);
   };
 
+  // Refresh Profile & Mandir Data dynamically from DB
+  const handleRefreshProfile = async () => {
+    setRefreshingProfile(true);
+    try {
+      if (currentUser?.id) {
+        const freshProfile = await ApiService.getDevoteeProfile(currentUser.id, currentLanguage);
+        if (freshProfile) {
+          setProfile(freshProfile);
+        }
+      }
+      if (activeRole === 'DHARMA_KARTHA') {
+        await fetchDkTemples();
+      }
+    } catch (e) {
+      console.warn('Refresh profile error:', e);
+    } finally {
+      setRefreshingProfile(false);
+    }
+  };
+
+  // Avatar Management: dynamically select, upload to DB and update state
+  const handleOpenAvatarModal = () => {
+    if (isGuest) {
+      if (onOpenAuth) onOpenAuth();
+      else if (onOpenEditProfile) onOpenEditProfile();
+      return;
+    }
+    setAvatarModalOpen(true);
+  };
+
+  const handleCaptureAvatarCamera = async () => {
+    setAvatarModalOpen(false);
+    try {
+      const perm = await ImagePicker.requestCameraPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert('Permission Needed', 'Camera permission is required to capture your profile photo.');
+        return;
+      }
+      const res = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+        base64: true,
+      });
+      if (!res.canceled && res.assets && res.assets.length > 0) {
+        await handleSaveAvatar(res.assets[0]);
+      }
+    } catch (err: any) {
+      Alert.alert('Error', err?.message || 'Failed to capture photo.');
+    }
+  };
+
+  const handlePickAvatarGallery = async () => {
+    setAvatarModalOpen(false);
+    try {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert('Permission Needed', 'Photo gallery permission is required to select your profile picture.');
+        return;
+      }
+      const res = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+        base64: true,
+      });
+      if (!res.canceled && res.assets && res.assets.length > 0) {
+        await handleSaveAvatar(res.assets[0]);
+      }
+    } catch (err: any) {
+      Alert.alert('Error', err?.message || 'Failed to select image.');
+    }
+  };
+
+  const handleSaveAvatar = async (asset: ImagePicker.ImagePickerAsset) => {
+    const userId = currentUser?.id ? Number(currentUser.id) : (profile?.id ? Number(profile.id) : 1);
+    const base64Data = asset.base64 ? `data:image/jpeg;base64,${asset.base64}` : asset.uri;
+    setUploadingAvatar(true);
+    try {
+      const uploadRes = await ApiService.uploadDevoteePhoto(userId, base64Data);
+      const finalUrl = (typeof uploadRes === 'string' ? uploadRes : (uploadRes as any)?.profileImageUrl) || base64Data;
+
+      await ApiService.updateDevoteeProfile(userId, { profileImageUrl: finalUrl });
+
+      setProfile((prev: any) => (prev ? { ...prev, profileImageUrl: finalUrl } : { profileImageUrl: finalUrl } as any));
+      if (dkProfile) {
+        setDkProfile((prev: any) => (prev ? { ...prev, profileImageUrl: finalUrl } : prev));
+      }
+
+      await StorageService.setStoredUser({
+        ...(currentUser || {}),
+        profileImageUrl: finalUrl,
+      });
+
+      Alert.alert('Profile Logo Updated 🙏', 'Your profile picture has been dynamically updated and saved in the database.');
+    } catch {
+      setProfile((prev: any) => (prev ? { ...prev, profileImageUrl: base64Data } : { profileImageUrl: base64Data } as any));
+      Alert.alert('Profile Photo Updated', 'Profile picture has been updated.');
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
   // Hardware Back Press
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -1562,15 +1681,16 @@ export const ProfileScreen: React.FC<Props> = ({
   }, [logoutModalVisible, deleteModalVisible, bookmarksModalVisible, preferencesModalVisible, legalModalVisible, onBack]);
 
   const isGuest = !currentUser;
-  const rawFullName = profile?.fullName || currentUser?.fullName || currentUser?.name || currentUser?.email?.split('@')[0];
+  const rawFullName = profile?.fullName || currentUser?.fullName || currentUser?.name || (currentUser?.email ? currentUser.email.split('@')[0] : '');
   const displayName = isGuest
     ? t('guestDevotee')
-    : (rawFullName && !rawFullName.startsWith('Devotee #') ? rawFullName : 'Vinod Kumar');
+    : (rawFullName && !rawFullName.startsWith('Devotee #'))
+      ? rawFullName
+      : (profile?.phoneNumber || currentUser?.phoneNumber || currentUser?.phone || (isDharmaKartha ? 'Dharma Kartha' : 'Devotee'));
+  const fullPhone = profile?.phoneNumber || currentUser?.phoneNumber || currentUser?.phone;
   const displayPhone = isGuest
     ? t('guestModeSubtitle')
-    : (profile?.phoneNumber || currentUser?.phoneNumber || currentUser?.phone)
-      ? getMaskedPhone(profile?.phoneNumber || currentUser?.phoneNumber || currentUser?.phone)
-      : currentUser?.email || '';
+    : fullPhone || currentUser?.email || '';
 
   const photoUri = profile?.profileImageUrl || currentUser?.profileImageUrl;
   const avatarSource = photoUri ? { uri: photoUri } : DEFAULT_AVATAR;
@@ -1683,15 +1803,37 @@ export const ProfileScreen: React.FC<Props> = ({
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshingProfile}
+            onRefresh={handleRefreshProfile}
+            colors={['#8B1D24', '#DFA62E']}
+            tintColor="#8B1D24"
+          />
+        }
       >
         {/* Top Profile Summary Card */}
         <View style={styles.profileSummaryCard}>
-          {/* Circular Avatar with Gold Ornamental Border */}
-          <View style={styles.avatarContainer}>
+          {/* Circular Avatar with Gold Ornamental Border & Dynamic Change Badge */}
+          <TouchableOpacity
+            style={styles.avatarContainer}
+            activeOpacity={0.85}
+            onPress={handleOpenAvatarModal}
+            disabled={uploadingAvatar}
+          >
             <View style={styles.avatarBorder}>
-              <Image source={avatarSource} style={styles.avatarImage} resizeMode="cover" />
+              {uploadingAvatar ? (
+                <View style={[styles.avatarImage, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFF7E6' }]}>
+                  <ActivityIndicator size="small" color="#DFA62E" />
+                </View>
+              ) : (
+                <Image source={avatarSource} style={styles.avatarImage} resizeMode="cover" />
+              )}
             </View>
-          </View>
+            <View style={styles.avatarCameraBadge}>
+              <CameraBadgeIcon />
+            </View>
+          </TouchableOpacity>
 
           {/* User Information */}
           <View style={styles.profileInfoContainer}>
@@ -1700,8 +1842,8 @@ export const ProfileScreen: React.FC<Props> = ({
             </Text>
             <Text style={styles.devoteePhone}>{displayPhone}</Text>
 
-            {/* Golden Rounded Edit Profile / Login Button */}
-            {isGuest ? (
+            {/* Login / Register for Guest only (Edit Profile button removed since Row 1 below handles editing) */}
+            {isGuest && (
               <TouchableOpacity
                 style={styles.editProfileBtn}
                 activeOpacity={0.8}
@@ -1709,15 +1851,6 @@ export const ProfileScreen: React.FC<Props> = ({
               >
                 <PencilIcon />
                 <Text style={styles.editProfileBtnText}>{t('loginRegister')}</Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                style={styles.editProfileBtn}
-                activeOpacity={0.8}
-                onPress={onOpenEditProfile}
-              >
-                <PencilIcon />
-                <Text style={styles.editProfileBtnText}>{t('editProfile')}</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -3998,6 +4131,84 @@ export const ProfileScreen: React.FC<Props> = ({
           </View>
         </View>
       </Modal>
+      {/* MODAL: CHANGE PROFILE AVATAR / LOGO */}
+      <Modal
+        visible={avatarModalOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setAvatarModalOpen(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlayBottom}
+          activeOpacity={1}
+          onPress={() => setAvatarModalOpen(false)}
+        >
+          <View style={styles.bottomSheetCard}>
+            <View style={styles.sheetHeader}>
+              <Text style={styles.sheetHeaderTitle}>Change Profile Logo</Text>
+              <TouchableOpacity
+                onPress={() => setAvatarModalOpen(false)}
+                style={styles.closeBtn}
+              >
+                <CloseIcon />
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ paddingHorizontal: 20, paddingVertical: 16 }}>
+              <TouchableOpacity
+                style={styles.avatarOptionRow}
+                onPress={handleCaptureAvatarCamera}
+              >
+                <View style={[styles.avatarOptionIconBox, { backgroundColor: '#FFF3E0' }]}>
+                  <CameraBadgeIcon />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.avatarOptionTitle}>Take Photo with Camera</Text>
+                  <Text style={styles.avatarOptionSubtitle}>Capture a new devotional profile photo</Text>
+                </View>
+                <ChevronRightIcon />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.avatarOptionRow}
+                onPress={handlePickAvatarGallery}
+              >
+                <View style={[styles.avatarOptionIconBox, { backgroundColor: '#E8F5E9' }]}>
+                  <Text style={{ fontSize: 18 }}>🖼️</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.avatarOptionTitle}>Choose from Gallery</Text>
+                  <Text style={styles.avatarOptionSubtitle}>Select an existing image from your device</Text>
+                </View>
+                <ChevronRightIcon />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.avatarOptionRow, { borderBottomWidth: 0 }]}
+                onPress={async () => {
+                  setAvatarModalOpen(false);
+                  const userId = currentUser?.id ? Number(currentUser.id) : 1;
+                  try {
+                    await ApiService.updateDevoteeProfile(userId, { profileImageUrl: null });
+                    setProfile((prev: any) => prev ? { ...prev, profileImageUrl: null } : null);
+                    await StorageService.setStoredUser({ ...(currentUser || {}), profileImageUrl: null });
+                    Alert.alert('Default Logo Restored 🙏', 'Restored default devotional emblem.');
+                  } catch {}
+                }}
+              >
+                <View style={[styles.avatarOptionIconBox, { backgroundColor: '#F3E5F5' }]}>
+                  <Text style={{ fontSize: 18 }}>🕉️</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.avatarOptionTitle}>Use Default Devotional Emblem</Text>
+                  <Text style={styles.avatarOptionSubtitle}>Reset to traditional sacred emblem</Text>
+                </View>
+                <ChevronRightIcon />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -4083,6 +4294,50 @@ const styles = StyleSheet.create({
   },
   avatarContainer: {
     marginRight: 16,
+    position: 'relative',
+  },
+  avatarCameraBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    backgroundColor: '#8B1D24',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.25,
+    shadowRadius: 2,
+  },
+  avatarOptionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0E8DC',
+    gap: 14,
+  },
+  avatarOptionIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarOptionTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0C251E',
+  },
+  avatarOptionSubtitle: {
+    fontSize: 12,
+    color: '#777',
+    marginTop: 2,
   },
   avatarBorder: {
     width: 74,

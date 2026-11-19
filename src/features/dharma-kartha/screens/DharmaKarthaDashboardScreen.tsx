@@ -149,8 +149,9 @@ export const DharmaKarthaDashboardScreen: React.FC<Props> = ({
   }
 
   const rawName = profile?.fullName || currentUser?.fullName || currentUser?.name;
-  const displayName = (rawName && !rawName.startsWith('Devotee #')) ? rawName : 'Vinod Kumar';
-  const displayLocation = `${profile?.city || 'Hyderabad'}, India • Lord Ayyappa`;
+  const displayName = (rawName && !rawName.startsWith('Devotee #')) ? rawName : (currentUser?.phone || currentUser?.phoneNumber || 'Dharma Kartha');
+  const displayLocation = `${profile?.city || currentUser?.city || 'Hyderabad'}, India • Lord Ayyappa`;
+  const dkAvatarUri = profile?.profileImageUrl || profile?.avatarUrl || currentUser?.profileImageUrl || currentUser?.avatarUrl;
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -164,7 +165,7 @@ export const DharmaKarthaDashboardScreen: React.FC<Props> = ({
         <View style={styles.profileHeaderCard}>
           <View style={styles.avatarContainer}>
             <Image
-              source={profile?.avatarUrl && !profile.avatarUrl.includes('base64') ? { uri: profile.avatarUrl } : DEFAULT_AVATAR}
+              source={dkAvatarUri ? { uri: dkAvatarUri } : DEFAULT_AVATAR}
               style={styles.avatarImg}
             />
             <View style={styles.avatarGlow} />

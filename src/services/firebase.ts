@@ -165,7 +165,7 @@ export class FirebaseService {
 
     // 2. Devotee Authentic Account for Expo Go (thatipallyvinodkumar1@gmail.com)
     const email = (customEmail || 'thatipallyvinodkumar1@gmail.com').trim();
-    const fullName = (customName || 'Vinod Kumar').trim();
+    const fullName = (customName || 'Devotee').trim();
     const googleId = `google_${Date.now()}`;
 
     let base64Payload = '';
