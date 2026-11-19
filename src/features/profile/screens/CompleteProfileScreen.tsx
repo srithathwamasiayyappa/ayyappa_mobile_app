@@ -567,7 +567,7 @@ export const CompleteProfileScreen: React.FC<Props> = ({
     const payload: Partial<DevoteeProfile> = {
       fullName: trimmedName,
       dateOfBirth: dobYmd || null,
-      gender: gender || 'Male',
+      gender: gender ? gender.trim() : null,
       rashiId: selectedRashiId || null,
       nakshatraId: selectedNakshatraId || null,
       profileOnboardingStatus: 'COMPLETED',

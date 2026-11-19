@@ -421,12 +421,30 @@ export const EditProfileScreen: React.FC<Props> = ({
   const activeLang = currentLanguage || 'te';
 
   // --- Dynamic State (Strictly bound to authenticated currentUser) ---
+  const formatInitialDob = (dateVal?: any): string => {
+    if (!dateVal) return '';
+    try {
+      const raw = String(dateVal).split('T')[0];
+      const parts = raw.split('-');
+      if (parts.length === 3) {
+        const y = parseInt(parts[0], 10);
+        const m = parseInt(parts[1], 10) - 1;
+        const d = parseInt(parts[2], 10);
+        if (!isNaN(d) && !isNaN(m) && !isNaN(y) && MONTHS[m]) {
+          return `${d} ${MONTHS[m]} ${y}`;
+        }
+      }
+    } catch {}
+    return String(dateVal);
+  };
+
   const [fullName, setFullName] = useState(currentUser?.fullName || currentUser?.name || '');
   const [phoneNumber, setPhoneNumber] = useState(currentUser?.phoneNumber || currentUser?.phone || '');
   const [isVerified, setIsVerified] = useState(Boolean(currentUser?.phoneNumber || currentUser?.isVerifiedPhone));
   const [devoteeSince, setDevoteeSince] = useState(currentUser?.devoteeSince || '');
-  const [dob, setDob] = useState(currentUser?.dateOfBirth || '');
-  const [gender, setGender] = useState<'Male' | 'Female' | 'Other' | ''>(currentUser?.gender || '');
+  const [dobDisplay, setDobDisplay] = useState(currentUser?.dateOfBirth ? formatInitialDob(currentUser.dateOfBirth) : '');
+  const [dobYmd, setDobYmd] = useState(currentUser?.dateOfBirth ? String(currentUser.dateOfBirth).split('T')[0] : '');
+  const [gender, setGender] = useState<string>(currentUser?.gender || '');
 
   // Zodiac & Star
   const [rashis, setRashis] = useState<RashiItem[]>([]);
@@ -556,8 +574,18 @@ export const EditProfileScreen: React.FC<Props> = ({
               if (profile.fullName) setFullName(profile.fullName);
               if (profile.phoneNumber) setPhoneNumber(profile.phoneNumber);
               if (profile.email) setEmail(profile.email);
-              if (profile.dateOfBirth) setDob(profile.dateOfBirth);
-              if (profile.gender === 'Female' || profile.gender === 'Male' || profile.gender === 'Other') {
+              if (profile.dateOfBirth) {
+                const raw = String(profile.dateOfBirth).split('T')[0];
+                setDobYmd(raw);
+                setDobDisplay(formatInitialDob(raw));
+                const parts = raw.split('-');
+                if (parts.length === 3) {
+                  setTempDay(String(parseInt(parts[2], 10)));
+                  setTempMonth(MONTHS[parseInt(parts[1], 10) - 1] || 'Jan');
+                  setTempYear(parts[0]);
+                }
+              }
+              if (profile.gender) {
                 setGender(profile.gender);
               }
               if (profile.rashiId) {
@@ -697,7 +725,7 @@ export const EditProfileScreen: React.FC<Props> = ({
   const validateForm = () => {
     const errs: Record<string, string> = {};
     if (!fullName.trim()) errs.fullName = 'Full Name is required';
-    if (!dob.trim()) errs.dob = 'Date of Birth is required';
+    if (!dobYmd && !dobDisplay.trim()) errs.dob = 'Date of Birth is required';
     if (!gender) errs.gender = 'Gender is required';
     if (!selectedRashiId && !selectedRashiName) errs.rashi = 'Rashi is required';
     if (!selectedNakshatraId && !selectedNakshatraName) errs.nakshatra = 'Nakshatram is required';
@@ -739,8 +767,8 @@ export const EditProfileScreen: React.FC<Props> = ({
     const payload: Partial<DevoteeProfile> = {
       fullName: fullName.trim(),
       email: email.trim(),
-      dateOfBirth: dob.trim(),
-      gender,
+      dateOfBirth: dobYmd || (dobDisplay ? dobDisplay.trim() : null),
+      gender: gender ? gender.trim() : null,
       rashiId: selectedRashiId,
       rashiName: selectedRashiName,
       nakshatraId: selectedNakshatraId,
@@ -772,6 +800,7 @@ export const EditProfileScreen: React.FC<Props> = ({
       setToastMessage('Profile updated successfully');
 
       const mergedUser = (updated as any)?.user || updated || { ...currentUser, ...payload, profileImageUrl };
+      await StorageService.setStoredUser(mergedUser);
       setTimeout(() => {
         if (onProfileSaved) {
           onProfileSaved(mergedUser);
@@ -982,8 +1011,8 @@ export const EditProfileScreen: React.FC<Props> = ({
                   activeOpacity={0.8}
                 >
                   <CalendarFieldIcon />
-                  <Text style={styles.dropdownValueText} numberOfLines={1}>
-                    {dob}
+                  <Text style={[styles.dropdownValueText, !dobDisplay && { color: '#8C7A6B' }]} numberOfLines={1}>
+                    {dobDisplay || 'Select Date of Birth'}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -999,8 +1028,8 @@ export const EditProfileScreen: React.FC<Props> = ({
                   activeOpacity={0.8}
                 >
                   <GenderFieldIcon />
-                  <Text style={styles.dropdownValueText} numberOfLines={1}>
-                    {gender}
+                  <Text style={[styles.dropdownValueText, !gender && { color: '#8C7A6B' }]} numberOfLines={1}>
+                    {gender || 'Select Gender'}
                   </Text>
                   <ChevronDownIcon />
                 </TouchableOpacity>
@@ -1700,9 +1729,13 @@ export const EditProfileScreen: React.FC<Props> = ({
                 style={styles.dobSaveBtn}
                 onPress={() => {
                   const day = tempDay.padStart(2, '0');
-                  const formatted = `${day} ${tempMonth} ${tempYear}`;
-                  setDob(formatted);
+                  const monthIdx = MONTHS.indexOf(tempMonth);
+                  const monthNum = String((monthIdx >= 0 ? monthIdx : 0) + 1).padStart(2, '0');
+                  const ymd = `${tempYear}-${monthNum}-${day}`;
+                  setDobYmd(ymd);
+                  setDobDisplay(`${day} ${tempMonth} ${tempYear}`);
                   setDobModalOpen(false);
+                  if (errors.dob) setErrors({ ...errors, dob: '' });
                 }}
               >
                 <Text style={styles.dobSaveBtnText}>Set Date</Text>
@@ -1728,7 +1761,7 @@ export const EditProfileScreen: React.FC<Props> = ({
           <View style={styles.modalOverlay}>
             <View style={styles.modalCard}>
               <Text style={styles.modalTitle}>Select Gender</Text>
-              {(['Male', 'Female', 'Other'] as const).map((item) => (
+              {(['Male', 'Female', 'Other', 'Prefer not to say'] as const).map((item) => (
                 <TouchableOpacity
                   key={item}
                   style={[

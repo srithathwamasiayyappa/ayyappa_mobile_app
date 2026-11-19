@@ -24,6 +24,7 @@ import { ApiService } from '../../../services/api';
 import { StorageService } from '../../../services/storageService';
 import { SupportedLanguage, DevoteeProfile, BookmarkItem, DeityItem } from '../../../types';
 import { DharmaKarthaDashboardScreen } from '../../dharma-kartha/screens/DharmaKarthaDashboardScreen';
+import { DevotionalDialog, DevotionalDialogType } from '../../../components/common/DevotionalDialog';
 
 interface Props {
   currentLanguage: SupportedLanguage;
@@ -859,6 +860,74 @@ export const ProfileScreen: React.FC<Props> = ({
   const [deleteSuccess, setDeleteSuccess] = useState<string | null>(null);
   const [otpCountdown, setOtpCountdown] = useState(0);
 
+  // Sacred Devotional Custom Alert & Confirm Dialog State
+  const [devotionalDialog, setDevotionalDialog] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    type?: DevotionalDialogType;
+    confirmText?: string;
+    cancelText?: string;
+    onConfirm?: () => void;
+    onCancel?: () => void;
+    isDestructive?: boolean;
+  }>({
+    visible: false,
+    title: '',
+    message: '',
+    type: 'success',
+    confirmText: 'OK',
+  });
+
+  const showAlert = (
+    title: string,
+    message: string,
+    onConfirm?: () => void,
+    type: DevotionalDialogType = 'success',
+    confirmText = 'OK'
+  ) => {
+    setDevotionalDialog({
+      visible: true,
+      title,
+      message,
+      type,
+      confirmText,
+      onConfirm: () => {
+        setDevotionalDialog((prev) => ({ ...prev, visible: false }));
+        if (onConfirm) onConfirm();
+      },
+    });
+  };
+
+  const showConfirm = (
+    title: string,
+    message: string,
+    onConfirm: () => void,
+    options?: {
+      confirmText?: string;
+      cancelText?: string;
+      isDestructive?: boolean;
+      type?: DevotionalDialogType;
+    }
+  ) => {
+    setDevotionalDialog({
+      visible: true,
+      title,
+      message,
+      type: options?.type || (options?.isDestructive ? 'warning' : 'info'),
+      confirmText: options?.confirmText || 'Confirm',
+      cancelText: options?.cancelText || 'Cancel',
+      isDestructive: options?.isDestructive,
+      onConfirm: () => {
+        setDevotionalDialog((prev) => ({ ...prev, visible: false }));
+        onConfirm();
+      },
+      onCancel: () => {
+        setDevotionalDialog((prev) => ({ ...prev, visible: false }));
+      },
+    });
+  };
+
   useEffect(() => {
     let timer: any;
     if (otpCountdown > 0) {
@@ -870,7 +939,7 @@ export const ProfileScreen: React.FC<Props> = ({
   const handleSendDeletionOtp = async () => {
     const rawPhone = profile?.phoneNumber || currentUser?.phoneNumber || currentUser?.phone;
     if (!rawPhone) {
-      Alert.alert('Verification Error', 'Registered phone number not found. Please log in again.');
+      showAlert('Verification Error', 'Registered phone number not found. Please log in again.', undefined, 'error');
       return;
     }
     setDeleteLoading(true);
@@ -988,11 +1057,11 @@ export const ProfileScreen: React.FC<Props> = ({
 
   const handleSaveNewMandir = async () => {
     if (!newMandirName.trim()) {
-      Alert.alert('Required Field', 'Please enter Temple Name.');
+      showAlert('Required Field', 'Please enter Temple Name.', undefined, 'warning');
       return;
     }
     if (!newMandirCity.trim()) {
-      Alert.alert('Required Field', 'Please enter City / Town.');
+      showAlert('Required Field', 'Please enter City / Town.', undefined, 'warning');
       return;
     }
     setSavingMandir(true);
@@ -1027,14 +1096,14 @@ export const ProfileScreen: React.FC<Props> = ({
 
       const uid = currentUser?.id ? Number(currentUser.id) : null;
       if (!uid) {
-        Alert.alert('Notice', 'Please sign in to register a temple.');
+        showAlert('Notice', 'Please sign in to register a temple.', undefined, 'info');
         setSavingMandir(false);
         return;
       }
       const res = await ApiService.createDharmaKarthaTemple(uid, payload);
 
       if (res && res.success === false) {
-        Alert.alert('Registration Notice', res.message || 'Could not register temple in database.');
+        showAlert('Registration Notice', res.message || 'Could not register temple in database.', undefined, 'warning');
         setSavingMandir(false);
         return;
       }
@@ -1042,9 +1111,11 @@ export const ProfileScreen: React.FC<Props> = ({
       // Dynamically fetch updated temples list directly from database via API response
       await fetchDkTemples();
 
-      Alert.alert(
+      showAlert(
         'Registration Submitted 🙏',
-        `"${newMandirName}" details have been stored dynamically in the database and submitted for Super Admin verification.`
+        `"${newMandirName}" details have been stored dynamically in the database and submitted for Super Admin verification.`,
+        undefined,
+        'success'
       );
       setAddMandirModalVisible(false);
       // Reset form
@@ -1061,7 +1132,7 @@ export const ProfileScreen: React.FC<Props> = ({
       setNewMandirEmail('');
       setNewMandirWebsite('');
     } catch {
-      Alert.alert('Error', 'Failed to register mandir.');
+      showAlert('Error', 'Failed to register mandir.', undefined, 'error');
     } finally {
       setSavingMandir(false);
     }
@@ -1069,11 +1140,11 @@ export const ProfileScreen: React.FC<Props> = ({
 
   const handleSaveNewEvent = async () => {
     if (!newEventTitle.trim()) {
-      Alert.alert('Required Field', 'Please enter Event Title.');
+      showAlert('Required Field', 'Please enter Event Title.', undefined, 'warning');
       return;
     }
     if (!newEventDateTime.trim()) {
-      Alert.alert('Required Field', 'Please enter Date & Time.');
+      showAlert('Required Field', 'Please enter Date & Time.', undefined, 'warning');
       return;
     }
     setSavingEvent(true);
@@ -1107,7 +1178,7 @@ export const ProfileScreen: React.FC<Props> = ({
 
       setDkEvents(prev => [createdEvt, ...prev]);
       setDkStats(prev => ({ ...prev, eventsCount: prev.eventsCount + 1 }));
-      Alert.alert('Event Published 🙏', `"${newEventTitle}" has been scheduled successfully.`);
+      showAlert('Event Published 🙏', `"${newEventTitle}" has been scheduled successfully.`, undefined, 'success');
       setAddEventModalVisible(false);
       // Reset form
       setNewEventTitle('');
@@ -1115,7 +1186,7 @@ export const ProfileScreen: React.FC<Props> = ({
       setNewEventLocation('');
       setNewEventDesc('');
     } catch {
-      Alert.alert('Error', 'Failed to schedule event.');
+      showAlert('Error', 'Failed to schedule event.', undefined, 'error');
     } finally {
       setSavingEvent(false);
     }
@@ -1153,11 +1224,11 @@ export const ProfileScreen: React.FC<Props> = ({
 
   const handleSaveNewFestival = async () => {
     if (!newFestivalName.trim()) {
-      Alert.alert('Required Field', 'Please enter Festival Name.');
+      showAlert('Required Field', 'Please enter Festival Name.', undefined, 'warning');
       return;
     }
     if (!newFestivalPeriod.trim()) {
-      Alert.alert('Required Field', 'Please enter Festival Period / Occasion.');
+      showAlert('Required Field', 'Please enter Festival Period / Occasion.', undefined, 'warning');
       return;
     }
     const selectedTemple = dkTemples.find(t => t.id === newFestivalTempleId) || dkTemples[0];
@@ -1167,7 +1238,7 @@ export const ProfileScreen: React.FC<Props> = ({
     try {
       const uid = currentUser?.id ? Number(currentUser.id) : null;
       if (!uid) {
-        Alert.alert('Notice', 'Please sign in to register a temple.');
+        showAlert('Notice', 'Please sign in to register a temple.', undefined, 'info');
         setSavingMandir(false);
         return;
       }
@@ -1182,16 +1253,18 @@ export const ProfileScreen: React.FC<Props> = ({
 
       const res = await ApiService.createDharmaKarthaFestival(uid, payload);
       if (res && res.success === false) {
-        Alert.alert('Notice', res.message || 'Could not save festival in database.');
+        showAlert('Notice', res.message || 'Could not save festival in database.', undefined, 'warning');
         setSavingFestival(false);
         return;
       }
 
       await fetchDkFestivals();
 
-      Alert.alert(
+      showAlert(
         'Festival Published 🙏',
-        `"${newFestivalName}" has been added to ${selectedTemple?.name || 'the temple'} and saved to the database.`
+        `"${newFestivalName}" has been added to ${selectedTemple?.name || 'the temple'} and saved to the database.`,
+        undefined,
+        'success'
       );
       setAddFestivalModalVisible(false);
       setNewFestivalName('');
@@ -1199,7 +1272,7 @@ export const ProfileScreen: React.FC<Props> = ({
       setNewFestivalDesc('');
       setNewFestivalSeva('');
     } catch {
-      Alert.alert('Error', 'Failed to publish festival.');
+      showAlert('Error', 'Failed to publish festival.', undefined, 'error');
     } finally {
       setSavingFestival(false);
     }
@@ -1209,9 +1282,9 @@ export const ProfileScreen: React.FC<Props> = ({
     setEditingTempleId(temple.id);
     const resolvedType = temple.templeType || (
       temple.classification === 'Sub Temple' ? 'SUB_TEMPLE' :
-      temple.classification === 'Multi-Deity Temple Complex' ? 'MULTI_TEMPLE' :
-      temple.classification === 'Community Temple' ? 'COMMUNITY_TEMPLE' :
-      temple.classification === 'Heritage Shrine' ? 'HERITAGE_SHRINE' : 'MAIN_TEMPLE'
+        temple.classification === 'Multi-Deity Temple Complex' ? 'MULTI_TEMPLE' :
+          temple.classification === 'Community Temple' ? 'COMMUNITY_TEMPLE' :
+            temple.classification === 'Heritage Shrine' ? 'HERITAGE_SHRINE' : 'MAIN_TEMPLE'
     );
     setEditMandirType(resolvedType);
     setEditMandirName(temple.name || '');
@@ -1233,11 +1306,11 @@ export const ProfileScreen: React.FC<Props> = ({
 
   const handleSaveEditTemple = async () => {
     if (!editMandirName.trim()) {
-      Alert.alert('Required Field', 'Please enter Temple Name.');
+      showAlert('Required Field', 'Please enter Temple Name.', undefined, 'warning');
       return;
     }
     if (!editMandirCity.trim()) {
-      Alert.alert('Required Field', 'Please enter City / Town.');
+      showAlert('Required Field', 'Please enter City / Town.', undefined, 'warning');
       return;
     }
     if (!editingTempleId) return;
@@ -1274,17 +1347,17 @@ export const ProfileScreen: React.FC<Props> = ({
 
       const uid = currentUser?.id ? Number(currentUser.id) : null;
       if (!uid) {
-        Alert.alert('Notice', 'Please sign in to register a temple.');
+        showAlert('Notice', 'Please sign in to register a temple.', undefined, 'info');
         setSavingMandir(false);
         return;
       }
       await ApiService.updateDharmaKarthaTemple(uid, editingTempleId, payload);
       await fetchDkTemples();
 
-      Alert.alert('Temple Updated 🙏', `"${editMandirName}" details have been updated successfully.`);
+      showAlert('Temple Updated 🙏', `"${editMandirName}" details have been updated successfully.`, undefined, 'success');
       setEditMandirModalVisible(false);
     } catch {
-      Alert.alert('Error', 'Failed to update temple details.');
+      showAlert('Error', 'Failed to update temple details.', undefined, 'error');
     } finally {
       setSavingEditMandir(false);
     }
@@ -1299,14 +1372,14 @@ export const ProfileScreen: React.FC<Props> = ({
   const handleConfirmTempleDeletion = async () => {
     if (!deletingTemple?.id) return;
     if (!templeDeleteReason.trim()) {
-      Alert.alert('Required', 'Please enter the reason for temple deletion / archive.');
+      showAlert('Required', 'Please enter the reason for temple deletion / archive.', undefined, 'warning');
       return;
     }
     setDeletingTempleLoading(true);
     try {
       const uid = currentUser?.id ? Number(currentUser.id) : null;
       if (!uid) {
-        Alert.alert('Notice', 'Please sign in to register a temple.');
+        showAlert('Notice', 'Please sign in to register a temple.', undefined, 'info');
         setSavingMandir(false);
         return;
       }
@@ -1314,11 +1387,11 @@ export const ProfileScreen: React.FC<Props> = ({
       await ApiService.deleteDharmaKarthaTemple(uid, deletingTemple.id);
       await fetchDkTemples();
 
-      Alert.alert('Mandir Deleted 🙏', `"${deletingTemple.name}" has been deleted successfully.`);
+      showAlert('Mandir Deleted 🙏', `"${deletingTemple.name}" has been deleted successfully.`, undefined, 'success');
       setDeleteMandirModalVisible(false);
       setDeletingTemple(null);
     } catch {
-      Alert.alert('Error', 'Failed to delete mandir.');
+      showAlert('Error', 'Failed to delete mandir.', undefined, 'error');
     } finally {
       setDeletingTempleLoading(false);
     }
@@ -1367,89 +1440,68 @@ export const ProfileScreen: React.FC<Props> = ({
   };
 
   const handleDeleteFestival = (fest: any) => {
-    Alert.alert(
+    showConfirm(
       'Delete Festival',
       `Are you sure you want to delete "${fest.name}"? This action cannot be undone.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const uid = currentUser?.id ? Number(currentUser.id) : null;
-      if (!uid) {
-        Alert.alert('Notice', 'Please sign in to register a temple.');
-        setSavingMandir(false);
-        return;
-      }
-              await ApiService.deleteDharmaKarthaFestival(uid, fest.id);
-              await fetchDkFestivals();
-              Alert.alert('Festival Deleted 🙏', `"${fest.name}" has been deleted successfully.`);
-            } catch {
-              Alert.alert('Error', 'Failed to delete festival.');
-            }
-          },
-        },
-      ]
+      async () => {
+        try {
+          const uid = currentUser?.id ? Number(currentUser.id) : null;
+          if (!uid) {
+            showAlert('Notice', 'Please sign in to manage temple festivals.', undefined, 'info');
+            return;
+          }
+          await ApiService.deleteDharmaKarthaFestival(uid, fest.id);
+          await fetchDkFestivals();
+          showAlert('Festival Deleted 🙏', `"${fest.name}" has been deleted successfully.`, undefined, 'success');
+        } catch {
+          showAlert('Error', 'Failed to delete festival.', undefined, 'error');
+        }
+      },
+      { confirmText: 'Delete', cancelText: 'Cancel', isDestructive: true }
     );
   };
 
   const handleDeleteEvent = (evt: any) => {
-    Alert.alert(
+    showConfirm(
       'Delete Event',
       `Are you sure you want to delete "${evt.title}"? This action cannot be undone.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const uid = currentUser?.id ? Number(currentUser.id) : null;
-      if (!uid) {
-        Alert.alert('Notice', 'Please sign in to register a temple.');
-        setSavingMandir(false);
-        return;
-      }
-              await ApiService.deleteDharmaKarthaEvent(uid, evt.id);
-              await fetchDkEvents();
-              Alert.alert('Event Deleted 🙏', `"${evt.title}" has been deleted successfully.`);
-            } catch {
-              Alert.alert('Error', 'Failed to delete event.');
-            }
-          },
-        },
-      ]
+      async () => {
+        try {
+          const uid = currentUser?.id ? Number(currentUser.id) : null;
+          if (!uid) {
+            showAlert('Notice', 'Please sign in to manage events.', undefined, 'info');
+            return;
+          }
+          await ApiService.deleteDharmaKarthaEvent(uid, evt.id);
+          await fetchDkEvents();
+          showAlert('Event Deleted 🙏', `"${evt.title}" has been deleted successfully.`, undefined, 'success');
+        } catch {
+          showAlert('Error', 'Failed to delete event.', undefined, 'error');
+        }
+      },
+      { confirmText: 'Delete', cancelText: 'Cancel', isDestructive: true }
     );
   };
 
   const handleDeleteMedia = (m: any) => {
-    Alert.alert(
+    showConfirm(
       'Delete Photo',
       `Are you sure you want to delete this photo "${m.title || m.caption || 'Photo'}"? This action cannot be undone.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const uid = currentUser?.id ? Number(currentUser.id) : null;
-      if (!uid) {
-        Alert.alert('Notice', 'Please sign in to register a temple.');
-        setSavingMandir(false);
-        return;
-      }
-              await ApiService.deleteDharmaKarthaMedia(uid, m.id);
-              await fetchDkMedia();
-              Alert.alert('Photo Deleted 🙏', 'Photo has been deleted successfully.');
-            } catch {
-              Alert.alert('Error', 'Failed to delete photo.');
-            }
-          },
-        },
-      ]
+      async () => {
+        try {
+          const uid = currentUser?.id ? Number(currentUser.id) : null;
+          if (!uid) {
+            showAlert('Notice', 'Please sign in to manage photos.', undefined, 'info');
+            return;
+          }
+          await ApiService.deleteDharmaKarthaMedia(uid, m.id);
+          await fetchDkMedia();
+          showAlert('Photo Deleted 🙏', 'Photo has been deleted successfully.', undefined, 'success');
+        } catch {
+          showAlert('Error', 'Failed to delete photo.', undefined, 'error');
+        }
+      },
+      { confirmText: 'Delete', cancelText: 'Cancel', isDestructive: true }
     );
   };
 
@@ -1554,7 +1606,7 @@ export const ProfileScreen: React.FC<Props> = ({
           if (updatedProfile) {
             setProfile(updatedProfile);
           }
-        } catch (e) {}
+        } catch (e) { }
       }
     } finally {
       setSwitchingLanguage(false);
@@ -1619,7 +1671,7 @@ export const ProfileScreen: React.FC<Props> = ({
     try {
       const perm = await ImagePicker.requestCameraPermissionsAsync();
       if (!perm.granted) {
-        Alert.alert('Permission Needed', 'Camera permission is required to capture your profile photo.');
+        showAlert('Permission Needed', 'Camera permission is required to capture your profile photo.', undefined, 'info');
         return;
       }
       const res = await ImagePicker.launchCameraAsync({
@@ -1632,7 +1684,7 @@ export const ProfileScreen: React.FC<Props> = ({
         await handleSaveAvatar(res.assets[0]);
       }
     } catch (err: any) {
-      Alert.alert('Error', err?.message || 'Failed to capture photo.');
+      showAlert('Error', err?.message || 'Failed to capture photo.', undefined, 'error');
     }
   };
 
@@ -1641,7 +1693,7 @@ export const ProfileScreen: React.FC<Props> = ({
     try {
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!perm.granted) {
-        Alert.alert('Permission Needed', 'Photo gallery permission is required to select your profile picture.');
+        showAlert('Permission Needed', 'Photo gallery permission is required to select your profile picture.', undefined, 'info');
         return;
       }
       const res = await ImagePicker.launchImageLibraryAsync({
@@ -1655,14 +1707,14 @@ export const ProfileScreen: React.FC<Props> = ({
         await handleSaveAvatar(res.assets[0]);
       }
     } catch (err: any) {
-      Alert.alert('Error', err?.message || 'Failed to select image.');
+      showAlert('Error', err?.message || 'Failed to select image.', undefined, 'error');
     }
   };
 
   const handleSaveAvatar = async (asset: ImagePicker.ImagePickerAsset) => {
     const userId = currentUser?.id ? Number(currentUser.id) : (profile?.id ? Number(profile.id) : null);
     if (!userId) {
-      Alert.alert('Login Required', 'Please log in to update your profile photo.');
+      showAlert('Login Required', 'Please log in to update your profile photo.', undefined, 'info');
       return;
     }
     const base64Data = asset.base64 ? `data:image/jpeg;base64,${asset.base64}` : asset.uri;
@@ -1683,10 +1735,10 @@ export const ProfileScreen: React.FC<Props> = ({
         profileImageUrl: finalUrl,
       });
 
-      Alert.alert('Profile Logo Updated 🙏', 'Your profile picture has been dynamically updated and saved in the database.');
+      showAlert('Profile Photo Updated 🙏', 'Your profile picture has been updated successfully and saved.');
     } catch {
       setProfile((prev: any) => (prev ? { ...prev, profileImageUrl: base64Data } : { profileImageUrl: base64Data } as any));
-      Alert.alert('Profile Photo Updated', 'Profile picture has been updated.');
+      showAlert('Profile Photo Updated 🙏', 'Your profile picture has been updated successfully.');
     } finally {
       setUploadingAvatar(false);
     }
@@ -4171,8 +4223,8 @@ export const ProfileScreen: React.FC<Props> = ({
                     await ApiService.updateDevoteeProfile(userId, { profileImageUrl: null });
                     setProfile((prev: any) => prev ? { ...prev, profileImageUrl: null } : null);
                     await StorageService.setStoredUser({ ...(currentUser || {}), profileImageUrl: null });
-                    Alert.alert('Default Logo Restored 🙏', 'Restored default devotional emblem.');
-                  } catch {}
+                    showAlert('Default Logo Restored 🙏', 'Restored default devotional emblem.', undefined, 'success');
+                  } catch { }
                 }}
               >
                 <View style={[styles.avatarOptionIconBox, { backgroundColor: '#F3E5F5' }]}>
@@ -4188,6 +4240,19 @@ export const ProfileScreen: React.FC<Props> = ({
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* Sacred Devotional Custom Alert & Confirm Popup Dialog */}
+      <DevotionalDialog
+        visible={devotionalDialog.visible}
+        title={devotionalDialog.title}
+        message={devotionalDialog.message}
+        type={devotionalDialog.type}
+        confirmText={devotionalDialog.confirmText}
+        cancelText={devotionalDialog.cancelText}
+        onConfirm={devotionalDialog.onConfirm}
+        onCancel={devotionalDialog.onCancel}
+        isDestructive={devotionalDialog.isDestructive}
+      />
     </SafeAreaView>
   );
 };

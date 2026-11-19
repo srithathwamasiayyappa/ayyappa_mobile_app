@@ -438,6 +438,7 @@ export const AuthScreen: React.FC<Props> = ({
 
       setOtpIntent('login');
       setResendCooldown(30);
+      setOtpCode('');
       setCurrentStep('VERIFY_OTP');
       showToast(sendMsg, 'success');
     } catch (err: any) {
@@ -454,19 +455,24 @@ export const AuthScreen: React.FC<Props> = ({
     const clean = phone.replace(/[^0-9]/g, '').slice(-10);
     const phoneE164 = `+91${clean}`;
     setLoading(true);
+    setOtpCode('');
     try {
       let sendMsg = '';
       try {
-        const res = await FirebasePhoneAuthService.sendPhoneOtp(phoneE164);
+        const res = await FirebasePhoneAuthService.sendPhoneOtp(phoneE164, true);
         sendMsg = res?.message || `New OTP sent to +91 ${clean}!`;
       } catch (fbErr: any) {
         console.warn('[AuthScreen] Firebase Resend OTP failed, trying backend SMS OTP fallback:', fbErr?.message);
-        const apiRes = await ApiService.sendOtp(clean, otpIntent);
-        if (apiRes?.otp) {
-          setOtpCode(apiRes.otp);
-          sendMsg = `New Code: ${apiRes.otp} (or test code 123456)`;
-        } else {
-          sendMsg = apiRes?.message || `New OTP sent via SMS to +91 ${clean}!`;
+        try {
+          const apiRes = await ApiService.sendOtp(clean, otpIntent);
+          if (apiRes?.otp) {
+            setOtpCode(apiRes.otp);
+            sendMsg = `New Code: ${apiRes.otp} (or test code 123456)`;
+          } else {
+            sendMsg = apiRes?.message || `New OTP sent via SMS to +91 ${clean}!`;
+          }
+        } catch (apiErr: any) {
+          throw new Error(apiErr?.message || fbErr?.message || 'Failed to resend OTP.');
         }
       }
       setResendCooldown(30);
@@ -480,7 +486,8 @@ export const AuthScreen: React.FC<Props> = ({
 
   // Action: Verify OTP
   const handleVerifyOtp = async () => {
-    if (!otpCode || otpCode.length !== 6) {
+    const cleanOtp = (otpCode || '').replace(/[^0-9]/g, '').trim();
+    if (!cleanOtp || cleanOtp.length !== 6) {
       showToast(t.enterFullOtpError || 'Please enter the 6-digit verification code.', 'error');
       return;
     }
@@ -491,24 +498,44 @@ export const AuthScreen: React.FC<Props> = ({
 
     setLoading(true);
     try {
-      let firebaseRes: any = null;
-      try {
-        firebaseRes = await FirebasePhoneAuthService.confirmOtp(otpCode);
-      } catch (fbErr: any) {
-        // If native firebase isn't active or fails in offline/dev, log and proceed with backend validation
-        console.log('[AuthScreen] Firebase verify note:', fbErr?.message);
+      let res: any = null;
+      let firebaseError: any = null;
+
+      // 1. Verify with Firebase Phone Auth first (for real SMS OTP)
+      if (FirebasePhoneAuthService.isNativeAvailable()) {
+        try {
+          const firebaseRes = await FirebasePhoneAuthService.confirmOtp(cleanOtp);
+          if (firebaseRes && firebaseRes.idToken) {
+            res = await ApiService.verifyFirebasePhoneToken({
+              idToken: firebaseRes.idToken,
+              intent: otpIntent === 'register' ? 'REGISTER' : 'LOGIN',
+              fullName: regName.trim() || undefined,
+              preferredLang: currentLanguage,
+            });
+          }
+        } catch (fbErr: any) {
+          firebaseError = fbErr;
+          console.warn('[AuthScreen] Firebase verify error:', fbErr?.message);
+        }
       }
 
-      let res: any;
-      if (otpIntent === 'register') {
-        res = await ApiService.registerWithOtp({
-          fullName: regName.trim() || 'Ayyappa Devotee',
-          phoneNumber: clean10,
-          otp: otpCode,
-          preferredLang: currentLanguage,
-        });
-      } else {
-        res = await ApiService.loginWithOtp(clean10, otpCode);
+      // 2. Fallback to backend direct OTP verification (KeyedOtpManager / MSG91 / 123456 test bypass)
+      if (!res || !res.user) {
+        try {
+          if (otpIntent === 'register') {
+            res = await ApiService.registerWithOtp({
+              fullName: regName.trim() || 'Ayyappa Devotee',
+              phoneNumber: clean10,
+              otp: cleanOtp,
+              preferredLang: currentLanguage,
+            });
+          } else {
+            res = await ApiService.loginWithOtp(clean10, cleanOtp);
+          }
+        } catch (backendErr: any) {
+          const failureMsg = firebaseError?.message || backendErr?.message || 'Verification failed. Please check the code and retry.';
+          throw new Error(failureMsg);
+        }
       }
 
       if (res && res.user) {

@@ -20,6 +20,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { ApiService } from '../../../services/api';
 import { SupportedLanguage } from '../../../types';
+import { DevotionalDialog, DevotionalDialogType } from '../../../components/common/DevotionalDialog';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -272,6 +273,35 @@ export const ContactScreen: React.FC<Props> = ({ currentLanguage = 'en', onBack,
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  // Sacred Devotional Custom Alert Dialog State
+  const [devotionalDialog, setDevotionalDialog] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    type?: DevotionalDialogType;
+    confirmText?: string;
+  }>({
+    visible: false,
+    title: '',
+    message: '',
+    type: 'success',
+  });
+
+  const showAlert = (
+    title: string,
+    message: string,
+    type: DevotionalDialogType = 'success',
+    confirmText = 'OK'
+  ) => {
+    setDevotionalDialog({
+      visible: true,
+      title,
+      message,
+      type,
+      confirmText,
+    });
+  };
+
   const t = UI_STRINGS[currentLanguage] || UI_STRINGS.en;
 
   // Pure dynamic fetch from database via server API matching website ContactPage.jsx
@@ -313,13 +343,13 @@ export const ContactScreen: React.FC<Props> = ({ currentLanguage = 'en', onBack,
   const handleOpenEmail = () => {
     const targetEmail = 'support@saranamayyappa.org';
     Linking.openURL(`mailto:${targetEmail}`).catch(() => {
-      Alert.alert('Email', `Please send your email to: ${targetEmail}`);
+      showAlert('Email', `Please send your email to: ${targetEmail}`, 'info');
     });
   };
 
   const handleSubmit = async () => {
     if (!name.trim() || !phone.trim() || !message.trim()) {
-      Alert.alert('Required Fields', 'Please enter your name, mobile number, and message.');
+      showAlert('Required Fields', 'Please enter your name, mobile number, and message.', 'warning');
       return;
     }
 
@@ -332,13 +362,13 @@ export const ContactScreen: React.FC<Props> = ({ currentLanguage = 'en', onBack,
         message: message.trim(),
       });
 
-      Alert.alert(t.successTitle, t.successMessage);
+      showAlert(t.successTitle || 'Swamiye Saranam Ayyappa 🙏', t.successMessage || 'Thank you for reaching out. We will get back to you shortly.', 'success');
       setName('');
       setPhone('');
       setEmail('');
       setMessage('');
     } catch (err: any) {
-      Alert.alert('Notice', err.message || 'Could not send message. Please try again.');
+      showAlert('Notice', err.message || 'Could not send message. Please try again.', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -553,6 +583,16 @@ export const ContactScreen: React.FC<Props> = ({ currentLanguage = 'en', onBack,
           </View>
         </ScrollView>
       )}
+
+      {/* Sacred Devotional Custom Alert Dialog */}
+      <DevotionalDialog
+        visible={devotionalDialog.visible}
+        title={devotionalDialog.title}
+        message={devotionalDialog.message}
+        type={devotionalDialog.type}
+        confirmText={devotionalDialog.confirmText}
+        onConfirm={() => setDevotionalDialog(prev => ({ ...prev, visible: false }))}
+      />
     </View>
   );
 };

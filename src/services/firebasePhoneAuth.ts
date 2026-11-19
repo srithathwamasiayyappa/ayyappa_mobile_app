@@ -46,8 +46,9 @@ class FirebasePhoneAuthServiceClass {
   /**
    * Request real SMS OTP via Firebase Phone Authentication
    * @param phoneE164 E.164 formatted phone number (e.g. +916302759527)
+   * @param forceResend Whether to force carrier SMS dispatch on resend
    */
-  async sendPhoneOtp(phoneE164: string): Promise<{ success: boolean; message: string }> {
+  async sendPhoneOtp(phoneE164: string, forceResend = false): Promise<{ success: boolean; message: string }> {
     if (!phoneE164 || !phoneE164.startsWith('+') || phoneE164.length < 11) {
       throw new Error('Please enter a valid phone number with country code (e.g. +91 9876543210).');
     }
@@ -60,7 +61,7 @@ class FirebasePhoneAuthServiceClass {
       try {
         const auth = authModule();
         // Request Firebase Phone OTP with SafetyNet / Play Integrity / reCAPTCHA
-        const confirmation = await auth.signInWithPhoneNumber(phoneE164);
+        const confirmation = await auth.signInWithPhoneNumber(phoneE164, forceResend);
         this.activeConfirmation = confirmation;
 
         return {
