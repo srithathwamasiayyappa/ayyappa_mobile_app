@@ -182,6 +182,7 @@ const I18N_COMPLETE_PROFILE: Record<string, {
   dobLabel: string;
   dobPlaceholder: string;
   genderLabel: string;
+  genderPlaceholder: string;
   rashiLabel: string;
   rashiPlaceholder: string;
   nakshatraLabel: string;
@@ -205,8 +206,9 @@ const I18N_COMPLETE_PROFILE: Record<string, {
     fullNameLabel: 'పూర్తి పేరు',
     fullNamePlaceholder: 'రమేష్ కుమార్',
     dobLabel: 'పుట్టిన తేదీ',
-    dobPlaceholder: '15 ఆగస్టు 1985',
+    dobPlaceholder: 'పుట్టిన తేదీని ఎంచుకోండి',
     genderLabel: 'లింగము',
+    genderPlaceholder: 'లింగాన్ని ఎంచుకోండి',
     rashiLabel: 'రాశి (Zodiac)',
     rashiPlaceholder: 'మీ రాశిని ఎంచుకోండి',
     nakshatraLabel: 'నక్షత్రం',
@@ -228,14 +230,15 @@ const I18N_COMPLETE_PROFILE: Record<string, {
     title: 'Complete Your Profile',
     subtitle: 'Help us personalize your devotional experience',
     fullNameLabel: 'Full Name',
-    fullNamePlaceholder: 'Ramesh Kumar',
+    fullNamePlaceholder: 'Enter your name',
     dobLabel: 'Date of Birth',
-    dobPlaceholder: '15 Aug 1985',
+    dobPlaceholder: 'Select Date of Birth',
     genderLabel: 'Gender',
+    genderPlaceholder: 'Select Gender',
     rashiLabel: 'Rashi (Zodiac)',
-    rashiPlaceholder: 'Makara (Capricorn)',
+    rashiPlaceholder: 'Select Rashi',
     nakshatraLabel: 'Nakshatram',
-    nakshatraPlaceholder: 'Uttareashada',
+    nakshatraPlaceholder: 'Select Nakshatram',
     saveAndContinue: 'Save & Continue',
     saving: 'Saving...',
     searchNakshatraPlaceholder: 'Search Nakshatra...',
@@ -255,12 +258,13 @@ const I18N_COMPLETE_PROFILE: Record<string, {
     fullNameLabel: 'முழுப் பெயர்',
     fullNamePlaceholder: 'ரமேஷ் குமார்',
     dobLabel: 'பிறந்த தேதி',
-    dobPlaceholder: '15 ஆக 1985',
+    dobPlaceholder: 'பிறந்த தேதியைத் தேர்ந்தெடுக்கவும்',
     genderLabel: 'பாலினம்',
+    genderPlaceholder: 'பாலினத்தைத் தேர்ந்தெடுக்கவும்',
     rashiLabel: 'ராசி (Zodiac)',
-    rashiPlaceholder: 'மகரம் (Capricorn)',
+    rashiPlaceholder: 'உங்கள் ராசியைத் தேர்ந்தெடுக்கவும்',
     nakshatraLabel: 'நட்சத்திரம்',
-    nakshatraPlaceholder: 'உத்திராடம்',
+    nakshatraPlaceholder: 'உங்கள் நட்சத்திரத்தைத் தேர்ந்தெடுக்கவும்',
     saveAndContinue: 'சேமித்து தொடரவும்',
     saving: 'சேமிக்கிறது...',
     searchNakshatraPlaceholder: 'நட்சத்திரத்தைத் தேடவும்...',
@@ -280,12 +284,13 @@ const I18N_COMPLETE_PROFILE: Record<string, {
     fullNameLabel: 'ಪೂರ್ಣ ಹೆಸರು',
     fullNamePlaceholder: 'ರಮೇಶ್ ಕುಮಾರ್',
     dobLabel: 'ಜನ್ಮ ದಿನಾಂಕ',
-    dobPlaceholder: '15 ಆಗ 1985',
+    dobPlaceholder: 'ಜನ್ಮ ದಿನಾಂಕವನ್ನು ಆಯ್ಕೆಮಾಡಿ',
     genderLabel: 'ಲಿಂಗ',
+    genderPlaceholder: 'ಲಿಂಗವನ್ನು ಆಯ್ಕೆಮಾಡಿ',
     rashiLabel: 'ರಾಶಿ (Zodiac)',
-    rashiPlaceholder: 'ಮಕರ (Capricorn)',
+    rashiPlaceholder: 'ನಿಮ್ಮ ರಾಶಿಯನ್ನು ಆಯ್ಕೆಮಾಡಿ',
     nakshatraLabel: 'ನಕ್ಷತ್ರ',
-    nakshatraPlaceholder: 'ಉತ್ತರಾಷಾಢ',
+    nakshatraPlaceholder: 'ನಿಮ್ಮ ನಕ್ಷತ್ರವನ್ನು ಆಯ್ಕೆಮಾಡಿ',
     saveAndContinue: 'ಉಳಿಸಿ ಮತ್ತು ಮುಂದುವರಿಯಿರಿ',
     saving: 'ಉಳಿಸಲಾಗುತ್ತಿದೆ...',
     searchNakshatraPlaceholder: 'ನಕ್ಷತ್ರ ಹುಡುಕಿ...',
@@ -305,12 +310,13 @@ const I18N_COMPLETE_PROFILE: Record<string, {
     fullNameLabel: 'पूरा नाम',
     fullNamePlaceholder: 'रमेश कुमार',
     dobLabel: 'जन्म तिथि',
-    dobPlaceholder: '15 अगस्त 1985',
+    dobPlaceholder: 'जन्म तिथि चुनें',
     genderLabel: 'लिंग',
+    genderPlaceholder: 'लिंग चुनें',
     rashiLabel: 'राशि (Zodiac)',
-    rashiPlaceholder: 'मकर (Capricorn)',
+    rashiPlaceholder: 'अपनी राशि चुनें',
     nakshatraLabel: 'नक्षत्र',
-    nakshatraPlaceholder: 'उत्तराषाढ़ा',
+    nakshatraPlaceholder: 'अपना नक्षत्र चुनें',
     saveAndContinue: 'सहेजें और आगे बढ़ें',
     saving: 'सहेजा जा रहा है...',
     searchNakshatraPlaceholder: 'नक्षत्र खोजें...',
@@ -330,12 +336,13 @@ const I18N_COMPLETE_PROFILE: Record<string, {
     fullNameLabel: 'മുഴുവൻ പേര്',
     fullNamePlaceholder: 'രമേഷ് കുമാർ',
     dobLabel: 'ജനന തീയതി',
-    dobPlaceholder: '15 ഓഗ 1985',
+    dobPlaceholder: 'ജനന തീയതി തിരഞ്ഞെടുക്കുക',
     genderLabel: 'ലിംഗം',
+    genderPlaceholder: 'ലിംഗം തിരഞ്ഞെടുക്കുക',
     rashiLabel: 'രാശി (Zodiac)',
-    rashiPlaceholder: 'മകരം (Capricorn)',
+    rashiPlaceholder: 'നിങ്ങളുടെ രാശി തിരഞ്ഞെടുക്കുക',
     nakshatraLabel: 'നക്ഷത്രം',
-    nakshatraPlaceholder: 'ഉത്രാടം',
+    nakshatraPlaceholder: 'നിങ്ങളുടെ നക്ഷത്രം തിരഞ്ഞെടുക്കുക',
     saveAndContinue: 'സേവ് ചെയ്തു തുടരുക',
     saving: 'സേവ് ചെയ്യുന്നു...',
     searchNakshatraPlaceholder: 'നക്ഷത്രം തിരയുക...',
@@ -395,15 +402,33 @@ export const CompleteProfileScreen: React.FC<Props> = ({
   const activeLang = currentLanguage in I18N_COMPLETE_PROFILE ? currentLanguage : 'en';
   const t = I18N_COMPLETE_PROFILE[activeLang] || I18N_COMPLETE_PROFILE.en;
 
-  // Form State
+  // Helper to format DOB string (e.g. "2000-07-16" -> "16 Jul 2000")
+  const formatInitialDob = (dateVal?: any): string => {
+    if (!dateVal) return '';
+    try {
+      const raw = String(dateVal).split('T')[0];
+      const parts = raw.split('-');
+      if (parts.length === 3) {
+        const y = parseInt(parts[0], 10);
+        const m = parseInt(parts[1], 10) - 1;
+        const d = parseInt(parts[2], 10);
+        if (!isNaN(d) && !isNaN(m) && !isNaN(y) && MONTHS_SHORT[m]) {
+          return `${d} ${MONTHS_SHORT[m]} ${y}`;
+        }
+      }
+    } catch {}
+    return '';
+  };
+
+  // Form State - strictly dynamic, initialized from currentUser, never static dummy person
   const [fullName, setFullName] = useState(currentUser?.fullName || '');
-  const [dobDisplay, setDobDisplay] = useState('15 Aug 1985');
-  const [dobYmd, setDobYmd] = useState('1985-08-15');
-  const [gender, setGender] = useState('Male');
-  const [selectedRashiId, setSelectedRashiId] = useState<number | null>(10); // Makara (Capricorn) as in ref
-  const [selectedRashiName, setSelectedRashiName] = useState<string>('Makara (Capricorn)');
-  const [selectedNakshatraId, setSelectedNakshatraId] = useState<number | null>(21); // Uttareashada
-  const [selectedNakshatraName, setSelectedNakshatraName] = useState<string>('Uttareashada');
+  const [dobDisplay, setDobDisplay] = useState(currentUser?.dateOfBirth ? formatInitialDob(currentUser.dateOfBirth) : '');
+  const [dobYmd, setDobYmd] = useState(currentUser?.dateOfBirth ? String(currentUser.dateOfBirth).split('T')[0] : '');
+  const [gender, setGender] = useState(currentUser?.gender || '');
+  const [selectedRashiId, setSelectedRashiId] = useState<number | null>(currentUser?.rashiId || null);
+  const [selectedRashiName, setSelectedRashiName] = useState<string>(currentUser?.rashiName || '');
+  const [selectedNakshatraId, setSelectedNakshatraId] = useState<number | null>(currentUser?.nakshatraId || null);
+  const [selectedNakshatraName, setSelectedNakshatraName] = useState<string>(currentUser?.nakshatraName || '');
 
   // Modals
   const [rashiModalOpen, setRashiModalOpen] = useState(false);
@@ -411,10 +436,10 @@ export const CompleteProfileScreen: React.FC<Props> = ({
   const [genderModalOpen, setGenderModalOpen] = useState(false);
   const [dobModalOpen, setDobModalOpen] = useState(false);
 
-  // DOB Picker temporary state
-  const [tempDay, setTempDay] = useState(15);
-  const [tempMonth, setTempMonth] = useState(7); // Aug (0-indexed)
-  const [tempYear, setTempYear] = useState(1985);
+  // DOB Picker temporary state - default wheel to 1 Jan 2000 for convenience when opening picker
+  const [tempDay, setTempDay] = useState(1);
+  const [tempMonth, setTempMonth] = useState(0); // Jan (0-indexed)
+  const [tempYear, setTempYear] = useState(2000);
 
   // Search filter for Nakshatras
   const [nakshatraSearch, setNakshatraSearch] = useState('');
@@ -462,15 +487,15 @@ export const CompleteProfileScreen: React.FC<Props> = ({
     return () => backSub.remove();
   }, [rashiModalOpen, nakshatraModalOpen, genderModalOpen, dobModalOpen, onBack]);
 
-  // Load existing profile from backend on mount
+  // Load existing profile from backend on mount (strictly for authenticated devotee)
   useEffect(() => {
     let isMounted = true;
     async function fetchExistingProfile() {
       const userId = currentUser?.id;
-      if (!userId) return;
+      if (!userId || currentUser?.isGuest || isNaN(Number(userId))) return;
 
       try {
-        const profile = await ApiService.getDevoteeProfile(userId, activeLang as SupportedLanguage);
+        const profile = await ApiService.getDevoteeProfile(Number(userId), activeLang as SupportedLanguage);
         if (profile && isMounted) {
           if (profile.fullName) setFullName(profile.fullName);
           if (profile.gender) setGender(profile.gender);
@@ -674,7 +699,9 @@ export const CompleteProfileScreen: React.FC<Props> = ({
               </View>
               <View style={styles.fieldContentWrapper}>
                 <Text style={styles.fieldTopLabel}>{t.dobLabel}</Text>
-                <Text style={styles.fieldValueText}>{dobDisplay || t.dobPlaceholder}</Text>
+                <Text style={[styles.fieldValueText, !dobDisplay && styles.fieldPlaceholderText]}>
+                  {dobDisplay || t.dobPlaceholder}
+                </Text>
               </View>
               <View style={styles.fieldChevronWrapper}>
                 <ChevronDownIcon />
@@ -694,7 +721,9 @@ export const CompleteProfileScreen: React.FC<Props> = ({
               </View>
               <View style={styles.fieldContentWrapper}>
                 <Text style={styles.fieldTopLabel}>{t.genderLabel}</Text>
-                <Text style={styles.fieldValueText}>{gender}</Text>
+                <Text style={[styles.fieldValueText, !gender && styles.fieldPlaceholderText]}>
+                  {gender || t.genderPlaceholder}
+                </Text>
               </View>
               <View style={styles.fieldChevronWrapper}>
                 <ChevronDownIcon />
@@ -714,7 +743,7 @@ export const CompleteProfileScreen: React.FC<Props> = ({
               </View>
               <View style={styles.fieldContentWrapper}>
                 <Text style={styles.fieldTopLabel}>{t.rashiLabel}</Text>
-                <Text style={styles.fieldValueText} numberOfLines={1}>
+                <Text style={[styles.fieldValueText, !selectedRashiName && styles.fieldPlaceholderText]} numberOfLines={1}>
                   {selectedRashiName || t.rashiPlaceholder}
                 </Text>
               </View>
@@ -739,7 +768,7 @@ export const CompleteProfileScreen: React.FC<Props> = ({
               </View>
               <View style={styles.fieldContentWrapper}>
                 <Text style={styles.fieldTopLabel}>{t.nakshatraLabel}</Text>
-                <Text style={styles.fieldValueText} numberOfLines={1}>
+                <Text style={[styles.fieldValueText, !selectedNakshatraName && styles.fieldPlaceholderText]} numberOfLines={1}>
                   {selectedNakshatraName || t.nakshatraPlaceholder}
                 </Text>
               </View>
@@ -1110,6 +1139,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#173D32',
     letterSpacing: 0.2,
+  },
+  fieldPlaceholderText: {
+    color: '#927A69',
+    fontWeight: '400',
   },
   fieldChevronWrapper: {
     width: 28,

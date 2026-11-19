@@ -930,7 +930,11 @@ export const ProfileScreen: React.FC<Props> = ({
   // Load Dharma Kartha Live Data from DB API when active role is DHARMA_KARTHA
   useEffect(() => {
     if (activeRole === 'DHARMA_KARTHA') {
-      const uid = currentUser?.id ? Number(currentUser.id) : 1;
+      const uid = currentUser?.id ? Number(currentUser.id) : null;
+      if (!uid) {
+        setDkLoading(false);
+        return;
+      }
       setDkLoading(true);
       Promise.all([
         ApiService.getDharmaKarthaProfile(uid),
@@ -947,10 +951,10 @@ export const ProfileScreen: React.FC<Props> = ({
         if (Array.isArray(media) && media.length > 0) setDkMedia(media);
 
         setDkStats({
-          managedTemples: stats?.managedTemples ?? temples?.length ?? 2,
-          activeFestivals: stats?.activeFestivals ?? fests?.length ?? 4,
-          eventsCount: events?.length ?? 2,
-          mediaCount: media?.length ?? 3,
+          managedTemples: stats?.managedTemples ?? temples?.length ?? 0,
+          activeFestivals: stats?.activeFestivals ?? fests?.length ?? 0,
+          eventsCount: events?.length ?? 0,
+          mediaCount: media?.length ?? 0,
         });
       }).catch(err => {
         console.warn('Failed to load Dharma Kartha dashboard data from DB API:', err);
@@ -961,7 +965,8 @@ export const ProfileScreen: React.FC<Props> = ({
   }, [activeRole, currentUser?.id]);
 
   const fetchDkTemples = async () => {
-    const uid = currentUser?.id ? Number(currentUser.id) : 1;
+    const uid = currentUser?.id ? Number(currentUser.id) : null;
+    if (!uid) return;
     setLoadingTemples(true);
     try {
       const temples = await ApiService.getDharmaKarthaTemples(uid);

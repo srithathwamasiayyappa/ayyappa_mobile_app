@@ -426,7 +426,7 @@ export const EditProfileScreen: React.FC<Props> = ({
   const [isVerified, setIsVerified] = useState(Boolean(currentUser?.phoneNumber || currentUser?.isVerifiedPhone));
   const [devoteeSince, setDevoteeSince] = useState(currentUser?.devoteeSince || '');
   const [dob, setDob] = useState(currentUser?.dateOfBirth || '');
-  const [gender, setGender] = useState<'Male' | 'Female' | 'Other'>(currentUser?.gender || 'Male');
+  const [gender, setGender] = useState<'Male' | 'Female' | 'Other' | ''>(currentUser?.gender || '');
 
   // Zodiac & Star
   const [rashis, setRashis] = useState<RashiItem[]>([]);
@@ -548,9 +548,9 @@ export const EditProfileScreen: React.FC<Props> = ({
         if (deityList && deityList.length > 0) setDeities(deityList);
 
         const userId = currentUser?.id;
-        if (userId) {
+        if (userId && !currentUser?.isGuest && !isNaN(Number(userId))) {
           try {
-            const profile = await ApiService.getDevoteeProfile(userId, activeLang);
+            const profile = await ApiService.getDevoteeProfile(Number(userId), activeLang);
             if (profile && isMounted) {
               if (profile.fullName) setFullName(profile.fullName);
               if (profile.phoneNumber) setPhoneNumber(profile.phoneNumber);
