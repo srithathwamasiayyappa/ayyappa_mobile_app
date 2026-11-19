@@ -91,7 +91,7 @@ interface NavHistoryEntry {
 }
 
 export default function App() {
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     Poppins_300Light,
     Poppins_400Regular,
     Poppins_500Medium,
@@ -106,6 +106,18 @@ export default function App() {
     'Poppins-ExtraBold': Poppins_800ExtraBold,
     Poppins: Poppins_400Regular,
   });
+
+  const [fontTimeoutPassed, setFontTimeoutPassed] = useState(false);
+
+  useEffect(() => {
+    // Safety fallback: Never keep the user stuck on the initial emblem screen
+    const timer = setTimeout(() => {
+      setFontTimeoutPassed(true);
+    }, 700);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const shouldRenderApp = fontsLoaded || !!fontError || fontTimeoutPassed;
 
   const [currentScreen, setCurrentScreen] = useState<MobileScreen>('splash');
   const [navHistory, setNavHistory] = useState<NavHistoryEntry[]>([]);
@@ -280,21 +292,27 @@ export default function App() {
 
   // When Splash Screen finishes -> First launch strictly starts with Onboarding
   const handleSplashFinish = (targetScreen?: MobileScreen) => {
-    StorageService.getStoredUser().then((user) => {
-      if (user) {
-        if (!user?.profileOnboardingStatus || user.profileOnboardingStatus === 'PENDING') {
-          setCurrentScreen('complete_profile');
-          StorageService.saveNavigationState('complete_profile', null);
+    StorageService.getStoredUser()
+      .then((user) => {
+        if (user) {
+          if (!user?.profileOnboardingStatus || user.profileOnboardingStatus === 'PENDING') {
+            setCurrentScreen('complete_profile');
+            StorageService.saveNavigationState('complete_profile', null);
+          } else {
+            setCurrentScreen('home');
+            StorageService.saveNavigationState('home', null);
+          }
         } else {
-          setCurrentScreen('home');
-          StorageService.saveNavigationState('home', null);
+          // Devotee starts with the 2 onboarding screens
+          setCurrentScreen('onboarding');
+          StorageService.saveNavigationState('onboarding', null);
         }
-      } else {
-        // Devotee starts with the 2 onboarding screens
+      })
+      .catch((err) => {
+        console.warn('Splash finish fallback:', err);
         setCurrentScreen('onboarding');
         StorageService.saveNavigationState('onboarding', null);
-      }
-    });
+      });
   };
 
   // When devotee taps "Get Started" on Welcome Screen -> Show Onboarding
@@ -586,7 +604,7 @@ export default function App() {
     activeTab = 'profile';
   }
 
-  if (!fontsLoaded) {
+  if (!shouldRenderApp) {
     return (
       <View style={{ flex: 1, backgroundColor: '#0C251E', justifyContent: 'center', alignItems: 'center' }}>
         <StatusBar style="light" backgroundColor="#0C251E" translucent />

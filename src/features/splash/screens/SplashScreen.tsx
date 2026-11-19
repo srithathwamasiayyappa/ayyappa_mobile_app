@@ -99,6 +99,19 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
 
   useEffect(() => {
     let isMounted = true;
+    let finished = false;
+
+    const callFinishOnce = (target: MobileScreen) => {
+      if (!finished && isMounted) {
+        finished = true;
+        onFinish(target);
+      }
+    };
+
+    // Hard fallback safety timer (2.5 seconds max): guarantees transition never stalls
+    const hardTimeoutTimer = setTimeout(() => {
+      callFinishOnce('onboarding');
+    }, 2500);
 
     // Smooth subtle entrance fade for layered devotion
     Animated.timing(fadeAnim, {
@@ -137,23 +150,20 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
 
       } catch (err) {
         console.log('Startup initialization notice (safe fallback):', err);
-        target = 'welcome';
+        target = 'onboarding';
       }
 
       if (isMounted) {
         setResolvedTarget(target);
       }
 
-      // Step 3: Respect minimum devotional splash duration (~3.2 seconds)
-      // Allows smooth live loading rotation and complete visual experience
+      // Step 3: Devotional splash duration (~1.8 seconds)
       const elapsed = Date.now() - startTime;
-      const minDuration = 3200;
+      const minDuration = 1800;
       const remainingTime = Math.max(0, minDuration - elapsed);
 
       setTimeout(() => {
-        if (isMounted) {
-          onFinish(target);
-        }
+        callFinishOnce(target);
       }, remainingTime);
     }
 
@@ -161,6 +171,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
 
     return () => {
       isMounted = false;
+      clearTimeout(hardTimeoutTimer);
     };
   }, [onFinish, fadeAnim]);
 
