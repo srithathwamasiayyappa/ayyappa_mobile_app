@@ -213,38 +213,38 @@ export const DharmaKarthaDashboardScreen: React.FC<Props> = ({
           {/* Card 1: Managed Temples */}
           <View style={styles.statCard}>
             <View style={[styles.statIconBox, { backgroundColor: '#F1F7F4' }]}>
-              <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+              <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
                 <Path d="M12 2 L14 6 H10 Z" fill="#2E7561" />
                 <Path d="M8 6 H16 L18 10 H6 Z" fill="#2E7561" />
                 <Path d="M5 10 H19 L21 14 H3 Z" fill="#2E7561" />
                 <Path d="M4 14 H20 V21 H4 Z" stroke="#2E7561" strokeWidth={1.5} />
               </Svg>
             </View>
-            <Text style={styles.statLabel}>Managed Temples</Text>
+            <Text style={styles.statLabel} numberOfLines={2}>Managed Temples</Text>
             <Text style={styles.statValue}>{dynamicManagedCount}</Text>
           </View>
 
           {/* Card 2: Pending Updates */}
           <View style={styles.statCard}>
             <View style={[styles.statIconBox, { backgroundColor: '#FFF8E7' }]}>
-              <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+              <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
                 <Circle cx="12" cy="12" r="9" stroke="#DFA62E" strokeWidth={2} />
                 <Path d="M12 7 V12 L15 14" stroke="#DFA62E" strokeWidth={2} strokeLinecap="round" />
               </Svg>
             </View>
-            <Text style={styles.statLabel}>Pending Updates</Text>
+            <Text style={styles.statLabel} numberOfLines={2}>Pending Updates</Text>
             <Text style={styles.statValue}>{dynamicPendingCount}</Text>
           </View>
 
           {/* Card 3: Active Festivals */}
           <View style={styles.statCard}>
             <View style={[styles.statIconBox, { backgroundColor: '#F0F9F5' }]}>
-              <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+              <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
                 <Rect x="3" y="4" width="18" height="17" rx="3" stroke="#2E7561" strokeWidth={2} />
                 <Path d="M8 2 V6M16 2 V6M3 9 H21" stroke="#2E7561" strokeWidth={2} strokeLinecap="round" />
               </Svg>
             </View>
-            <Text style={styles.statLabel}>Active Festivals</Text>
+            <Text style={styles.statLabel} numberOfLines={2}>Active Festivals</Text>
             <Text style={styles.statValue}>{stats.activeFestivals}</Text>
           </View>
         </View>
@@ -596,136 +596,138 @@ const styles = StyleSheet.create({
   },
   profileHeaderCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 20,
+    borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
     borderWidth: 1,
     borderColor: '#EAE4D5',
     ...Platform.select({
-      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 5 },
-      android: { elevation: 2 },
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 1.5 }, shadowOpacity: 0.04, shadowRadius: 4 },
+      android: { elevation: 1.5 },
     }),
   },
   avatarContainer: {
     position: 'relative',
-    marginBottom: 10,
+    marginBottom: 6,
   },
   avatarImg: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
-    borderWidth: 2.5,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    borderWidth: 2,
     borderColor: '#DFA62E',
   },
   avatarGlow: {
     position: 'absolute',
-    top: -3,
-    left: -3,
-    right: -3,
-    bottom: -3,
-    borderRadius: 42,
+    top: -2.5,
+    left: -2.5,
+    right: -2.5,
+    bottom: -2.5,
+    borderRadius: 30,
     borderWidth: 1,
     borderColor: 'rgba(223, 166, 46, 0.4)',
   },
   roleBadgeContainer: {
-    marginBottom: 6,
+    marginBottom: 4,
   },
   roleBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 20,
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 2.5,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: '#DFA62E',
   },
   roleBadgeText: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '800',
     color: '#B37812',
-    letterSpacing: 0.6,
+    letterSpacing: 0.5,
   },
   profileName: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: '700',
     color: '#0C251E',
-    marginBottom: 3,
+    marginBottom: 2,
   },
   profileLocation: {
-    fontSize: 13,
+    fontSize: 11.5,
     color: '#65776F',
     fontWeight: '500',
   },
   switchRoleBtn: {
-    marginTop: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
+    marginTop: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     backgroundColor: '#F3EFE6',
-    borderRadius: 12,
+    borderRadius: 10,
   },
   switchRoleBtnText: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#0C251E',
     fontWeight: '600',
   },
   sectionHeaderBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    marginBottom: 14,
+    gap: 8,
+    marginBottom: 10,
   },
   bannerEmoji: {
-    fontSize: 24,
+    fontSize: 20,
   },
   bannerTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
     color: '#0C251E',
   },
   bannerSubtitle: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#65776F',
-    lineHeight: 16,
-    marginTop: 2,
+    lineHeight: 15,
+    marginTop: 1,
   },
   statsRow: {
     flexDirection: 'row',
-    gap: 10,
-    marginBottom: 18,
+    gap: 8,
+    marginBottom: 14,
   },
   statCard: {
     flex: 1,
     backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 12,
+    borderRadius: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 6,
     borderWidth: 1,
     borderColor: '#EAE4D5',
     alignItems: 'center',
     ...Platform.select({
-      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 3 },
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 2 },
       android: { elevation: 1 },
     }),
   },
   statIconBox: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
+    width: 28,
+    height: 28,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   statLabel: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#55665D',
     textAlign: 'center',
     fontWeight: '500',
-    lineHeight: 14,
-    marginBottom: 4,
+    lineHeight: 13,
+    marginBottom: 2,
   },
   statValue: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: '800',
     color: '#0C251E',
   },
