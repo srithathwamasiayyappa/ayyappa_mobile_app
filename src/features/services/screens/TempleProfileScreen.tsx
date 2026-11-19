@@ -246,7 +246,13 @@ export const TempleProfileScreen: React.FC<Props> = ({
 
   // Load temple detail if not passed via props
   useEffect(() => {
-    if (templeData && templeData.id === templeId) {
+    if (
+      templeData &&
+      (String(templeData.id) === String(templeId) ||
+        templeData.slug === templeId ||
+        templeData.name === templeId ||
+        String(templeData.dbId) === String(templeId))
+    ) {
       setTemple(templeData);
       setLoading(false);
       return;
@@ -258,11 +264,17 @@ export const TempleProfileScreen: React.FC<Props> = ({
         setLoading(true);
         const res = await ApiService.getTempleDetail(templeId, currentLanguage);
         if (isMounted) {
-          setTemple(res);
+          if (res) {
+            setTemple(res);
+          } else if (templeData) {
+            setTemple(templeData);
+          } else {
+            setTemple(null);
+          }
         }
       } catch (e) {
         if (isMounted) {
-          setTemple(null);
+          setTemple(templeData || null);
         }
       } finally {
         if (isMounted) setLoading(false);

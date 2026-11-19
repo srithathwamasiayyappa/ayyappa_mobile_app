@@ -476,6 +476,38 @@ export const ApiService = {
       // Graceful fallback
     }
 
+    // Try dharma-kartha public temple details
+    try {
+      const resDk = await fetch(`${API_BASE_URL}/dharma-kartha/public/temples/${encodeURIComponent(templeId)}/details`);
+      if (resDk.ok) {
+        const jsonDk = await resDk.json();
+        const t = jsonDk?.temple || jsonDk?.data || jsonDk;
+        if (t && (t.id || t.name)) {
+          return {
+            id: t.slug || String(t.id),
+            dbId: t.id,
+            name: t.name,
+            originalName: t.name,
+            localNames: { en: t.name, te: t.name },
+            deityId: 'ayyappa',
+            deityName: t.primaryDeity || 'Lord Ayyappa',
+            city: t.city,
+            state: t.state,
+            country: t.country || 'India',
+            address: t.address,
+            about: t.about || t.shortDescription || '',
+            history: t.history,
+            speciality: t.speciality ? [t.speciality] : [],
+            contact: t.officePhone ? { phone: t.officePhone, email: t.officialEmail, website: t.officialWebsite } : undefined,
+            timings: t.timings,
+            heroImageUrl: t.heroImageUrl,
+            thumbnailUrl: t.heroImageUrl,
+            isActive: true,
+          };
+        }
+      }
+    } catch (e) {}
+
     const found = MASTER_TEMPLES.find(
       (t) =>
         t.id === templeId ||

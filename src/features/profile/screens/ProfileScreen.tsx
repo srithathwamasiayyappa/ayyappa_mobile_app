@@ -41,7 +41,7 @@ interface Props {
   onLogout: () => void;
   onBack?: () => void;
   onOpenFestivals?: () => void;
-  onNavigateDestination?: (screen: string, detail?: { id: string; title: string }) => void;
+  onNavigateDestination?: (screen: string, detail?: { id: string; title: string }, data?: any) => void;
   onRoleSwitch?: (role: 'DEVOTEE' | 'DHARMA_KARTHA') => void;
 }
 
@@ -1566,7 +1566,32 @@ export const ProfileScreen: React.FC<Props> = ({
         onLogout={onLogout}
         onSwitchToDevotee={() => setActiveRole('DEVOTEE')}
         onSelectTempleDetail={(temple) => {
-          onNavigateDestination?.('temple_detail', { id: temple.slug || String(temple.id), title: temple.name });
+          const tData: TempleItem = {
+            id: temple.slug || String(temple.id),
+            dbId: temple.id,
+            name: temple.name,
+            originalName: temple.name,
+            localNames: { en: temple.name, te: temple.name },
+            deityId: 'ayyappa',
+            deityName: temple.primaryDeity || 'Lord Ayyappa',
+            city: temple.city,
+            state: temple.state,
+            country: 'India',
+            address: temple.address,
+            about: temple.about || temple.shortDescription || 'Newly submitted temple awaiting verification.',
+            history: temple.history,
+            speciality: temple.speciality ? [temple.speciality] : [],
+            contact: temple.officePhone ? { phone: temple.officePhone, email: temple.officialEmail, website: temple.officialWebsite } : undefined,
+            timings: (temple as any).timings,
+            heroImageUrl: temple.heroImageUrl,
+            thumbnailUrl: temple.heroImageUrl,
+            isActive: true,
+          };
+          onNavigateDestination?.(
+            'temple_detail',
+            { id: temple.slug || String(temple.id), title: temple.name },
+            tData
+          );
         }}
       />
     );
