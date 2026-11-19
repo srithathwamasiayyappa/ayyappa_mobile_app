@@ -407,11 +407,15 @@ export const AllDeitiesScreen: React.FC<AllDeitiesScreenProps> = ({
   };
 
   const getLocalizedName = (item: DeityItem): string => {
-    if (currentLanguage === 'te' && item.teluguName) return item.teluguName;
-    if (currentLanguage === 'ta' && item.tamilName) return item.tamilName;
-    if (currentLanguage === 'kn' && item.kannadaName) return item.kannadaName;
-    if (currentLanguage === 'hi' && item.hindiName) return item.hindiName;
-    return item.name;
+    const trans = (item as any).translations;
+    if (trans && trans[currentLanguage]?.name) {
+      return trans[currentLanguage].name;
+    }
+    if (currentLanguage === 'te' && (item.teluguName || trans?.te?.name)) return item.teluguName || trans?.te?.name;
+    if (currentLanguage === 'ta' && (item.tamilName || trans?.ta?.name)) return item.tamilName || trans?.ta?.name;
+    if (currentLanguage === 'kn' && (item.kannadaName || trans?.kn?.name)) return item.kannadaName || trans?.kn?.name;
+    if (currentLanguage === 'hi' && (item.hindiName || trans?.hi?.name)) return item.hindiName || trans?.hi?.name;
+    return trans?.en?.name || item.name;
   };
 
   return (
