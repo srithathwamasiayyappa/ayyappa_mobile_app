@@ -108,12 +108,30 @@ export const QuickEditModal: React.FC<Props> = ({
           userId
         );
       } else if (section === 'timings') {
+        const start = timingStart.trim();
+        const end = timingEnd.trim();
+        const constructedWindow = start && end ? `${start} – ${end}` : (start || end);
+
+        if (!timingTitle.trim()) {
+          Alert.alert('Required', 'Please enter a timing title or seva name.');
+          setLoading(false);
+          return;
+        }
+
+        if (!constructedWindow) {
+          Alert.alert('Required', 'Please enter start time and end time.');
+          setLoading(false);
+          return;
+        }
+
         await ApiService.addTempleTiming(
           temple.id,
           {
             title: timingTitle.trim(),
-            startTime: timingStart.trim(),
-            endTime: timingEnd.trim(),
+            timeWindow: constructedWindow,
+            startTime: start,
+            endTime: end,
+            description: timingDays.trim() || undefined,
             applicableDays: timingDays.trim(),
           },
           userId
@@ -129,6 +147,7 @@ export const QuickEditModal: React.FC<Props> = ({
             templeId: temple.id,
             title: mediaTitle.trim() || 'Sanctum View',
             url: mediaUrl.trim(),
+            mediaUrl: mediaUrl.trim(),
             category: 'SANCTUM',
           },
           userId
