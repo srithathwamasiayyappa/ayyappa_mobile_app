@@ -196,7 +196,8 @@ export const ServicesScreen: React.FC<Props> = ({
     if (slug === 'panchangam' || slug.includes('panchangam')) {
       onOpenPanchangam?.();
     } else {
-      onOpenDetail?.(item.serviceId || item.slug || item.id, item.title, 'all');
+      const activeDeity = currentDeity?.id || currentDeity?.slug || 'all';
+      onOpenDetail?.(item.serviceId || item.slug || item.id, item.title, activeDeity);
     }
   };
 

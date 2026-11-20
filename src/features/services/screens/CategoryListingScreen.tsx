@@ -16,6 +16,29 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Polygon } from 'react-native-svg';
 import { SupportedLanguage } from '../../../types';
 import { CategoryListingSkeleton } from '../../../components/common/CategorySkeleton';
+import { PRODUCTION_BASE_URL } from '../../../services/api';
+
+// Helper to reliably resolve Deity ID from slug/title
+function resolveDeityFromSlugOrTitle(slug = '', title = ''): string {
+  const str = `${slug} ${title}`.toLowerCase();
+  if (/ganesh|vignesh|vinayak|ganapath|modak|గణపతి|వినాయక|విఘ్నేశ్వర|గణేశ|గణప|మోదక/.test(str)) return 'ganesha';
+  if (/devi|durga|lakshmi|lalitha|kanakadhara|mahalakshmi|meenakshi|kamakshi|saraswathi|gomatha|kamadhenu|దేవి|లక్ష్మి|దుర్గ|లలిత|సరస్వతి|గోమాత|కామధేను|వరలక్ష్మి|మాళికాపురత్తమ్మ/.test(str)) return 'devi';
+  if (/ayyap|sastha|harivarasanam|shabarimala|uthara|sannidhanam|padi|maaladharan|sharanu|harathi|అయ్యప్ప|శాస్తా|శాస్త|శబరిమల|మాలాధారణ|హరివరాసనం|శరణం|హారతి|ఇరుముడి|పడి/.test(str)) return 'ayyappa';
+  if (/shiva|linga|bilva|rudra|natara|mrityunjaya|శివ|లింగ|బిల్వ|రుద్ర|మృత్యుంజయ|ఈశ్వర|కేదారేశ్వర|నటరాజ/.test(str)) return 'shiva';
+  if (/venkates|vishnu|koodalmanikya|achyuta|govinda|narayana|perumal|satyanarayana|వేంకట|వెంకట|విష్ణు|సత్యనారాయణ|గోవింద|నారాయణ|శ్రీనివాస/.test(str)) return 'venkateswara';
+  if (/hanuman|anjaneya|maruti|bajrang|sundarakanda|హనుమాన్|ఆంజనేయ|మారుతి|రామదూత/.test(str)) return 'hanuman';
+  if (/subrahmanya|murugan|kartikeya|saravana|shanmukha|vel|skanda|సుబ్రహ్మణ్య|మురుగన్|కార్తికేయ|షణ్ముఖ|స్కంద/.test(str)) return 'murugan';
+  return 'all';
+}
+
+function getParentCategoryKey(categoryId: string): string {
+  const c = (categoryId || '').toLowerCase();
+  if (c === 'pooja' || c === 'pooja-vidhanam' || c === '113') return '113';
+  if (c === 'stotras' || c === 'astothrams' || c === '114') return '114';
+  if (c === 'slokas' || c === '115') return '115';
+  if (c === 'songs' || c === 'bhajans' || c === 'harathis' || c === '116') return '116';
+  return categoryId;
+}
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -359,7 +382,8 @@ export const CategoryListingScreen: React.FC<Props> = ({
   onBack,
 }) => {
   const [selectedFilter, setSelectedFilter] = useState<string>('all');
-  const [loading, setLoading] = useState<boolean>(false);
+  const [dbItems, setDbItems] = useState<ListingItem[] | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
     if (initialDeity && initialDeity !== 'all') {
@@ -368,6 +392,61 @@ export const CategoryListingScreen: React.FC<Props> = ({
       setSelectedFilter('all');
     }
   }, [initialDeity, categoryId]);
+
+  // Dynamically fetch subcategories from DB via Backend API
+  useEffect(() => {
+    let isCancelled = false;
+    setLoading(true);
+
+    const fetchSubcategories = async () => {
+      try {
+        const parentKey = getParentCategoryKey(categoryId);
+        const deityParam = selectedFilter && selectedFilter !== 'all' ? `&deity=${encodeURIComponent(selectedFilter)}` : '';
+        const url = `${PRODUCTION_BASE_URL}/categories/subcategories?parent=${encodeURIComponent(parentKey)}&lang=${currentLanguage}${deityParam}&limit=100`;
+
+        const res = await fetch(url);
+        const json = await res.json().catch(() => null);
+
+        if (!isCancelled && json && Array.isArray(json.data) && json.data.length > 0) {
+          const mapped = json.data.map((item: any) => {
+            const rawSlug = item.slug || String(item.id);
+            const titleFormatted = item.title && item.title !== rawSlug
+              ? item.title
+              : rawSlug.replace(/-/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
+
+            const resolvedDeity = item.deityId && item.deityId !== 'all'
+              ? item.deityId
+              : resolveDeityFromSlugOrTitle(rawSlug, titleFormatted);
+
+            return {
+              id: rawSlug,
+              title: titleFormatted,
+              desc: item.desc || item.description || '',
+              deityId: resolvedDeity,
+              image: item.image || item.imageUrl || DEITY_IMAGES[resolvedDeity] || DEITY_IMAGES.ayyappa,
+            };
+          });
+
+          // Filter by selected deity if server didn't already
+          const finalItems = selectedFilter === 'all'
+            ? mapped
+            : mapped.filter((item: ListingItem) => item.deityId === selectedFilter || item.deityId === 'all');
+
+          setDbItems(finalItems);
+        } else if (!isCancelled) {
+          setDbItems(null); // Fallback to verified local catalog
+        }
+      } catch (e) {
+        console.warn('Failed to fetch subcategories from DB API:', e);
+        if (!isCancelled) setDbItems(null);
+      } finally {
+        if (!isCancelled) setLoading(false);
+      }
+    };
+
+    fetchSubcategories();
+    return () => { isCancelled = true; };
+  }, [categoryId, selectedFilter, currentLanguage]);
 
   // Derive title
   const displayTitle = categoryTitle || (
@@ -391,19 +470,21 @@ export const CategoryListingScreen: React.FC<Props> = ({
     categoryId === 'pooja' || categoryId === 'pooja-vidhanam'
       ? 'pooja-vidhanam'
       : categoryId === 'stotras'
-      ? 'slokas'
+      ? 'astothrams'
       : categoryId === 'songs' || categoryId === 'bhajans'
       ? 'bhajans'
       : categoryId
   );
 
-  // Fetch items based on category
+  // Fallback items based on category
   const allCategoryItems = MASTER_CATEGORY_CONTENT[normalizedKey] || MASTER_CATEGORY_CONTENT[categoryId] || MASTER_CATEGORY_CONTENT['pooja-vidhanam'];
 
   // Filter items by selected deity tab
-  const filteredItems = selectedFilter === 'all'
+  const fallbackFilteredItems = selectedFilter === 'all'
     ? allCategoryItems
     : allCategoryItems.filter((item) => item.deityId === selectedFilter || item.deityId === 'all');
+
+  const filteredItems = (dbItems && dbItems.length > 0) ? dbItems : fallbackFilteredItems;
 
   return (
     <View style={styles.root}>
@@ -524,7 +605,11 @@ export const CategoryListingScreen: React.FC<Props> = ({
                 {/* Left: Square Devotional Artwork Thumbnail */}
                 <View style={styles.imageThumbnailWrapper}>
                   <Image
-                    source={item.image}
+                    source={
+                      typeof item.image === 'string'
+                        ? { uri: item.image.startsWith('http') ? item.image : `https://saranamayyappa.in${item.image}` }
+                        : item.image || DEITY_IMAGES[item.deityId] || DEITY_IMAGES.ayyappa
+                    }
                     style={styles.imageThumbnail}
                     resizeMode="cover"
                   />
