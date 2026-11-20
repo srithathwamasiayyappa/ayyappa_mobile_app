@@ -20,6 +20,7 @@ import Svg, { Path, Circle, Rect, Polygon, Line } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SupportedLanguage } from '../../../types';
 import { StorageService } from '../../../services/storageService';
+import { API_BASE_URL } from '../../../services/api';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -512,8 +513,58 @@ export const SlokaDetailScreen: React.FC<Props> = ({
   // Timer reference for authentic audio playback simulation
   const playbackTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Look up Sloka or fallback to Shiva Tandava Stotram (approved reference)
+  // Look up Sloka dynamically from API with fallback to offline catalog
+  const [apiSloka, setApiSloka] = useState<any>(null);
+
+  useEffect(() => {
+    let isCancelled = false;
+    const fetchSloka = async () => {
+      try {
+        let res = await fetch(`${API_BASE_URL}/categories/stotras/${itemId}?lang=${currentLanguage}`);
+        let json = await res.json().catch(() => null);
+        if (!json || !json.success || !json.data) {
+          res = await fetch(`${API_BASE_URL}/categories/${itemId}?lang=${currentLanguage}`);
+          json = await res.json().catch(() => null);
+        }
+        if (!isCancelled && json && (json.data || json.contents)) {
+          const d = json.data || json;
+          const stanzas: any[] = [];
+          if (d.sacredText) {
+            const rawVerses = d.sacredText.split(/\n\s*\n/).filter(Boolean);
+            const rawMeanings = (d.meaning || '').split(/\n\s*\n/).filter(Boolean);
+            rawVerses.forEach((v: string, idx: number) => {
+              stanzas.push({
+                stanzaNumber: idx + 1,
+                sanskrit: v,
+                telugu: v,
+                englishTransliteration: '',
+                meaning: rawMeanings[idx] || d.meaning || ''
+              });
+            });
+          }
+          if (stanzas.length > 0) {
+            setApiSloka({
+              id: d.slug || itemId,
+              deityId: d.slug?.includes('shiva') ? 'shiva' : d.slug?.includes('venkatesha') ? 'venkateswara' : d.slug?.includes('ayyappa') ? 'ayyappa' : 'ayyappa',
+              primaryTitleTelugu: d.title || title || 'దివ్య స్తోత్రం',
+              englishTitle: d.slug?.replace(/-/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) || 'Stotra',
+              sanskritTitle: d.title || 'स्तोत्रम्',
+              audioDurationSeconds: 480,
+              audioFormattedDuration: '08:00',
+              stanzas
+            });
+          }
+        }
+      } catch (err) {
+        // Fallback to cached or bundled stotra
+      }
+    };
+    fetchSloka();
+    return () => { isCancelled = true; };
+  }, [itemId, currentLanguage]);
+
   const sloka =
+    apiSloka ||
     MASTER_SLOKAS[itemId] ||
     MASTER_SLOKAS['shiva-tandava'];
 
@@ -794,7 +845,7 @@ export const SlokaDetailScreen: React.FC<Props> = ({
               SACRED VERSES / CONTENT DISPLAY
              ========================================================================= */}
           <View style={styles.versesSection}>
-            {sloka.stanzas.map((stanza) => {
+            {sloka.stanzas.map((stanza: any) => {
               let displayText = stanza.sanskrit;
               if (activeTab === 'telugu') {
                 displayText = stanza.telugu;
