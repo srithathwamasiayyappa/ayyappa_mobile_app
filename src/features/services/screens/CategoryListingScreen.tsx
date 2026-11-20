@@ -328,15 +328,26 @@ const MASTER_CATEGORY_CONTENT: Record<string, ListingItem[]> = {
 };
 
 // Filter tabs definition (All | Ayyappa | Shiva | Devi | Ganesha | Venkateswara | Hanuman | Murugan)
+const DEITY_FILTER_LABELS: Record<string, Record<string, string>> = {
+  all: { en: 'All', te: 'అన్నీ', kn: 'ಎಲ್ಲಾ', ta: 'அனைத்தும்', hi: 'सभी' },
+  ayyappa: { en: 'Ayyappa', te: 'అయ్యప్ప', kn: 'ಅಯ್ಯಪ್ಪ', ta: 'ஐயப்பா', hi: 'अय्यप्पा' },
+  shiva: { en: 'Shiva', te: 'శివ', kn: 'ಶಿವ', ta: 'சிவன்', hi: 'शिव' },
+  devi: { en: 'Devi', te: 'దేవి', kn: 'ದೇವಿ', ta: 'தேவி', hi: 'देवी' },
+  ganesha: { en: 'Ganesha', te: 'గణేశ', kn: 'ಗಣೇಶ', ta: 'விநாயகர்', hi: 'गणेश' },
+  venkateswara: { en: 'Venkateswara', te: 'వేంకటేశ్వర', kn: 'ವೆಂಕಟೇಶ್ವರ', ta: 'வெங்கடேஸ்வரா', hi: 'वेंकटेश्वर' },
+  hanuman: { en: 'Hanuman', te: 'హనుమాన్', kn: 'ಹನುಮಾನ್', ta: 'அனுமன்', hi: 'हनुमान' },
+  murugan: { en: 'Murugan', te: 'మురుగన్', kn: 'ಮುರುಗನ್', ta: 'முருகன்', hi: 'मुरुगन' },
+};
+
 const FILTER_TABS = [
-  { id: 'all', label: 'All' },
-  { id: 'ayyappa', label: 'Ayyappa' },
-  { id: 'shiva', label: 'Shiva' },
-  { id: 'devi', label: 'Devi' },
-  { id: 'ganesha', label: 'Ganesha' },
-  { id: 'venkateswara', label: 'Venkateswara' },
-  { id: 'hanuman', label: 'Hanuman' },
-  { id: 'murugan', label: 'Murugan' },
+  { id: 'all', defaultLabel: 'All' },
+  { id: 'ayyappa', defaultLabel: 'Ayyappa' },
+  { id: 'shiva', defaultLabel: 'Shiva' },
+  { id: 'devi', defaultLabel: 'Devi' },
+  { id: 'ganesha', defaultLabel: 'Ganesha' },
+  { id: 'venkateswara', defaultLabel: 'Venkateswara' },
+  { id: 'hanuman', defaultLabel: 'Hanuman' },
+  { id: 'murugan', defaultLabel: 'Murugan' },
 ];
 
 export const CategoryListingScreen: React.FC<Props> = ({
@@ -448,6 +459,7 @@ export const CategoryListingScreen: React.FC<Props> = ({
         >
           {FILTER_TABS.map((tab) => {
             const isSelected = selectedFilter === tab.id;
+            const tabLabel = DEITY_FILTER_LABELS[tab.id]?.[currentLanguage] || tab.defaultLabel;
             return (
               <TouchableOpacity
                 key={tab.id}
@@ -459,7 +471,7 @@ export const CategoryListingScreen: React.FC<Props> = ({
                 ]}
                 accessibilityRole="button"
                 accessibilityState={{ selected: isSelected }}
-                accessibilityLabel={tab.label}
+                accessibilityLabel={tabLabel}
               >
                 {isSelected ? (
                   <LinearGradient
@@ -468,10 +480,10 @@ export const CategoryListingScreen: React.FC<Props> = ({
                     end={{ x: 1, y: 1 }}
                     style={styles.filterTabGradient}
                   >
-                    <Text style={styles.filterTextSelected}>{tab.label}</Text>
+                    <Text style={styles.filterTextSelected}>{tabLabel}</Text>
                   </LinearGradient>
                 ) : (
-                  <Text style={styles.filterTextUnselected}>{tab.label}</Text>
+                  <Text style={styles.filterTextUnselected}>{tabLabel}</Text>
                 )}
               </TouchableOpacity>
             );
