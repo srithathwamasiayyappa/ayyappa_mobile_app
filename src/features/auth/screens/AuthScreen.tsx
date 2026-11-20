@@ -215,12 +215,16 @@ export const AuthScreen: React.FC<Props> = ({
   const [toastMessage, setToastMessage] = useState('');
   const [toastTitle, setToastTitle] = useState<string | undefined>(undefined);
   const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('success');
+  const [inputErrors, setInputErrors] = useState<{ phone?: boolean; name?: boolean; terms?: boolean }>({});
 
   const showToast = (msg: string, type: 'success' | 'error' | 'info' = 'success', title?: string) => {
-    setToastMessage(msg);
-    setToastType(type);
-    setToastTitle(title);
-    setToastVisible(true);
+    setToastVisible(false);
+    setTimeout(() => {
+      setToastMessage(msg);
+      setToastType(type);
+      setToastTitle(title);
+      setToastVisible(true);
+    }, 40);
   };
 
   // Hardware Back Button
@@ -290,26 +294,61 @@ export const AuthScreen: React.FC<Props> = ({
   // Action: Registration Continue
   const handleContinueRegistration = async () => {
     const trimmedName = regName.trim();
-    if (!trimmedName || trimmedName.length < 2) {
-      showToast(t.enterNameError || 'Please enter your full name.', 'error');
+    if (!trimmedName) {
+      setInputErrors((prev) => ({ ...prev, name: true }));
+      showToast('Please enter your full name.', 'error', 'Full Name Required');
+      return;
+    }
+
+    if (trimmedName.length < 3) {
+      setInputErrors((prev) => ({ ...prev, name: true }));
+      showToast('Full name must be at least 3 characters long.', 'error', 'Invalid Name');
+      return;
+    }
+
+    if (!/^[a-zA-Z\s.'-]+$/.test(trimmedName)) {
+      setInputErrors((prev) => ({ ...prev, name: true }));
+      showToast('Full name should only contain letters and spaces.', 'error', 'Invalid Name Format');
       return;
     }
 
     const clean = regPhone.replace(/[^0-9]/g, '');
-    if (!clean || clean.length < 10) {
-      showToast(t.invalidPhoneError || 'Please enter a valid 10-digit mobile number.', 'error');
+    if (!clean) {
+      setInputErrors((prev) => ({ ...prev, phone: true }));
+      showToast('Please enter your 10-digit mobile number.', 'error', 'Mobile Number Required');
       return;
     }
 
-    if (!termsAccepted) {
-      showToast(
-        t.consentRequiredError || 'Please agree to the Terms & Conditions and Privacy Policy to continue.',
-        'error'
-      );
+    if (clean.length < 10) {
+      setInputErrors((prev) => ({ ...prev, phone: true }));
+      showToast(`Please enter a valid 10-digit mobile number (entered ${clean.length} digits).`, 'error', 'Incomplete Mobile Number');
       return;
     }
 
     const clean10 = clean.slice(-10);
+    if (!/^[6-9]\d{9}$/.test(clean10)) {
+      setInputErrors((prev) => ({ ...prev, phone: true }));
+      showToast('Mobile number must start with 6, 7, 8, or 9.', 'error', 'Invalid Mobile Number');
+      return;
+    }
+
+    if (/^(\d)\1{9}$/.test(clean10)) {
+      setInputErrors((prev) => ({ ...prev, phone: true }));
+      showToast('Please enter a valid, active mobile number.', 'error', 'Invalid Mobile Number');
+      return;
+    }
+
+    if (!termsAccepted) {
+      setInputErrors((prev) => ({ ...prev, terms: true }));
+      showToast(
+        'Please check the box to agree to Terms & Conditions and Privacy Policy.',
+        'error',
+        'Terms & Conditions Required'
+      );
+      return;
+    }
+
+    setInputErrors({});
     const phoneE164 = `+91${clean10}`;
 
     setLoading(true);
@@ -382,12 +421,32 @@ export const AuthScreen: React.FC<Props> = ({
   // Action: Login Continue
   const handleContinueLogin = async () => {
     const clean = loginPhone.replace(/[^0-9]/g, '');
-    if (!clean || clean.length < 10) {
-      showToast(t.invalidPhoneError || 'Please enter a valid 10-digit mobile number.', 'error');
+    if (!clean) {
+      setInputErrors((prev) => ({ ...prev, phone: true }));
+      showToast('Please enter your 10-digit mobile number.', 'error', 'Mobile Number Required');
+      return;
+    }
+
+    if (clean.length < 10) {
+      setInputErrors((prev) => ({ ...prev, phone: true }));
+      showToast(`Please enter a valid 10-digit mobile number (entered ${clean.length} digits).`, 'error', 'Incomplete Mobile Number');
       return;
     }
 
     const clean10 = clean.slice(-10);
+    if (!/^[6-9]\d{9}$/.test(clean10)) {
+      setInputErrors((prev) => ({ ...prev, phone: true }));
+      showToast('Mobile number must start with 6, 7, 8, or 9.', 'error', 'Invalid Mobile Number');
+      return;
+    }
+
+    if (/^(\d)\1{9}$/.test(clean10)) {
+      setInputErrors((prev) => ({ ...prev, phone: true }));
+      showToast('Please enter a valid, active mobile number.', 'error', 'Invalid Mobile Number');
+      return;
+    }
+
+    setInputErrors((prev) => ({ ...prev, phone: false }));
     const phoneE164 = `+91${clean10}`;
 
     setLoading(true);
@@ -489,8 +548,12 @@ export const AuthScreen: React.FC<Props> = ({
   // Action: Verify OTP
   const handleVerifyOtp = async () => {
     const cleanOtp = (otpCode || '').replace(/[^0-9]/g, '').trim();
-    if (!cleanOtp || cleanOtp.length !== 6) {
-      showToast(otpT.enterFullOtpError || 'Please enter the 6-digit verification code.', 'error');
+    if (!cleanOtp) {
+      showToast('Please enter the 6-digit verification code.', 'error', 'OTP Required');
+      return;
+    }
+    if (cleanOtp.length < 6) {
+      showToast(`Please enter all 6 digits of the OTP code (entered ${cleanOtp.length} digits).`, 'error', 'Incomplete OTP');
       return;
     }
 
@@ -888,23 +951,26 @@ export const AuthScreen: React.FC<Props> = ({
 
                   {/* Field for Full Name in REGISTER mode */}
                   {currentStep === 'REGISTER' && (
-                    <View style={styles.inputPillField}>
+                    <View style={[styles.inputPillField, inputErrors.name && styles.inputPillFieldError]}>
                       <View style={styles.fieldIconPrefix}>
-                        <DevoteeUserIcon color="#173D32" size={19} />
+                        <DevoteeUserIcon color={inputErrors.name ? '#D32F2F' : '#173D32'} size={19} />
                       </View>
                       <TextInput
                         style={styles.phoneTextInput}
                         placeholder={t.fullNamePlaceholder || 'Full Name'}
                         placeholderTextColor="#8A7B6B"
                         value={regName}
-                        onChangeText={setRegName}
+                        onChangeText={(val) => {
+                          if (inputErrors.name) setInputErrors((prev) => ({ ...prev, name: false }));
+                          setRegName(val);
+                        }}
                         autoCapitalize="words"
                       />
                     </View>
                   )}
 
                   {/* 5. Mobile Number Input Field with Indian Flag */}
-                  <View style={styles.inputPillField}>
+                  <View style={[styles.inputPillField, inputErrors.phone && styles.inputPillFieldError]}>
                     <View style={styles.flagCountrySection}>
                       <IndianFlagIcon />
                       <Text style={styles.countryCodeText}>+91</Text>
@@ -922,6 +988,7 @@ export const AuthScreen: React.FC<Props> = ({
                       value={currentStep === 'REGISTER' ? regPhone : loginPhone}
                       onChangeText={(val) => {
                         const clean = val.replace(/[^0-9]/g, '');
+                        if (inputErrors.phone) setInputErrors((prev) => ({ ...prev, phone: false }));
                         if (currentStep === 'REGISTER') {
                           setRegPhone(clean);
                         } else {
@@ -935,9 +1002,16 @@ export const AuthScreen: React.FC<Props> = ({
                   {currentStep === 'REGISTER' && (
                     <View style={styles.consentRow}>
                       <TouchableOpacity
-                        style={[styles.checkboxSquare, termsAccepted && styles.checkboxSquareChecked]}
+                        style={[
+                          styles.checkboxSquare,
+                          termsAccepted && styles.checkboxSquareChecked,
+                          inputErrors.terms && styles.checkboxSquareError,
+                        ]}
                         activeOpacity={0.8}
-                        onPress={() => setTermsAccepted(!termsAccepted)}
+                        onPress={() => {
+                          if (inputErrors.terms) setInputErrors((prev) => ({ ...prev, terms: false }));
+                          setTermsAccepted(!termsAccepted);
+                        }}
                         accessibilityRole="checkbox"
                         accessibilityState={{ checked: termsAccepted }}
                       >
@@ -1000,7 +1074,10 @@ export const AuthScreen: React.FC<Props> = ({
                   {currentStep === 'LOGIN' ? (
                     <TouchableOpacity
                       style={styles.createAccountButton}
-                      onPress={() => setCurrentStep('REGISTER')}
+                      onPress={() => {
+                        setInputErrors({});
+                        setCurrentStep('REGISTER');
+                      }}
                       activeOpacity={0.85}
                       accessibilityRole="button"
                       accessibilityLabel="Create New Account"
@@ -1011,7 +1088,10 @@ export const AuthScreen: React.FC<Props> = ({
                   ) : (
                     <TouchableOpacity
                       style={styles.createAccountButton}
-                      onPress={() => setCurrentStep('LOGIN')}
+                      onPress={() => {
+                        setInputErrors({});
+                        setCurrentStep('LOGIN');
+                      }}
                       activeOpacity={0.85}
                       accessibilityRole="button"
                       accessibilityLabel="Already have an account? Login"
@@ -1441,6 +1521,11 @@ const styles = StyleSheet.create({
     shadowRadius: 2.5,
     elevation: 2,
   },
+  inputPillFieldError: {
+    borderColor: '#D32F2F',
+    borderWidth: 1.8,
+    backgroundColor: '#FFF7F7',
+  },
   fieldIconPrefix: {
     marginRight: 8,
   },
@@ -1499,6 +1584,11 @@ const styles = StyleSheet.create({
   checkboxSquareChecked: {
     backgroundColor: '#075E2B',
     borderColor: '#075E2B',
+  },
+  checkboxSquareError: {
+    borderColor: '#D32F2F',
+    borderWidth: 2,
+    backgroundColor: '#FFF0F0',
   },
   checkmarkIcon: {
     color: '#FFFFFF',
