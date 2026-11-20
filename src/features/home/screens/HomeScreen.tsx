@@ -43,9 +43,9 @@ import { DailyInspirationSection } from '../components/DailyInspirationSection';
 import { AnnadanamSupportSection } from '../components/AnnadanamSupportSection';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const BANNER_MARGIN = 12;
-const BANNER_WIDTH = SCREEN_WIDTH - BANNER_MARGIN * 2;
-const BANNER_HEIGHT = SCREEN_WIDTH < 380 ? 240 : 252;
+const BANNER_MARGIN = 0;
+const BANNER_WIDTH = SCREEN_WIDTH;
+const BANNER_HEIGHT = SCREEN_WIDTH < 380 ? 165 : 176;
 
 // 1. Approved Golden Hanging Deepam Brand Icon (Traditional Temple Hanging Lamp)
 const HeaderHangingDeepamIcon = ({ width = 26, height = 34 }: { width?: number; height?: number }) => (
@@ -500,16 +500,12 @@ export const HomeScreen: React.FC<Props> = ({
 
               {/* Layer 4: Devotional Left-Aligned Typography & Gold CTA Button */}
               <View style={styles.heroContentLeft}>
-                <Text style={styles.heroGreetingTop}>{branding.heroGreetingTop || 'Thathwamasi'}</Text>
-                <Text style={styles.heroGreetingMid}>{branding.heroGreetingMid || 'Ayyappa'}</Text>
-                {branding.heroGreetingBot ? (
-                  <Text style={styles.heroGreetingBot}>{branding.heroGreetingBot}</Text>
-                ) : null}
+                <Text style={styles.heroGreetingTop}>Thathwamasi</Text>
 
                 <HeroGoldDivider />
 
-                <Text style={styles.heroDevotionalDesc} numberOfLines={3}>
-                  Your daily poojas, panchangam, temples, and spiritual guidance for a deeper connection with Lord Ayyappa.
+                <Text style={styles.heroDevotionalDesc} numberOfLines={2}>
+                  Your daily poojas, panchangam, temples & spiritual guidance.
                 </Text>
 
                 <TouchableOpacity
@@ -545,12 +541,10 @@ export const HomeScreen: React.FC<Props> = ({
                 <Image source={AYYAPPA_HERO_FOREGROUND} style={styles.heroDeityForegroundImage} resizeMode="contain" />
               </View>
               <View style={styles.heroContentLeft}>
-                <Text style={styles.heroGreetingTop}>Mandala</Text>
-                <Text style={styles.heroGreetingMid}>Pooja</Text>
-                <Text style={styles.heroGreetingBot}>Special!</Text>
+                <Text style={styles.heroGreetingTop}>Mandala Pooja</Text>
                 <HeroGoldDivider />
-                <Text style={styles.heroDevotionalDesc} numberOfLines={3}>
-                  41-day sacred Mandala Deeksha, Vratham guidelines, Irumudi Kattu vidhanam & daily live prayers.
+                <Text style={styles.heroDevotionalDesc} numberOfLines={2}>
+                  41-day sacred Mandala Deeksha, Vratham & daily live prayers.
                 </Text>
                 <TouchableOpacity
                   style={styles.heroExploreBtn}
@@ -583,12 +577,10 @@ export const HomeScreen: React.FC<Props> = ({
                 <Image source={AYYAPPA_HERO_FOREGROUND} style={styles.heroDeityForegroundImage} resizeMode="contain" />
               </View>
               <View style={styles.heroContentLeft}>
-                <Text style={styles.heroGreetingTop}>Sabarimala</Text>
-                <Text style={styles.heroGreetingMid}>Live</Text>
-                <Text style={styles.heroGreetingBot}>Darshan</Text>
+                <Text style={styles.heroGreetingTop}>Sabarimala Live</Text>
                 <HeroGoldDivider />
-                <Text style={styles.heroDevotionalDesc} numberOfLines={3}>
-                  Watch live daily Abhishekam, Deeparadhana, and Harivarasanam directly from Sannidhanam.
+                <Text style={styles.heroDevotionalDesc} numberOfLines={2}>
+                  Live Abhishekam, Deeparadhana & Harivarasanam from Sannidhanam.
                 </Text>
                 <TouchableOpacity
                   style={styles.heroExploreBtn}
@@ -926,8 +918,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerGoldBottomBorder: {
-    height: 1.5,
-    backgroundColor: '#E7B844',
+    height: 0,
+    backgroundColor: 'transparent',
   },
   notificationDot: {
     position: 'absolute',
@@ -947,21 +939,25 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
   },
 
-  // Rounded Devotional Hero Banner (Approved Reference)
+  // Joined Devotional Hero Banner (30% Height Reduced, Edge-to-Edge with Header)
   panoramicHeroContainer: {
     marginHorizontal: BANNER_MARGIN,
-    marginTop: 10,
-    marginBottom: 6,
+    marginTop: 0,
+    marginBottom: 8,
     height: BANNER_HEIGHT,
-    borderRadius: 24,
-    borderWidth: 1.5,
-    borderColor: '#E7B844',
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    borderWidth: 0,
+    borderBottomWidth: 1.5,
+    borderBottomColor: '#E7B844',
     overflow: 'hidden',
-    backgroundColor: '#1B542C', // Pearl Green
+    backgroundColor: '#002B20', // Seamless transition from header
     position: 'relative',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.18,
     shadowRadius: 5,
     elevation: 4,
   },
@@ -982,10 +978,10 @@ const styles = StyleSheet.create({
   },
   heroDeityForegroundWrapper: {
     position: 'absolute',
-    right: -4,
+    right: -2,
     bottom: 0,
-    width: BANNER_WIDTH * 0.52,
-    height: '98%',
+    width: BANNER_WIDTH * 0.48,
+    height: '100%',
     justifyContent: 'flex-end',
     alignItems: 'flex-end',
   },
@@ -995,8 +991,8 @@ const styles = StyleSheet.create({
   },
   heroContentLeft: {
     position: 'absolute',
-    top: 14,
-    left: 14,
+    top: 12,
+    left: 16,
     width: BANNER_WIDTH * 0.52,
     justifyContent: 'flex-start',
     zIndex: 10,
@@ -1008,11 +1004,11 @@ const styles = StyleSheet.create({
       web: 'Poppins, sans-serif',
       default: 'Poppins_700Bold',
     }),
-    fontSize: 21,
+    fontSize: 22,
     fontWeight: '800',
     color: '#FFF8E8',
-    letterSpacing: 0.2,
-    lineHeight: 25,
+    letterSpacing: 0.3,
+    lineHeight: 26,
   },
   heroGreetingMid: {
     fontFamily: Platform.select({
@@ -1021,11 +1017,11 @@ const styles = StyleSheet.create({
       web: 'Poppins, sans-serif',
       default: 'Poppins_700Bold',
     }),
-    fontSize: 21,
+    fontSize: 18,
     fontWeight: '800',
     color: '#FFF8E8',
     letterSpacing: 0.2,
-    lineHeight: 25,
+    lineHeight: 22,
   },
   heroGreetingBot: {
     fontFamily: Platform.select({
@@ -1034,18 +1030,18 @@ const styles = StyleSheet.create({
       web: 'Poppins, sans-serif',
       default: 'Poppins_800ExtraBold',
     }),
-    fontSize: 23,
+    fontSize: 20,
     fontWeight: '900',
     color: '#F4C451',
     letterSpacing: 0.3,
-    lineHeight: 28,
+    lineHeight: 24,
   },
   heroDividerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     marginVertical: 4,
-    width: 140,
+    width: 90,
   },
   heroDividerLine: {
     flex: 1,
@@ -1060,14 +1056,14 @@ const styles = StyleSheet.create({
       web: 'Poppins, sans-serif',
       default: 'Poppins_400Regular',
     }),
-    fontSize: 10,
+    fontSize: 9.5,
     color: '#EDE8DE',
-    lineHeight: 14,
-    marginBottom: 8,
+    lineHeight: 13.5,
+    marginBottom: 6,
   },
   heroExploreBtn: {
     alignSelf: 'flex-start',
-    borderRadius: 20,
+    borderRadius: 16,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -1076,9 +1072,9 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   heroExploreGradient: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 4.5,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1089,13 +1085,13 @@ const styles = StyleSheet.create({
       web: 'Poppins, sans-serif',
       default: 'Poppins_700Bold',
     }),
-    fontSize: 11.5,
+    fontSize: 11,
     fontWeight: '800',
     color: '#002F25',
   },
   heroPaginationRow: {
     position: 'absolute',
-    bottom: 10,
+    bottom: 6,
     left: 0,
     right: 0,
     flexDirection: 'row',
