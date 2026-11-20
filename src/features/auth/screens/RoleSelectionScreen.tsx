@@ -215,7 +215,7 @@ export const RoleSelectionScreen: React.FC<RoleSelectionScreenProps> = ({
 
             {/* Two Side-by-Side Role Cards */}
             <View style={styles.cardsRow}>
-              {/* 1. DEVOTEE CARD (FOR AYYAPPA DEVOTEES) */}
+              {/* 1. DEVOTEE CARD (FOR HINDU DEVOTEES) */}
               <TouchableOpacity
                 style={[
                   styles.roleCard,
@@ -225,7 +225,7 @@ export const RoleSelectionScreen: React.FC<RoleSelectionScreenProps> = ({
                 activeOpacity={0.9}
                 accessibilityRole="radio"
                 accessibilityState={{ selected: selectedRole === 'DEVOTEE' }}
-                accessibilityLabel="Devotee, For Ayyappa Devotees"
+                accessibilityLabel="Devotee, For Hindu Devotees"
               >
                 {/* Devotee Artwork (Image 1 Left Card) */}
                 <View style={styles.cardImageContainer}>
@@ -261,7 +261,7 @@ export const RoleSelectionScreen: React.FC<RoleSelectionScreenProps> = ({
                   <Text style={styles.cardHeading}>I am Devotee</Text>
 
                   <Text style={styles.cardDescription}>
-                    For Ayyappa Devotees
+                    For Hindu Devotees
                   </Text>
                 </View>
               </TouchableOpacity>
