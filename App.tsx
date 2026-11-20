@@ -83,6 +83,7 @@ import {
 interface DetailState {
   id: string;
   title: string;
+  deity?: string;
 }
 
 interface NavHistoryEntry {
@@ -174,14 +175,14 @@ export default function App() {
     }
 
     if (currentScreen === 'onboarding') {
-      setCurrentScreen('choose_deity');
-      StorageService.saveNavigationState('choose_deity', null);
+      setCurrentScreen('welcome');
+      StorageService.saveNavigationState('welcome', null);
       return true;
     }
 
     if (currentScreen === 'choose_deity') {
-      setCurrentScreen('language');
-      StorageService.saveNavigationState('language', null);
+      setCurrentScreen('home');
+      StorageService.saveNavigationState('home', null);
       return true;
     }
 
@@ -420,7 +421,7 @@ export default function App() {
     StorageService.saveNavigationState('language', null);
   };
 
-  // After devotee selects their language -> Strictly proceed to God Selection (Choose Your Deity)
+  // After devotee selects their language -> Directly navigate to Home screen
   const handleLanguageSelect = (lang: SupportedLanguage) => {
     setSelectedLanguage(lang);
     StorageService.setStoredLanguage(lang);
@@ -428,9 +429,8 @@ export default function App() {
     if (navHistory.length > 0 && navHistory[navHistory.length - 1].screen === 'profile') {
       handleGoBack();
     } else {
-      // Strictly proceed to God Selection (choose_deity) after Language Selection
-      setCurrentScreen('choose_deity');
-      StorageService.saveNavigationState('choose_deity', null);
+      setCurrentScreen('home');
+      StorageService.saveNavigationState('home', null);
     }
   };
 
@@ -448,28 +448,29 @@ export default function App() {
     }
   };
 
-  const handleOpenDetail = (id: string, title: string) => {
+  const handleOpenDetail = (id: string, title: string, deity?: string) => {
+    const activeDeity = deity || 'all';
     if (id === 'bhajans' || id === 'harathis' || id === 'songs' || id === 'bhajans-songs') {
-      navigateTo('bhajans_songs', { id, title: title || 'Bhajans & Songs' });
+      navigateTo('bhajans_songs', { id, title: title || 'Bhajans & Songs', deity: activeDeity });
     } else if (id === 'live-streams' || id === 'live' || id === 'live_streams' || id === 'live-darshan') {
-      navigateTo('live_streams', { id, title: title || 'Live Streams' });
+      navigateTo('live_streams', { id, title: title || 'Live Streams', deity: activeDeity });
     } else if (id === 'temples' || id === 'temples-in-india' || id === 'temple_listing') {
-      navigateTo('temples', { id, title: title || 'Temples in India' });
+      navigateTo('temples', { id, title: title || 'Temples in India', deity: activeDeity });
     } else if (id.startsWith('temple-') || id.startsWith('temple:') || id === 'temple_detail') {
       const cleanId = id.startsWith('temple:') ? id.replace('temple:', '') : id;
-      navigateTo('temple_detail', { id: cleanId, title });
+      navigateTo('temple_detail', { id: cleanId, title, deity: activeDeity });
     } else if (id === 'food-donation' || id === 'annadanam' || id === 'food_donation') {
-      navigateTo('food_donation', { id, title: title || 'Food Donation (Annadanam)' });
+      navigateTo('food_donation', { id, title: title || 'Food Donation (Annadanam)', deity: activeDeity });
     } else if (id === 'donations' || id === 'donation' || id === 'seva-booking') {
-      navigateTo('donations', { id, title: title || 'Donations' });
+      navigateTo('donations', { id, title: title || 'Donations', deity: activeDeity });
     } else if (id === 'festivals' || id === 'festival' || id === 'festivals-calendar' || id === 'temple-festivals') {
-      navigateTo('festivals', { id, title: title || 'Festivals & Sacred Days' });
+      navigateTo('festivals', { id, title: title || 'Festivals & Sacred Days', deity: activeDeity });
     } else {
-      const listingCategories = ['pooja-vidhanam', 'astothrams', 'slokas'];
-      if (listingCategories.includes(id)) {
-        navigateTo('category_listing', { id, title });
+      const listingCategories = ['pooja-vidhanam', 'astothrams', 'slokas', 'bhajans', 'harathis'];
+      if (listingCategories.includes(id) || !id.includes('-')) {
+        navigateTo('category_listing', { id, title, deity: activeDeity });
       } else if (id.includes('pooja') || id.includes('vratham') || id.includes('abhishekam')) {
-        navigateTo('pooja_detail', { id, title });
+        navigateTo('pooja_detail', { id, title, deity: activeDeity });
       } else if (
         id.includes('sloka') ||
         id.includes('stotram') ||
@@ -480,9 +481,9 @@ export default function App() {
         id.includes('ashtakam') ||
         id.includes('chalisa')
       ) {
-        navigateTo('sloka_detail', { id, title });
+        navigateTo('sloka_detail', { id, title, deity: activeDeity });
       } else {
-        navigateTo('detail', { id, title });
+        navigateTo('detail', { id, title, deity: activeDeity });
       }
     }
   };
@@ -708,8 +709,13 @@ export default function App() {
         {currentScreen === 'categories' && (
           <ServicesScreen
             currentLanguage={selectedLanguage}
+            currentDeity={currentDeity}
             onOpenDetail={handleOpenDetail}
             onOpenPanchangam={handleOpenPanchangam}
+            onDeityChange={(deity) => {
+              setCurrentDeity(deity);
+              StorageService.setStoredDeity(deity);
+            }}
             onBack={handleGoBack}
           />
         )}
@@ -816,6 +822,7 @@ export default function App() {
             categoryId={activeDetail.id}
             categoryTitle={activeDetail.title}
             currentLanguage={selectedLanguage}
+            initialDeity={activeDetail.deity || 'all'}
             onSelectItem={(id, title) => {
               if (
                 activeDetail.id === 'pooja-vidhanam' ||
@@ -835,14 +842,18 @@ export default function App() {
                 navigateTo('bhajans_songs', { id, title });
               } else if (
                 activeDetail.id === 'slokas' ||
+                activeDetail.id === 'astothrams' ||
                 id.includes('sloka') ||
                 id.includes('stotram') ||
+                id.includes('astothram') ||
+                id.includes('ashtottaram') ||
                 id.includes('tandava') ||
                 id.includes('pancharatnam') ||
                 id.includes('gayatri') ||
                 id.includes('suprabhatam') ||
                 id.includes('ashtakam') ||
-                id.includes('chalisa')
+                id.includes('chalisa') ||
+                id.includes('kavasam')
               ) {
                 navigateTo('sloka_detail', { id, title });
               } else {

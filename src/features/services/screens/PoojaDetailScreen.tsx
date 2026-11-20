@@ -137,6 +137,8 @@ const DEITY_IMAGES: Record<string, any> = {
   venkateswara: require('../../../../assets/deities/venkateswara.jpg'),
   devi: require('../../../../assets/deities/durga.jpg'),
   shiva: require('../../../../assets/deities/shiva.jpg'),
+  hanuman: require('../../../../assets/deities/hanuman.jpg'),
+  murugan: require('../../../../assets/deities/card_murugan.jpg'),
 };
 
 type DetailTab = 'overview' | 'procedure' | 'materials' | 'benefits';
@@ -589,6 +591,127 @@ const POOJA_DETAILS: Record<string, PoojaDetailContent> = {
       },
     ],
     auspiciousDays: 'Maha Shivaratri, Masa Shivaratri, Mondays (Somavaram), and Pradosham.',
+  },
+  'hanuman-pooja': {
+    id: 'hanuman-pooja',
+    deityId: 'hanuman',
+    defaultTitle: 'Hanuman Pooja & Sindhooram',
+    regionalTitles: {
+      en: 'Hanuman Pooja & Sindhooram',
+      te: 'శ్రీ హనుమాన్ పూజ & సింధూరార్చన',
+      ta: 'ஸ்ரீ ஹனுமான் பூஜை',
+      kn: 'ಶ್ರೀ ಹನುಮಾನ್ ಪೂಜೆ',
+      hi: 'श्री हनुमान पूजा एवं सिंदूर अर्चन',
+      ml: 'ശ്രീ ഹനുമാൻ പൂജ',
+    },
+    overview: {
+      heading: 'Hanuman Pooja & Sindhooram',
+      description:
+        'Vigorous worship of Sri Hanuman with Sindhoora lepanam, Betel leaves mala, and Hanuman Chalisa recitation for total fearlessness and strength.',
+      videoDuration: '35 mins • Sundarakanda & Sindhoora Seva',
+    },
+    procedure: [
+      {
+        stepNumber: 1,
+        title: 'Deepa Prajvalana & Sankalpam',
+        duration: '5 Mins',
+        description: 'Light sesame oil lamp with red wicks facing east and take solemn sankalpam for protection.',
+      },
+      {
+        stepNumber: 2,
+        title: 'Sindhoora Lepanam & Jasmine Oil',
+        duration: '15 Mins',
+        description: 'Anoint the holy vigraha with pure Sindhoor blended with Chameli (Jasmine) oil chanting Moola Mantram.',
+        mantra: 'ఓం నమో భగవతే ఆంజనేయాయ మహాబలాయ స్వాహా ||',
+      },
+      {
+        stepNumber: 3,
+        title: 'Tamalapaku (Betel Leaf) Garland Offering',
+        duration: '10 Mins',
+        description: 'String 108 fresh betel leaves inscribed with Sri Rama nama and offer with fervent devotion.',
+      },
+      {
+        stepNumber: 4,
+        title: 'Hanuman Chalisa & Aarti',
+        duration: '15 Mins',
+        description: 'Sing 40 verses of Sri Hanuman Chalisa followed by camphor deeparadhana.',
+      },
+    ],
+    materials: [
+      { id: 'hp1', name: 'Pure Sindhooram & Chameli Oil', quantity: '100g', category: 'dravyas' },
+      { id: 'hp2', name: 'Fresh Betel Leaves (Tamalapaku)', quantity: '108 Leaves', category: 'flowers' },
+      { id: 'hp3', name: 'Vada Mala or Boondi Laddu', quantity: '1 Bowl', category: 'naivedyam' },
+      { id: 'hp4', name: 'Red Flowers & Red Vastram', quantity: '1 Set', category: 'essential' },
+      { id: 'hp5', name: 'Sesame (Til) Oil & Camphor', quantity: '250ml', category: 'essential' },
+    ],
+    benefits: [
+      {
+        title: 'Elimination of Fear, Evil Eyes & Graha Doshas',
+        description: 'Neutralizes Shani doshas, dispels evil influences, and eradicates phobias and anxieties.',
+      },
+      {
+        title: 'Supreme Physical & Mental Strength',
+        description: 'Infuses vitality, determination, speech eloquence, and unwavering self-confidence.',
+      },
+    ],
+    auspiciousDays: 'Tuesdays (Mangalavaram), Saturdays (Sanivaram), and Hanuman Jayanti.',
+  },
+  'subramanya-pooja': {
+    id: 'subramanya-pooja',
+    deityId: 'murugan',
+    defaultTitle: 'Subramanya Sashti Pooja',
+    regionalTitles: {
+      en: 'Subramanya Sashti Pooja',
+      te: 'శ్రీ సుబ్రహ్మణ్య షష్ఠి పూజ',
+      ta: 'ஸ்ரீ சுப்ரமண்ய சஷ்டி பூஜை',
+      kn: 'ಶ್ರೀ ಸುಬ್ರಹ್ಮಣ್ಯ ಷಷ್ಠಿ ಪೂಜೆ',
+      hi: 'श्री सुब्रह्मण्य षष्ठी पूजा',
+      ml: 'ശ്രീ സുബ്രഹ്മണ്യ ഷഷ്ഠി പൂജ',
+    },
+    overview: {
+      heading: 'Subramanya Sashti Pooja',
+      description:
+        'The sacred adoration of Lord Murugan (Kartikeya / Shanmukha) wielding the divine Vel for victory over impediments and health.',
+      videoDuration: '40 mins • Skanda Sashti Kavasam & Abhishekam',
+    },
+    procedure: [
+      {
+        stepNumber: 1,
+        title: 'Sankalpam & Vel Archana',
+        duration: '10 Mins',
+        description: 'Take sankalpam and offer fragrant red vibhuti and kumkum to the divine Vel (spear).',
+      },
+      {
+        stepNumber: 2,
+        title: 'Panchamrita & Rose Water Abhishekam',
+        duration: '20 Mins',
+        description: 'Perform cooling abhishekam with milk, honey, tender coconut, and rose water.',
+        mantra: 'ఓం శరవణభవాయ నమః ||',
+      },
+      {
+        stepNumber: 3,
+        title: 'Skanda Sashti Kavasam Recitation',
+        duration: '15 Mins',
+        description: 'Recite the sacred protective Kavacham invoking Lord Murugan to safeguard every organ and limb.',
+      },
+    ],
+    materials: [
+      { id: 'sp1', name: 'Fresh Red Oleander (Arali) Flowers', quantity: '2 Garlands', category: 'flowers' },
+      { id: 'sp2', name: 'Panchamritam & Rose Water', quantity: '1 Litre', category: 'essential' },
+      { id: 'sp3', name: 'Pure Vibhuti (Sacred Ash)', quantity: '100g', category: 'dravyas' },
+      { id: 'sp4', name: 'Sweet Pongal or Panchamirtham Prasadam', quantity: '1 Bowl', category: 'naivedyam' },
+    ],
+    benefits: [
+      {
+        title: 'Victory in Endeavours & Settle Debts',
+        description: 'Removes Kuja (Mars) doshas, legal hurdles, and blesses with courage and dynamism.',
+      },
+      {
+        title: 'Child Blessing (Santhana Bhagyam) & Radiance',
+        description: 'Bestows righteous offspring, vibrant intellect, and glowing health.',
+      },
+    ],
+    auspiciousDays: 'Skanda Sashti, Tuesdays, Krittika Nakshatram, and Thai Poosam.',
   },
 };
 

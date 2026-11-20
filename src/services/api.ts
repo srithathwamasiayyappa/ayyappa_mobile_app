@@ -242,31 +242,42 @@ export const ApiService = {
     return PanchangamLocalEngine.calculate(targetDate, city, lang, customCoords);
   },
 
-  // 3. Fetch Devotional Categories dynamically from DB via API with graceful catalog fallback
+  // 3. Fetch Devotional Categories dynamically from DB via Website & Mobile API (/categories/services)
   async getCategories(
     lang: SupportedLanguage = 'en',
     search?: string,
   ): Promise<DevotionalCategoryItem[]> {
-    const query = search?.trim() ? `&search=${encodeURIComponent(search.trim())}` : '';
+    const queryParts: string[] = [];
+    if (lang) queryParts.push(`lang=${encodeURIComponent(lang)}`);
+    if (search?.trim()) queryParts.push(`search=${encodeURIComponent(search.trim())}`);
+    const qs = queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
 
     const fetchFromEndpoint = async (baseUrl: string) => {
-      const res = await fetch(`${baseUrl}/categories?lang=${lang}${query}`);
+      const res = await fetch(`${baseUrl}/categories/services${qs}`);
       if (!res.ok) {
         throw new Error(`Failed to load categories (Status: ${res.status})`);
       }
-      const data = await res.json();
-      if (!Array.isArray(data)) {
+      const json = await res.json();
+      const list = json?.data || (Array.isArray(json) ? json : []);
+      if (!Array.isArray(list)) {
         throw new Error('Invalid categories response received from server');
       }
-      return data.map((item: any) => ({
-        id: String(item.id),
-        slug: item.slug,
+      return list.map((item: any) => ({
+        id: String(item.id || item.serviceId),
+        serviceId: item.serviceId || item.id,
+        slug: item.serviceId || item.id,
         title: item.title,
-        description: item.description || '',
-        isAudio: Boolean(item.isAudio),
+        sub: item.sub || '',
+        description: item.sub || item.description || '',
+        icon: item.icon,
+        url: item.url,
+        artwork: item.artwork,
+        displayOrder: item.displayOrder,
+        isActive: item.isActive !== false,
+        isAudio: Boolean(item.isAudio || item.id === 'songs' || item.id === 'bhajans'),
         audioDurationSec: 40,
         totalTime: '00:40',
-        chantLyric: item.description,
+        chantLyric: item.sub || item.description,
       }));
     };
 
@@ -280,92 +291,94 @@ export const ApiService = {
         const prodResults = await fetchFromEndpoint(PRODUCTION_BASE_URL);
         if (Array.isArray(prodResults) && prodResults.length > 0) return prodResults;
       } catch (prodErr) {
-        console.warn('Categories DB fetch error, serving verified devotional catalog:', prodErr);
+        console.warn('Categories DB fetch error, serving verified devotional services catalog:', prodErr);
       }
     }
 
-    // Authentic Devotional Categories localized catalog
-    const CATALOG: Record<SupportedLanguage, Array<{ id: string; slug: string; title: string; description: string; isAudio?: boolean }>> = {
-      te: [
-        { id: '1', slug: 'pooja-vidhanam', title: 'పూజా విధానం', description: 'నిత్య పూజా క్రమము, సంకల్పము & దీక్షా నియమావళి', isAudio: false },
-        { id: '2', slug: 'astothrams', title: 'అష్టోత్తర శతనామావళి', description: '108 అయ్యప్ప దివ్య నామావళి మరియు ప్రార్థనలు', isAudio: false },
-        { id: '3', slug: 'slokas', title: 'నిత్య శ్లోకాలు & మంత్రాలు', description: 'శాంతి, సంక్షేమం & సర్వదోష నివారణ పవిత్ర శ్లోకములు', isAudio: false },
-        { id: '4', slug: 'bhajans', title: 'భజనలు & కీర్తనలు', description: 'స్వామియే శరణమయ్యప్ప పడిపూజ భక్తి కీర్తనలు', isAudio: true },
-        { id: '5', slug: 'vrata-kalpam', title: 'శ్రీ అయ్యప్ప వ్రత కల్పం', description: 'మండల దీక్షా సంపూర్ణ పూజా విధానం & కథ', isAudio: false },
-        { id: '6', slug: 'harivarasanam', title: 'హరివరాసనం', description: 'శబరిమల రాత్రి వేళ ఆలయ తలుపులు మూసే ఏకాంత సేవ', isAudio: true },
-        { id: '7', slug: 'sahasranama', title: 'సహస్రనామావళి', description: '1008 అయ్యప్ప స్వామి వారి దివ్య నామ సంకీర్తన', isAudio: false },
-        { id: '8', slug: 'kavacham', title: 'శ్రీ అయ్యప్ప కవచం', description: 'సర్వ రక్షా ప్రదాత మహా మహిమాన్విత దివ్య కవచం', isAudio: false },
-        { id: '9', slug: 'temples', title: 'పుణ్యక్షేత్రాలు', description: 'శబరిమల మరియు దేశవ్యాప్త అయ్యప్ప ఆలయ విశేషాలు', isAudio: false },
-        { id: '10', slug: 'festivals', title: 'ఉత్సవాలు & పండుగలు', description: 'మండల పూజ, మకరవిళక్కు మరియు పడిపూజ వార్షికోత్సవాలు', isAudio: false },
-      ],
+    // 9 Core Devotional Services specified by the API across all 5 languages
+    const DEFAULT_SERVICES: Record<SupportedLanguage, Array<{ id: string; serviceId: string; title: string; sub: string; icon: string; url: string; artwork: string; displayOrder: number }>> = {
       en: [
-        { id: '1', slug: 'pooja-vidhanam', title: 'Pooja Vidhanam', description: 'Daily pooja guide, sankalpam, and sacred rituals', isAudio: false },
-        { id: '2', slug: 'astothrams', title: 'Astothrams', description: '108 Divine Names of Lord Ayyappa for daily worship', isAudio: false },
-        { id: '3', slug: 'slokas', title: 'Daily Slokas & Mantras', description: 'Sacred verses for peace, prosperity, and divine blessings', isAudio: false },
-        { id: '4', slug: 'bhajans', title: 'Bhajans & Songs', description: 'Soul-stirring devotional keerthanas and padi pooja songs', isAudio: true },
-        { id: '5', slug: 'vrata-kalpam', title: 'Vrata Kalpam', description: 'Complete Mandala Deeksha vrata rules, katha & vidhi', isAudio: false },
-        { id: '6', slug: 'harivarasanam', title: 'Harivarasanam', description: 'Sacred lullaby sung at Sabarimala temple closing', isAudio: true },
-        { id: '7', slug: 'sahasranama', title: 'Sahasranamavali', description: '1008 Sacred names of Lord Ayyappa Swami', isAudio: false },
-        { id: '8', slug: 'kavacham', title: 'Ayyappa Kavacham', description: 'Protective divine armour chant for devotees', isAudio: false },
-        { id: '9', slug: 'temples', title: 'Sacred Temples', description: 'Sabarimala and prominent Ayyappa shrines across India', isAudio: false },
-        { id: '10', slug: 'festivals', title: 'Temple Festivals', description: 'Mandala Pooja, Makaravilakku and sacred celebrations', isAudio: false },
+        { id: 'pooja', serviceId: 'pooja', title: 'Pooja Vidhanam', sub: 'Step-by-step sacred rituals', icon: 'Flame', url: '/subcategories', artwork: '/images/categories/art-pooja-trans.png', displayOrder: 1 },
+        { id: 'stotras', serviceId: 'stotras', title: 'Divine Stotras', sub: 'Sacred Hymns & Chants', icon: 'BookOpen', url: '/stotras', artwork: '/images/categories/art-stotras-trans.png', displayOrder: 2 },
+        { id: 'slokas', serviceId: 'slokas', title: 'Daily Slokas', sub: 'Verses for Meditation', icon: 'Scroll', url: '/slokas', artwork: '/images/categories/art-slokas-trans.png', displayOrder: 3 },
+        { id: 'songs', serviceId: 'songs', title: 'Bhajans & Songs', sub: 'Devotional Melodies', icon: 'Music', url: '/songs', artwork: '/images/categories/art-bhajans-trans.png', displayOrder: 4 },
+        { id: 'live-streams', serviceId: 'live-streams', title: 'Live Darshan', sub: 'Daily Temple Streams', icon: 'Tv', url: '/live-streams', artwork: '/images/categories/art-live-trans.png', displayOrder: 5 },
+        { id: 'panchangam', serviceId: 'panchangam', title: 'Panchangam', sub: 'Auspicious Timings', icon: 'Calendar', url: '/panchangam', artwork: '/images/categories/art-panchangam-trans.png', displayOrder: 6 },
+        { id: 'festivals', serviceId: 'festivals', title: 'Temple Festivals', sub: 'Annual Celebrations', icon: 'Sparkles', url: '/festivals', artwork: '/images/categories/art-stotras-trans.png', displayOrder: 7 },
+        { id: 'temples', serviceId: 'temples', title: 'Sacred Temples', sub: 'Shrines & Pilgrimages', icon: 'Landmark', url: '/temples', artwork: '/images/categories/art-temples-trans.png', displayOrder: 8 },
+        { id: 'donations', serviceId: 'donations', title: 'Annadanam Seva', sub: 'Meal Offering & Seva', icon: 'HeartHandshake', url: '/donations', artwork: '/images/categories/art-donations-trans.png', displayOrder: 9 },
       ],
-      ta: [
-        { id: '1', slug: 'pooja-vidhanam', title: 'பூஜை விதானம்', description: 'தினசரி பூஜை நெறிமுறைகள் மற்றும் விரத முறைகள்', isAudio: false },
-        { id: '2', slug: 'astothrams', title: 'அஷ்டோத்திர சதநாமாவளி', description: '108 ஐயப்பன் திருநாமங்கள் மற்றும் போற்றிகள்', isAudio: false },
-        { id: '3', slug: 'slokas', title: 'ஸ்லோகங்கள் & மந்திரங்கள்', description: 'அமைதி மற்றும் நல்வாழ்வு தரும் புனித ஸ்லோகங்கள்', isAudio: false },
-        { id: '4', slug: 'bhajans', title: 'பஜனைகள் & பாடல்கள்', description: 'பக்தி பாடல்கள் மற்றும் சுவாமியே சரணம் ஐயப்பா கீர்த்தனைகள்', isAudio: true },
-        { id: '5', slug: 'vrata-kalpam', title: 'விரத கல்பம்', description: 'மண்டல விரத விதிமுறைகள் மற்றும் பூஜை வழிமுறைகள்', isAudio: false },
-        { id: '6', slug: 'harivarasanam', title: 'ஹரிவராசனம்', description: 'சபரிமலை திருநடை அடைக்கும் போது பாடும் தாலாட்டு', isAudio: true },
-        { id: '7', slug: 'sahasranama', title: 'சஹஸ்ரநாமாவளி', description: '1008 ஐயப்பன் போற்றித் திருநாமங்கள்', isAudio: false },
-        { id: '8', slug: 'kavacham', title: 'ஐயப்ப கவசம்', description: 'பக்தர்களைக் காக்கும் சக்திவாய்ந்த கவசம்', isAudio: false },
-        { id: '9', slug: 'temples', title: 'புண்ணிய ஆலயங்கள்', description: 'சபரிமலை மற்றும் புனித யாத்திரை திருத்தலங்கள்', isAudio: false },
-        { id: '10', slug: 'festivals', title: 'திருவிழாக்கள்', description: 'மண்டல பூஜை மற்றும் மகரவிளக்கு பெருவிழா', isAudio: false },
+      te: [
+        { id: 'pooja', serviceId: 'pooja', title: 'పూజా విధానం', sub: 'దశలవారీ పూజా పద్ధతులు & నియమాలు', icon: 'Flame', url: '/subcategories', artwork: '/images/categories/art-pooja-trans.png', displayOrder: 1 },
+        { id: 'stotras', serviceId: 'stotras', title: 'దివ్య స్తోత్రాలు', sub: 'శక్తివంతమైన భక్తి స్తోత్రాలు', icon: 'BookOpen', url: '/stotras', artwork: '/images/categories/art-stotras-trans.png', displayOrder: 2 },
+        { id: 'slokas', serviceId: 'slokas', title: 'నిత్య శ్లోకాలు', sub: 'ధ్యాన శ్లోకాలు & అర్థాలు', icon: 'Scroll', url: '/slokas', artwork: '/images/categories/art-slokas-trans.png', displayOrder: 3 },
+        { id: 'songs', serviceId: 'songs', title: 'భజనలు & కీర్తనలు', sub: 'భక్తి గీతాలు & హారతులు', icon: 'Music', url: '/songs', artwork: '/images/categories/art-bhajans-trans.png', displayOrder: 4 },
+        { id: 'live-streams', serviceId: 'live-streams', title: 'ప్రత్యక్ష దర్శనం', sub: 'ఆలయ ప్రత్యక్ష ప్రసారాలు', icon: 'Tv', url: '/live-streams', artwork: '/images/categories/art-live-trans.png', displayOrder: 5 },
+        { id: 'panchangam', serviceId: 'panchangam', title: 'నిత్య పంచాంగం', sub: 'తిథి, నక్షత్రం & శుభ ముహూర్తాలు', icon: 'Calendar', url: '/panchangam', artwork: '/images/categories/art-panchangam-trans.png', displayOrder: 6 },
+        { id: 'festivals', serviceId: 'festivals', title: 'ఆలయ పండుగలు', sub: 'వార్షిక ఉత్సవాలు & విశేషాలు', icon: 'Sparkles', url: '/festivals', artwork: '/images/categories/art-stotras-trans.png', displayOrder: 7 },
+        { id: 'temples', serviceId: 'temples', title: 'పవిత్ర దేవాలయాలు', sub: 'పుణ్యక్షేత్రాలు & తీర్థయాత్రలు', icon: 'Landmark', url: '/temples', artwork: '/images/categories/art-temples-trans.png', displayOrder: 8 },
+        { id: 'donations', serviceId: 'donations', title: 'అన్నదాన సేవ', sub: 'నిత్యాన్నదానం & సేవా సహకారం', icon: 'HeartHandshake', url: '/donations', artwork: '/images/categories/art-donations-trans.png', displayOrder: 9 },
       ],
       kn: [
-        { id: '1', slug: 'pooja-vidhanam', title: 'ಪೂಜಾ ವಿಧಾನ', description: 'ದಿನನಿತ್ಯದ ಪೂಜಾ ಕ್ರಮ, ಸಂಕಲ್ಪ ಮತ್ತು ವ್ರತ ನಿಯಮಾವಳಿ', isAudio: false },
-        { id: '2', slug: 'astothrams', title: 'ಅಷ್ಟೋತ್ತರ ಶತನಾಮಾವಳಿ', description: '108 ಅಯ್ಯಪ್ಪ ಸ್ವಾಮಿ ದಿವ್ಯ ನಾಮಾವಳಿಗಳು', isAudio: false },
-        { id: '3', slug: 'slokas', title: 'ದಿನನಿತ್ಯದ ಶ್ಲೋಕಗಳು', description: 'ಶಾಂತಿ ಮತ್ತು ಸಮೃದ್ಧಿ ನೀಡುವ ಪವಿತ್ರ ಮಂತ್ರಗಳು', isAudio: false },
-        { id: '4', slug: 'bhajans', title: 'ಭಜನೆಗಳು & ಕೀರ್ತನೆಗಳು', description: 'ಭಕ್ತಿಗೀತೆಗಳು ಮತ್ತು ಪಡಿಪೂಜಾ ಕೀರ್ತನೆಗಳು', isAudio: true },
-        { id: '5', slug: 'vrata-kalpam', title: 'ವ್ರತ ಕಲ್ಪ', description: 'ಮಂಡಲ ದೀಕ್ಷಾ ವ್ರತ ಕಲ್ಪ ಸಂಪೂರ್ಣ ವಿಧಾನ', isAudio: false },
-        { id: '6', slug: 'harivarasanam', title: 'ಹರಿವರಾಸನಂ', description: 'ಶಬರಿಮಲೆ ರಾತ್ರಿ ಏಕಾಂತ ಸೇವೆ ಗೀತೆ', isAudio: true },
-        { id: '7', slug: 'sahasranama', title: 'ಸಹಸ್ರನಾಮಾವಳಿ', description: '1008 ಅಯ್ಯಪ್ಪ ಸ್ವಾಮಿ ದಿವ್ಯ ನಾಮಾವಳಿ', isAudio: false },
-        { id: '8', slug: 'kavacham', title: 'ಅಯ್ಯಪ್ಪ ಕವಚ', description: 'ದಿವ್ಯ ರಕ್ಷಣಾ ಕವಚ ಸ್ತೋತ್ರ', isAudio: false },
-        { id: '9', slug: 'temples', title: 'ಪುಣ್ಯಕ್ಷೇತ್ರಗಳು', description: 'ಶಬರಿಮಲೆ ಮತ್ತು ಪ್ರಸಿದ್ಧ ಅಯ್ಯಪ್ಪ ಕ್ಷೇತ್ರಗಳು', isAudio: false },
-        { id: '10', slug: 'festivals', title: 'ಉತ್ಸವಗಳು', description: 'ಮಂಡಲ ಪೂಜೆ, ಮಕರವಿಳಕ್ಕು ಧಾರ್ಮಿಕ ಮಹೋತ್ಸವಗಳು', isAudio: false },
+        { id: 'pooja', serviceId: 'pooja', title: 'ಪೂಜಾ ವಿಧಾನ', sub: 'ಹಂತ-ಹಂತದ ಪೂಜಾ ವಿಧಾನಗಳು', icon: 'Flame', url: '/subcategories', artwork: '/images/categories/art-pooja-trans.png', displayOrder: 1 },
+        { id: 'stotras', serviceId: 'stotras', title: 'ದಿವ್ಯ ಸ್ತೋತ್ರಗಳು', sub: 'ಶಕ್ತಿಶಾಲಿ ಭಕ್ತಿ ಸ್ತೋತ್ರಗಳು', icon: 'BookOpen', url: '/stotras', artwork: '/images/categories/art-stotras-trans.png', displayOrder: 2 },
+        { id: 'slokas', serviceId: 'slokas', title: 'ನಿತ್ಯ ಶ್ಲೋಕಗಳು', sub: 'ಧ್ಯಾನ ಶ್ಲೋಕಗಳು & ಅರ್ಥಗಳು', icon: 'Scroll', url: '/slokas', artwork: '/images/categories/art-slokas-trans.png', displayOrder: 3 },
+        { id: 'songs', serviceId: 'songs', title: 'ಭಜನೆಗಳು & ಕೀರ್ತನೆಗಳು', sub: 'ಭಕ್ತಿಗೀತೆಗಳು & ಆರತಿಗಳು', icon: 'Music', url: '/songs', artwork: '/images/categories/art-bhajans-trans.png', displayOrder: 4 },
+        { id: 'live-streams', serviceId: 'live-streams', title: 'ನೇರ ದರ್ಶನ', sub: 'ದೇವಾಲಯ ನೇರ ಪ್ರಸಾರಗಳು', icon: 'Tv', url: '/live-streams', artwork: '/images/categories/art-live-trans.png', displayOrder: 5 },
+        { id: 'panchangam', serviceId: 'panchangam', title: 'ದೈನಂದಿನ ಪಂಚಾಂಗ', sub: 'ತಿಥಿ, ನಕ್ಷತ್ರ & ಶುಭ ಮುಹೂರ್ತ', icon: 'Calendar', url: '/panchangam', artwork: '/images/categories/art-panchangam-trans.png', displayOrder: 6 },
+        { id: 'festivals', serviceId: 'festivals', title: 'ದೇವಾಲಯ ಹಬ್ಬಗಳು', sub: 'ವಾರ್ಷಿಕ ಹಬ್ಬಗಳು & ವಿಶೇಷಗಳು', icon: 'Sparkles', url: '/festivals', artwork: '/images/categories/art-stotras-trans.png', displayOrder: 7 },
+        { id: 'temples', serviceId: 'temples', title: 'ಪವಿತ್ರ ದೇವಾಲಯಗಳು', sub: 'ಪುಣ್ಯಕ್ಷೇತ್ರಗಳು & ಯಾತ್ರೆಗಳು', icon: 'Landmark', url: '/temples', artwork: '/images/categories/art-temples-trans.png', displayOrder: 8 },
+        { id: 'donations', serviceId: 'donations', title: 'ಅನ್ನದಾನ ಸೇವೆ', sub: 'ನಿತ್ಯಾನ್ನದಾನ & ಸೇವಾ ಸಹಕಾರ', icon: 'HeartHandshake', url: '/donations', artwork: '/images/categories/art-donations-trans.png', displayOrder: 9 },
+      ],
+      ta: [
+        { id: 'pooja', serviceId: 'pooja', title: 'பூஜை முறை', sub: 'படி படியான பூஜை முறைகள்', icon: 'Flame', url: '/subcategories', artwork: '/images/categories/art-pooja-trans.png', displayOrder: 1 },
+        { id: 'stotras', serviceId: 'stotras', title: 'தெய்வீக ஸ்தோத்திரங்கள்', sub: 'சக்திவாய்ந்த பக்தி துதிகள்', icon: 'BookOpen', url: '/stotras', artwork: '/images/categories/art-stotras-trans.png', displayOrder: 2 },
+        { id: 'slokas', serviceId: 'slokas', title: 'தினசரி ஸ்லோகங்கள்', sub: 'தியான ஸ்லோகங்கள் & பொருள்', icon: 'Scroll', url: '/slokas', artwork: '/images/categories/art-slokas-trans.png', displayOrder: 3 },
+        { id: 'songs', serviceId: 'songs', title: 'பஜனைகள் & பாடல்கள்', sub: 'பக்திப் பாடல்கள் & ஆரத்திகள்', icon: 'Music', url: '/songs', artwork: '/images/categories/art-bhajans-trans.png', displayOrder: 4 },
+        { id: 'live-streams', serviceId: 'live-streams', title: 'நேரலை தரிசனம்', sub: 'கோயில் நேரலை ஒளிபரப்புகள்', icon: 'Tv', url: '/live-streams', artwork: '/images/categories/art-live-trans.png', displayOrder: 5 },
+        { id: 'panchangam', serviceId: 'panchangam', title: 'தினசரி பஞ்சாங்கம்', sub: 'திதி, நட்சத்திரம் & சுப முகூர்த்தம்', icon: 'Calendar', url: '/panchangam', artwork: '/images/categories/art-panchangam-trans.png', displayOrder: 6 },
+        { id: 'festivals', serviceId: 'festivals', title: 'கோயில் திருவிழாக்கள்', sub: 'ஆண்டு விழாக்கள் & சிறப்புகள்', icon: 'Sparkles', url: '/festivals', artwork: '/images/categories/art-stotras-trans.png', displayOrder: 7 },
+        { id: 'temples', serviceId: 'temples', title: 'புனித திருக்கோயில்கள்', sub: 'திருத்தலங்கள் & யாத்திரைகள்', icon: 'Landmark', url: '/temples', artwork: '/images/categories/art-temples-trans.png', displayOrder: 8 },
+        { id: 'donations', serviceId: 'donations', title: 'அன்னதான சேவை', sub: 'அன்னதானம் & சேவைப் பங்களிப்பு', icon: 'HeartHandshake', url: '/donations', artwork: '/images/categories/art-donations-trans.png', displayOrder: 9 },
       ],
       hi: [
-        { id: '1', slug: 'pooja-vidhanam', title: 'पूजा विधान', description: 'नित्य पूजा विधि, संकल्प और दीक्षा नियम', isAudio: false },
-        { id: '2', slug: 'astothrams', title: 'अष्टोत्तर शतनामावली', description: 'भगवान अय्यप्पा की 108 पावन नामावली', isAudio: false },
-        { id: '3', slug: 'slokas', title: 'दैनिक श्लोक एवं मंत्र', description: 'शांति, समृद्धि एवं सर्वकल्याण हेतु पवित्र मंत्र', isAudio: false },
-        { id: '4', slug: 'bhajans', title: 'भजन और संकीर्तन', description: 'स्वामी शरणम अय्यप्पा भक्तिमय भजन व कीर्तन', isAudio: true },
-        { id: '5', slug: 'vrata-kalpam', title: 'व्रत कल्प', description: 'मंडल दीक्षा संपूर्ण व्रत विधान एवं कथा', isAudio: false },
-        { id: '6', slug: 'harivarasanam', title: 'हरिवरासनम', description: 'शबरीमाला मंदिर शयन आरती व पावन लोरी', isAudio: true },
-        { id: '7', slug: 'sahasranama', title: 'सहस्रनामावली', description: 'भगवान अय्यप्पा के 1008 दिव्य नाम', isAudio: false },
-        { id: '8', slug: 'kavacham', title: 'अय्यप्पा कवच', description: 'दिव्य रक्षा कवच स्तोत्र', isAudio: false },
-        { id: '9', slug: 'temples', title: 'पावन तीर्थ स्थल', description: 'शबरीमाला एवं प्रमुख अय्यप्पा मंदिर दर्शन', isAudio: false },
-        { id: '10', slug: 'festivals', title: 'पावन उत्सव', description: 'मंडल पूजा एवं मकरविलक्कु वार्षिक महोत्सव', isAudio: false },
+        { id: 'pooja', serviceId: 'pooja', title: 'पूजा विधान', sub: 'चरण-दर-चरण पूजा पद्धतियां', icon: 'Flame', url: '/subcategories', artwork: '/images/categories/art-pooja-trans.png', displayOrder: 1 },
+        { id: 'stotras', serviceId: 'stotras', title: 'दिव्य स्तोत्र', sub: 'पावन भक्ति स्तोत्र', icon: 'BookOpen', url: '/stotras', artwork: '/images/categories/art-stotras-trans.png', displayOrder: 2 },
+        { id: 'slokas', serviceId: 'slokas', title: 'दैनिक श्लोक', sub: 'ध्यान श्लोक और अर्थ', icon: 'Scroll', url: '/slokas', artwork: '/images/categories/art-slokas-trans.png', displayOrder: 3 },
+        { id: 'songs', serviceId: 'songs', title: 'भजन और कीर्तन', sub: 'भक्ति गीत और आरतियां', icon: 'Music', url: '/songs', artwork: '/images/categories/art-bhajans-trans.png', displayOrder: 4 },
+        { id: 'live-streams', serviceId: 'live-streams', title: 'लाइव दर्शन', sub: 'मंदिर सीधा प्रसारण', icon: 'Tv', url: '/live-streams', artwork: '/images/categories/art-live-trans.png', displayOrder: 5 },
+        { id: 'panchangam', serviceId: 'panchangam', title: 'दैनिक पंचांग', sub: 'तिथि, नक्षत्र और शुभ मुहूर्त', icon: 'Calendar', url: '/panchangam', artwork: '/images/categories/art-panchangam-trans.png', displayOrder: 6 },
+        { id: 'festivals', serviceId: 'festivals', title: 'मंदिर उत्सव', sub: 'वार्षिक उत्सव और व्रत', icon: 'Sparkles', url: '/festivals', artwork: '/images/categories/art-stotras-trans.png', displayOrder: 7 },
+        { id: 'temples', serviceId: 'temples', title: 'पवित्र मंदिर', sub: 'तीर्थ स्थल और देवालय', icon: 'Landmark', url: '/temples', artwork: '/images/categories/art-temples-trans.png', displayOrder: 8 },
+        { id: 'donations', serviceId: 'donations', title: 'अन्नदान सेवा', sub: 'महाप्रसाद एवं सेवा सहयोग', icon: 'HeartHandshake', url: '/donations', artwork: '/images/categories/art-donations-trans.png', displayOrder: 9 },
       ],
     };
 
-    const targetList = CATALOG[lang] || CATALOG.en;
+    const targetList = DEFAULT_SERVICES[lang] || DEFAULT_SERVICES.en;
     let filtered = targetList;
     if (search && search.trim() !== '') {
       const q = search.trim().toLowerCase();
       filtered = targetList.filter(
-        (c) => c.title.toLowerCase().includes(q) || c.slug.toLowerCase().includes(q) || c.description.toLowerCase().includes(q)
+        (c) => c.title.toLowerCase().includes(q) || c.serviceId.toLowerCase().includes(q) || c.sub.toLowerCase().includes(q)
       );
     }
 
     return filtered.map((item) => ({
       id: item.id,
-      slug: item.slug,
+      serviceId: item.serviceId,
+      slug: item.serviceId,
       title: item.title,
-      description: item.description,
-      isAudio: Boolean(item.isAudio),
+      sub: item.sub,
+      description: item.sub,
+      icon: item.icon,
+      url: item.url,
+      artwork: item.artwork,
+      displayOrder: item.displayOrder,
+      isActive: true,
+      isAudio: item.id === 'songs',
       audioDurationSec: 40,
       totalTime: '00:40',
-      chantLyric: item.description,
+      chantLyric: item.sub,
     }));
   },
 

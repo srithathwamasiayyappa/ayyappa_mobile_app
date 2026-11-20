@@ -127,9 +127,16 @@ export interface TempleItem {
 
 export interface DevotionalCategoryItem {
   id: string;
+  serviceId?: string;
   slug?: string;
   title: string;
+  sub?: string;
   description?: string;
+  icon?: string;
+  url?: string;
+  artwork?: string;
+  displayOrder?: number;
+  isActive?: boolean;
   isAudio?: boolean;
   audioDurationSec?: number;
   totalTime?: string;

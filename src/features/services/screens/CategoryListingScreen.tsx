@@ -23,6 +23,7 @@ interface Props {
   categoryId: string;
   categoryTitle?: string;
   currentLanguage: SupportedLanguage;
+  initialDeity?: string;
   onSelectItem: (id: string, title: string) => void;
   onBack: () => void;
 }
@@ -48,6 +49,8 @@ const DEITY_IMAGES: Record<string, any> = {
   venkateswara: require('../../../../assets/deities/venkateswara.jpg'),
   devi: require('../../../../assets/deities/durga.jpg'),
   shiva: require('../../../../assets/deities/shiva.jpg'),
+  hanuman: require('../../../../assets/deities/hanuman.jpg'),
+  murugan: require('../../../../assets/deities/card_murugan.jpg'),
 };
 
 interface ListingItem {
@@ -96,6 +99,20 @@ const MASTER_CATEGORY_CONTENT: Record<string, ListingItem[]> = {
       deityId: 'shiva',
       image: DEITY_IMAGES.shiva,
     },
+    {
+      id: 'hanuman-pooja',
+      title: 'Hanuman Pooja & Sindhooram',
+      desc: 'For courage, protection & inner strength',
+      deityId: 'hanuman',
+      image: DEITY_IMAGES.hanuman,
+    },
+    {
+      id: 'subramanya-pooja',
+      title: 'Subramanya Sashti Pooja',
+      desc: 'For victory, youth & overcoming challenges',
+      deityId: 'murugan',
+      image: DEITY_IMAGES.murugan,
+    },
   ],
   astothrams: [
     {
@@ -132,6 +149,20 @@ const MASTER_CATEGORY_CONTENT: Record<string, ListingItem[]> = {
       desc: '108 sacred names of Lord Balaji',
       deityId: 'venkateswara',
       image: DEITY_IMAGES.venkateswara,
+    },
+    {
+      id: 'hanuman-astothram',
+      title: 'Hanuman Ashtottaram',
+      desc: '108 heroic names of Sri Anjaneya Swamy',
+      deityId: 'hanuman',
+      image: DEITY_IMAGES.hanuman,
+    },
+    {
+      id: 'subramanya-astothram',
+      title: 'Subramanya Ashtottaram',
+      desc: '108 divine names of Lord Murugan',
+      deityId: 'murugan',
+      image: DEITY_IMAGES.murugan,
     },
   ],
   slokas: [
@@ -177,6 +208,20 @@ const MASTER_CATEGORY_CONTENT: Record<string, ListingItem[]> = {
       deityId: 'venkateswara',
       image: DEITY_IMAGES.venkateswara,
     },
+    {
+      id: 'hanuman-chalisa',
+      title: 'Hanuman Chalisa',
+      desc: '40 sacred verses by Goswami Tulsidas',
+      deityId: 'hanuman',
+      image: DEITY_IMAGES.hanuman,
+    },
+    {
+      id: 'kanda-sashti-kavasam',
+      title: 'Kanda Sashti Kavasam',
+      desc: 'Protective divine armour of Lord Murugan',
+      deityId: 'murugan',
+      image: DEITY_IMAGES.murugan,
+    },
   ],
   bhajans: [
     {
@@ -214,6 +259,20 @@ const MASTER_CATEGORY_CONTENT: Record<string, ListingItem[]> = {
       deityId: 'devi',
       image: DEITY_IMAGES.devi,
     },
+    {
+      id: 'hanuman-bhajan',
+      title: 'Sri Ram Jai Ram Jai Hanuman',
+      desc: 'Uplifting devotional Sankirtan',
+      deityId: 'hanuman',
+      image: DEITY_IMAGES.hanuman,
+    },
+    {
+      id: 'muruga-muruga-bhajan',
+      title: 'Muruga Muruga Om Muruga',
+      desc: 'Sacred hymn in praise of Lord Shanmukha',
+      deityId: 'murugan',
+      image: DEITY_IMAGES.murugan,
+    },
   ],
   harathis: [
     {
@@ -245,6 +304,20 @@ const MASTER_CATEGORY_CONTENT: Record<string, ListingItem[]> = {
       image: DEITY_IMAGES.devi,
     },
     {
+      id: 'hanuman-harathi',
+      title: 'Hanuman Aarti',
+      desc: 'Aarti Kije Hanuman Lala Ki deeparadhana',
+      deityId: 'hanuman',
+      image: DEITY_IMAGES.hanuman,
+    },
+    {
+      id: 'subramanya-harathi',
+      title: 'Subramanya Swamy Harathi',
+      desc: 'Sacred deepam praise for Lord Skanda',
+      deityId: 'murugan',
+      image: DEITY_IMAGES.murugan,
+    },
+    {
       id: 'karpura-harathi',
       title: 'Karpura Harathi',
       desc: 'Sacred camphor offering verses',
@@ -254,7 +327,7 @@ const MASTER_CATEGORY_CONTENT: Record<string, ListingItem[]> = {
   ],
 };
 
-// Filter tabs definition (Exact match to reference: All | Ayyappa | Shiva | Devi | Ganesha | Venkateswara)
+// Filter tabs definition (All | Ayyappa | Shiva | Devi | Ganesha | Venkateswara | Hanuman | Murugan)
 const FILTER_TABS = [
   { id: 'all', label: 'All' },
   { id: 'ayyappa', label: 'Ayyappa' },
@@ -262,35 +335,59 @@ const FILTER_TABS = [
   { id: 'devi', label: 'Devi' },
   { id: 'ganesha', label: 'Ganesha' },
   { id: 'venkateswara', label: 'Venkateswara' },
+  { id: 'hanuman', label: 'Hanuman' },
+  { id: 'murugan', label: 'Murugan' },
 ];
 
 export const CategoryListingScreen: React.FC<Props> = ({
   categoryId = 'pooja-vidhanam',
   categoryTitle,
   currentLanguage = 'en',
+  initialDeity = 'all',
   onSelectItem,
   onBack,
 }) => {
   const [selectedFilter, setSelectedFilter] = useState<string>('all');
   const [loading, setLoading] = useState<boolean>(false);
 
+  useEffect(() => {
+    if (initialDeity && initialDeity !== 'all') {
+      setSelectedFilter(initialDeity);
+    } else {
+      setSelectedFilter('all');
+    }
+  }, [initialDeity, categoryId]);
+
   // Derive title
   const displayTitle = categoryTitle || (
-    categoryId === 'pooja-vidhanam'
+    categoryId === 'pooja-vidhanam' || categoryId === 'pooja'
       ? 'Pooja Vidhanam'
+      : categoryId === 'stotras'
+      ? 'Divine Stotras'
       : categoryId === 'astothrams'
       ? 'Astothrams'
       : categoryId === 'slokas'
-      ? 'Slokas'
-      : categoryId === 'bhajans'
-      ? 'Bhajans'
+      ? 'Daily Slokas'
+      : categoryId === 'bhajans' || categoryId === 'songs'
+      ? 'Bhajans & Songs'
       : categoryId === 'harathis'
       ? 'Harathis & Songs'
       : 'Pooja Vidhanam'
   );
 
+  // Normalize key to lookup in MASTER_CATEGORY_CONTENT
+  const normalizedKey = (
+    categoryId === 'pooja' || categoryId === 'pooja-vidhanam'
+      ? 'pooja-vidhanam'
+      : categoryId === 'stotras'
+      ? 'slokas'
+      : categoryId === 'songs' || categoryId === 'bhajans'
+      ? 'bhajans'
+      : categoryId
+  );
+
   // Fetch items based on category
-  const allCategoryItems = MASTER_CATEGORY_CONTENT[categoryId] || MASTER_CATEGORY_CONTENT['pooja-vidhanam'];
+  const allCategoryItems = MASTER_CATEGORY_CONTENT[normalizedKey] || MASTER_CATEGORY_CONTENT[categoryId] || MASTER_CATEGORY_CONTENT['pooja-vidhanam'];
 
   // Filter items by selected deity tab
   const filteredItems = selectedFilter === 'all'

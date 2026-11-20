@@ -33,8 +33,10 @@ import { CategorySkeleton } from '../../../components/common/CategorySkeleton';
 
 interface Props {
   currentLanguage: SupportedLanguage;
-  onOpenDetail?: (id: string, title: string) => void;
+  currentDeity?: any;
+  onOpenDetail?: (id: string, title: string, deity?: string) => void;
   onOpenPanchangam?: () => void;
+  onDeityChange?: (deity: any) => void;
   onBack?: () => void;
 }
 
@@ -60,17 +62,21 @@ const SearchIcon = ({ size = 20, color = '#173D32' }: { size?: number; color?: s
   </Svg>
 );
 
-// Helper to resolve appropriate devotional icon by slug or title
-function getCategoryIcon(slug?: string, title?: string) {
-  const text = `${slug || ''} ${title || ''}`.toLowerCase();
-  if (text.includes('pooja') || text.includes('vrath') || text.includes('vidhanam') || text.includes('పూజ')) {
+// Helper to resolve appropriate devotional icon by slug, title, or API icon string
+function getCategoryIcon(slug?: string, title?: string, icon?: string) {
+  const text = `${slug || ''} ${title || ''} ${icon || ''}`.toLowerCase();
+  if (text.includes('pooja') || text.includes('vrath') || text.includes('vidhanam') || text.includes('flame') || text.includes('పూజ')) {
     return PoojaVidhanamIcon;
+  }
+  if (text.includes('stotra') || text.includes('bookopen') || text.includes('స్తోత్ర')) {
+    return AstothramsIcon;
   }
   if (text.includes('astothram') || text.includes('108') || text.includes('1008') || text.includes('అష్టోత్తర')) {
     return AstothramsIcon;
   }
   if (
     text.includes('sloka') ||
+    text.includes('scroll') ||
     text.includes('mantra') ||
     text.includes('suprabatham') ||
     text.includes('parayana') ||
@@ -79,7 +85,7 @@ function getCategoryIcon(slug?: string, title?: string) {
   ) {
     return SlokasIcon;
   }
-  if (text.includes('bhajan') || text.includes('keerthana') || text.includes('song') || text.includes('కీర్తన')) {
+  if (text.includes('bhajan') || text.includes('song') || text.includes('music') || text.includes('keerthana') || text.includes('కీర్తన')) {
     return BhajansIcon;
   }
   if (text.includes('harathi') || text.includes('mangal') || text.includes('హారతి')) {
@@ -87,6 +93,7 @@ function getCategoryIcon(slug?: string, title?: string) {
   }
   if (
     text.includes('panchangam') ||
+    text.includes('calendar') ||
     text.includes('nakshatra') ||
     text.includes('dates') ||
     text.includes('పంచాంగం') ||
@@ -94,17 +101,20 @@ function getCategoryIcon(slug?: string, title?: string) {
   ) {
     return PanchangamIcon;
   }
-  if (text.includes('temple') || text.includes('sannidhanam') || text.includes('ఆలయ')) {
+  if (text.includes('temple') || text.includes('landmark') || text.includes('sannidhanam') || text.includes('ఆలయ')) {
     return TemplesIcon;
   }
-  if (text.includes('donation') || text.includes('kanuka') || text.includes('విరాళం')) {
+  if (text.includes('donation') || text.includes('hearthandshake') || text.includes('kanuka') || text.includes('విరాళం') || text.includes('seva')) {
     return DonationsIcon;
   }
   if (text.includes('food') || text.includes('annadanam') || text.includes('అన్నదానం')) {
     return FoodDonationIcon;
   }
-  if (text.includes('live') || text.includes('darshan')) {
+  if (text.includes('live') || text.includes('tv') || text.includes('darshan')) {
     return LiveStreamsIcon;
+  }
+  if (text.includes('festival') || text.includes('sparkles') || text.includes('ఉత్సవ')) {
+    return AstothramsIcon;
   }
   return KuthuVilakkuIcon;
 }
@@ -129,8 +139,10 @@ const SCREEN_TITLES: Record<string, string> = {
 
 export const ServicesScreen: React.FC<Props> = ({
   currentLanguage = 'en',
+  currentDeity,
   onOpenDetail,
   onOpenPanchangam,
+  onDeityChange,
   onBack,
 }) => {
   const [categories, setCategories] = useState<DevotionalCategoryItem[]>([]);
@@ -180,11 +192,11 @@ export const ServicesScreen: React.FC<Props> = ({
   }, [searchQuery, fetchCategories]);
 
   const handleItemPress = (item: DevotionalCategoryItem) => {
-    const slug = (item.slug || item.id || '').toLowerCase();
+    const slug = (item.serviceId || item.slug || item.id || '').toLowerCase();
     if (slug === 'panchangam' || slug.includes('panchangam')) {
       onOpenPanchangam?.();
     } else {
-      onOpenDetail?.(item.slug || item.id, item.title);
+      onOpenDetail?.(item.serviceId || item.slug || item.id, item.title, 'all');
     }
   };
 
@@ -273,6 +285,8 @@ export const ServicesScreen: React.FC<Props> = ({
         )}
       </View>
 
+
+
       {/* =========================================================
           3. DYNAMIC CATEGORY CARDS LIST (FROM DB VIA API)
          ========================================================= */}
@@ -334,7 +348,7 @@ export const ServicesScreen: React.FC<Props> = ({
         {categories.length > 0 && (
           <View style={styles.listContainer}>
             {categories.map((item) => {
-              const IconComponent = getCategoryIcon(item.slug, item.title);
+              const IconComponent = getCategoryIcon(item.serviceId || item.slug || item.id, item.title, item.icon);
               return (
                 <TouchableOpacity
                   key={item.id}
@@ -357,9 +371,9 @@ export const ServicesScreen: React.FC<Props> = ({
                   {/* Center: Title & Dynamic Description from DB */}
                   <View style={styles.textContainer}>
                     <Text style={styles.cardTitle}>{item.title}</Text>
-                    {Boolean(item.description) && (
+                    {Boolean(item.sub || item.description) && (
                       <Text style={styles.cardSubtitle} numberOfLines={1}>
-                        {item.description}
+                        {item.sub || item.description}
                       </Text>
                     )}
                   </View>
@@ -486,6 +500,7 @@ const styles = StyleSheet.create({
     color: '#8C7661',
     fontWeight: 'bold',
   },
+
   searchMetaRow: {
     paddingHorizontal: 4,
     paddingTop: 4,

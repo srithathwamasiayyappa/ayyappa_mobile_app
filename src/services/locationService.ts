@@ -1,11 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 function getLocationModule(): any {
-  try {
-    return require('expo-location');
-  } catch {
-    return null;
-  }
+  return null;
 }
 
 export interface UserLiveLocation {
@@ -45,56 +41,54 @@ export const LocationService = {
 
   // Fetch device live location using GPS first, with IP Geolocation fallback
   async detectLiveLocation(): Promise<UserLiveLocation> {
-    // 1. Try GPS via expo-location
-    try {
-      const Location = getLocationModule();
-      if (!Location) {
-        throw new Error('Location module not loaded');
-      }
+    // 1. Try GPS via native Location module if present
+    const Location = getLocationModule();
+    if (Location) {
+      try {
+        const { status: existingStatus } = await Location.getForegroundPermissionsAsync();
+        let finalStatus = existingStatus;
 
-      const { status: existingStatus } = await Location.getForegroundPermissionsAsync();
-      let finalStatus = existingStatus;
-
-      if (existingStatus !== 'granted') {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        finalStatus = status;
-      }
-
-      if (finalStatus === 'granted') {
-        const position = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy?.Balanced || 3,
-        });
-
-        const { latitude, longitude } = position.coords;
-        const geocode = await Location.reverseGeocodeAsync({ latitude, longitude });
-
-        let city = '';
-        let region = '';
-
-        if (geocode && geocode.length > 0) {
-          const first = geocode[0];
-          city = first.city || first.subregion || first.district || first.name || '';
-          region = first.region || '';
+        if (existingStatus !== 'granted') {
+          const { status } = await Location.requestForegroundPermissionsAsync();
+          finalStatus = status;
         }
 
-        if (!city && region) city = region;
-        if (!city) city = 'Hyderabad';
+        if (finalStatus === 'granted') {
+          const position = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy?.Balanced || 3,
+          });
 
-        const result: UserLiveLocation = {
-          cityName: city,
-          displayName: region ? `${city}, ${region}` : city,
-          state: region,
-          lat: latitude,
-          lng: longitude,
-          isLive: true,
-          updatedAt: Date.now(),
-        };
+          const { latitude, longitude } = position.coords;
+          const geocode = await Location.reverseGeocodeAsync({ latitude, longitude });
 
-        await this.saveLocation(result);
-        return result;
+          let city = '';
+          let region = '';
+
+          if (geocode && geocode.length > 0) {
+            const first = geocode[0];
+            city = first.city || first.subregion || first.district || first.name || '';
+            region = first.region || '';
+          }
+
+          if (!city && region) city = region;
+          if (!city) city = 'Hyderabad';
+
+          const result: UserLiveLocation = {
+            cityName: city,
+            displayName: region ? `${city}, ${region}` : city,
+            state: region,
+            lat: latitude,
+            lng: longitude,
+            isLive: true,
+            updatedAt: Date.now(),
+          };
+
+          await this.saveLocation(result);
+          return result;
+        }
+      } catch (gpsError: any) {
+        console.warn('[LocationService] GPS reverse-geocode failed, trying IP fallback:', gpsError?.message);
       }
-    } catch (gpsError: any) {
-      console.warn('[LocationService] GPS reverse-geocode failed, trying IP fallback:', gpsError?.message);
     }
 
     // 2. Fallback to IP-based Geolocation (100% reliable for city/state detection)
