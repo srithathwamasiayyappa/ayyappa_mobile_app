@@ -107,11 +107,11 @@ const ChevronRightIcon = () => (
 );
 
 const SCREEN_TITLES: Record<SupportedLanguage, string> = {
-  en: 'Daily Panchangam',
-  te: 'దిన పంచాంగం',
-  kn: 'ದಿನ ಪಂಚಾಂಗ',
-  ta: 'தினசரி பஞ்சாங்கம்',
-  hi: 'दैनिक पंचांग',
+  en: 'Today Panchangam',
+  te: 'నేటి పంచాంగం',
+  kn: 'ಇಂದಿನ ಪಂಚಾಂಗ',
+  ta: 'இன்றைய பஞ்சாங்கம்',
+  hi: 'आज का पंचांग',
 };
 
 const SUN_LABELS: Record<string, Record<SupportedLanguage, string>> = {
@@ -511,7 +511,7 @@ export const PanchangamScreen: React.FC<Props> = ({
           {/* Centered Title */}
           <View style={styles.headerTitleContainer}>
             <Text style={styles.headerTitle}>
-              {SCREEN_TITLES[currentLanguage] || 'Daily Panchangam'}
+              {SCREEN_TITLES[currentLanguage] || 'Today Panchangam'}
             </Text>
           </View>
 
