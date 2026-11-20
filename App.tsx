@@ -122,7 +122,7 @@ export default function App() {
 
   const [currentScreen, setCurrentScreen] = useState<MobileScreen>('splash');
   const [navHistory, setNavHistory] = useState<NavHistoryEntry[]>([]);
-  const [selectedLanguage, setSelectedLanguage] = useState<SupportedLanguage>('te');
+  const [selectedLanguage, setSelectedLanguage] = useState<SupportedLanguage>('en');
   const [currentDeity, setCurrentDeity] = useState<any>(null);
   const [activeDetail, setActiveDetail] = useState<DetailState | null>(null);
   const [activeTempleData, setActiveTempleData] = useState<TempleItem | null>(null);

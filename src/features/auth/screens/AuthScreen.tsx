@@ -164,11 +164,13 @@ export const AuthScreen: React.FC<Props> = ({
   onLoginSuccess,
   onSkip,
   onBack,
-  currentLanguage = 'te',
+  currentLanguage = 'en',
   selectedRole = 'DEVOTEE',
   initialStep = 'LOGIN',
 }) => {
   const t = (currentLanguage && (AUTH_TRANSLATIONS as any)[currentLanguage]) || AUTH_TRANSLATIONS.en;
+  // OTP Verification Screen explicitly defaults to English per devotee UX specification
+  const otpT = AUTH_TRANSLATIONS.en;
 
   // Step state: 'REGISTER' | 'LOGIN' | 'VERIFY_OTP'
   const [currentStep, setCurrentStep] = useState<'REGISTER' | 'LOGIN' | 'VERIFY_OTP'>(initialStep);
@@ -488,7 +490,7 @@ export const AuthScreen: React.FC<Props> = ({
   const handleVerifyOtp = async () => {
     const cleanOtp = (otpCode || '').replace(/[^0-9]/g, '').trim();
     if (!cleanOtp || cleanOtp.length !== 6) {
-      showToast(t.enterFullOtpError || 'Please enter the 6-digit verification code.', 'error');
+      showToast(otpT.enterFullOtpError || 'Please enter the 6-digit verification code.', 'error');
       return;
     }
 
@@ -725,9 +727,9 @@ export const AuthScreen: React.FC<Props> = ({
               showsVerticalScrollIndicator={false}
             >
               <View style={styles.otpHeadingContainer}>
-                <Text style={styles.otpTitleText}>{t.verifyYourMobile || 'Verify Your Mobile'}</Text>
+                <Text style={styles.otpTitleText}>{otpT.verifyYourMobile || 'Mobile Number Verification'}</Text>
                 <Text style={styles.otpSubtitleText}>
-                  {t.enterOtpSentTo || 'Enter the 6-digit code sent to'}{' '}
+                  {otpT.enterOtpSentTo || 'Enter the 6-digit code sent to'}{' '}
                   <Text style={styles.otpPhoneHighlight}>+91 {cleanActivePhone}</Text>
                 </Text>
               </View>
@@ -742,7 +744,7 @@ export const AuthScreen: React.FC<Props> = ({
               <View style={styles.otpResendContainer}>
                 {!canResend ? (
                   <Text style={styles.otpResendCountdownText}>
-                    {t.resendOtpIn || 'Resend OTP in'}{' '}
+                    {otpT.resendOtpIn || 'Resend OTP in'}{' '}
                     <Text style={styles.otpCountdownBold}>
                       00:{resendCooldown.toString().padStart(2, '0')}
                     </Text>
@@ -755,7 +757,7 @@ export const AuthScreen: React.FC<Props> = ({
                     hitSlop={{ top: 10, bottom: 10, left: 14, right: 14 }}
                   >
                     <Text style={styles.otpResendActiveText}>
-                      {t.resendOtpPrompt || 'Resend OTP now'}
+                      {otpT.didntReceiveCode || 'Resend OTP now'}
                     </Text>
                   </TouchableOpacity>
                 )}
@@ -778,7 +780,7 @@ export const AuthScreen: React.FC<Props> = ({
                 disabled={loading}
                 onPress={handleVerifyOtp}
                 accessibilityRole="button"
-                accessibilityLabel={t.verifyAndContinue || 'Verify & Continue'}
+                accessibilityLabel={otpT.verifyAndContinue || 'Verify & Continue'}
               >
                 <LinearGradient
                   colors={['#173D32', '#173D32', '#0C251E']}
@@ -790,12 +792,12 @@ export const AuthScreen: React.FC<Props> = ({
                     <View style={styles.ctaContentRow}>
                       <ActivityIndicator color="#FFFFFF" size="small" />
                       <Text style={[styles.verifyCtaText, { marginLeft: 10 }]}>
-                        {t.verifying || 'Verifying...'}
+                        {otpT.verifying || 'Verifying...'}
                       </Text>
                     </View>
                   ) : (
                     <Text style={styles.verifyCtaText}>
-                      {t.verifyAndContinue || 'Verify & Continue'}
+                      {otpT.verifyAndContinue || 'Verify & Continue'}
                     </Text>
                   )}
                 </LinearGradient>

@@ -123,7 +123,7 @@ export const AUTH_TRANSLATIONS: Record<SupportedLanguage, AuthStrings> = {
     continueWithGoogle: 'Continue with Google',
     continueWithApple: 'Continue with Apple',
     skipForNow: 'Skip for Now',
-    verifyYourMobile: 'Verify Your Mobile',
+    verifyYourMobile: 'Mobile Number Verification',
     enterOtpSentTo: 'Enter the 6-digit code sent to',
     verifyAndContinue: 'Verify & Continue',
     resendOtpIn: 'Resend OTP in',

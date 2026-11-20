@@ -206,7 +206,7 @@ export const StorageService = {
       const language: SupportedLanguage =
         storedLang && supported.includes(storedLang)
           ? (storedLang as SupportedLanguage)
-          : 'te';
+          : 'en';
 
       const hasChosenLanguage = hasChosen === 'true';
 
