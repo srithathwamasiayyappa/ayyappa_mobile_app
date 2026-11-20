@@ -129,12 +129,12 @@ const SEARCH_PLACEHOLDERS: Record<string, string> = {
 };
 
 const SCREEN_TITLES: Record<string, string> = {
-  te: 'భక్తి వర్గాలు',
+  te: 'ఆధ్యాత్మిక సేవలు',
   kn: 'ಭಕ್ತಿ ವರ್ಗಗಳು',
   ta: 'பக்தி பிரிவுகள்',
   hi: 'भक्ति श्रेणियां',
   ml: 'ഭക്തി വിഭാഗങ്ങൾ',
-  en: 'Categories',
+  en: 'Spiritual Services',
 };
 
 export const ServicesScreen: React.FC<Props> = ({

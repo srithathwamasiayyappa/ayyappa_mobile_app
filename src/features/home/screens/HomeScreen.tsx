@@ -729,7 +729,17 @@ export const HomeScreen: React.FC<Props> = ({
                 }}
               >
                 <Text style={styles.drawerMenuIcon}>📑</Text>
-                <Text style={styles.drawerMenuText}>All Categories</Text>
+                <Text style={styles.drawerMenuText}>
+                  {currentLanguage === 'te'
+                    ? 'ఆధ్యాత్మిక సేవలు'
+                    : currentLanguage === 'kn'
+                    ? 'ಆಧ್ಯಾತ್ಮಿಕ ಸೇವೆಗಳು'
+                    : currentLanguage === 'ta'
+                    ? 'ஆன்மீக சேவைகள்'
+                    : currentLanguage === 'hi'
+                    ? 'आध्यात्मिक सेवाएँ'
+                    : 'Spiritual Services'}
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
