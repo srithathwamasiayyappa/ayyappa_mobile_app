@@ -61,13 +61,13 @@ export const DevotionalTicker: React.FC<Props> = ({ text }) => {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#FAB81E', // Exact golden ribbon from screenshot
+    backgroundColor: '#FFF3E0',
     flexDirection: 'row',
     alignItems: 'center',
-    height: 36,
+    height: 34,
     paddingHorizontal: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#D84315',
+    borderBottomColor: '#FFE0B2',
     overflow: 'hidden',
     width: '100%',
   },
@@ -83,9 +83,9 @@ const styles = StyleSheet.create({
     width: 1400, // Sufficient width to prevent truncation while scrolling
   },
   mantraText: {
-    color: '#000000',
-    fontSize: 16,
-    fontWeight: 'bold',
+    color: '#BF360C',
+    fontSize: 13.5,
+    fontWeight: '700',
     letterSpacing: 0.4,
   },
 });

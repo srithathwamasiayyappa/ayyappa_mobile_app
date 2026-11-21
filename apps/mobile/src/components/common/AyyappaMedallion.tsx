@@ -42,7 +42,7 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
   },
   innerFrame: {
-    backgroundColor: '#3E2723',
+    backgroundColor: '#0C251E',
     overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'center',

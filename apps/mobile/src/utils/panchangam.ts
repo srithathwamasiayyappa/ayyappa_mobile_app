@@ -2,12 +2,29 @@ import { SupportedLanguage, PanchangamData } from '../types';
 
 export const CITIES_LIST = [
   { name: 'Hyderabad', nameTe: 'హైదరాబాద్', nameKn: 'ಹೈದರಾಬಾದ್', nameTa: 'ஹைதராபாத்', nameHi: 'हैदराबाद' },
+  { name: 'Sabarimala', nameTe: 'శబరిమల', nameKn: 'ಶಬರಿಮಲೆ', nameTa: 'சபரிமலை', nameHi: 'सबरीमाला' },
   { name: 'Vijayawada', nameTe: 'విజయవాడ', nameKn: 'ವಿಜಯವಾಡ', nameTa: 'விஜயவாடா', nameHi: 'विजयवाड़ा' },
   { name: 'Visakhapatnam', nameTe: 'విశాఖపట్నం', nameKn: 'ವಿಶಾಖಪಟ್ಟಣ', nameTa: 'விசாகப்பட்டினம்', nameHi: 'विशाखापत्तनम' },
   { name: 'Tirupati', nameTe: 'తిరుపతి', nameKn: 'ತಿರುಪತಿ', nameTa: 'திருப்பதி', nameHi: 'तिरुपति' },
   { name: 'Bengaluru', nameTe: 'బెంగళూరు', nameKn: 'ಬೆಂಗಳೂರು', nameTa: 'பெங்களூரு', nameHi: 'बेंगलुरु' },
   { name: 'Chennai', nameTe: 'చెన్నై', nameKn: 'ಚೆನ್ನೈ', nameTa: 'சென்னை', nameHi: 'चेन्नई' },
-  { name: 'Sabarimala', nameTe: 'శబరిమల', nameKn: 'ಶಬರಿಮಲೆ', nameTa: 'சபரிமலை', nameHi: 'सबरीमाला' },
+  { name: 'Kochi', nameTe: 'కొచ్చి', nameKn: 'ಕೊಚ್ಚಿ', nameTa: 'கொச்சி', nameHi: 'कोच्चि' },
+  { name: 'Thiruvananthapuram', nameTe: 'తిరువనంతపురం', nameKn: 'ತಿರುವನಂತಪುರಂ', nameTa: 'திருவனந்தபுரம்', nameHi: 'तिरुवनंतपुरम' },
+  { name: 'Warangal', nameTe: 'వరంగల్', nameKn: 'ವರಂಗಲ್', nameTa: 'வாரங்கல்', nameHi: 'वारंगल' },
+  { name: 'Guntur', nameTe: 'గుంటూరు', nameKn: 'ಗುಂಟೂರು', nameTa: 'குண்டூர்', nameHi: 'गुंटूर' },
+  { name: 'Rajahmundry', nameTe: 'రాజమండ్రి', nameKn: 'ರಾಜಮಂಡ್ರಿ', nameTa: 'ராஜமன்றி', nameHi: 'राजमुंदरी' },
+  { name: 'Nellore', nameTe: 'నెల్లూరు', nameKn: 'ನೆಲ್ಲೂರು', nameTa: 'நெல்லூர்', nameHi: 'नेल्लोर' },
+  { name: 'Kurnool', nameTe: 'కర్నూలు', nameKn: 'ಕರ್ನೂಲು', nameTa: 'கர்னூல்', nameHi: 'कुरनूल' },
+  { name: 'Nizamabad', nameTe: 'నిజామాబాద్', nameKn: 'ನಿಜಾಮಾಬಾದ್', nameTa: 'நிஜாமாபாத்', nameHi: 'निज़ामाबाद' },
+  { name: 'Karimnagar', nameTe: 'కరీంనగర్', nameKn: 'ಕರೀಂನಗರ', nameTa: 'கரீம்நகர்', nameHi: 'करीमनगर' },
+  { name: 'Mysore', nameTe: 'మైసూరు', nameKn: 'ಮೈಸೂರು', nameTa: 'மைசூர்', nameHi: 'मैसूर' },
+  { name: 'Mangalore', nameTe: 'మంగళూరు', nameKn: 'ಮಂಗಳೂರು', nameTa: 'மங்களூர்', nameHi: 'मंगलौर' },
+  { name: 'Madurai', nameTe: 'మధురై', nameKn: 'ಮಧುರೈ', nameTa: 'மதுரை', nameHi: 'मदुरै' },
+  { name: 'Coimbatore', nameTe: 'కోయంబత్తూర్', nameKn: 'ಕೊಯಮತ್ತೂರು', nameTa: 'கோயம்புத்தூர்', nameHi: 'कोयंबटूर' },
+  { name: 'Mumbai', nameTe: 'ముంబై', nameKn: 'ಮುಂಬೈ', nameTa: 'மும்பை', nameHi: 'मुंबई' },
+  { name: 'Delhi', nameTe: 'ఢిల్లీ', nameKn: 'ದೆಹಲಿ', nameTa: 'தில்லி', nameHi: 'दिल्ली' },
+  { name: 'Varanasi', nameTe: 'వారణాసి', nameKn: 'ವಾರಣಾಸಿ', nameTa: 'வாரணாசி', nameHi: 'वाराणसी' },
+  { name: 'Kolkata', nameTe: 'కోల్‌కతా', nameKn: 'ಕೋಲ್ಕತ್ತಾ', nameTa: 'கொல்கத்தா', nameHi: 'कोलकाता' },
 ];
 
 export const TITHI_NAMES = {
@@ -101,6 +118,62 @@ export const MAASA_NAMES = {
   hi: ['चैत्र', 'वैशाख', 'ज्येष्ठ', 'आषाढ़', 'श्रावण', 'भाद्रपद', 'अश्विन', 'कार्तिक', 'मार्गशीर्ष', 'पौष', 'माघ', 'फाल्गुन'],
 };
 
+export const YOGA_NAMES: Record<string, string[]> = {
+  en: [
+    'Vishkambha', 'Priti', 'Ayushman', 'Saubhagya', 'Shobhana', 'Atiganda', 'Sukarma', 'Dhriti',
+    'Shoola', 'Ganda', 'Vriddhi', 'Dhruva', 'Vyaghata', 'Harshana', 'Vajra', 'Siddhi',
+    'Vyatipata', 'Variyana', 'Parigha', 'Shiva', 'Siddha', 'Sadhya', 'Shubha', 'Shukla',
+    'Brahma', 'Indra', 'Vaidhriti'
+  ],
+  te: [
+    'విష్కంభం', 'ప్రీతి', 'ఆయుష్మాన్', 'సౌభాగ్యం', 'శోభనం', 'అతిగండం', 'సుకర్మ', 'ధృతి',
+    'శూలం', 'గండం', 'వృద్ధి', 'ధ్రువం', 'వ్యాఘాతం', 'హర్షణం', 'వజ్రం', 'సిద్ధి',
+    'వ్యతీపాతం', 'వరియాన్', 'పరిఘం', 'శివ', 'సిద్ధ', 'సాధ్య', 'శుభ', 'శుక్ల',
+    'బ్రహ్మ', 'ఇంద్ర', 'వైధృతి'
+  ],
+  kn: [
+    'ವಿಷ್ಕಂಭ', 'ಪ್ರೀತಿ', 'ಆಯುಷ್ಮಾನ್', 'ಸೌಭಾಗ್ಯ', 'ಶೋಭನ', 'ಅತಿಗಂಡ', 'ಸುಕರ್ಮ', 'ಧೃತಿ',
+    'ಶೂಲ', 'ಗಂಡ', 'ವೃದ್ಧಿ', 'ಧ್ರುವ', 'ವ್ಯಾಘಾತ', 'ಹರ್ಷಣ', 'ವಜ್ರ', 'ಸಿದ್ಧಿ',
+    'ವ್ಯತೀಪಾತ', 'ವರೀಯಾನ್', 'ಪರಿಘ', 'ಶಿವ', 'ಸಿದ್ಧ', 'ಸಾಧ್ಯ', 'ಶುಭ', 'ಶುಕ್ಲ',
+    'ಬ್ರಹ್ಮ', 'ಇಂದ್ರ', 'ವೈಧೃತಿ'
+  ],
+  ta: [
+    'விஷ்கம்பம்', 'ப்ரீதி', 'ஆயுஷ்மான்', 'சௌபாக்யம்', 'சோபனம்', 'அதிகண்டம்', 'சுகர்மம்', 'த்ருதி',
+    'சூலம்', 'கண்டம்', 'விருத்தி', 'துருவம்', 'வியாகாதம்', 'ஹர்ஷணம்', 'வஜ்ரம்', 'சித்தி',
+    'வியதீபாதம்', 'வரீயான்', 'பரிகம்', 'சிவம்', 'சித்தம்', 'சாத்தியம்', 'சுபம்', 'சுக்லம்',
+    'பிரம்indices', 'இந்திரன்', 'வைதிருதி'
+  ],
+  hi: [
+    'विष्कम्भ', 'प्रीति', 'आयुष्मान', 'सौभाग्य', 'शोभन', 'अतिगण्ड', 'सुकर्मा', 'धृति',
+    'शूल', 'गण्ड', 'वृद्धि', 'ध्रुव', 'व्याघात', 'हर्षण', 'वज्र', 'सिद्धि',
+    'व्यतीपात', 'वरीयान', 'परिघ', 'शिव', 'सिद्ध', 'साध्य', 'शुभ', 'शुक्ल',
+    'ब्रह्म', 'इन्द्र', 'वैधृति'
+  ]
+};
+
+export const KARANA_NAMES: Record<string, string[]> = {
+  en: [
+    'Bava', 'Balava', 'Kaulava', 'Taitila', 'Garija', 'Vanija', 'Vishti',
+    'Shakuni', 'Chatushpada', 'Naga', 'Kinstughna'
+  ],
+  te: [
+    'బవ', 'బాలవ', 'కౌలవ', 'తైతిల', 'గరజి', 'వణిజ', 'విష్టి',
+    'శకుని', 'చతుష్పాద', 'నాగవ', 'కింస్తుఘ్నం'
+  ],
+  kn: [
+    'ಬವ', 'ಬಾಲವ', 'ಕೌಲವ', 'ತೈತಿಲ', 'ಗರಜಿ', 'ವಣಿಜ', 'ವಿಷ್ಟಿ',
+    'ಶಕುನಿ', 'ಚತುಷ್ಪಾದ', 'ನಾಗವ', 'ಕಿಂಸ್ತುಘ್ನ'
+  ],
+  ta: [
+    'பவ', 'பாலவ', 'கௌலவ', 'தைதிலை', 'கரசை', 'வணிசை', 'விஷ்டி',
+    'சகுனி', 'சதுஷ்பாதம்', 'நாகவம்', 'கிம்ஸ்துக்னம்'
+  ],
+  hi: [
+    'बव', 'बालव', 'कौलव', 'तैतिल', 'गरज', 'वणिज', 'विष्टि',
+    'शकुनि', 'चतुष्पाद', 'नाग', 'किंस्तुघ्न'
+  ]
+};
+
 export const WEEKDAYS = {
   te: ['ఆదివారము', 'సోమవారము', 'మంగళవారము', 'బుధవారము', 'గురువారము', 'శుక్రవారము', 'శనివారము'],
   kn: ['ಭಾನುವಾರ', 'ಸೋಮವಾರ', 'ಮಂಗಳವಾರ', 'ಬುಧವಾರ', 'ಗುರುವಾರ', 'ಶುಕ್ರವಾರ', 'ಶನಿವಾರ'],
@@ -111,12 +184,29 @@ export const WEEKDAYS = {
 
 const CITY_COORDS: Record<string, { lat: number; lng: number }> = {
   Hyderabad: { lat: 17.385, lng: 78.4867 },
+  Sabarimala: { lat: 9.4398, lng: 77.0805 },
   Vijayawada: { lat: 16.5062, lng: 80.648 },
   Visakhapatnam: { lat: 17.6868, lng: 83.2185 },
   Tirupati: { lat: 13.6288, lng: 79.4192 },
   Bengaluru: { lat: 12.9716, lng: 77.5946 },
   Chennai: { lat: 13.0827, lng: 80.2707 },
-  Sabarimala: { lat: 9.4398, lng: 77.0805 },
+  Kochi: { lat: 9.9312, lng: 76.2673 },
+  Thiruvananthapuram: { lat: 8.5241, lng: 76.9366 },
+  Warangal: { lat: 17.9689, lng: 79.5941 },
+  Guntur: { lat: 16.3067, lng: 80.4365 },
+  Rajahmundry: { lat: 17.0005, lng: 81.804 },
+  Nellore: { lat: 14.4426, lng: 79.9865 },
+  Kurnool: { lat: 15.8281, lng: 78.0373 },
+  Nizamabad: { lat: 18.6725, lng: 78.0941 },
+  Karimnagar: { lat: 18.4386, lng: 79.1288 },
+  Mysore: { lat: 12.2958, lng: 76.6394 },
+  Mangalore: { lat: 12.9141, lng: 74.856 },
+  Madurai: { lat: 9.9252, lng: 78.1198 },
+  Coimbatore: { lat: 11.0168, lng: 76.9558 },
+  Mumbai: { lat: 19.076, lng: 72.8777 },
+  Delhi: { lat: 28.6139, lng: 77.209 },
+  Varanasi: { lat: 25.3176, lng: 82.9739 },
+  Kolkata: { lat: 22.5726, lng: 88.3639 },
 };
 
 export class PanchangamLocalEngine {
@@ -154,12 +244,28 @@ export class PanchangamLocalEngine {
     const moonLon = (Lp + dL + 3600) % 360;
     const ayanamsha = 23.8570922 + 1.396971 * T;
     const siderealMoon = (moonLon - ayanamsha + 3600) % 360;
+    const siderealSun = (sunLon - ayanamsha + 3600) % 360;
 
     const tithiAngle = (moonLon - sunLon + 3600) % 360;
     const tithiIndex = Math.floor(tithiAngle / 12) % 30;
     const nakshatraIndex = Math.floor(siderealMoon / (360 / 27)) % 27;
+    const yogaIndex = Math.floor(((siderealMoon + siderealSun) % 360) / (360 / 27)) % 27;
 
-    return { tithiIndex, nakshatraIndex };
+    const kIdx = Math.floor(tithiAngle / 6) % 60;
+    let karanaIndex = 0;
+    if (kIdx === 0) {
+      karanaIndex = 10; // Kinstughna
+    } else if (kIdx === 57) {
+      karanaIndex = 7; // Shakuni
+    } else if (kIdx === 58) {
+      karanaIndex = 8; // Chatushpada
+    } else if (kIdx === 59) {
+      karanaIndex = 9; // Naga
+    } else {
+      karanaIndex = (kIdx - 1) % 7; // 0 to 6 (Bava to Vishti)
+    }
+
+    return { tithiIndex, nakshatraIndex, yogaIndex, karanaIndex, tithiAngle };
   }
 
   private static findTithiEnd(baseDate: Date): Date {
@@ -228,8 +334,13 @@ export class PanchangamLocalEngine {
     });
   }
 
-  public static calculate(targetDate: Date = new Date(), cityName = 'Hyderabad', lang: SupportedLanguage = 'te'): PanchangamData {
-    const coords = CITY_COORDS[cityName] || CITY_COORDS.Hyderabad;
+  public static calculate(
+    targetDate: Date = new Date(),
+    cityName = 'Hyderabad',
+    lang: SupportedLanguage = 'te',
+    customCoords?: { lat: number; lng: number }
+  ): PanchangamData {
+    const coords = customCoords || CITY_COORDS[cityName] || CITY_COORDS.Hyderabad;
     const l = (['te', 'kn', 'en', 'ta', 'hi'].includes(lang) ? lang : 'te') as SupportedLanguage;
 
     const sun = this.getSunTimes(targetDate, coords.lat, coords.lng);
@@ -256,6 +367,22 @@ export class PanchangamLocalEngine {
     const rahuStart = new Date(sun.sunrise.getTime() + rIdx * octant);
     const rahuEnd = new Date(sun.sunrise.getTime() + (rIdx + 1) * octant);
 
+    const yamaOctants = [4, 3, 2, 1, 0, 6, 5];
+    const yIdx = yamaOctants[dayOfWeek];
+    const yamaStart = new Date(sun.sunrise.getTime() + yIdx * octant);
+    const yamaEnd = new Date(sun.sunrise.getTime() + (yIdx + 1) * octant);
+
+    const gulikaOctants = [6, 5, 4, 3, 2, 1, 0];
+    const gIdx = gulikaOctants[dayOfWeek];
+    const gulikaStart = new Date(sun.sunrise.getTime() + gIdx * octant);
+    const gulikaEnd = new Date(sun.sunrise.getTime() + (gIdx + 1) * octant);
+
+    const solarNoon = (sun.sunrise.getTime() + sun.sunset.getTime()) / 2;
+    const muhurtaDuration = dayDuration / 15;
+    const halfMuhurta = muhurtaDuration / 2;
+    const abhijitStart = new Date(solarNoon - halfMuhurta);
+    const abhijitEnd = new Date(solarNoon + halfMuhurta);
+
     const pad = (n: number) => String(n).padStart(2, '0');
     const dayNumber = pad(targetDate.getDate());
     const monthsEn = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -278,9 +405,68 @@ export class PanchangamLocalEngine {
 
     const sunriseStr = this.formatTime(sun.sunrise);
     const sunsetStr = this.formatTime(sun.sunset);
-    const rahuStr = `${this.formatTime(rahuStart)} - ${this.formatTime(rahuEnd)}`;
+    const rahuStr = `${this.formatTime(rahuStart)} – ${this.formatTime(rahuEnd)}`;
+    const yamaStr = `${this.formatTime(yamaStart)} – ${this.formatTime(yamaEnd)}`;
+    const gulikaStr = `${this.formatTime(gulikaStart)} – ${this.formatTime(gulikaEnd)}`;
+    const abhijitStr = `${this.formatTime(abhijitStart)} – ${this.formatTime(abhijitEnd)}`;
     const tithiEndStr = this.formatTime(tithiEnd);
     const nakEndStr = this.formatTime(nakshatraEnd);
+
+    const yogaList = YOGA_NAMES[l] || YOGA_NAMES.en;
+    const activeYogaName = yogaList[live.yogaIndex] || yogaList[0];
+
+    const karanaList = KARANA_NAMES[l] || KARANA_NAMES.en;
+    const activeKaranaName = karanaList[live.karanaIndex] || karanaList[0];
+
+    const pakshaPrefix = isShukla
+      ? (l === 'en' ? 'Shukla' : (PAKSHA_NAMES.shukla[l] || 'శుక్ల').replace(/ పక్షం| ಪಕ್ಷ| பக்ஷம்| पक्ष/, ''))
+      : (l === 'en' ? 'Krishna' : (PAKSHA_NAMES.krishna[l] || 'కృష్ణ').replace(/ పక్షం| ಪಕ್ಷ| பக்ஷம்| पक्ष/, ''));
+    const combinedTithi = `${pakshaPrefix} ${activeTithiName}`;
+
+    let specialNote = '';
+    const m = targetDate.getMonth();
+    const d = targetDate.getDate();
+    if (m === 0 && (d === 14 || d === 15)) {
+      specialNote = l === 'te'
+        ? 'మకర సంక్రాంతి / పొంగల్ పర్వదినం — అత్యంత శుభప్రదమైన దినం'
+        : l === 'kn'
+        ? 'ಮಕರ ಸಂಕ್ರಾಂತಿ ಹಬ್ಬ — ಅತ್ಯಂತ ಮಂಗಳಕರ ದಿನ'
+        : l === 'ta'
+        ? 'மகர சங்கராந்தி / தை பொங்கல் — புனிதமான திருநாள்'
+        : l === 'hi'
+        ? 'मकर संक्रांति / पोंगल — अत्यंत शुभ व पुण्यकारी दिवस'
+        : 'Makara Sankranti / Pongal — Highly Auspicious Festival';
+    } else if (live.tithiIndex === 10 || live.tithiIndex === 25) {
+      specialNote = l === 'te'
+        ? 'ఏకాదశి వ్రతం — శ్రీమహావిష్ణువు పూజకు, ఉపవాసానికి శ్రేష్ఠమైన దినం'
+        : 'Ekadashi Vratham — Auspicious for Fasting & Vishnu Pooja';
+    } else if (live.tithiIndex === 14) {
+      specialNote = l === 'te'
+        ? 'పౌర్ణమి — సత్యనారాయణ స్వామి వ్రతమునకు, దీపారాధనకు పరమ పవిత్రం'
+        : 'Pournami (Full Moon) — Auspicious for Satyanarayana Swamy Pooja';
+    } else if (live.tithiIndex === 29) {
+      specialNote = l === 'te'
+        ? 'అమావాస్య — పితృ తర్పణములకు, దానములకు పరమ పవిత్రం'
+        : 'Amavasya (New Moon) — Sacred for Ancestral Offerings & Charity';
+    } else if (live.tithiIndex === 12 || live.tithiIndex === 27) {
+      specialNote = l === 'te'
+        ? 'ప్రదోష వ్రతం — పరమశివుని అభిషేకమునకు, బిల్వార్చనకు శ్రేష్ఠం'
+        : 'Pradosham — Auspicious for Shiva Pooja & Bilva Archana';
+    } else if (live.tithiIndex === 3 || live.tithiIndex === 18) {
+      specialNote = l === 'te'
+        ? 'సంకష్టహర చవితి — శ్రీ గణపతి ఆరాధనకు పరమ పవిత్రం'
+        : 'Sankashti Chaturthi — Auspicious for Lord Ganesha Pooja';
+    } else {
+      specialNote = l === 'te'
+        ? 'పూజలు, దానధర్మాలు మరియు నూతన ప్రారంభాలకు శుభప్రదం'
+        : l === 'kn'
+        ? 'ಪೂಜೆ, ದಾನ ಮತ್ತು ಹೊಸ ಪ್ರಾರಂಭಗಳಿಗೆ ಶುಭದಾಯಕ'
+        : l === 'ta'
+        ? 'பூஜை, தானம் மற்றும் புதிய தொடக்கங்களுக்கு உகந்த நாள்'
+        : l === 'hi'
+        ? 'पूजा, दान एवं नए कार्यों के शुभारंभ हेतु शुभ'
+        : 'Auspicious for Pooja, Donations & New Beginnings';
+    }
 
     const sectionTitles = {
       tithi: { te: 'తిథి', kn: 'ತಿಥಿ', en: 'Tithi', ta: 'திதி', hi: 'तिथि' },
@@ -305,7 +491,7 @@ export class PanchangamLocalEngine {
       samvatsaram: samvatsaramNames[l],
       maasa: MAASA_NAMES[l][7],
       paksham: pakshamName,
-      tithi: activeTithiName,
+      tithi: combinedTithi,
       tithiEndTime: tithiEndStr,
       nextTithi: nextTithiName,
       nakshatram: activeNakshatraName,
@@ -314,6 +500,12 @@ export class PanchangamLocalEngine {
       sunrise: sunriseStr,
       sunset: sunsetStr,
       rahuKalam: rahuStr,
+      yamagandam: yamaStr,
+      gulikaKalam: gulikaStr,
+      abhijitMuhurtam: abhijitStr,
+      yoga: activeYogaName,
+      karana: activeKaranaName,
+      special: specialNote,
       details: {
         date: `${targetDate.getFullYear()}-${pad(targetDate.getMonth() + 1)}-${dayNumber}`,
         dayName: vaaramName,
@@ -322,7 +514,7 @@ export class PanchangamLocalEngine {
         maasaPaksha: `${MAASA_NAMES[l][7]} - ${pakshamName}`,
         tithi: {
           title: sectionTitles.tithi[l],
-          items: [`${activeTithiName}: ${tithiEndStr}`, `${sectionTitles.followedBy[l]} ${nextTithiName}`],
+          items: [`${combinedTithi}: ${tithiEndStr}`, `${sectionTitles.followedBy[l]} ${nextTithiName}`],
         },
         star: {
           title: sectionTitles.star[l],
@@ -330,16 +522,16 @@ export class PanchangamLocalEngine {
         },
         yoga: {
           title: sectionTitles.yoga[l],
-          items: ['సౌభాగ్యము: 02:56 am', 'శోభనము: 03:09 am'],
+          items: [activeYogaName],
         },
         karana: {
           title: sectionTitles.karana[l],
-          items: ['నాగవము: 12:32 pm', 'కింస్తుఘ్నము: 01:13 am'],
+          items: [activeKaranaName],
         },
         auspiciousTime: {
           title: sectionTitles.auspicious[l],
           items: [
-            'అభిజిత్ ముహూర్తం: 11:37 am - 12:22 pm',
+            `అభిజిత్ ముహూర్తం: ${abhijitStr}`,
             'అమృతకాలం: 11:48 pm - 01:31 am',
             'బ్రాహ్మీ ముహూర్తం: 4:45 am - 05:33 am',
           ],
@@ -348,8 +540,8 @@ export class PanchangamLocalEngine {
           title: sectionTitles.inauspicious[l],
           items: [
             `${sectionTitles.rahuLabel[l]}: ${rahuStr}`,
-            'యమగండం: 09:09 am - 10:34 am',
-            'దుర్ముహూర్తం: 12:22 pm - 01:07 pm',
+            `యమగండం: ${yamaStr}`,
+            `గుళిక కాలం: ${gulikaStr}`,
           ],
         },
         sunTimes: `${sectionTitles.sunriseLabel[l]}: ${sunriseStr} || ${sectionTitles.sunsetLabel[l]}: ${sunsetStr}`,

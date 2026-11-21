@@ -1,30 +1,43 @@
 import React from 'react';
-import { View, StyleSheet, Image, Dimensions } from 'react-native';
+import { View, StyleSheet, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-
-const { width, height } = Dimensions.get('window');
 
 interface Props {
   children: React.ReactNode;
 }
 
+const AUTH_DEVOTIONAL_BG = require('../../../assets/images/auth_devotional_bg.jpg');
+
 /**
- * Authentic Devotional Background for the 3 Auth Screens:
- * - Golden/saffron sacred gradient
- * - Ornate temple pillars and decorative brass hanging lamps
- * - Golden temple walkway towards Sabarimala Sannidhanam at bottom
+ * Authentic Devotional Background for Saranam Ayyappa Authentication:
+ * - Warm ivory and golden cream base (#FEFAF2 -> #F4E7D7)
+ * - Ornate golden temple arches at the top
+ * - Delicate hanging brass bells on both sides
+ * - Sabarimala temple scenery on the right
+ * - Pilgrim silhouettes trekking along the lower mountains
  */
 export const AuthBackground: React.FC<Props> = ({ children }) => {
   return (
     <View style={styles.container}>
+      {/* 1. Base Warm Ivory & Saffron Devotional Gradient */}
       <LinearGradient
-        colors={['#D48806', '#F5A623', '#F8B500', '#E28A00', '#C67700']}
+        colors={['#FEFAF2', '#FBF5EB', '#F7EFE4', '#F4E7D7']}
         style={StyleSheet.absoluteFillObject}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 1 }}
       />
-      {/* Soft warm overlay to ensure card and typography contrast is pixel-perfect */}
+
+      {/* 2. Devotional Artwork Layer: Ornate Temple Arch, Brass Bells & Sabarimala Pilgrim Slopes */}
+      <Image
+        source={AUTH_DEVOTIONAL_BG}
+        style={styles.bgImage}
+        resizeMode="cover"
+      />
+
+      {/* 3. Subtle Warm Ambient Vignette for Optimum Card Contrast */}
       <View style={styles.overlay} />
+
+      {/* 4. Real Interactive React Native Children */}
       <View style={styles.content}>{children}</View>
     </View>
   );
@@ -35,22 +48,21 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '100%',
     height: '100%',
-    backgroundColor: '#F5A623',
+    backgroundColor: '#FAF5EB',
     position: 'relative',
   },
   bgImage: {
     ...StyleSheet.absoluteFillObject,
     width: '100%',
     height: '100%',
-    opacity: 0.95,
+    opacity: 0.98,
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(245, 166, 35, 0.08)',
+    backgroundColor: 'rgba(255, 252, 246, 0.12)',
   },
   content: {
     flex: 1,
     zIndex: 10,
   },
 });
-

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { API_BASE_URL } from '../../config/apiConfig';
 import {
   Upload,
   RefreshCw,
@@ -85,7 +86,7 @@ export const SplashScreenManager: React.FC = () => {
       setLoading(true);
 
       // Fetch active published splash for showcase
-      const activeRes = await fetch('http://localhost:4000/api/v1/mobile/splash/active');
+      const activeRes = await fetch(`${API_BASE_URL}/mobile/splash/active`);
       if (activeRes.ok) {
         const activeJson = await activeRes.json();
         setActiveAsset(activeJson.data || null);
@@ -100,7 +101,7 @@ export const SplashScreenManager: React.FC = () => {
       if (statusFilter !== 'ALL') params.append('status', statusFilter);
       if (platformFilter !== 'ALL') params.append('platform', platformFilter);
 
-      const listRes = await fetch(`http://localhost:4000/api/v1/admin/splash?${params.toString()}`);
+      const listRes = await fetch(`${API_BASE_URL}/admin/splash?${params.toString()}`);
       if (listRes.ok) {
         const listJson = await listRes.json();
         setAssets(listJson.data || []);
@@ -163,7 +164,7 @@ export const SplashScreenManager: React.FC = () => {
         adminEmail: 'SUPER_ADMIN',
       };
 
-      const res = await fetch('http://localhost:4000/api/v1/admin/splash', {
+      const res = await fetch(`${API_BASE_URL}/admin/splash`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -198,7 +199,7 @@ export const SplashScreenManager: React.FC = () => {
       action: async () => {
         try {
           setActionLoading(true);
-          const res = await fetch(`http://localhost:4000/api/v1/admin/splash/${asset.id}/publish`, {
+          const res = await fetch(`${API_BASE_URL}/admin/splash/${asset.id}/publish`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ adminEmail: 'SUPER_ADMIN' }),
@@ -221,7 +222,7 @@ export const SplashScreenManager: React.FC = () => {
   const handleUnpublish = async (asset: SplashAsset) => {
     try {
       setActionLoading(true);
-      const res = await fetch(`http://localhost:4000/api/v1/admin/splash/${asset.id}/unpublish`, {
+      const res = await fetch(`${API_BASE_URL}/admin/splash/${asset.id}/unpublish`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ adminEmail: 'SUPER_ADMIN' }),
@@ -245,7 +246,7 @@ export const SplashScreenManager: React.FC = () => {
       action: async () => {
         try {
           setActionLoading(true);
-          const res = await fetch(`http://localhost:4000/api/v1/admin/splash/${asset.id}/archive`, {
+          const res = await fetch(`${API_BASE_URL}/admin/splash/${asset.id}/archive`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ adminEmail: 'SUPER_ADMIN' }),
@@ -268,7 +269,7 @@ export const SplashScreenManager: React.FC = () => {
   const handleRestore = async (asset: SplashAsset) => {
     try {
       setActionLoading(true);
-      const res = await fetch(`http://localhost:4000/api/v1/admin/splash/${asset.id}/restore`, {
+      const res = await fetch(`${API_BASE_URL}/admin/splash/${asset.id}/restore`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ adminEmail: 'SUPER_ADMIN' }),

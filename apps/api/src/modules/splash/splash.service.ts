@@ -22,14 +22,32 @@ export class SplashService {
     }
   }
 
-  // Helper to format full public URL for mobile and admin consumption
+  // Helper to format full public URL for mobile and admin consumption (Task 2)
   private formatImageUrl(reqHost: string, relativePath: string): string {
     if (relativePath.startsWith('http://') || relativePath.startsWith('https://')) {
       return relativePath;
     }
     const cleanPath = relativePath.startsWith('/') ? relativePath : `/${relativePath}`;
-    const protocol = reqHost.includes('localhost') || reqHost.includes('127.0.0.1') ? 'http' : 'http';
-    return `${protocol}://${reqHost}${cleanPath}`;
+
+    // 1. Explicit environment media origin (e.g. MEDIA_ORIGIN="http://192.168.1.6:4000" or CDN)
+    if (process.env.MEDIA_ORIGIN) {
+      const origin = process.env.MEDIA_ORIGIN.replace(/\/$/, '');
+      return `${origin}${cleanPath}`;
+    }
+
+    // 2. Production HTTPS media domain
+    if (process.env.NODE_ENV === 'production') {
+      return `https://api.ayyappa.org${cleanPath}`;
+    }
+
+    // 3. For physical mobile devices on LAN: If request host is localhost or 127.0.0.1, resolve to LAN IP
+    let host = reqHost;
+    if (host.includes('localhost') || host.includes('127.0.0.1')) {
+      host = '192.168.1.6:4000';
+    }
+
+    const protocol = host.startsWith('https') ? 'https' : 'http';
+    return `${protocol}://${host}${cleanPath}`;
   }
 
   // 1. Resolve currently published active splash for mobile client

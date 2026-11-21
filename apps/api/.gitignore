@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+
+# Compiled build artifacts
+dist/
+
+# Environment configurations & credentials
+.env
+.env.*
+!.env.example
+*.p8
+*.keystore
+
+# Database dumps & backup archives
+*.zip
+*.tar.gz
+*.rar
+backup_ayyappa_audit.json
+mysql_full_consistent_backup.json
+mariadb_data/
+
+
+# User Uploaded media files
+uploads/*
+!uploads/.gitkeep
+
+# Logs & Runtime
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Scratch & Temporary Scripts
+check_settings.js
+convert-script.js
+
+# OS & IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

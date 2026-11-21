@@ -1,3 +1,6 @@
+import * as dotenv from 'dotenv';
+dotenv.config();
+
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import * as express from 'express';
@@ -30,10 +33,12 @@ async function bootstrap() {
 
   app.use('/uploads', express.static(uploadsDir));
   app.use('/api/v1/uploads', express.static(uploadsDir));
+  app.use('/images', express.static(uploadsDir));
+  app.use('/api/v1/images', express.static(uploadsDir));
 
-  const port = process.env.PORT || 4005;
-  await app.listen(port, '0.0.0.0');
-  console.log(`Saranam Ayyappa API running on http://0.0.0.0:${port}/api/v1`);
+  const port = Number(process.env.PORT) || 4001;
+  await app.listen(port);
+  console.log(`Saranam Ayyappa API running on http://localhost:${port} with prefix /api/v1`);
   console.log(`Serving static uploads from: ${uploadsDir}`);
 }
 

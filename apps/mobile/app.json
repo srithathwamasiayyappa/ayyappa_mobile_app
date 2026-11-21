@@ -2,34 +2,50 @@
   "expo": {
     "name": "Saranam Ayyappa",
     "slug": "saranam-ayyappa",
-    "version": "1.0.0",
+    "version": "1.0.10",
     "orientation": "portrait",
+    "newArchEnabled": true,
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
       "image": "./assets/splash.png",
-      "resizeMode": "cover",
-      "backgroundColor": "#300305"
+      "resizeMode": "contain",
+      "backgroundColor": "#0C251E"
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.saranam.ayyappa"
+      "bundleIdentifier": "com.saranam.ayyappa",
+      "googleServicesFile": "./GoogleService-Info.plist"
     },
     "android": {
       "package": "com.saranam.ayyappa",
+      "versionCode": 10,
       "googleServicesFile": "./google-services.json",
+      "splash": {
+        "image": "./assets/splash.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#0C251E"
+      },
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#000000"
       },
       "permissions": [
         "INTERNET",
-        "ACCESS_NETWORK_STATE"
+        "ACCESS_NETWORK_STATE",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
       ]
     },
+    "owner": "saranamayyappa",
+    "plugins": [
+      "@react-native-firebase/app",
+      "@react-native-firebase/auth",
+      "@react-native-google-signin/google-signin"
+    ],
     "extra": {
       "eas": {
-        "projectId": "53cee636-e183-4f2d-b62a-c2cbd7822bf4"
+        "projectId": "271a0d9d-01db-42ce-95de-fc9d13cd06c7"
       }
     }
   }

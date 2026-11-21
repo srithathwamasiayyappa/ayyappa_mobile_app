@@ -1,0 +1,177 @@
+/* ══════════════════════════════════════════════════════════════════════════════
+   SARANAM AYYAPPA — ADMIN PANEL CENTRAL THEME CONFIGURATION
+   All colors match the official user website theme palette:
+   - Emerald Green / Deep Sacred Forest Green: #173d32, #0c251e, #215344
+   - Saffron / Temple Green: #2e7561, #1c5344
+   - Divine Warm Gold: #c9a84e, #faecc5, #e5b955
+   - Sacred Ivory, Cream & Light Mint: #f4f9f6, #eaf4ef, #d9ebe2
+   - Deep Devotional Ink / Dark Charcoal: #112620, #071914
+   - Typography: Poppins for Titles & Headings, Raleway for Body & Descriptions
+   Strictly overrides any non-website colors (pure blacks, grays, oranges).
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&family=Raleway:wght@400;500;600;700;800&display=swap');
+
+:root {
+  /* ── Core Website Devotional Palette (Strictly from user website) ── */
+  --admin-maroon: #173d32;
+  --admin-maroon-dark: #0c251e;
+  --admin-maroon-mid: #215344;
+  --admin-saffron: #2e7561;
+  --admin-saffron-deep: #1c5344;
+  --admin-gold: #c9a84e;
+  --admin-gold-light: #faecc5;
+  --admin-gold-bright: #e5b955;
+  --admin-ivory: #f4f9f6;
+  --admin-cream: #eaf4ef;
+  --admin-cream-dark: #d9ebe2;
+  --admin-ink: #112620;
+  --admin-muted: #57746b;
+  --admin-line: #cce3d8;
+  --admin-white: #ffffff;
+  --admin-success: #2b825c;
+
+  /* ── Admin Dashboard Surface & Structural Tones ── */
+  --admin-bg-base: #071914;
+  --admin-bg-surface: #0c251e;
+  --admin-bg-card: #123128;
+  --admin-bg-card-hover: #173d32;
+  --admin-border-subtle: #1c5344;
+  --admin-border-highlight: #c9a84e;
+
+  /* ── Typography Definitions ── */
+  --admin-title-font: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
+  --admin-desc-font: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
+
+  /* ── Radii ── */
+  --admin-radius-sm: 8px;
+  --admin-radius-md: 12px;
+  --admin-radius-lg: 16px;
+  --admin-radius-xl: 20px;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   GLOBAL STRICT THEME OVERRIDES — REMOVES ALL UNRELATED GRAYS, ORANGES & BLACKS
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* Global Typography: Titles use Poppins Bold, Descriptions & Information use Poppins Regular */
+h1, h2, h3, h4, h5, h6,
+.admin-title,
+[data-font="title"],
+th {
+  font-family: var(--admin-title-font) !important;
+  font-weight: 700 !important;
+}
+
+p, span, label, input, textarea, select, button, td,
+.admin-desc,
+[data-font="desc"],
+.description,
+.information {
+  font-family: var(--admin-desc-font) !important;
+  font-weight: 400 !important;
+}
+
+/* Backgrounds & Bases */
+body {
+  background-color: var(--admin-bg-base) !important;
+  color: var(--admin-ivory) !important;
+}
+
+.bg-\[\#121212\],
+.bg-\[\#151515\],
+.bg-\[\#141414\] {
+  background-color: var(--admin-bg-base) !important;
+}
+
+.bg-\[\#181818\],
+.bg-\[\#1A1A1A\],
+.bg-\[\#1C1C1C\] {
+  background-color: var(--admin-bg-surface) !important;
+}
+
+.bg-\[\#1E1E1E\],
+.bg-\[\#222222\],
+.bg-\[\#252525\] {
+  background-color: var(--admin-bg-card) !important;
+}
+
+/* Borders */
+.border-\[\#2C2C2C\],
+.border-\[\#333333\],
+.border-neutral-700,
+.border-neutral-800 {
+  border-color: var(--admin-border-subtle) !important;
+}
+
+.border-\[\#FFB300\],
+.border-amber-500,
+.border-orange-500 {
+  border-color: var(--admin-gold) !important;
+}
+
+/* Text Colors */
+.text-\[\#FFB300\],
+.text-amber-300,
+.text-amber-400,
+.text-amber-500,
+.text-yellow-400,
+.text-orange-400,
+.text-orange-500 {
+  color: var(--admin-gold-bright) !important;
+}
+
+.text-gray-100,
+.text-gray-200 {
+  color: var(--admin-ivory) !important;
+}
+
+.text-gray-300,
+.text-gray-400,
+.text-gray-500 {
+  color: #a4c2b7 !important;
+}
+
+/* Buttons and Highlights */
+.bg-\[\#D84315\],
+.bg-\[\#BF360C\],
+.bg-orange-600,
+.bg-orange-500 {
+  background: linear-gradient(135deg, var(--admin-maroon-mid), var(--admin-maroon)) !important;
+  color: #ffffff !important;
+  border-color: var(--admin-gold) !important;
+}
+
+.hover\:bg-\[\#BF360C\]:hover,
+.hover\:bg-orange-700:hover {
+  background: var(--admin-saffron-deep) !important;
+}
+
+/* Gold Badges and Buttons */
+.btn-gold,
+.bg-\[\#FFB300\] {
+  background: linear-gradient(120deg, var(--admin-gold-bright), var(--admin-gold)) !important;
+  color: var(--admin-ink) !important;
+}
+
+/* Accent Shadows */
+.shadow-orange-950,
+.shadow-amber-950 {
+  box-shadow: 0 10px 25px rgba(7, 25, 20, 0.7) !important;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--admin-maroon-dark);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--admin-maroon-mid);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--admin-gold);
+}

@@ -5,11 +5,29 @@ import { PrismaService } from '../../database/prisma.service';
 export class HealthController {
   constructor(private readonly prisma: PrismaService) {}
 
+  @Get()
+  async getHealth() {
+    let dbStatus = 'connected';
+    try {
+      await this.prisma.$queryRaw`SELECT 1`;
+    } catch (e: any) {
+      dbStatus = `disconnected: ${e?.message || 'DB error'}`;
+    }
+
+    return {
+      status: dbStatus === 'connected' ? 'ok' : 'degraded',
+      service: 'saranam-ayyappa-backend',
+      database: dbStatus,
+      uptimeSeconds: Math.floor(process.uptime()),
+      timestamp: new Date().toISOString(),
+    };
+  }
+
   @Get('liveness')
   getLiveness() {
     return {
       status: 'ok',
-      service: 'ayyappa-aradhana-api',
+      service: 'saranam-ayyappa-backend',
       timestamp: new Date().toISOString(),
     };
   }
@@ -33,4 +51,5 @@ export class HealthController {
     }
   }
 }
+
 

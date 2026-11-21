@@ -1,43 +1,40 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image } from 'react-native';
+import { View, Text, StyleSheet, Image, Platform } from 'react-native';
+import { useBranding } from '../../../services/brandingService';
 
 interface Props {
   subWelcome?: string;
 }
 
-export const AuthBrandHeader: React.FC<Props> = ({
-  subWelcome = 'Sacred Devotee Portal • Mobile Verification',
-}) => {
+const AYYAPPA_EMBLEM = require('../../../assets/images/ayyappa_emblem_approved.png');
+
+export const AuthBrandHeader: React.FC<Props> = (props) => {
+  const { branding, getLogoSource, onLogoError } = useBranding();
+  const subWelcome = props?.subWelcome || 'Sacred Devotion Portal • Mobile Verification';
   return (
     <View style={styles.container}>
       {/* 1. Circular Lord Ayyappa Golden Emblem */}
       <View style={styles.emblemContainer}>
-        <View style={styles.haloOuterRing}>
-          <Image
-            source={require('../../../assets/images/ayyappa_icon.jpg')}
-            style={styles.emblemImage}
-            resizeMode="cover"
-          />
-        </View>
+        <Image
+          source={getLogoSource(AYYAPPA_EMBLEM)}
+          onError={onLogoError}
+          style={styles.emblemImage}
+          resizeMode="contain"
+        />
       </View>
 
-      {/* 2. SARANAM AYYAPPA */}
-      <Text style={styles.title}>SARANAM AYYAPPA</Text>
+      {/* 2. Saranam Ayyappa (Exact Capitalization & Deep Maroon Editorial Serif Typography) */}
+      <Text style={styles.title}>{branding?.title || 'Saranam Ayyappa'}</Text>
 
-      {/* 3. Decorative Flanked Mantra: — Swamiye Saranam Ayyappa — */}
+      {/* 3. Decorative Flanked Mantra: — 🪷 Swamiye Saranam Ayyappa — */}
       <View style={styles.mantraRow}>
-        <View style={styles.decorativeFlourishLeft}>
-          <Text style={styles.flourishGlyph}>❖</Text>
-          <View style={styles.flourishLine} />
-        </View>
-        <Text style={styles.mantraText}>Swamiye Saranam Ayyappa</Text>
-        <View style={styles.decorativeFlourishRight}>
-          <View style={styles.flourishLine} />
-          <Text style={styles.flourishGlyph}>❖</Text>
-        </View>
+        <View style={styles.dividerLine} />
+        <Text style={styles.lotusIcon}>🪷</Text>
+        <Text style={styles.mantraText}>{branding.tagline || 'Swamiye Saranam Ayyappa'}</Text>
+        <View style={styles.dividerLine} />
       </View>
 
-      {/* 4. Sacred Devotee Portal • Mobile Verification */}
+      {/* 4. Sacred Devotion Portal • Mobile Verification */}
       <Text style={styles.subText}>{subWelcome}</Text>
     </View>
   );
@@ -47,8 +44,8 @@ const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 10,
-    marginBottom: 16,
+    marginTop: Platform.OS === 'ios' ? 14 : 8,
+    marginBottom: 14,
     width: '100%',
   },
   emblemContainer: {
@@ -56,74 +53,51 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 8,
   },
-  haloOuterRing: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    borderWidth: 3,
-    borderColor: '#FFD54F',
-    backgroundColor: '#3E0000',
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 8,
-    shadowColor: '#4E1B0B',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.45,
-    shadowRadius: 8,
-    overflow: 'hidden',
-  },
   emblemImage: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
+    width: 84,
+    height: 84,
   },
   title: {
-    fontSize: 23,
-    fontWeight: '900',
-    color: '#4E1B0B',
-    letterSpacing: 1.8,
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#173D32',
+    letterSpacing: 0.3,
     textAlign: 'center',
-    fontFamily: 'serif',
+    fontFamily: Platform.select({ ios: 'Poppins-Bold', android: 'Poppins_700Bold', web: 'Poppins, sans-serif', default: 'Poppins_700Bold' }),
+    marginBottom: 4,
   },
   mantraRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 3,
+    marginTop: 2,
+    marginBottom: 4,
+    paddingHorizontal: 16,
+  },
+  dividerLine: {
+    width: 26,
+    height: 1,
+    backgroundColor: '#2E7561',
+    opacity: 0.5,
+  },
+  lotusIcon: {
+    fontSize: 13,
+    marginHorizontal: 6,
   },
   mantraText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
     fontStyle: 'italic',
-    color: '#3E1508',
-    letterSpacing: 0.5,
-    marginHorizontal: 8,
-  },
-  decorativeFlourishLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  decorativeFlourishRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  flourishLine: {
-    width: 24,
-    height: 1,
-    backgroundColor: '#8D4315',
-  },
-  flourishGlyph: {
-    fontSize: 9,
-    color: '#8D4315',
-    marginHorizontal: 2,
+    color: '#2E7561',
+    letterSpacing: 0.3,
+    fontFamily: Platform.select({ ios: 'Poppins-Bold', android: 'Poppins_700Bold', web: 'Poppins, sans-serif', default: 'Poppins_700Bold' }),
   },
   subText: {
-    fontSize: 12.5,
+    fontSize: 12,
     fontWeight: '600',
-    color: '#5D2E14',
-    letterSpacing: 0.3,
-    marginTop: 4,
+    color: '#8C6D4F',
+    letterSpacing: 0.4,
     textAlign: 'center',
+    marginTop: 2,
   },
 });
-

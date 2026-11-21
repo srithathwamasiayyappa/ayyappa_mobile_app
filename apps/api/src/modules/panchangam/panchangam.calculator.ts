@@ -328,8 +328,10 @@ export class PanchangamCalculator {
     };
   }
 
-  public static calculateDay(targetDate: Date, cityName = 'Hyderabad', lang = 'te') {
-    const city = CITIES[cityName] || CITIES.Hyderabad;
+  public static calculateDay(targetDate: Date, cityName = 'Hyderabad', lang = 'te', customCoords?: { lat: number; lng: number }) {
+    const city = customCoords
+      ? { name: cityName, lat: customCoords.lat, lng: customCoords.lng, timezone: 'Asia/Kolkata', nameTe: cityName, nameKn: cityName, nameTa: cityName, nameHi: cityName }
+      : (CITIES[cityName] || CITIES.Hyderabad);
     const l = (['te', 'kn', 'en', 'ta', 'hi'].includes(lang) ? lang : 'te') as 'te' | 'kn' | 'en' | 'ta' | 'hi';
 
     const sunTimes = this.getSunTimes(targetDate, city.lat, city.lng);

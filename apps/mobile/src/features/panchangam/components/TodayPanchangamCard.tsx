@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, useWindowDimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, useWindowDimensions, Platform } from 'react-native';
 import { PanchangamData, SupportedLanguage } from '../../../types';
 
 interface Props {
@@ -99,65 +99,66 @@ export const TodayPanchangamCard: React.FC<Props> = ({
             </View>
           </View>
 
-          {/* Right Side: Panchangam Details (~70% width) */}
+          {/* Right Side: Sacred Panchangam Details */}
           <View style={styles.panchangBlock}>
-            {/* Lunar Month & Paksham */}
             {data.maasa ? (
               <View style={styles.masamRow}>
                 <Text style={styles.masamText} numberOfLines={1}>
-                  {data.maasa} • {data.paksham}
+                  {data.maasa}
                 </Text>
               </View>
-            ) : (
+            ) : null}
+
+            {data.samvatsaram ? (
               <Text style={styles.samvatsaramText} numberOfLines={1}>
                 {data.samvatsaram}
               </Text>
-            )}
+            ) : null}
 
-            {/* Tithi Row */}
+            {/* Tithi with End Time */}
             <View style={styles.infoRow}>
               <Text style={styles.labelCol}>{l.tithi}:</Text>
               <Text style={styles.valueCol} numberOfLines={1}>
-                {data.tithi} {data.tithiEndTime ? `(${l.ends}: ${data.tithiEndTime})` : ''}
+                {data.tithi}
+                {data.tithiEndTime ? ` (${l.ends}: ${data.tithiEndTime})` : ''}
               </Text>
             </View>
 
-            {/* Nakshatram Row */}
+            {/* Nakshatram with End Time */}
             <View style={styles.infoRow}>
               <Text style={styles.labelCol}>{l.nakshatram}:</Text>
               <Text style={styles.valueCol} numberOfLines={1}>
-                {data.nakshatram} {data.nakshatraEndTime ? `(${l.ends}: ${data.nakshatraEndTime})` : ''}
+                {data.nakshatram}
+                {data.nakshatraEndTime ? ` (${l.ends}: ${data.nakshatraEndTime})` : ''}
               </Text>
             </View>
 
-            {/* Rahu Kalam Row */}
-            {data.rahuKalam ? (
-              <View style={styles.infoRow}>
-                <Text style={styles.labelCol}>{l.rahuKalam}:</Text>
-                <Text style={styles.valueColHighlight} numberOfLines={1}>
-                  {data.rahuKalam}
-                </Text>
-              </View>
-            ) : null}
+            {/* Rahu Kalam */}
+            <View style={styles.infoRow}>
+              <Text style={styles.labelCol}>{l.rahuKalam}:</Text>
+              <Text style={styles.valueColHighlight} numberOfLines={1}>
+                {data.rahuKalam}
+              </Text>
+            </View>
 
-            {/* Sunrise & Sunset Row */}
-            {data.sunrise ? (
-              <View style={styles.sunRow}>
-                <Text style={styles.sunText}>
-                  ☀ {l.sunrise}: {data.sunrise}
-                </Text>
-                <Text style={styles.sunDivider}>|</Text>
-                <Text style={styles.sunText}>
-                  🌙 {l.sunset}: {data.sunset}
-                </Text>
-              </View>
-            ) : null}
+            {/* Sun Rise / Set Row */}
+            <View style={styles.sunRow}>
+              <Text style={styles.sunText}>
+                ☀ {l.sunrise}: {data.sunrise}
+              </Text>
+              <Text style={styles.sunDivider}>|</Text>
+              <Text style={styles.sunText}>
+                ☾ {l.sunset}: {data.sunset}
+              </Text>
+            </View>
           </View>
         </View>
 
-        {/* Bottom Action Footer */}
+        {/* View Full Panchangam Action Strip */}
         <View style={styles.footerBar}>
-          <Text style={styles.footerActionText}>{l.viewFull} →</Text>
+          <Text style={styles.footerActionText}>
+            {l.viewFull} →
+          </Text>
         </View>
       </TouchableOpacity>
     </View>
@@ -172,44 +173,48 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   card: {
-    backgroundColor: '#FF5722', // Vivid devotional orange
-    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
     overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: '#C62828', // Dark sacred red/brown outline
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
+    borderWidth: 1.2,
+    borderColor: '#E6D9C8',
+    elevation: 2,
+    shadowColor: '#0C251E',
+    shadowOffset: { width: 0, height: 1.5 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
   },
   headerBar: {
-    backgroundColor: '#E65100',
+    backgroundColor: '#FAF5EB',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 4,
-    paddingHorizontal: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#BF360C',
+    borderBottomColor: '#F0E5D8',
   },
   headerTitle: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#FFD54F',
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0C251E',
     letterSpacing: 0.5,
+    fontFamily: Platform.select({ ios: 'Poppins-Bold', android: 'Poppins_700Bold', web: 'Poppins, sans-serif', default: 'Poppins_700Bold' }),
   },
   cityPill: {
     fontSize: 10.5,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    backgroundColor: 'rgba(0, 0, 0, 0.25)',
-    paddingHorizontal: 6,
-    paddingVertical: 1,
+    fontWeight: '700',
+    color: '#E65100',
+    backgroundColor: '#FFF3E0',
+    borderWidth: 0.8,
+    borderColor: '#FFE0B2',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
     borderRadius: 8,
   },
   bodyRow: {
     flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
   },
   bodyColumn: {
     flexDirection: 'column',
@@ -217,135 +222,140 @@ const styles = StyleSheet.create({
   dateBlock: {
     width: '30%',
     minWidth: 84,
-    backgroundColor: '#FF5722',
-    borderRightWidth: 1.5,
-    borderRightColor: '#BF360C',
+    backgroundColor: '#FFF8F0',
+    borderRightWidth: 1,
+    borderRightColor: '#F0E5D8',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: 4,
   },
   dateBlockSmall: {
     width: '100%',
     borderRightWidth: 0,
-    borderBottomWidth: 1.5,
-    borderBottomColor: '#BF360C',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0E5D8',
     flexDirection: 'row',
     justifyContent: 'space-around',
-    paddingVertical: 6,
+    paddingVertical: 8,
   },
   dayNumber: {
-    fontSize: 48,
-    fontWeight: 'bold',
-    color: '#FFD54F', // Bright golden yellow number
-    lineHeight: 52,
+    fontSize: 44,
+    fontWeight: '700',
+    color: '#D84315',
+    lineHeight: 48,
     textAlign: 'center',
+    fontFamily: Platform.select({ ios: 'Poppins-Bold', android: 'Poppins_700Bold', web: 'Poppins, sans-serif', default: 'Poppins_700Bold' }),
   },
   monthText: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#1A1A1A',
+    fontSize: 19,
+    fontWeight: '700',
+    color: '#0C251E',
     textAlign: 'center',
     marginTop: -2,
   },
   yearText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#3E2723',
+    color: '#215344',
     textAlign: 'center',
   },
   weekdayBadge: {
-    marginTop: 4,
-    backgroundColor: '#FFE082',
-    paddingHorizontal: 6,
+    marginTop: 6,
+    backgroundColor: '#FFF3E0',
+    borderWidth: 0.8,
+    borderColor: '#FFE0B2',
+    paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: 4,
+    borderRadius: 6,
   },
   weekdayText: {
     fontSize: 11,
-    fontWeight: 'bold',
+    fontWeight: '700',
     color: '#BF360C',
     textAlign: 'center',
   },
   panchangBlock: {
     flex: 1,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
   },
   masamRow: {
-    backgroundColor: 'rgba(255, 213, 79, 0.25)',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
+    backgroundColor: '#FFF3E0',
+    borderWidth: 0.8,
+    borderColor: '#FFE0B2',
+    paddingHorizontal: 8,
+    paddingVertical: 2.5,
+    borderRadius: 6,
     marginBottom: 4,
     alignSelf: 'flex-start',
   },
   masamText: {
-    fontSize: 12.5,
-    fontWeight: 'bold',
-    color: '#FFD54F',
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#E65100',
   },
   samvatsaramText: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#FFD54F',
-    marginBottom: 3,
+    fontSize: 11.5,
+    fontWeight: '600',
+    color: '#215344',
+    marginBottom: 4,
   },
   infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 1.5,
+    marginVertical: 2,
   },
   labelCol: {
     fontSize: 12,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
+    fontWeight: '700',
+    color: '#215344',
     width: 68,
   },
   valueCol: {
     flex: 1,
     fontSize: 12,
     fontWeight: '600',
-    color: '#1A1A1A',
+    color: '#0C251E',
   },
   valueColHighlight: {
     flex: 1,
     fontSize: 11.5,
-    fontWeight: 'bold',
-    color: '#212121',
+    fontWeight: '700',
+    color: '#D84315',
   },
   sunRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 4,
-    paddingTop: 3,
-    borderTopWidth: 0.8,
-    borderTopColor: 'rgba(191, 54, 12, 0.4)',
+    marginTop: 6,
+    paddingTop: 4,
+    borderTopWidth: 1,
+    borderTopColor: '#F0E5D8',
   },
   sunText: {
     fontSize: 10.5,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: '#215344',
   },
   sunDivider: {
     fontSize: 10,
-    color: '#FFD54F',
-    marginHorizontal: 5,
+    color: '#D84315',
+    marginHorizontal: 6,
   },
   footerBar: {
-    backgroundColor: '#E65100',
-    paddingVertical: 4,
+    backgroundColor: '#FFF3E0',
+    paddingVertical: 6,
     paddingHorizontal: 10,
     alignItems: 'center',
     borderTopWidth: 1,
-    borderTopColor: '#BF360C',
+    borderTopColor: '#FFE0B2',
   },
   footerActionText: {
     fontSize: 12,
-    fontWeight: 'bold',
-    color: '#FFD54F',
+    fontWeight: '700',
+    color: '#D84315',
     letterSpacing: 0.2,
   },
 });
-

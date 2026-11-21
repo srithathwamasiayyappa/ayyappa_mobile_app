@@ -23,10 +23,15 @@ export class PanchangamController {
     @Query('date') dateString?: string,
     @Query('city') city = 'Hyderabad',
     @Query('lang') lang = 'te',
+    @Query('lat') lat?: string,
+    @Query('lng') lng?: string,
   ) {
     const validLang = ['te', 'kn', 'en', 'ta', 'hi'].includes(lang) ? lang : 'te';
     const targetDate = dateString ? new Date(dateString) : new Date();
-    return PanchangamCalculator.calculateDay(targetDate, city, validLang);
+    const customCoords = (lat && lng && !isNaN(Number(lat)) && !isNaN(Number(lng)))
+      ? { lat: Number(lat), lng: Number(lng) }
+      : undefined;
+    return PanchangamCalculator.calculateDay(targetDate, city, validLang, customCoords);
   }
 
   @Get('month')
@@ -134,12 +139,17 @@ export class PanchangamController {
     @Query('lang') lang = 'te',
     @Query('date') dateString?: string,
     @Query('city') city = 'Hyderabad',
+    @Query('lat') lat?: string,
+    @Query('lng') lng?: string,
   ) {
     const validLang = ['te', 'kn', 'en', 'ta', 'hi'].includes(lang) ? lang : 'te';
     const targetDate = dateString ? new Date(dateString) : new Date();
     const isoDate = targetDate.toISOString().split('T')[0];
+    const customCoords = (lat && lng && !isNaN(Number(lat)) && !isNaN(Number(lng)))
+      ? { lat: Number(lat), lng: Number(lng) }
+      : undefined;
 
-    const calculated = PanchangamCalculator.calculateDay(targetDate, city, validLang);
+    const calculated = PanchangamCalculator.calculateDay(targetDate, city, validLang, customCoords);
 
     let dbDetails = null;
     let samvatsaram = calculated.samvatsaram;

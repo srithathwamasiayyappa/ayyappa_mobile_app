@@ -1,0 +1,882 @@
+[
+  {
+    "id": "DEITY_AYYAPPA",
+    "name": "Lord Ayyappa",
+    "alternateName": "Dharma Sastha / Manikanta Swamy",
+    "category": "God",
+    "vahana": "Tiger (Sabarimala legend)",
+    "moolaMantra": "Swamiye Saranam Ayyappa",
+    "primaryTemple": "Sabarimala Sree Dharma Sastha Temple, Kerala",
+    "description": "Worshipped at Sabarimala as a Naishtika Brahmachari. In Sabarimala tradition, Ayyappa is the son of Shiva and Vishnu in the form of Mohini.",
+    "imageUrl": "/images/deities/ayyappa.webp",
+    "displayOrder": 1,
+    "isActive": true,
+    "translations": {
+      "en": {
+        "name": "Lord Ayyappa",
+        "alternateName": "Dharma Sastha / Manikanta Swamy",
+        "vahana": "Tiger (Sabarimala legend)",
+        "moolaMantra": "Swamiye Saranam Ayyappa",
+        "primaryTemple": "Sabarimala Sree Dharma Sastha Temple, Kerala",
+        "description": "Worshipped at Sabarimala as a Naishtika Brahmachari. In Sabarimala tradition, Ayyappa is the son of Shiva and Vishnu in the form of Mohini."
+      },
+      "te": {
+        "name": "అయ్యప్ప స్వామి",
+        "alternateName": "ధర్మశాస్తా / మణికంఠ స్వామి",
+        "vahana": "పులి (శబరిమల ఐతిహ్యం)",
+        "moolaMantra": "స్వామియే శరణం అయ్యప్ప",
+        "primaryTemple": "శబరిమల శ్రీ ధర్మశాస్తా ఆలయం, కేరళ",
+        "description": "శబరిమలలో అయ్యప్ప స్వామిని నైష్ఠిక బ్రహ్మచారిగా ఆరాధిస్తారు."
+      },
+      "kn": {
+        "name": "ಅಯ್ಯಪ್ಪ ಸ್ವಾಮಿ",
+        "alternateName": "ಧರ್ಮಶಾಸ್ತಾ / ಮಣಿಕಂಠ ಸ್ವಾಮಿ",
+        "vahana": "ಹುಲಿ (ಶಬರಿಮಲೆ ಐತಿಹ್ಯ)",
+        "moolaMantra": "ಸ್ವಾಮಿಯೇ ಶರಣಂ ಅಯ್ಯಪ್ಪ",
+        "primaryTemple": "ಶಬರಿಮಲೆ ಶ್ರೀ ಧರ್ಮಶಾಸ್ತಾ ದೇವಸ್ಥಾನ, ಕೇರಳ",
+        "description": "ಶಬರಿಮಲೆಯಲ್ಲಿ ಅಯ್ಯಪ್ಪ ಸ್ವಾಮಿಯನ್ನು ನೈಷ್ಠಿಕ ಬ್ರಹ್ಮಚಾರಿಯಾಗಿ ಆರಾಧಿಸುತ್ತಾರೆ."
+      },
+      "ta": {
+        "name": "ஐயப்ப சுவாமி",
+        "alternateName": "தர்ம சாஸ்தா / மணிகண்டன்",
+        "vahana": "புலி (சபரிமலை ஐதீகம்)",
+        "moolaMantra": "சுவாமியே சரணம் ஐயப்பா",
+        "primaryTemple": "சபரிமலை ஸ்ரீ தர்ம சாஸ்தா கோயில், கேரளம்",
+        "description": "சபரிமலையில் ஐயப்பனை நைஷ்டிக பிரம்மச்சாரியாக வழிபடுகின்றனர்."
+      },
+      "hi": {
+        "name": "भगवान अय्यप्पा",
+        "alternateName": "धर्म शास्ता / मणिकंठ स्वामी",
+        "vahana": "बाघ (सबरीमला की कथा)",
+        "moolaMantra": "स्वामिये शरणम् अय्यप्पा",
+        "primaryTemple": "सबरीमला श्री धर्म शास्ता मंदिर, केरल",
+        "description": "सबरीमला में भगवान अय्यप्पा की पूजा नैष्ठिक ब्रह्मचारी के रूप में होती है।"
+      }
+    }
+  },
+  {
+    "id": "DEITY_GANESHA",
+    "name": "Lord Ganesha",
+    "alternateName": "Vighneshwara / Vinayaka / Ganapati",
+    "category": "God",
+    "vahana": "Mushika (Mouse)",
+    "moolaMantra": "Om Gam Ganapataye Namah",
+    "primaryTemple": "Sri Varasiddhi Vinayaka Temple, Kanipakam",
+    "description": "Invoked at the beginning of undertakings and revered as the remover of obstacles.",
+    "imageUrl": "/images/deities/ganesha.webp",
+    "displayOrder": 2,
+    "isActive": true,
+    "translations": {
+      "en": {
+        "name": "Lord Ganesha",
+        "alternateName": "Vighneshwara / Vinayaka / Ganapati",
+        "vahana": "Mushika (Mouse)",
+        "moolaMantra": "Om Gam Ganapataye Namah",
+        "primaryTemple": "Sri Varasiddhi Vinayaka Temple, Kanipakam",
+        "description": "Invoked at the beginning of undertakings and revered as the remover of obstacles."
+      },
+      "te": {
+        "name": "గణపతి",
+        "alternateName": "వినాయకుడు / విఘ్నేశ్వరుడు",
+        "vahana": "మూషికం",
+        "moolaMantra": "ఓం గం గణపతయే నమః",
+        "primaryTemple": "శ్రీ వరసిద్ధి వినాయక ఆలయం, కాణిపాకం",
+        "description": "శుభకార్యాల ఆరంభంలో విఘ్నాలు తొలగాలని గణపతిని ప్రార్థిస్తారు."
+      },
+      "kn": {
+        "name": "ಗಣಪತಿ",
+        "alternateName": "ವಿನಾಯಕ / ವಿಘ್ನೇಶ್ವರ",
+        "vahana": "ಮೂಷಿಕ",
+        "moolaMantra": "ಓಂ ಗಂ ಗಣಪತಯೇ ನಮಃ",
+        "primaryTemple": "ಶ್ರೀ ವರಸಿದ್ಧಿ ವಿನಾಯಕ ದೇವಸ್ಥಾನ, ಕಾಣಿಪಾಕಂ",
+        "description": "ಶುಭಕಾರ್ಯಗಳ ಆರಂಭದಲ್ಲಿ ವಿಘ್ನಗಳು ದೂರವಾಗಲೆಂದು ಗಣಪತಿಯನ್ನು ಪ್ರಾರ್ಥಿಸುತ್ತಾರೆ."
+      },
+      "ta": {
+        "name": "விநாயகர்",
+        "alternateName": "கணபதி / விக்னேஸ்வரர்",
+        "vahana": "மூஷிகம் (எலி)",
+        "moolaMantra": "ஓம் கம் கணபதயே நம:",
+        "primaryTemple": "ஸ்ரீ வரசித்தி விநாயகர் கோயில், காணிப்பாக்கம்",
+        "description": "நற்காரியங்களைத் தொடங்கும்போது தடைகள் நீங்க விநாயகரை வேண்டுகின்றனர்."
+      },
+      "hi": {
+        "name": "भगवान गणेश",
+        "alternateName": "गणपति / विनायक / विघ्नेश्वर",
+        "vahana": "मूषक",
+        "moolaMantra": "ॐ गं गणपतये नमः",
+        "primaryTemple": "श्री वरसिद्धि विनायक मंदिर, काणिपाकम",
+        "description": "शुभ कार्यों की शुरुआत में विघ्न दूर करने के लिए गणेश जी का स्मरण किया जाता है।"
+      }
+    }
+  },
+  {
+    "id": "DEITY_SHIVA",
+    "name": "Lord Shiva",
+    "alternateName": "Mahadeva / Parameshwara / Nataraja",
+    "category": "God",
+    "vahana": "Nandi (Bull)",
+    "moolaMantra": "Om Namah Shivaya",
+    "primaryTemple": "Kashi Vishwanath Temple, Varanasi",
+    "description": "Revered as Mahadeva and depicted as an ascetic associated with Mount Kailash.",
+    "imageUrl": "/images/deities/shiva.webp",
+    "displayOrder": 3,
+    "isActive": true,
+    "translations": {
+      "en": {
+        "name": "Lord Shiva",
+        "alternateName": "Mahadeva / Parameshwara / Nataraja",
+        "vahana": "Nandi (Bull)",
+        "moolaMantra": "Om Namah Shivaya",
+        "primaryTemple": "Kashi Vishwanath Temple, Varanasi",
+        "description": "Revered as Mahadeva and depicted as an ascetic associated with Mount Kailash."
+      },
+      "te": {
+        "name": "శివుడు",
+        "alternateName": "మహాదేవుడు / పరమేశ్వరుడు / నటరాజు",
+        "vahana": "నంది",
+        "moolaMantra": "ఓం నమః శివాయ",
+        "primaryTemple": "కాశీ విశ్వనాథ ఆలయం, వారణాసి",
+        "description": "మహాదేవుడైన శివుడిని కైలాసంతో అనుబంధమున్న తపస్విగా చిత్రిస్తారు."
+      },
+      "kn": {
+        "name": "ಶಿವ",
+        "alternateName": "ಮಹಾದೇವ / ಪರಮೇಶ್ವರ / ನಟರಾಜ",
+        "vahana": "ನಂದಿ",
+        "moolaMantra": "ಓಂ ನಮಃ ಶಿವಾಯ",
+        "primaryTemple": "ಕಾಶಿ ವಿಶ್ವನಾಥ ದೇವಸ್ಥಾನ, ವಾರಾಣಸಿ",
+        "description": "ಮಹಾದೇವನಾದ ಶಿವನನ್ನು ಕೈಲಾಸದೊಂದಿಗೆ ಸಂಬಂಧ ಹೊಂದಿರುವ ತಪಸ್ವಿಯಾಗಿ ಚಿತ್ರಿಸುತ್ತಾರೆ."
+      },
+      "ta": {
+        "name": "சிவபெருமான்",
+        "alternateName": "மகாதேவர் / பரமேஸ்வரர் / நடராஜர்",
+        "vahana": "நந்தி",
+        "moolaMantra": "ஓம் நம: சிவாய",
+        "primaryTemple": "காசி விஸ்வநாதர் கோயில், வாரணாசி",
+        "description": "மகாதேவர் எனப் போற்றப்படும் சிவன் கைலாயத்துடன் தொடர்புடைய தவசியாகச் சித்தரிக்கப்படுகிறார்."
+      },
+      "hi": {
+        "name": "भगवान शिव",
+        "alternateName": "महादेव / परमेश्वर / नटराज",
+        "vahana": "नंदी (वृषभ)",
+        "moolaMantra": "ॐ नमः शिवाय",
+        "primaryTemple": "काशी विश्वनाथ मंदिर, वाराणसी",
+        "description": "महादेव शिव को कैलाश से जुड़े तपस्वी के रूप में चित्रित किया जाता है।"
+      }
+    }
+  },
+  {
+    "id": "DEITY_VENKATESWARA",
+    "name": "Lord Venkateswara",
+    "alternateName": "Balaji / Srinivasa / Govinda",
+    "category": "God",
+    "vahana": "Garuda",
+    "moolaMantra": "Om Namo Venkateshaya",
+    "primaryTemple": "Sri Venkateswara Temple, Tirumala",
+    "description": "Worshipped at Tirumala as a form of Vishnu.",
+    "imageUrl": "/images/deities/venkateswara.webp",
+    "displayOrder": 4,
+    "isActive": true,
+    "translations": {
+      "en": {
+        "name": "Lord Venkateswara",
+        "alternateName": "Balaji / Srinivasa / Govinda",
+        "vahana": "Garuda",
+        "moolaMantra": "Om Namo Venkateshaya",
+        "primaryTemple": "Sri Venkateswara Temple, Tirumala",
+        "description": "Worshipped at Tirumala as a form of Vishnu."
+      },
+      "te": {
+        "name": "వేంకటేశ్వర స్వామి",
+        "alternateName": "బాలాజీ / శ్రీనివాసుడు / గోవిందుడు",
+        "vahana": "గరుడుడు",
+        "moolaMantra": "ఓం నమో వేంకటేశాయ",
+        "primaryTemple": "శ్రీ వేంకటేశ్వర స్వామి ఆలయం, తిరుమల",
+        "description": "తిరుమలలో శ్రీమహావిష్ణువు రూపంగా వేంకటేశ్వర స్వామిని ఆరాధిస్తారు."
+      },
+      "kn": {
+        "name": "ವೆಂಕಟೇಶ್ವರ ಸ್ವಾಮಿ",
+        "alternateName": "ಬಾಲಾಜಿ / ಶ್ರೀನಿವಾಸ / ಗೋವಿಂದ",
+        "vahana": "ಗರುಡ",
+        "moolaMantra": "ಓಂ ನಮೋ ವೆಂಕಟೇಶಾಯ",
+        "primaryTemple": "ಶ್ರೀ ವೆಂಕಟೇಶ್ವರ ದೇವಸ್ಥಾನ, ತಿರುಮಲ",
+        "description": "ತಿರುಮಲದಲ್ಲಿ ವೆಂಕಟೇಶ್ವರನನ್ನು ವಿಷ್ಣುವಿನ ರೂಪವಾಗಿ ಆರಾಧಿಸುತ್ತಾರೆ."
+      },
+      "ta": {
+        "name": "வேங்கடேஸ்வரர்",
+        "alternateName": "பாலாஜி / ஸ்ரீனிவாசர் / கோவிந்தன்",
+        "vahana": "கருடன்",
+        "moolaMantra": "ஓம் நமோ வேங்கடேசாய",
+        "primaryTemple": "ஸ்ரீ வேங்கடேஸ்வரர் கோயில், திருமலை",
+        "description": "திருமலையில் வேங்கடேஸ்வரரை விஷ்ணுவின் திருவுருவமாக வழிபடுகின்றனர்."
+      },
+      "hi": {
+        "name": "भगवान वेंकटेश्वर",
+        "alternateName": "बालाजी / श्रीनिवास / गोविंद",
+        "vahana": "गरुड़",
+        "moolaMantra": "ॐ नमो वेंकटेशाय",
+        "primaryTemple": "श्री वेंकटेश्वर मंदिर, तिरुमला",
+        "description": "तिरुमला में वेंकटेश्वर की पूजा भगवान विष्णु के स्वरूप के रूप में होती है।"
+      }
+    }
+  },
+  {
+    "id": "DEITY_SUBRAHMANYA",
+    "name": "Lord Subrahmanya",
+    "alternateName": "Murugan / Kartikeya / Skanda / Shanmukha",
+    "category": "God",
+    "vahana": "Mayura (Peacock)",
+    "moolaMantra": "Om Saravanabhavaya Namah",
+    "primaryTemple": "Arupadai Veedu: Tirupparankundram, Tiruchendur, Palani, Swamimalai, Tiruttani and Pazhamudircholai",
+    "description": "Revered as Murugan in Tamil tradition and depicted with the Vel, his sacred spear.",
+    "imageUrl": "/images/deities/subrahmanya.webp",
+    "displayOrder": 5,
+    "isActive": true,
+    "translations": {
+      "en": {
+        "name": "Lord Subrahmanya",
+        "alternateName": "Murugan / Kartikeya / Skanda / Shanmukha",
+        "vahana": "Mayura (Peacock)",
+        "moolaMantra": "Om Saravanabhavaya Namah",
+        "primaryTemple": "Arupadai Veedu: Tirupparankundram, Tiruchendur, Palani, Swamimalai, Tiruttani and Pazhamudircholai",
+        "description": "Revered as Murugan in Tamil tradition and depicted with the Vel, his sacred spear."
+      },
+      "te": {
+        "name": "సుబ్రహ్మణ్య స్వామి",
+        "alternateName": "మురుగన్ / కార్తికేయుడు / స్కందుడు / షణ్ముఖుడు",
+        "vahana": "నెమలి",
+        "moolaMantra": "ఓం శరవణభవాయ నమః",
+        "primaryTemple": "ఆరుపడై వీడు: తిరుప్పరంకుండ్రం, తిరుచెందూర్, పళని, స్వామిమలై, తిరుత్తణి, పళముదిర్చోలై",
+        "description": "తమిళ సంప్రదాయంలో మురుగన్‌గా పూజించే ఈ స్వామి చేతిలో పవిత్రమైన వేల్ ఉంటుంది."
+      },
+      "kn": {
+        "name": "ಸುಬ್ರಹ್ಮಣ್ಯ ಸ್ವಾಮಿ",
+        "alternateName": "ಮುರುಗನ್ / ಕಾರ್ತಿಕೇಯ / ಸ್ಕಂದ / ಷಣ್ಮುಖ",
+        "vahana": "ನವಿಲು",
+        "moolaMantra": "ಓಂ ಶರವಣಭವಾಯ ನಮಃ",
+        "primaryTemple": "ಆರುಪಡೈ ವೀಡು: ತಿರುಪ್ಪರಂಕುಂಡ್ರಂ, ತಿರುಚೆಂದೂರು, ಪಳನಿ, ಸ್ವಾಮಿಮಲೈ, ತಿರುತ್ತಣಿ, ಪಳಮುದಿರ್ಚೋಲೈ",
+        "description": "ತಮಿಳು ಸಂಪ್ರದಾಯದಲ್ಲಿ ಮುರುಗನ್ ಎಂದು ಪೂಜಿಸುವ ಈ ದೇವರ ಕೈಯಲ್ಲಿ ಪವಿತ್ರ ವೇಲ್ ಇರುತ್ತದೆ."
+      },
+      "ta": {
+        "name": "முருகப்பெருமான்",
+        "alternateName": "சுப்பிரமணியர் / கார்த்திகேயர் / கந்தன் / சண்முகர்",
+        "vahana": "மயில்",
+        "moolaMantra": "ஓம் சரவணபவாய நம:",
+        "primaryTemple": "ஆறுபடை வீடு: திருப்பரங்குன்றம், திருச்செந்தூர், பழனி, சுவாமிமலை, திருத்தணி, பழமுதிர்ச்சோலை",
+        "description": "தமிழ் மரபில் முருகனின் முக்கிய அடையாளமாகப் புனித வேல் விளங்குகிறது."
+      },
+      "hi": {
+        "name": "भगवान सुब्रह्मण्य",
+        "alternateName": "मुरुगन / कार्तिकेय / स्कंद / षण्मुख",
+        "vahana": "मोर",
+        "moolaMantra": "ॐ शरवणभवाय नमः",
+        "primaryTemple": "आरुपडै वीडु: तिरुप्परंकुंड्रम, तिरुचेंदूर, पलनी, स्वामिमलै, तिरुत्तणी और पझमुदिरचोलै",
+        "description": "तमिल परंपरा में मुरुगन के हाथ में पवित्र वेल भाला उनका प्रमुख चिह्न है।"
+      }
+    }
+  },
+  {
+    "id": "DEITY_DURGA",
+    "name": "Goddess Kanaka Durga",
+    "alternateName": "Kanaka Durgamma / Durga Devi",
+    "category": "Goddess",
+    "vahana": "Simha (Lion), in common Durga iconography",
+    "moolaMantra": "Om Dum Durgayai Namah",
+    "primaryTemple": "Sri Durga Malleswara Swamy Varla Devasthanam, Vijayawada",
+    "description": "Worshipped as the Divine Mother on Indrakeeladri hill in Vijayawada.",
+    "imageUrl": "/images/deities/durga.webp",
+    "displayOrder": 6,
+    "isActive": true,
+    "translations": {
+      "en": {
+        "name": "Goddess Kanaka Durga",
+        "alternateName": "Kanaka Durgamma / Durga Devi",
+        "vahana": "Simha (Lion), in common Durga iconography",
+        "moolaMantra": "Om Dum Durgayai Namah",
+        "primaryTemple": "Sri Durga Malleswara Swamy Varla Devasthanam, Vijayawada",
+        "description": "Worshipped as the Divine Mother on Indrakeeladri hill in Vijayawada."
+      },
+      "te": {
+        "name": "కనక దుర్గమ్మ",
+        "alternateName": "దుర్గాదేవి",
+        "vahana": "సింహం (దుర్గాదేవి సాధారణ చిత్రణలో)",
+        "moolaMantra": "ఓం దుం దుర్గాయై నమః",
+        "primaryTemple": "శ్రీ దుర్గా మల్లేశ్వర స్వామివార్ల దేవస్థానం, విజయవాడ",
+        "description": "విజయవాడలోని ఇంద్రకీలాద్రిపై కనక దుర్గమ్మను జగన్మాతగా ఆరాధిస్తారు."
+      },
+      "kn": {
+        "name": "ಕನಕ ದುರ್ಗಾ ದೇವಿ",
+        "alternateName": "ಕನಕ ದುರ್ಗಮ್ಮ / ದುರ್ಗಾ ದೇವಿ",
+        "vahana": "ಸಿಂಹ (ದುರ್ಗೆಯ ಸಾಮಾನ್ಯ ಚಿತ್ರಣದಲ್ಲಿ)",
+        "moolaMantra": "ಓಂ ದುಂ ದುರ್ಗಾಯೈ ನಮಃ",
+        "primaryTemple": "ಶ್ರೀ ದುರ್ಗಾ ಮಲ್ಲೇಶ್ವರ ಸ್ವಾಮಿ ದೇವಸ್ಥಾನ, ವಿಜಯವಾಡ",
+        "description": "ವಿಜಯವಾಡದ ಇಂದ್ರಕೀಲಾದ್ರಿ ಬೆಟ್ಟದಲ್ಲಿ ಕನಕ ದುರ್ಗೆಯನ್ನು ಜಗನ್ಮಾತೆಯಾಗಿ ಪೂಜಿಸುತ್ತಾರೆ."
+      },
+      "ta": {
+        "name": "கனக துர்கை அம்மன்",
+        "alternateName": "கனக துர்கம்மா / துர்கா தேவி",
+        "vahana": "சிங்கம் (துர்கையின் பொதுவான சித்தரிப்பில்)",
+        "moolaMantra": "ஓம் தும் துர்காயை நம:",
+        "primaryTemple": "ஸ்ரீ துர்கா மல்லேஸ்வர சுவாமி தேவஸ்தானம், விஜயவாடா",
+        "description": "விஜயவாடாவில் உள்ள இந்திரகீலாத்ரி மலையில் கனக துர்கையைத் தெய்வத் தாயாக வழிபடுகின்றனர்."
+      },
+      "hi": {
+        "name": "देवी कनक दुर्गा",
+        "alternateName": "कनक दुर्गम्मा / दुर्गा देवी",
+        "vahana": "सिंह (दुर्गा के प्रचलित चित्रण में)",
+        "moolaMantra": "ॐ दुं दुर्गायै नमः",
+        "primaryTemple": "श्री दुर्गा मल्लेश्वर स्वामी देवस्थानम्, विजयवाड़ा",
+        "description": "विजयवाड़ा की इंद्रकीलाद्रि पहाड़ी पर कनक दुर्गा की पूजा जगन्माता के रूप में होती है।"
+      }
+    }
+  },
+  {
+    "id": "DEITY_MEENAKSHI",
+    "name": "Goddess Meenakshi",
+    "alternateName": "Madurai Meenakshi Amman / Angayarkanni",
+    "category": "Goddess",
+    "vahana": "",
+    "moolaMantra": "Om Sri Matre Namah",
+    "primaryTemple": "Meenakshi Sundareswarar Temple, Madurai",
+    "description": "Worshipped in Madurai as a form of Parvati alongside Sundareswarar. A green parrot is a familiar feature of her iconography.",
+    "imageUrl": "/images/deities/meenakshi.webp",
+    "displayOrder": 7,
+    "isActive": true,
+    "translations": {
+      "en": {
+        "name": "Goddess Meenakshi",
+        "alternateName": "Madurai Meenakshi Amman / Angayarkanni",
+        "vahana": "",
+        "moolaMantra": "Om Sri Matre Namah",
+        "primaryTemple": "Meenakshi Sundareswarar Temple, Madurai",
+        "description": "Worshipped in Madurai as a form of Parvati alongside Sundareswarar. A green parrot is a familiar feature of her iconography."
+      },
+      "te": {
+        "name": "మీనాక్షి దేవి",
+        "alternateName": "మదురై మీనాక్షి అమ్మవారు / అంగయర్కణ్ణి",
+        "vahana": "",
+        "moolaMantra": "ఓం శ్రీ మాత్రే నమః",
+        "primaryTemple": "మీనాక్షి సుందరేశ్వర ఆలయం, మదురై",
+        "description": "మదురైలో పార్వతీదేవి రూపంగా మీనాక్షిని ఆరాధిస్తారు. ఆమె చిత్రణలో ఆకుపచ్చ చిలుక కనిపిస్తుంది."
+      },
+      "kn": {
+        "name": "ಮೀನಾಕ್ಷಿ ದೇವಿ",
+        "alternateName": "ಮದುರೈ ಮೀನಾಕ್ಷಿ ಅಮ್ಮನ್ / ಅಂಗಯರ್ಕಣ್ಣಿ",
+        "vahana": "",
+        "moolaMantra": "ಓಂ ಶ್ರೀ ಮಾತ್ರೇ ನಮಃ",
+        "primaryTemple": "ಮೀನಾಕ್ಷಿ ಸುಂದರೇಶ್ವರ ದೇವಸ್ಥಾನ, ಮದುರೈ",
+        "description": "ಮದುರೈನಲ್ಲಿ ಮೀನಾಕ್ಷಿಯನ್ನು ಪಾರ್ವತಿಯ ರೂಪವಾಗಿ ಪೂಜಿಸುತ್ತಾರೆ. ಹಸಿರು ಗಿಳಿ ಆಕೆಯ ಚಿತ್ರಣದಲ್ಲಿ ಕಾಣಿಸುತ್ತದೆ."
+      },
+      "ta": {
+        "name": "மீனாட்சி அம்மன்",
+        "alternateName": "மதுரை மீனாட்சி / அங்கயற்கண்ணி",
+        "vahana": "",
+        "moolaMantra": "ஓம் ஸ்ரீ மாத்ரே நம:",
+        "primaryTemple": "மீனாட்சி சுந்தரேஸ்வரர் கோயில், மதுரை",
+        "description": "மதுரையில் பார்வதியின் திருவுருவமாக மீனாட்சியை வழிபடுகின்றனர். பச்சைக்கிளி அவரது திருவுருவத்தின் ஓர் அடையாளம்."
+      },
+      "hi": {
+        "name": "देवी मीनाक्षी",
+        "alternateName": "मदुरै मीनाक्षी अम्मन / अंगयरकण्णि",
+        "vahana": "",
+        "moolaMantra": "ॐ श्री मात्रे नमः",
+        "primaryTemple": "मीनाक्षी सुंदरेश्वर मंदिर, मदुरै",
+        "description": "मदुरै में मीनाक्षी की पूजा पार्वती के स्वरूप के रूप में होती है। हरा तोता उनके चित्रण का परिचित चिह्न है।"
+      }
+    }
+  },
+  {
+    "id": "DEITY_HANUMAN",
+    "name": "Lord Hanuman",
+    "alternateName": "Anjaneya / Maruti / Bajrangbali",
+    "category": "God",
+    "vahana": "",
+    "moolaMantra": "Om Sri Hanumate Namah",
+    "primaryTemple": "Sankat Mochan Hanuman Temple, Varanasi",
+    "description": "Revered for devotion to Rama, courage and strength. In Ramayana traditions he is associated with Vayu, the wind god.",
+    "imageUrl": "/images/deities/hanuman.webp",
+    "displayOrder": 8,
+    "isActive": true,
+    "translations": {
+      "en": {
+        "name": "Lord Hanuman",
+        "alternateName": "Anjaneya / Maruti / Bajrangbali",
+        "vahana": "",
+        "moolaMantra": "Om Sri Hanumate Namah",
+        "primaryTemple": "Sankat Mochan Hanuman Temple, Varanasi",
+        "description": "Revered for devotion to Rama, courage and strength. In Ramayana traditions he is associated with Vayu, the wind god."
+      },
+      "te": {
+        "name": "హనుమంతుడు",
+        "alternateName": "ఆంజనేయుడు / మారుతి / బజరంగబలి",
+        "vahana": "",
+        "moolaMantra": "ఓం శ్రీ హనుమతే నమః",
+        "primaryTemple": "సంకట మోచన హనుమాన్ ఆలయం, వారణాసి",
+        "description": "శ్రీరామునిపై భక్తికి, ధైర్యానికి ప్రసిద్ధుడు. రామాయణ సంప్రదాయంలో వాయుదేవునితో అనుబంధం ఉంది."
+      },
+      "kn": {
+        "name": "ಹನುಮಂತ",
+        "alternateName": "ಆಂಜನೇಯ / ಮಾರುತಿ / ಬಜರಂಗಬಲಿ",
+        "vahana": "",
+        "moolaMantra": "ಓಂ ಶ್ರೀ ಹನುಮತೇ ನಮಃ",
+        "primaryTemple": "ಸಂಕಟ ಮೋಚನ ಹನುಮಾನ್ ದೇವಸ್ಥಾನ, ವಾರಾಣಸಿ",
+        "description": "ರಾಮಭಕ್ತಿ ಮತ್ತು ಧೈರ್ಯಕ್ಕೆ ಹೆಸರುವಾಸಿ. ರಾಮಾಯಣ ಸಂಪ್ರದಾಯದಲ್ಲಿ ವಾಯುದೇವನೊಂದಿಗೆ ಸಂಬಂಧವಿದೆ."
+      },
+      "ta": {
+        "name": "அனுமன்",
+        "alternateName": "ஆஞ்சநேயர் / மாருதி / பஜ்ரங்பலி",
+        "vahana": "",
+        "moolaMantra": "ஓம் ஸ்ரீ ஹனுமதே நம:",
+        "primaryTemple": "சங்கட் மோசன் அனுமன் கோயில், வாரணாசி",
+        "description": "இராம பக்திக்கும் வீரத்திற்கும் போற்றப்படுபவர். இராமாயண மரபில் வாயு பகவானுடன் தொடர்புடையவர்."
+      },
+      "hi": {
+        "name": "भगवान हनुमान",
+        "alternateName": "आंजनेय / मारुति / बजरंगबली",
+        "vahana": "",
+        "moolaMantra": "ॐ श्री हनुमते नमः",
+        "primaryTemple": "संकट मोचन हनुमान मंदिर, वाराणसी",
+        "description": "हनुमान रामभक्ति और साहस के लिए पूजित हैं। रामायण परंपरा में उनका संबंध वायुदेव से है।"
+      }
+    }
+  },
+  {
+    "id": "DEITY_LAKSHMI",
+    "name": "Goddess Mahalakshmi",
+    "alternateName": "Sri Devi / Lakshmi Devi",
+    "category": "Goddess",
+    "vahana": "Uluka (Owl), in some traditions",
+    "moolaMantra": "Om Shreem Mahalakshmyai Namah",
+    "primaryTemple": "Shri Mahalakshmi (Ambabai) Temple, Kolhapur",
+    "description": "Goddess of auspiciousness and prosperity and consort of Vishnu. Ashta Lakshmi refers to a group of eight forms of Lakshmi.",
+    "imageUrl": "/images/deities/lakshmi.webp",
+    "displayOrder": 9,
+    "isActive": true,
+    "translations": {
+      "en": {
+        "name": "Goddess Mahalakshmi",
+        "alternateName": "Sri Devi / Lakshmi Devi",
+        "vahana": "Uluka (Owl), in some traditions",
+        "moolaMantra": "Om Shreem Mahalakshmyai Namah",
+        "primaryTemple": "Shri Mahalakshmi (Ambabai) Temple, Kolhapur",
+        "description": "Goddess of auspiciousness and prosperity and consort of Vishnu. Ashta Lakshmi refers to a group of eight forms of Lakshmi."
+      },
+      "te": {
+        "name": "మహాలక్ష్మి దేవి",
+        "alternateName": "శ్రీదేవి / లక్ష్మీదేవి",
+        "vahana": "గుడ్లగూబ (కొన్ని సంప్రదాయాల్లో)",
+        "moolaMantra": "ఓం శ్రీం మహాలక్ష్మ్యై నమః",
+        "primaryTemple": "శ్రీ మహాలక్ష్మి (అంబాబాయి) ఆలయం, కొల్హాపూర్",
+        "description": "మంగళం, ఐశ్వర్యానికి అధిదేవత. అష్టలక్ష్మి అంటే లక్ష్మీదేవి ఎనిమిది రూపాలు."
+      },
+      "kn": {
+        "name": "ಮಹಾಲಕ್ಷ್ಮಿ ದೇವಿ",
+        "alternateName": "ಶ್ರೀದೇವಿ / ಲಕ್ಷ್ಮೀದೇವಿ",
+        "vahana": "ಗೂಬೆ (ಕೆಲವು ಸಂಪ್ರದಾಯಗಳಲ್ಲಿ)",
+        "moolaMantra": "ಓಂ ಶ್ರೀಂ ಮಹಾಲಕ್ಷ್ಮ್ಯೈ ನಮಃ",
+        "primaryTemple": "ಶ್ರೀ ಮಹಾಲಕ್ಷ್ಮಿ (ಅಂಬಾಬಾಯಿ) ದೇವಸ್ಥಾನ, ಕೊಲ್ಹಾಪುರ",
+        "description": "ಮಂಗಳ ಮತ್ತು ಸಮೃದ್ಧಿಯ ದೇವಿ. ಅಷ್ಟಲಕ್ಷ್ಮಿ ಎನ್ನುವುದು ಲಕ್ಷ್ಮಿಯ ಎಂಟು ರೂಪಗಳನ್ನು ಸೂಚಿಸುತ್ತದೆ."
+      },
+      "ta": {
+        "name": "மகாலட்சுமி தேவி",
+        "alternateName": "ஸ்ரீதேவி / லட்சுமி தேவி",
+        "vahana": "ஆந்தை (சில மரபுகளில்)",
+        "moolaMantra": "ஓம் ஸ்ரீம் மஹாலக்ஷ்ம்யை நம:",
+        "primaryTemple": "ஸ்ரீ மகாலட்சுமி (அம்பாபாய்) கோயில், கோலாப்பூர்",
+        "description": "மங்களத்திற்கும் செழிப்பிற்கும் உரிய தேவி. அஷ்டலட்சுமி என்பது லட்சுமியின் எட்டு வடிவங்களைக் குறிக்கும்."
+      },
+      "hi": {
+        "name": "देवी महालक्ष्मी",
+        "alternateName": "श्रीदेवी / लक्ष्मी देवी",
+        "vahana": "उल्लू (कुछ परंपराओं में)",
+        "moolaMantra": "ॐ श्रीं महालक्ष्म्यै नमः",
+        "primaryTemple": "श्री महालक्ष्मी (अंबाबाई) मंदिर, कोल्हापुर",
+        "description": "मंगल और समृद्धि की देवी। अष्टलक्ष्मी का अर्थ लक्ष्मी के आठ स्वरूप हैं।"
+      }
+    }
+  },
+  {
+    "id": "DEITY_GOMATHA",
+    "name": "Gomatha (Kamadhenu)",
+    "alternateName": "Surabhi / Kamadhenu",
+    "category": "Goddess",
+    "vahana": "",
+    "moolaMantra": "",
+    "primaryTemple": "",
+    "description": "Gomatha refers to the cow revered as mother. Kamadhenu, also called Surabhi in many traditions, is the divine wish-fulfilling cow.",
+    "imageUrl": "/images/deities/gomatha.webp",
+    "displayOrder": 10,
+    "isActive": true,
+    "translations": {
+      "en": {
+        "name": "Gomatha (Kamadhenu)",
+        "alternateName": "Surabhi / Kamadhenu",
+        "vahana": "",
+        "moolaMantra": "",
+        "primaryTemple": "",
+        "description": "Gomatha refers to the cow revered as mother. Kamadhenu, also called Surabhi in many traditions, is the divine wish-fulfilling cow."
+      },
+      "te": {
+        "name": "గోమాత (కామధేనువు)",
+        "alternateName": "సురభి / కామధేనువు",
+        "vahana": "",
+        "moolaMantra": "",
+        "primaryTemple": "",
+        "description": "గోవును తల్లిగా గౌరవించే భావమే గోమాత. కోరికలు తీర్చే దివ్య గోవును కామధేనువుగా, సురభిగా పిలుస్తారు."
+      },
+      "kn": {
+        "name": "ಗೋಮಾತೆ (ಕಾಮಧೇನು)",
+        "alternateName": "ಸುರಭಿ / ಕಾಮಧೇನು",
+        "vahana": "",
+        "moolaMantra": "",
+        "primaryTemple": "",
+        "description": "ಹಸುವನ್ನು ತಾಯಿಯಾಗಿ ಗೌರವಿಸುವ ಭಾವವೇ ಗೋಮಾತೆ. ಇಷ್ಟಾರ್ಥಗಳನ್ನು ನೆರವೇರಿಸುವ ದಿವ್ಯ ಹಸುವನ್ನು ಕಾಮಧೇನು ಅಥವಾ ಸುರಭಿ ಎನ್ನುತ್ತಾರೆ."
+      },
+      "ta": {
+        "name": "கோமாதா (காமதேனு)",
+        "alternateName": "சுரபி / காமதேனு",
+        "vahana": "",
+        "moolaMantra": "",
+        "primaryTemple": "",
+        "description": "பசுவைத் தாயாகப் போற்றும் வழக்கில் கோமாதா என அழைக்கின்றனர். விருப்பங்களை நிறைவேற்றும் தெய்வப் பசு காமதேனு அல்லது சுரபி என அழைக்கப்படுகிறது."
+      },
+      "hi": {
+        "name": "गोमाता (कामधेनु)",
+        "alternateName": "सुरभि / कामधेनु",
+        "vahana": "",
+        "moolaMantra": "",
+        "primaryTemple": "",
+        "description": "गाय को माता के रूप में आदर देने की परंपरा में गोमाता कहा जाता है। इच्छाएँ पूरी करने वाली दिव्य गाय को कामधेनु या सुरभि कहते हैं।"
+      }
+    }
+  },
+  {
+    "id": "DEITY_VISHNU",
+    "name": "Lord Vishnu",
+    "alternateName": "Narayana / Hari",
+    "category": "God",
+    "vahana": "Garuda",
+    "moolaMantra": "Om Namo Narayanaya",
+    "primaryTemple": "Sri Ranganathaswamy Temple, Srirangam",
+    "description": "Revered as Narayana and depicted with the conch and discus. At Srirangam, Vishnu is worshipped as Ranganatha.",
+    "imageUrl": "/images/deities/vishnu.webp",
+    "displayOrder": 11,
+    "isActive": true,
+    "translations": {
+      "en": {
+        "name": "Lord Vishnu",
+        "alternateName": "Narayana / Hari",
+        "vahana": "Garuda",
+        "moolaMantra": "Om Namo Narayanaya",
+        "primaryTemple": "Sri Ranganathaswamy Temple, Srirangam",
+        "description": "Revered as Narayana and depicted with the conch and discus. At Srirangam, Vishnu is worshipped as Ranganatha."
+      },
+      "te": {
+        "name": "శ్రీమహావిష్ణువు",
+        "alternateName": "నారాయణుడు / హరి",
+        "vahana": "గరుడుడు",
+        "moolaMantra": "ఓం నమో నారాయణాయ",
+        "primaryTemple": "శ్రీ రంగనాథస్వామి ఆలయం, శ్రీరంగం",
+        "description": "శంఖచక్రాలు ధరించే విష్ణువును శ్రీరంగంలో రంగనాథుడిగా ఆరాధిస్తారు."
+      },
+      "kn": {
+        "name": "ಮಹಾವಿಷ್ಣು",
+        "alternateName": "ನಾರಾಯಣ / ಹರಿ",
+        "vahana": "ಗರುಡ",
+        "moolaMantra": "ಓಂ ನಮೋ ನಾರಾಯಣಾಯ",
+        "primaryTemple": "ಶ್ರೀ ರಂಗನಾಥಸ್ವಾಮಿ ದೇವಸ್ಥಾನ, ಶ್ರೀರಂಗಂ",
+        "description": "ಶಂಖ ಮತ್ತು ಚಕ್ರ ಧರಿಸುವ ವಿಷ್ಣುವನ್ನು ಶ್ರೀರಂಗದಲ್ಲಿ ರಂಗನಾಥನಾಗಿ ಆರಾಧಿಸುತ್ತಾರೆ."
+      },
+      "ta": {
+        "name": "மகாவிஷ்ணு",
+        "alternateName": "நாராயணன் / ஹரி",
+        "vahana": "கருடன்",
+        "moolaMantra": "ஓம் நமோ நாராயணாய",
+        "primaryTemple": "ஸ்ரீ ரங்கநாதசுவாமி கோயில், ஸ்ரீரங்கம்",
+        "description": "சங்கு சக்கரம் ஏந்தும் விஷ்ணுவை ஸ்ரீரங்கத்தில் ரங்கநாதராக வழிபடுகின்றனர்."
+      },
+      "hi": {
+        "name": "भगवान विष्णु",
+        "alternateName": "नारायण / हरि",
+        "vahana": "गरुड़",
+        "moolaMantra": "ॐ नमो नारायणाय",
+        "primaryTemple": "श्री रंगनाथस्वामी मंदिर, श्रीरंगम",
+        "description": "शंख और चक्र धारण करने वाले विष्णु की श्रीरंगम में रंगनाथ के रूप में पूजा होती है।"
+      }
+    }
+  },
+  {
+    "id": "DEITY_RAMA",
+    "name": "Lord Rama",
+    "alternateName": "Sri Ramachandra / Raghava",
+    "category": "God",
+    "vahana": "",
+    "moolaMantra": "Sri Rama Jaya Rama Jaya Jaya Rama",
+    "primaryTemple": "Sri Sita Ramachandra Swamy Temple, Bhadrachalam",
+    "description": "The central figure of the Ramayana, revered as an avatar of Vishnu and an exemplar of dharma.",
+    "imageUrl": "/images/deities/rama.webp",
+    "displayOrder": 12,
+    "isActive": true,
+    "translations": {
+      "en": {
+        "name": "Lord Rama",
+        "alternateName": "Sri Ramachandra / Raghava",
+        "vahana": "",
+        "moolaMantra": "Sri Rama Jaya Rama Jaya Jaya Rama",
+        "primaryTemple": "Sri Sita Ramachandra Swamy Temple, Bhadrachalam",
+        "description": "The central figure of the Ramayana, revered as an avatar of Vishnu and an exemplar of dharma."
+      },
+      "te": {
+        "name": "శ్రీరాముడు",
+        "alternateName": "రామచంద్రుడు / రాఘవుడు",
+        "vahana": "",
+        "moolaMantra": "శ్రీరామ జయరామ జయ జయ రామ",
+        "primaryTemple": "శ్రీ సీతారామచంద్ర స్వామి ఆలయం, భద్రాచలం",
+        "description": "రామాయణంలో ప్రధాన పాత్ర. విష్ణువు అవతారంగా, ధర్మానికి ఆదర్శంగా పూజిస్తారు."
+      },
+      "kn": {
+        "name": "ಶ್ರೀರಾಮ",
+        "alternateName": "ರಾಮಚಂದ್ರ / ರಾಘವ",
+        "vahana": "",
+        "moolaMantra": "ಶ್ರೀ ರಾಮ ಜಯ ರಾಮ ಜಯ ಜಯ ರಾಮ",
+        "primaryTemple": "ಶ್ರೀ ಸೀತಾ ರಾಮಚಂದ್ರಸ್ವಾಮಿ ದೇವಸ್ಥಾನ, ಭದ್ರಾಚಲಂ",
+        "description": "ರಾಮಾಯಣದ ಪ್ರಮುಖ ಪಾತ್ರ. ವಿಷ್ಣುವಿನ ಅವತಾರ ಮತ್ತು ಧರ್ಮದ ಆದರ್ಶವಾಗಿ ಪೂಜಿಸುತ್ತಾರೆ."
+      },
+      "ta": {
+        "name": "ஸ்ரீ இராமர்",
+        "alternateName": "இராமச்சந்திரர் / ராகவர்",
+        "vahana": "",
+        "moolaMantra": "ஸ்ரீ ராம ஜய ராம ஜய ஜய ராம",
+        "primaryTemple": "ஸ்ரீ சீதாராமச்சந்திர சுவாமி கோயில், பத்ராசலம்",
+        "description": "இராமாயணத்தின் முதன்மைப் பாத்திரம். விஷ்ணுவின் அவதாரமாகவும் தர்மத்தின் முன்மாதிரியாகவும் போற்றப்படுகிறார்."
+      },
+      "hi": {
+        "name": "भगवान राम",
+        "alternateName": "श्री रामचंद्र / राघव",
+        "vahana": "",
+        "moolaMantra": "श्री राम जय राम जय जय राम",
+        "primaryTemple": "श्री सीता रामचंद्र स्वामी मंदिर, भद्राचलम",
+        "description": "रामायण के प्रमुख पात्र राम को विष्णु का अवतार और धर्म का आदर्श माना जाता है।"
+      }
+    }
+  },
+  {
+    "id": "DEITY_KRISHNA",
+    "name": "Lord Krishna",
+    "alternateName": "Gopala / Madhava / Govinda",
+    "category": "God",
+    "vahana": "",
+    "moolaMantra": "Om Namo Bhagavate Vasudevaya",
+    "primaryTemple": "Sri Krishna Temple, Guruvayur",
+    "description": "Revered as Gopala and as the teacher of the Bhagavad Gita. The flute is a familiar feature of his devotional imagery.",
+    "imageUrl": "/images/deities/krishna.webp",
+    "displayOrder": 13,
+    "isActive": true,
+    "translations": {
+      "en": {
+        "name": "Lord Krishna",
+        "alternateName": "Gopala / Madhava / Govinda",
+        "vahana": "",
+        "moolaMantra": "Om Namo Bhagavate Vasudevaya",
+        "primaryTemple": "Sri Krishna Temple, Guruvayur",
+        "description": "Revered as Gopala and as the teacher of the Bhagavad Gita. The flute is a familiar feature of his devotional imagery."
+      },
+      "te": {
+        "name": "శ్రీకృష్ణుడు",
+        "alternateName": "గోపాలుడు / మాధవుడు / గోవిందుడు",
+        "vahana": "",
+        "moolaMantra": "ఓం నమో భగవతే వాసుదేవాయ",
+        "primaryTemple": "శ్రీకృష్ణ ఆలయం, గురువాయూర్",
+        "description": "గోపాలుడిగా, భగవద్గీత బోధకుడిగా ప్రసిద్ధుడు. వేణువు ఆయన చిత్రణలో ప్రధాన చిహ్నం."
+      },
+      "kn": {
+        "name": "ಶ್ರೀಕೃಷ್ಣ",
+        "alternateName": "ಗೋಪಾಲ / ಮಾಧವ / ಗೋವಿಂದ",
+        "vahana": "",
+        "moolaMantra": "ಓಂ ನಮೋ ಭಗವತೇ ವಾಸುದೇವಾಯ",
+        "primaryTemple": "ಶ್ರೀಕೃಷ್ಣ ದೇವಸ್ಥಾನ, ಗುರುವಾಯೂರು",
+        "description": "ಗೋಪಾಲನಾಗಿ ಮತ್ತು ಭಗವದ್ಗೀತೆಯ ಬೋಧಕನಾಗಿ ಪ್ರಸಿದ್ಧ. ಕೊಳಲು ಅವನ ಚಿತ್ರಣದ ಪರಿಚಿತ ಚಿಹ್ನೆ."
+      },
+      "ta": {
+        "name": "ஸ்ரீ கிருஷ்ணர்",
+        "alternateName": "கோபாலன் / மாதவன் / கோவிந்தன்",
+        "vahana": "",
+        "moolaMantra": "ஓம் நமோ பகவதே வாசுதேவாய",
+        "primaryTemple": "ஸ்ரீ கிருஷ்ணர் கோயில், குருவாயூர்",
+        "description": "கோபாலனாகவும் பகவத் கீதையை உபதேசித்தவராகவும் போற்றப்படுகிறார். புல்லாங்குழல் அவரது திருவுருவத்தின் அடையாளம்."
+      },
+      "hi": {
+        "name": "भगवान कृष्ण",
+        "alternateName": "गोपाल / माधव / गोविंद",
+        "vahana": "",
+        "moolaMantra": "ॐ नमो भगवते वासुदेवाय",
+        "primaryTemple": "श्री कृष्ण मंदिर, गुरुवायूर",
+        "description": "कृष्ण गोपाल और भगवद्गीता के उपदेशक के रूप में पूजित हैं। बाँसुरी उनके चित्रण का परिचित चिह्न है।"
+      }
+    }
+  },
+  {
+    "id": "DEITY_SARASWATI",
+    "name": "Goddess Saraswati",
+    "alternateName": "Vani / Sharada / Vag Devi",
+    "category": "Goddess",
+    "vahana": "Hamsa (Swan or goose)",
+    "moolaMantra": "Om Aim Sarasvatyai Namah",
+    "primaryTemple": "Sri Gnana Saraswati Temple, Basar",
+    "description": "Goddess of learning, speech and the arts, commonly depicted with a veena.",
+    "imageUrl": "/images/deities/saraswati.webp",
+    "displayOrder": 14,
+    "isActive": true,
+    "translations": {
+      "en": {
+        "name": "Goddess Saraswati",
+        "alternateName": "Vani / Sharada / Vag Devi",
+        "vahana": "Hamsa (Swan or goose)",
+        "moolaMantra": "Om Aim Sarasvatyai Namah",
+        "primaryTemple": "Sri Gnana Saraswati Temple, Basar",
+        "description": "Goddess of learning, speech and the arts, commonly depicted with a veena."
+      },
+      "te": {
+        "name": "సరస్వతి దేవి",
+        "alternateName": "వాణి / శారద / వాగ్దేవి",
+        "vahana": "హంస",
+        "moolaMantra": "ఓం ఐం సరస్వత్యై నమః",
+        "primaryTemple": "శ్రీ జ్ఞాన సరస్వతి ఆలయం, బాసర",
+        "description": "విద్య, వాక్కు, కళలకు అధిదేవత. సాధారణంగా వీణతో చిత్రిస్తారు."
+      },
+      "kn": {
+        "name": "ಸರಸ್ವತಿ ದೇವಿ",
+        "alternateName": "ವಾಣಿ / ಶಾರದೆ / ವಾಗ್ದೇವಿ",
+        "vahana": "ಹಂಸ",
+        "moolaMantra": "ಓಂ ಐಂ ಸರಸ್ವತ್ಯೈ ನಮಃ",
+        "primaryTemple": "ಶ್ರೀ ಜ್ಞಾನ ಸರಸ್ವತಿ ದೇವಸ್ಥಾನ, ಬಾಸರ",
+        "description": "ವಿದ್ಯೆ, ಮಾತು ಮತ್ತು ಕಲೆಗಳ ದೇವಿ. ಸಾಮಾನ್ಯವಾಗಿ ವೀಣೆಯೊಂದಿಗೆ ಚಿತ್ರಿಸುತ್ತಾರೆ."
+      },
+      "ta": {
+        "name": "சரஸ்வதி தேவி",
+        "alternateName": "வாணி / சாரதா / வாக்தேவி",
+        "vahana": "அன்னம்",
+        "moolaMantra": "ஓம் ஐம் ஸரஸ்வத்யை நம:",
+        "primaryTemple": "ஸ்ரீ ஞான சரஸ்வதி கோயில், பாசரா",
+        "description": "கல்வி, பேச்சு மற்றும் கலைகளின் தேவி. பொதுவாக வீணையுடன் சித்தரிக்கப்படுகிறார்."
+      },
+      "hi": {
+        "name": "देवी सरस्वती",
+        "alternateName": "वाणी / शारदा / वाग्देवी",
+        "vahana": "हंस",
+        "moolaMantra": "ॐ ऐं सरस्वत्यै नमः",
+        "primaryTemple": "श्री ज्ञान सरस्वती मंदिर, बासर",
+        "description": "विद्या, वाणी और कलाओं की देवी। उन्हें सामान्यतः वीणा के साथ चित्रित किया जाता है।"
+      }
+    }
+  },
+  {
+    "id": "DEITY_PADMAVATHI",
+    "name": "Goddess Padmavathi",
+    "alternateName": "Alamelu Manga / Sri Padmavathi Devi",
+    "category": "Goddess",
+    "vahana": "",
+    "moolaMantra": "Om Sri Padmavatyai Namah",
+    "primaryTemple": "Sri Padmavathi Ammavari Temple, Tiruchanur",
+    "description": "Revered in Tiruchanur as the consort of Lord Venkateswara and a form of Lakshmi in Tirumala tradition.",
+    "imageUrl": "/images/deities/padmavathi.webp",
+    "displayOrder": 15,
+    "isActive": true,
+    "translations": {
+      "en": {
+        "name": "Goddess Padmavathi",
+        "alternateName": "Alamelu Manga / Sri Padmavathi Devi",
+        "vahana": "",
+        "moolaMantra": "Om Sri Padmavatyai Namah",
+        "primaryTemple": "Sri Padmavathi Ammavari Temple, Tiruchanur",
+        "description": "Revered in Tiruchanur as the consort of Lord Venkateswara and a form of Lakshmi in Tirumala tradition."
+      },
+      "te": {
+        "name": "పద్మావతి దేవి",
+        "alternateName": "అలమేలుమంగ / శ్రీ పద్మావతి అమ్మవారు",
+        "vahana": "",
+        "moolaMantra": "ఓం శ్రీ పద్మావత్యై నమః",
+        "primaryTemple": "శ్రీ పద్మావతి అమ్మవారి ఆలయం, తిరుచానూరు",
+        "description": "వేంకటేశ్వర స్వామి దేవేరిగా, లక్ష్మీదేవి రూపంగా తిరుచానూరులో ఆరాధిస్తారు."
+      },
+      "kn": {
+        "name": "ಪದ್ಮಾವತಿ ದೇವಿ",
+        "alternateName": "ಅಲಮೇಲು ಮಂಗ / ಶ್ರೀ ಪದ್ಮಾವತಿ",
+        "vahana": "",
+        "moolaMantra": "ಓಂ ಶ್ರೀ ಪದ್ಮಾವತ್ಯೈ ನಮಃ",
+        "primaryTemple": "ಶ್ರೀ ಪದ್ಮಾವತಿ ಅಮ್ಮವರಿ ದೇವಸ್ಥಾನ, ತಿರುಚಾನೂರು",
+        "description": "ತಿರುಚಾನೂರಿನಲ್ಲಿ ವೆಂಕಟೇಶ್ವರನ ಪತ್ನಿಯಾಗಿ ಮತ್ತು ಲಕ್ಷ್ಮಿಯ ರೂಪವಾಗಿ ಆರಾಧಿಸುತ್ತಾರೆ."
+      },
+      "ta": {
+        "name": "பத்மாவதி தாயார்",
+        "alternateName": "அலர்மேல்மங்கை / ஸ்ரீ பத்மாவதி",
+        "vahana": "",
+        "moolaMantra": "ஓம் ஸ்ரீ பத்மாவத்யை நம:",
+        "primaryTemple": "ஸ்ரீ பத்மாவதி தாயார் கோயில், திருச்சானூர்",
+        "description": "வேங்கடேஸ்வரரின் துணைவியாகவும் லட்சுமியின் திருவுருவமாகவும் திருச்சானூரில் வழிபடப்படுகிறார்."
+      },
+      "hi": {
+        "name": "देवी पद्मावती",
+        "alternateName": "अलमेलु मंगा / श्री पद्मावती",
+        "vahana": "",
+        "moolaMantra": "ॐ श्री पद्मावत्यै नमः",
+        "primaryTemple": "श्री पद्मावती अम्मावारी मंदिर, तिरुचानूर",
+        "description": "तिरुचानूर में पद्मावती की पूजा वेंकटेश्वर की अर्धांगिनी और लक्ष्मी के स्वरूप के रूप में होती है।"
+      }
+    }
+  },
+  {
+    "id": "DEITY_NARASIMHA",
+    "name": "Lord Narasimha",
+    "alternateName": "Narasimha Swamy / Nrisimha",
+    "category": "God",
+    "vahana": "",
+    "moolaMantra": "Om Namo Bhagavate Narasimhaya",
+    "primaryTemple": "Sri Lakshmi Narasimha Swamy Temple, Ahobilam",
+    "description": "The lion-faced avatar of Vishnu who, in the traditional account, protected the devotee Prahlada.",
+    "imageUrl": "/images/deities/narasimha.webp",
+    "displayOrder": 16,
+    "isActive": true,
+    "translations": {
+      "en": {
+        "name": "Lord Narasimha",
+        "alternateName": "Narasimha Swamy / Nrisimha",
+        "vahana": "",
+        "moolaMantra": "Om Namo Bhagavate Narasimhaya",
+        "primaryTemple": "Sri Lakshmi Narasimha Swamy Temple, Ahobilam",
+        "description": "The lion-faced avatar of Vishnu who, in the traditional account, protected the devotee Prahlada."
+      },
+      "te": {
+        "name": "నరసింహ స్వామి",
+        "alternateName": "నృసింహుడు / లక్ష్మీ నరసింహ స్వామి",
+        "vahana": "",
+        "moolaMantra": "ఓం నమో భగవతే నరసింహాయ",
+        "primaryTemple": "శ్రీ లక్ష్మీ నరసింహ స్వామి ఆలయం, అహోబిలం",
+        "description": "భక్త ప్రహ్లాదుని రక్షించిన సింహముఖ విష్ణు అవతారం."
+      },
+      "kn": {
+        "name": "ನರಸಿಂಹ ಸ್ವಾಮಿ",
+        "alternateName": "ನೃಸಿಂಹ / ಲಕ್ಷ್ಮೀ ನರಸಿಂಹ ಸ್ವಾಮಿ",
+        "vahana": "",
+        "moolaMantra": "ಓಂ ನಮೋ ಭಗವತೇ ನರಸಿಂಹಾಯ",
+        "primaryTemple": "ಶ್ರೀ ಲಕ್ಷ್ಮೀ ನರಸಿಂಹಸ್ವಾಮಿ ದೇವಸ್ಥಾನ, ಅಹೋಬಿಲಂ",
+        "description": "ಭಕ್ತ ಪ್ರಹ್ಲಾದನನ್ನು ರಕ್ಷಿಸಿದ ಸಿಂಹಮುಖದ ವಿಷ್ಣು ಅವತಾರ."
+      },
+      "ta": {
+        "name": "நரசிம்மர்",
+        "alternateName": "நிருசிம்மர் / லட்சுமி நரசிம்மர்",
+        "vahana": "",
+        "moolaMantra": "ஓம் நமோ பகவதே நரசிம்ஹாய",
+        "primaryTemple": "ஸ்ரீ லட்சுமி நரசிம்மர் கோயில், அகோபிலம்",
+        "description": "பக்த பிரகலாதனைக் காத்த சிங்க முகம் கொண்ட விஷ்ணு அவதாரம்."
+      },
+      "hi": {
+        "name": "भगवान नरसिंह",
+        "alternateName": "नृसिंह / लक्ष्मी नरसिंह स्वामी",
+        "vahana": "",
+        "moolaMantra": "ॐ नमो भगवते नरसिंहाय",
+        "primaryTemple": "श्री लक्ष्मी नरसिंह स्वामी मंदिर, अहोबिलम",
+        "description": "सिंहमुख वाले विष्णु अवतार, जिन्होंने परंपरा के अनुसार भक्त प्रह्लाद की रक्षा की।"
+      }
+    }
+  }
+]

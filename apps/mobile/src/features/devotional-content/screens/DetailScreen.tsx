@@ -1,4 +1,4 @@
-﻿const BANNER_TITLES: Record<SupportedLanguage, { title: string; subtitle: string }> = {
+const BANNER_TITLES: Record<SupportedLanguage, { title: string; subtitle: string }> = {
   te: { title: 'స్వామియే శరణం అయ్యప్ప', subtitle: 'శ్రీ అయ్యప్ప స్వామి నిత్య పూజా విధానం' },
   kn: { title: 'ಸ್ವಾಮಿಯೇ ಶರಣಂ ಅಯ್ಯಪ್ಪ', subtitle: 'ಶ್ರೀ ಅಯ್ಯಪ್ಪ ಸ್ವಾಮಿ ನಿತ್ಯ ಪೂಜಾ ವಿಧಾನ' },
   en: { title: 'Swamiye Saranam Ayyappa', subtitle: 'Sri Ayyappa Swami Daily Pooja & Stotras' },
@@ -16,8 +16,8 @@ import {
   SafeAreaView,
   Platform,
   ActivityIndicator,
+  BackHandler,
 } from 'react-native';
-import { DevotionalBackground } from '../../../components/common/DevotionalBackground';
 import { AyyappaMedallion } from '../../../components/common/AyyappaMedallion';
 import { SupportedLanguage } from '../../../types';
 import { ApiService } from '../../../services/api';
@@ -68,6 +68,16 @@ export const DetailScreen: React.FC<Props> = ({
       onBack();
     }
   };
+
+  // Android Mobile Hardware / Gesture Back Button handling
+  useEffect(() => {
+    const onHardwareBack = () => {
+      handleBack();
+      return true; // Intercept: go back cleanly
+    };
+    const backSub = BackHandler.addEventListener('hardwareBackPress', onHardwareBack);
+    return () => backSub.remove();
+  }, [history, onBack]);
 
   const handleSelectSubcategory = (subId: string, subTitle: string) => {
     setHistory([...history, { id: subId, title: subTitle }]);
@@ -283,7 +293,7 @@ export const DetailScreen: React.FC<Props> = ({
     <View style={styles.root}>
       <StatusBar barStyle="light-content" backgroundColor="#D84315" />
 
-      {/* Devotional Orange Header */}
+      {/* Saffron Devotional Header Bar */}
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.header}>
           <TouchableOpacity onPress={handleBack} style={styles.backBtn} activeOpacity={0.7}>
@@ -296,8 +306,7 @@ export const DetailScreen: React.FC<Props> = ({
         </View>
       </SafeAreaView>
 
-      {/* Devotional Background */}
-      <DevotionalBackground>
+      <View style={styles.bodyWrapper}>
         <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
           {/* Detailed Content / Subcategory Container fetched from DB */}
           {subcategories && subcategories.length > 0 ? (
@@ -364,7 +373,7 @@ export const DetailScreen: React.FC<Props> = ({
             </>
           )}
         </ScrollView>
-      </DevotionalBackground>
+      </View>
     </View>
   );
 };
@@ -372,7 +381,7 @@ export const DetailScreen: React.FC<Props> = ({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#D84315',
+    backgroundColor: '#FAF5EB',
     width: '100%',
     height: '100%',
   },
@@ -384,8 +393,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 12,
     backgroundColor: '#D84315',
+    elevation: 4,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
   },
   backBtn: {
     paddingVertical: 4,
@@ -394,14 +408,19 @@ const styles = StyleSheet.create({
   backText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '700',
   },
   headerTitle: {
     color: '#FFFFFF',
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: '700',
     flex: 1,
     textAlign: 'center',
+    fontFamily: Platform.select({ ios: 'Poppins-Bold', android: 'Poppins_700Bold', web: 'Poppins, sans-serif', default: 'Poppins_700Bold' }),
+  },
+  bodyWrapper: {
+    flex: 1,
+    backgroundColor: '#FAF5EB',
   },
   container: {
     paddingHorizontal: 14,
@@ -414,33 +433,31 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   bannerTitle: {
-    color: '#8D1B00',
+    color: '#0C251E',
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: '700',
     marginTop: 8,
+    fontFamily: Platform.select({ ios: 'Poppins-Bold', android: 'Poppins_700Bold', web: 'Poppins, sans-serif', default: 'Poppins_700Bold' }),
   },
   bannerSubtitle: {
-    color: '#5D4037',
+    color: '#215344',
     fontSize: 13,
     marginTop: 2,
     fontWeight: '600',
   },
   contentCard: {
     width: '100%',
-    backgroundColor: 'rgba(255, 255, 255, 0.94)',
-    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 18,
-    borderWidth: 1.5,
-    borderColor: '#E65100',
-    ...Platform.select({
-      web: {
-        boxShadow: '0 6px 18px rgba(230, 81, 0, 0.2)',
-      },
-      default: {
-        elevation: 4,
-      },
-    }),
+    borderWidth: 1.2,
+    borderColor: '#E6D9C8',
+    elevation: 2,
+    shadowColor: '#0C251E',
+    shadowOffset: { width: 0, height: 1.5 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
   },
   titleContainer: {
     flexDirection: 'row',
@@ -451,24 +468,25 @@ const styles = StyleSheet.create({
   cornerDecorLeft: {
     width: 18,
     height: 2,
-    backgroundColor: '#E65100',
+    backgroundColor: '#D84315',
     marginRight: 8,
   },
   cornerDecorRight: {
     width: 18,
     height: 2,
-    backgroundColor: '#E65100',
+    backgroundColor: '#D84315',
     marginLeft: 8,
   },
   cardTitle: {
-    color: '#BF360C',
+    color: '#0C251E',
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: '700',
     textAlign: 'center',
+    fontFamily: Platform.select({ ios: 'Poppins-Bold', android: 'Poppins_700Bold', web: 'Poppins, sans-serif', default: 'Poppins_700Bold' }),
   },
   divider: {
-    height: 2,
-    backgroundColor: '#FFE0B2',
+    height: 1,
+    backgroundColor: '#F0E5D8',
     marginVertical: 12,
   },
   centerBox: {
@@ -476,9 +494,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loadingText: {
-    color: '#8D1B00',
+    color: '#215344',
     fontSize: 13,
     marginTop: 8,
+    fontWeight: '600',
   },
   sectionHeaderCard: {
     flexDirection: 'row',
@@ -488,40 +507,42 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 8,
-    borderLeftWidth: 4,
-    borderLeftColor: '#E65100',
-    borderRightWidth: 4,
-    borderRightColor: '#E65100',
+    borderLeftWidth: 3,
+    borderLeftColor: '#D84315',
+    borderRightWidth: 3,
+    borderRightColor: '#D84315',
     marginVertical: 12,
   },
   goldLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#FFB74D',
+    backgroundColor: '#FFE0B2',
     marginHorizontal: 8,
   },
   sectionHeaderText: {
-    color: '#B71C1C',
-    fontSize: 15,
-    fontWeight: 'bold',
+    color: '#BF360C',
+    fontSize: 14.5,
+    fontWeight: '700',
     textAlign: 'center',
   },
   bulletRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF8E1',
-    paddingVertical: 7,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 8,
     paddingHorizontal: 10,
     borderRadius: 8,
     marginVertical: 3,
+    borderWidth: 1,
+    borderColor: '#F0E5D8',
     borderLeftWidth: 3,
-    borderLeftColor: '#FFB300',
+    borderLeftColor: '#D84315',
   },
   omCircle: {
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#E65100',
+    backgroundColor: '#D84315',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 10,
@@ -539,11 +560,11 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   bulletTitleBold: {
-    fontWeight: 'bold',
+    fontWeight: '700',
     color: '#BF360C',
   },
   bulletTitleValue: {
-    color: '#3E2723',
+    color: '#0C251E',
     fontWeight: '600',
   },
   sloganRow: {
@@ -551,12 +572,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginVertical: 3,
-    backgroundColor: '#FFFDE7',
-    paddingVertical: 6,
-    paddingHorizontal: 8,
+    backgroundColor: '#FAF5EB',
+    paddingVertical: 7,
+    paddingHorizontal: 10,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#FFF176',
+    borderColor: '#E6D9C8',
   },
   sloganCallBadge: {
     flex: 1,
@@ -564,11 +585,11 @@ const styles = StyleSheet.create({
   },
   sloganCallText: {
     color: '#BF360C',
-    fontWeight: 'bold',
+    fontWeight: '700',
     fontSize: 13,
   },
   sloganArrow: {
-    color: '#E65100',
+    color: '#D84315',
     fontSize: 14,
     fontWeight: 'bold',
     paddingHorizontal: 6,
@@ -579,80 +600,78 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   sloganResponseText: {
-    color: '#1B5E20',
-    fontWeight: 'bold',
+    color: '#2E7D32',
+    fontWeight: '700',
     fontSize: 13,
     textAlign: 'right',
   },
   instructionBadge: {
     alignSelf: 'center',
-    backgroundColor: '#EFEBE9',
+    backgroundColor: '#FFF3E0',
     paddingVertical: 4,
     paddingHorizontal: 12,
     borderRadius: 14,
     marginVertical: 6,
     borderWidth: 1,
-    borderColor: '#D7CCC8',
+    borderColor: '#FFE0B2',
   },
   instructionText: {
-    color: '#5D4037',
+    color: '#E65100',
     fontSize: 12,
-    fontWeight: '600',
-    fontStyle: 'italic',
+    fontWeight: '700',
   },
   chantRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    paddingVertical: 4,
+    paddingVertical: 5,
     paddingHorizontal: 4,
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#FFE0B2',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0E5D8',
   },
   chantOmSymbol: {
-    color: '#E65100',
+    color: '#D84315',
     fontSize: 13,
     fontWeight: 'bold',
     marginRight: 8,
     marginTop: 2,
   },
   chantText: {
-    color: '#263238',
+    color: '#0C251E',
     fontSize: 14,
     lineHeight: 22,
     flex: 1,
     fontWeight: '500',
   },
   slokaText: {
-    color: '#3E2723',
+    color: '#0C251E',
     fontSize: 14.5,
     lineHeight: 23,
     textAlign: 'center',
     paddingVertical: 3,
   },
   bodyText: {
-    color: '#3E2723',
-    fontSize: 15,
-    lineHeight: 24,
+    color: '#0C251E',
+    fontSize: 14.5,
+    lineHeight: 23,
     textAlign: 'left',
   },
   itemBlock: {
     marginTop: 12,
     paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: '#FFE0B2',
+    borderTopColor: '#F0E5D8',
   },
   itemTitle: {
     color: '#BF360C',
     fontSize: 15,
-    fontWeight: 'bold',
+    fontWeight: '700',
     marginBottom: 4,
   },
   itemText: {
-    color: '#3E2723',
+    color: '#0C251E',
     fontSize: 14,
     lineHeight: 22,
   },
-  // Table Styling (Matches user screenshots with border lines and clean columns)
   tableCardContainer: {
     width: '100%',
     marginVertical: 14,
@@ -662,37 +681,37 @@ const styles = StyleSheet.create({
   },
   tableCard: {
     minWidth: '100%',
-    borderWidth: 1.5,
-    borderColor: '#4A3B2C',
-    borderRadius: 4,
-    backgroundColor: '#FFF8E1',
+    borderWidth: 1.2,
+    borderColor: '#E6D9C8',
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
     overflow: 'hidden',
   },
   tableHeaderRow: {
     flexDirection: 'row',
-    backgroundColor: '#FFE082',
-    borderBottomWidth: 1.5,
-    borderBottomColor: '#4A3B2C',
+    backgroundColor: '#FFF3E0',
+    borderBottomWidth: 1.2,
+    borderBottomColor: '#FFE0B2',
   },
   tableDataRow: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    borderBottomColor: '#BCAAA4',
+    borderBottomColor: '#F0E5D8',
     minHeight: 38,
     alignItems: 'center',
   },
   tableRowAlt: {
-    backgroundColor: '#FFFDE7',
+    backgroundColor: '#FAF5EB',
   },
   tableCell: {
     paddingVertical: 8,
     paddingHorizontal: 8,
     borderRightWidth: 1,
-    borderRightColor: '#BCAAA4',
+    borderRightColor: '#F0E5D8',
     justifyContent: 'center',
   },
   tableHeaderCell: {
-    borderRightColor: '#4A3B2C',
+    borderRightColor: '#FFE0B2',
     paddingVertical: 10,
   },
   colNo: {
@@ -713,13 +732,13 @@ const styles = StyleSheet.create({
     borderRightWidth: 0,
   },
   tableHeaderText: {
-    color: '#212121',
+    color: '#BF360C',
     fontSize: 13,
-    fontWeight: 'bold',
+    fontWeight: '700',
     textAlign: 'center',
   },
   tableCellText: {
-    color: '#212121',
+    color: '#0C251E',
     fontSize: 13.5,
     textAlign: 'center',
   },
@@ -728,26 +747,27 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   tableCellBold: {
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#BF360C',
     textAlign: 'center',
   },
   tableCellNakshatram: {
-    fontWeight: 'bold',
+    fontWeight: '700',
     color: '#2E7D32',
     textAlign: 'center',
   },
   subCategoryListWrapper: {
     width: '100%',
-    paddingTop: 8,
+    paddingTop: 6,
   },
   subCategoryRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
+    paddingVertical: 12,
     paddingHorizontal: 16,
-    borderBottomWidth: 1.2,
-    borderBottomColor: '#D78216',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(70, 30, 0, 0.15)',
+    backgroundColor: 'transparent',
   },
   subCategoryLeft: {
     flexDirection: 'row',
@@ -755,12 +775,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   subCategoryTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#000000',
-    marginLeft: 16,
+    fontSize: 16.5,
+    fontWeight: '700',
+    color: '#0C251E',
+    marginLeft: 14,
     flex: 1,
-    lineHeight: 26,
+    lineHeight: 23,
   },
 });
 

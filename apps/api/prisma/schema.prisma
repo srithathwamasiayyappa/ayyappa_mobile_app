@@ -39,20 +39,104 @@ model AdminAuditLog {
 }
 
 model AppUser {
-  id            Int       @id @default(autoincrement())
-  phoneNumber   String?   @unique @map("phone_number") @db.VarChar(20)
-  email         String?   @unique @db.VarChar(150)
-  passwordHash  String?   @map("password_hash") @db.VarChar(255)
-  fullName      String?   @map("full_name") @db.VarChar(100)
-  googleId      String?   @unique @map("google_id") @db.VarChar(150)
-  deviceUuid    String?   @unique @map("device_uuid") @db.VarChar(100)
-  preferredLang String    @default("te") @map("preferred_lang") @db.VarChar(10)
-  isSuspended   Boolean   @default(false) @map("is_suspended")
-  lastActiveAt  DateTime? @map("last_active_at")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
+  id                        Int       @id @default(autoincrement())
+  phoneNumber               String?   @unique @map("phone_number") @db.VarChar(20)
+  email                     String?   @unique @db.VarChar(150)
+  passwordHash              String?   @map("password_hash") @db.VarChar(255)
+  fullName                  String?   @map("full_name") @db.VarChar(100)
+  googleId                  String?   @unique @map("google_id") @db.VarChar(150)
+  deviceUuid                String?   @unique @map("device_uuid") @db.VarChar(100)
+  preferredLang             String    @default("te") @map("preferred_lang") @db.VarChar(10)
+  isSuspended               Boolean   @default(false) @map("is_suspended")
+  lastActiveAt              DateTime? @map("last_active_at")
+  
+  // Profile Onboarding & Extended Attributes
+  dateOfBirth               DateTime? @map("date_of_birth") @db.Date
+  gender                    String?   @db.VarChar(20)
+  rashiId                   Int?      @map("rashi_id")
+  nakshatraId               Int?      @map("nakshatra_id")
+  profileImageUrl           String?   @map("profile_image_url") @db.VarChar(500)
+  addressLine               String?   @map("address_line") @db.VarChar(255)
+  state                     String?   @db.VarChar(100)
+  district                  String?   @db.VarChar(100)
+  city                      String?   @db.VarChar(100)
+  pincode                   String?   @db.VarChar(10)
+  devotionalUpdatesEnabled  Boolean   @default(true) @map("devotional_updates_enabled")
+  profileCompletedAt        DateTime? @map("profile_completed_at")
+  profileOnboardingStatus   String    @default("PENDING") @map("profile_onboarding_status") @db.VarChar(20) // 'PENDING', 'COMPLETED', 'SKIPPED'
+
+  // Account Deletion & Soft Delete Status
+  isDeleted                 Boolean   @default(false) @map("is_deleted")
+  deletedAt                 DateTime? @map("deleted_at")
+  deletionRequested         Boolean   @default(false) @map("deletion_requested")
+  deletionRequestedAt       DateTime? @map("deletion_requested_at")
+  deletionReason            String?   @map("deletion_reason") @db.VarChar(500)
+
+  createdAt                 DateTime  @default(now()) @map("created_at")
+  updatedAt                 DateTime  @updatedAt @map("updated_at")
+
+  rashi                     Rashi?     @relation(fields: [rashiId], references: [id], onDelete: SetNull)
+  nakshatra                 Nakshatra? @relation(fields: [nakshatraId], references: [id], onDelete: SetNull)
+
+  // Dharma Kartha Memberships & Updates
+  templeMemberships         TempleMembership[]
+  templeUpdateRequests      TempleUpdateRequest[]
+  ownerNotifications        OwnerNotification[]
+  customerNotifications     CustomerNotification[]
 
   @@map("app_users")
+}
+
+model Rashi {
+  id           Int                @id @default(autoincrement())
+  code         String             @unique @db.VarChar(50) // 'MESHA', 'VRISHABHA', etc.
+  sortOrder    Int                @default(0) @map("sort_order")
+  isActive     Boolean            @default(true) @map("is_active")
+  createdAt    DateTime           @default(now()) @map("created_at")
+
+  translations RashiTranslation[]
+  users        AppUser[]
+
+  @@map("rashis")
+}
+
+model RashiTranslation {
+  id         Int      @id @default(autoincrement())
+  rashiId    Int      @map("rashi_id")
+  languageId Int      @map("language_id")
+  name       String   @db.VarChar(100)
+
+  rashi    Rashi    @relation(fields: [rashiId], references: [id], onDelete: Cascade)
+  language Language @relation(fields: [languageId], references: [id], onDelete: Cascade)
+
+  @@unique([rashiId, languageId])
+  @@map("rashi_translations")
+}
+
+model Nakshatra {
+  id           Int                    @id @default(autoincrement())
+  code         String                 @unique @db.VarChar(50) // 'ASHWINI', 'BHARANI', etc.
+  sortOrder    Int                    @default(0) @map("sort_order")
+  isActive     Boolean                @default(true) @map("is_active")
+  createdAt    DateTime               @default(now()) @map("created_at")
+
+  translations NakshatraTranslation[]
+  users        AppUser[]
+
+  @@map("nakshatras")
+}
+
+model NakshatraTranslation {
+  id          Int      @id @default(autoincrement())
+  nakshatraId Int      @map("nakshatra_id")
+  languageId  Int      @map("language_id")
+  name        String   @db.VarChar(100)
+
+  nakshatra Nakshatra @relation(fields: [nakshatraId], references: [id], onDelete: Cascade)
+  language  Language  @relation(fields: [languageId], references: [id], onDelete: Cascade)
+
+  @@unique([nakshatraId, languageId])
+  @@map("nakshatra_translations")
 }
 
 model ContactInquiry {
@@ -76,6 +160,8 @@ model Language {
   contentTranslations  ContentTranslation[]
   festivalTranslations FestivalTranslation[]
   panchangamTranslations PanchangamTranslation[]
+  rashiTranslations    RashiTranslation[]
+  nakshatraTranslations NakshatraTranslation[]
 
   @@map("languages")
 }
@@ -83,7 +169,7 @@ model Language {
 model AppSetting {
   id          Int      @id @default(autoincrement())
   key         String   @unique @db.VarChar(100)
-  value       String   @db.Text
+  value       String   @db.LongText
   description String?  @db.VarChar(255)
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
@@ -274,3 +360,238 @@ model SplashAsset {
   @@index([scheduledStart, scheduledEnd])
   @@map("splash_assets")
 }
+
+// =========================================================
+// DHARMA KARTHAS (TEMPLE OWNER) DYNAMIC MANAGEMENT MODELS
+// =========================================================
+
+model Temple {
+  id               Int                   @id @default(autoincrement())
+  slug             String                @unique @db.VarChar(120)
+  name             String                @db.VarChar(200)
+  alternateName    String?               @map("alternate_name") @db.VarChar(200)
+  primaryDeity     String                @map("primary_deity") @db.VarChar(100)
+  shortDescription String?               @map("short_description") @db.VarChar(500)
+  about            String?               @db.Text
+  history          String?               @db.Text
+  speciality       String?               @db.Text
+  
+  // Location
+  country          String                @default("India") @db.VarChar(100)
+  state            String                @db.VarChar(100)
+  district         String?               @db.VarChar(100)
+  city             String                @db.VarChar(100)
+  address          String?               @db.VarChar(300)
+  pincode          String?               @db.VarChar(20)
+  latitude         Decimal?              @db.Decimal(10, 8)
+  longitude        Decimal?              @db.Decimal(11, 8)
+  mapsUrl          String?               @map("maps_url") @db.VarChar(500)
+
+  // Contact
+  officePhone      String?               @map("office_phone") @db.VarChar(50)
+  officialEmail    String?               @map("official_email") @db.VarChar(150)
+  officialWebsite  String?               @map("official_website") @db.VarChar(300)
+
+  // Media & Imagery
+  heroImageUrl     String?               @map("hero_image_url") @db.VarChar(500)
+  gopuramImageUrl  String?               @map("gopuram_image_url") @db.VarChar(500)
+  
+  // Status: DRAFT, PENDING_APPROVAL, PUBLISHED, ARCHIVED
+  status           String                @default("PUBLISHED") @db.VarChar(30)
+  isVerified       Boolean               @default(true) @map("is_verified")
+  displayOrder     Int                   @default(0) @map("display_order")
+
+  createdAt        DateTime              @default(now()) @map("created_at")
+  updatedAt        DateTime              @updatedAt @map("updated_at")
+
+  memberships      TempleMembership[]
+  timings          TempleTiming[]
+  festivals        TempleFestival[]
+  events           TempleEvent[]
+  gallery          TempleMedia[]
+  updateRequests   TempleUpdateRequest[]
+
+  @@map("temples")
+}
+
+model TempleMembership {
+  id           Int       @id @default(autoincrement())
+  userId       Int       @map("user_id")
+  templeId     Int       @map("temple_id")
+  // Role: OWNER, ADMINISTRATOR, EDITOR, VIEWER
+  role         String    @default("OWNER") @db.VarChar(50)
+  // Status: PENDING, APPROVED, REJECTED, REVOKED
+  status       String    @default("PENDING") @db.VarChar(30)
+  approvedBy   String?   @map("approved_by") @db.VarChar(100)
+  approvedAt   DateTime? @map("approved_at")
+  revokedAt    DateTime? @map("revoked_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  user         AppUser   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  temple       Temple    @relation(fields: [templeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, templeId])
+  @@map("temple_memberships")
+}
+
+model TempleTiming {
+  id          Int      @id @default(autoincrement())
+  templeId    Int      @map("temple_id")
+  title       String   @db.VarChar(150)
+  timeWindow  String   @map("time_window") @db.VarChar(100) // e.g. "03:00 AM – 03:30 AM"
+  description String?  @db.VarChar(300)
+  sortOrder   Int      @default(0) @map("sort_order")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  temple      Temple   @relation(fields: [templeId], references: [id], onDelete: Cascade)
+
+  @@map("temple_timings")
+}
+
+model TempleFestival {
+  id          Int      @id @default(autoincrement())
+  templeId    Int      @map("temple_id")
+  name        String   @db.VarChar(200)
+  period      String   @db.VarChar(150) // e.g. "Mid-November to Late December"
+  description String?  @db.Text
+  sortOrder   Int      @default(0) @map("sort_order")
+  isAnnual    Boolean  @default(true) @map("is_annual")
+  status      String   @default("PUBLISHED") @db.VarChar(30)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  temple      Temple   @relation(fields: [templeId], references: [id], onDelete: Cascade)
+
+  @@map("temple_festivals")
+}
+
+model TempleEvent {
+  id          Int       @id @default(autoincrement())
+  templeId    Int       @map("temple_id")
+  title       String    @db.VarChar(200)
+  description String?   @db.Text
+  startDate   DateTime  @map("start_date")
+  endDate     DateTime? @map("end_date")
+  timeInfo    String?   @map("time_info") @db.VarChar(100)
+  location    String?   @db.VarChar(255)
+  imageUrl    String?   @map("image_url") @db.VarChar(500)
+  // Status: DRAFT, PENDING_REVIEW, PUBLISHED, CANCELLED, COMPLETED
+  status      String    @default("PUBLISHED") @db.VarChar(30)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  temple      Temple    @relation(fields: [templeId], references: [id], onDelete: Cascade)
+
+  @@map("temple_events")
+}
+
+model TempleMedia {
+  id          Int      @id @default(autoincrement())
+  templeId    Int      @map("temple_id")
+  title       String   @db.VarChar(200)
+  type        String   @default("Photo") @db.VarChar(20) // 'Photo', 'Video'
+  mediaUrl    String   @map("media_url") @db.VarChar(500)
+  caption     String?  @db.VarChar(300)
+  sortOrder   Int      @default(0) @map("sort_order")
+  isApproved  Boolean  @default(true) @map("is_approved")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  temple      Temple   @relation(fields: [templeId], references: [id], onDelete: Cascade)
+
+  @@map("temple_media")
+}
+
+model TempleUpdateRequest {
+  id            Int       @id @default(autoincrement())
+  templeId      Int       @map("temple_id")
+  requestedById Int       @map("requested_by_id")
+  category      String    @db.VarChar(50) // 'INFO', 'TIMINGS', 'DELETION', 'LOCATION'
+  proposedJson  String    @map("proposed_json") @db.Text
+  previousJson  String?   @map("previous_json") @db.Text
+  // Status: PENDING, APPROVED, REJECTED, CANCELLED
+  status        String    @default("PENDING") @db.VarChar(30)
+  reviewNotes   String?   @map("review_notes") @db.VarChar(500)
+  reviewedBy    String?   @map("reviewed_by") @db.VarChar(100)
+  reviewedAt    DateTime? @map("reviewed_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  temple        Temple    @relation(fields: [templeId], references: [id], onDelete: Cascade)
+  requestedBy   AppUser   @relation(fields: [requestedById], references: [id], onDelete: Cascade)
+
+  @@map("temple_update_requests")
+}
+
+model OwnerNotification {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  title     String   @db.VarChar(200)
+  message   String   @db.Text
+  type      String   @default("INFO") @db.VarChar(50) // 'INFO', 'APPROVAL', 'REJECTION', 'EVENT'
+  isRead    Boolean  @default(false) @map("is_read")
+  linkUrl   String?  @map("link_url") @db.VarChar(300)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      AppUser  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("owner_notifications")
+}
+
+model CustomerNotification {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  title     String   @db.VarChar(200)
+  message   String   @db.Text
+  category  String   @default("general") @db.VarChar(50) // 'temple', 'annadanam', 'festival', 'pooja', 'panchangam', 'general'
+  isRead    Boolean  @default(false) @map("is_read")
+  linkUrl   String?  @map("link_url") @db.VarChar(300)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  user      AppUser  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("customer_notifications")
+}
+
+model SupportTicket {
+  id            Int       @id @default(autoincrement())
+  ticketNumber  String    @unique @map("ticket_number") @db.VarChar(50)
+  userId        Int?      @map("user_id")
+  userName      String    @map("user_name") @db.VarChar(120)
+  userEmail     String?   @map("user_email") @db.VarChar(150)
+  userPhone     String?   @map("user_phone") @db.VarChar(25)
+  userRole      String?   @default("DEVOTEE") @map("user_role") @db.VarChar(50)
+  subject       String    @db.VarChar(255)
+  category      String?   @default("GENERAL") @db.VarChar(80)
+  priority      String?   @default("MEDIUM") @db.VarChar(30)
+  message       String    @db.Text
+  status        String?   @default("OPEN") @db.VarChar(30)
+  adminResponse String?   @map("admin_response") @db.Text
+  resolvedAt    DateTime? @map("resolved_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@map("support_tickets")
+}
+
+model CategoryService {
+  id           Int      @id @default(autoincrement())
+  serviceId    String   @unique @map("service_id") @db.VarChar(100)
+  title        String   @db.VarChar(200)
+  sub          String?  @db.VarChar(300)
+  icon         String   @default("Sparkles") @db.VarChar(100)
+  url          String   @db.VarChar(300)
+  image        String?  @db.VarChar(255)
+  artwork      String?  @db.VarChar(255)
+  displayOrder Int      @default(0) @map("display_order")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("category_services")
+}
+
+

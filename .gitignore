@@ -12,4 +12,18 @@ npm-debug.*
 *.orig.*
 .env
 .env.local
+cpanel.env
+
+# Build outputs and deployment archives
+*.apk
+*.aab
+*.zip
+*.tar.gz
+
+# Temporary root test dumps and screenshots
+/*.xml
+/*.png
+/*.jpg
+/*.jpeg
+/mapping.txt
 

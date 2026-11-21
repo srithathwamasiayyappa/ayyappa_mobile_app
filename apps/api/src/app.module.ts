@@ -9,6 +9,11 @@ import { AdminModule } from './modules/admin/admin.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { ContactModule } from './modules/contact/contact.module';
 import { SplashModule } from './modules/splash/splash.module';
+import { MasterModule } from './modules/master/master.module';
+import { UsersModule } from './modules/users/users.module';
+import { DharmaKarthaModule } from './modules/dharma-kartha/dharma-kartha.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
+import { TemplesModule } from './modules/temples/temples.module';
 
 @Module({
   imports: [
@@ -22,6 +27,11 @@ import { SplashModule } from './modules/splash/splash.module';
     AuthModule,
     ContactModule,
     SplashModule,
+    MasterModule,
+    UsersModule,
+    DharmaKarthaModule,
+    NotificationsModule,
+    TemplesModule,
   ],
 })
 export class AppModule {}

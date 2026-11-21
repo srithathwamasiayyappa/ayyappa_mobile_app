@@ -278,7 +278,7 @@ const styles = StyleSheet.create({
   },
   sliderTrackBackground: {
     height: 3.5,
-    backgroundColor: '#8D6E63',
+    backgroundColor: '#345147',
     borderRadius: 2,
     position: 'relative',
     justifyContent: 'center',

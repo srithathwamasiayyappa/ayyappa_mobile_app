@@ -1,5 +1,7 @@
 import React, { useRef } from 'react';
-import { View, TextInput, StyleSheet } from 'react-native';
+import { View, TextInput, StyleSheet, Dimensions } from 'react-native';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface Props {
   value: string;
@@ -72,23 +74,29 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   box: {
-    width: 48,
-    height: 52,
+    width: Math.min(48, Math.floor((SCREEN_WIDTH - 48 - 40) / 6)),
+    height: 54,
     borderRadius: 12,
-    backgroundColor: '#FFF8EE',
-    borderWidth: 1.5,
-    borderColor: '#E6D1BD',
+    backgroundColor: '#FFFDF7',
+    borderWidth: 1.2,
+    borderColor: '#D9BE94',
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#071914',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   filledBox: {
-    borderColor: '#FF9800',
-    backgroundColor: '#FFFDF9',
+    borderColor: '#173D32',
+    backgroundColor: '#FFFBF2',
+    borderWidth: 1.8,
   },
   digitText: {
     fontSize: 22,
-    fontWeight: '800',
-    color: '#3E1508',
+    fontWeight: '700',
+    color: '#173D32',
     textAlign: 'center',
     width: '100%',
     height: '100%',

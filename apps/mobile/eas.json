@@ -10,6 +10,9 @@
     },
     "preview": {
       "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://backendapis.saranamayyappa.in/api/v1"
+      },
       "android": {
         "buildType": "apk"
       },

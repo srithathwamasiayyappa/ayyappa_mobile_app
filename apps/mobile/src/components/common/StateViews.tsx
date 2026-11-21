@@ -78,7 +78,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 14,
-    color: '#5D4037',
+    color: '#215344',
     textAlign: 'center',
     fontStyle: 'italic',
   },

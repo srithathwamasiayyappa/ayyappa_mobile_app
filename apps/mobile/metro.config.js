@@ -19,4 +19,10 @@ config.resolver.nodeModulesPaths = [
 // Enable SVG / module extensions
 config.resolver.sourceExts.push('mjs', 'cjs');
 
+// Enable audio and media asset extensions
+config.resolver.assetExts.push('mp3', 'mpeg', 'wav', 'm4a');
+
+// Prevent OneDrive / Windows EBUSY and UNKNOWN (-4094) file lock crashes
+config.maxWorkers = 2;
+
 module.exports = config;
