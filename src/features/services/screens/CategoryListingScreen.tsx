@@ -84,6 +84,36 @@ interface ListingItem {
   image: any;
 }
 
+const CategoryCardThumbnail: React.FC<{ image: any; deityId: string }> = ({ image, deityId }) => {
+  const [hasError, setHasError] = useState(false);
+  const fallback = DEITY_IMAGES[deityId] || DEITY_IMAGES.ayyappa;
+
+  const isRemote = !hasError && typeof image === 'string' && (image.startsWith('http://') || image.startsWith('https://') || image.startsWith('/uploads'));
+  const remoteUri = isRemote
+    ? (image.startsWith('/uploads') ? `https://backendapis.saranamayyappa.in${image}` : image)
+    : null;
+
+  return (
+    <View style={StyleSheet.absoluteFillObject}>
+      {/* 1. Guaranteed Authentic Pre-bundled Deity Artwork */}
+      <Image
+        source={typeof image === 'object' && image ? image : fallback}
+        style={styles.imageThumbnail}
+        resizeMode="cover"
+      />
+      {/* 2. Live Dynamic Remote Image (Gracefully Falls Back if 404 or Network Error) */}
+      {remoteUri && (
+        <Image
+          source={{ uri: remoteUri }}
+          style={StyleSheet.absoluteFillObject}
+          resizeMode="cover"
+          onError={() => setHasError(true)}
+        />
+      )}
+    </View>
+  );
+};
+
 // Master Content Definitions for Dynamic Categories
 const MASTER_CATEGORY_CONTENT: Record<string, ListingItem[]> = {
   'pooja-vidhanam': [
@@ -516,12 +546,15 @@ export const CategoryListingScreen: React.FC<Props> = ({
               ? item.deityId
               : resolveDeityFromSlugOrTitle(rawSlug, titleFormatted);
 
+            const rawImg = typeof item.image === 'string' ? item.image : (typeof item.imageUrl === 'string' ? item.imageUrl : '');
+            const validImg = rawImg && !rawImg.includes('.webp') ? rawImg : null;
+
             return {
               id: rawSlug,
               title: titleFormatted,
               desc: item.desc || item.description || '',
               deityId: resolvedDeity,
-              image: item.image || item.imageUrl || DEITY_IMAGES[resolvedDeity] || DEITY_IMAGES.ayyappa,
+              image: validImg || DEITY_IMAGES[resolvedDeity] || DEITY_IMAGES.ayyappa,
             };
           });
 
@@ -702,15 +735,7 @@ export const CategoryListingScreen: React.FC<Props> = ({
               >
                 {/* Left: Square Devotional Artwork Thumbnail */}
                 <View style={styles.imageThumbnailWrapper}>
-                  <Image
-                    source={
-                      typeof item.image === 'string'
-                        ? { uri: item.image.startsWith('http') ? item.image : `https://saranamayyappa.in${item.image}` }
-                        : item.image || DEITY_IMAGES[item.deityId] || DEITY_IMAGES.ayyappa
-                    }
-                    style={styles.imageThumbnail}
-                    resizeMode="cover"
-                  />
+                  <CategoryCardThumbnail image={item.image} deityId={item.deityId} />
                   <View style={styles.imageThumbnailBorder} />
                 </View>
 

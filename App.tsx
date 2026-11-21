@@ -59,6 +59,8 @@ import { PanchangamScreen } from './src/features/panchangam/screens/PanchangamSc
 import { FestivalsScreen } from './src/features/festivals/screens/FestivalsScreen';
 import { DetailScreen } from './src/features/devotional-content/screens/DetailScreen';
 import { CategoryListingScreen } from './src/features/services/screens/CategoryListingScreen';
+import { SubcategoryTypesScreen } from './src/features/services/screens/SubcategoryTypesScreen';
+import { hasSubcategoryTypes } from './src/data/defaultChildren';
 import { PoojaDetailScreen } from './src/features/services/screens/PoojaDetailScreen';
 import { SlokaDetailScreen } from './src/features/services/screens/SlokaDetailScreen';
 import { BhajansSongsScreen } from './src/features/services/screens/BhajansSongsScreen';
@@ -475,6 +477,8 @@ export default function App() {
       const listingCategories = ['pooja-vidhanam', 'pooja', 'astothrams', 'stotras', 'slokas', 'bhajans', 'songs', 'harathis'];
       if (listingCategories.includes(id) || !id.includes('-')) {
         navigateTo('category_listing', { id, title, deity: activeDeity });
+      } else if (hasSubcategoryTypes(id, title)) {
+        navigateTo('subcategory_types', { id, title, deity: activeDeity });
       } else if (id.includes('pooja') || id.includes('vratham') || id.includes('abhishekam')) {
         navigateTo('pooja_detail', { id, title, deity: activeDeity });
       } else if (
@@ -830,7 +834,9 @@ export default function App() {
             currentLanguage={selectedLanguage}
             initialDeity={activeDetail.deity || 'all'}
             onSelectItem={(id, title) => {
-              if (
+              if (hasSubcategoryTypes(id, title)) {
+                navigateTo('subcategory_types', { id, title });
+              } else if (
                 activeDetail.id === 'pooja-vidhanam' ||
                 activeDetail.id === 'pooja' ||
                 id.includes('pooja') ||
@@ -841,6 +847,19 @@ export default function App() {
               } else {
                 navigateTo('sloka_detail', { id, title });
               }
+            }}
+            onBack={handleGoBack}
+          />
+        )}
+
+        {currentScreen === 'subcategory_types' && activeDetail && (
+          <SubcategoryTypesScreen
+            subcategoryId={activeDetail.id}
+            subcategoryTitle={activeDetail.title}
+            parentCategoryTitle="Pooja Vidhanam"
+            currentLanguage={selectedLanguage}
+            onSelectType={(type) => {
+              navigateTo('pooja_detail', { id: type.slug || type.id, title: type.title });
             }}
             onBack={handleGoBack}
           />
