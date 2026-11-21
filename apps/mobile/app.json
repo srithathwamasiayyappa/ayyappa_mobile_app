@@ -2,7 +2,7 @@
   "expo": {
     "name": "Saranam Ayyappa",
     "slug": "saranam-ayyappa",
-    "version": "1.0.10",
+    "version": "1.0.11",
     "orientation": "portrait",
     "newArchEnabled": true,
     "icon": "./assets/icon.png",
@@ -19,7 +19,7 @@
     },
     "android": {
       "package": "com.saranam.ayyappa",
-      "versionCode": 10,
+      "versionCode": 11,
       "googleServicesFile": "./google-services.json",
       "splash": {
         "image": "./assets/splash.png",
