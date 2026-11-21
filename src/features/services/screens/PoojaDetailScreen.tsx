@@ -18,6 +18,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle, Line, Polygon, Ellipse, Rect } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SupportedLanguage } from '../../../types';
+import { PRODUCTION_BASE_URL } from '../../../services/api';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -853,15 +854,51 @@ export const PoojaDetailScreen: React.FC<Props> = ({
   const [checkedMaterials, setCheckedMaterials] = useState<Record<string, boolean>>({});
   const [isSaved, setIsSaved] = useState<boolean>(false);
   const [isVideoModalOpen, setIsVideoModalOpen] = useState<boolean>(false);
+  const [apiData, setApiData] = useState<any>(null);
+  const [activeChildId, setActiveChildId] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
 
-  // Look up detail content or fallback to Ayyappa Padi Pooja
-  const poojaContent = POOJA_DETAILS[itemId] || POOJA_DETAILS['ayyappa-padi-pooja'];
+  // Dynamically fetch subcategory details, child types & procedures from Backend DB API
+  useEffect(() => {
+    let isCancelled = false;
+    setLoading(true);
+    const fetchPoojaDetail = async () => {
+      try {
+        const targetId = activeChildId || itemId;
+        const res = await fetch(`${PRODUCTION_BASE_URL}/categories/subcategories/${encodeURIComponent(targetId)}?lang=${currentLanguage}`);
+        const json = await res.json().catch(() => null);
+        if (!isCancelled && json && json.data) {
+          setApiData(json.data);
+        }
+      } catch (err) {
+        console.warn('Failed to fetch pooja detail from DB:', err);
+      } finally {
+        if (!isCancelled) setLoading(false);
+      }
+    };
+    fetchPoojaDetail();
+    return () => { isCancelled = true; };
+  }, [itemId, activeChildId, currentLanguage]);
+
+  // Look up detail content or fallback to verified local catalog
+  const poojaContent = POOJA_DETAILS[activeChildId || itemId] || POOJA_DETAILS['ayyappa-padi-pooja'];
   const displayTitle =
+    apiData?.title ||
     title ||
     poojaContent.regionalTitles[currentLanguage] ||
     poojaContent.defaultTitle;
-  const deityImage = DEITY_IMAGES[poojaContent.deityId] || DEITY_IMAGES.ayyappa;
+  const deityImage = DEITY_IMAGES[apiData?.deityId || poojaContent.deityId] || DEITY_IMAGES.ayyappa;
   const ui = UI_TEXTS[currentLanguage] || UI_TEXTS.en;
+
+  const stepsList = (apiData?.procedure && apiData.procedure.length > 0)
+    ? apiData.procedure.map((p: any, idx: number) => ({
+        stepNumber: p.step || idx + 1,
+        title: p.title || `Step ${idx + 1}`,
+        description: p.desc || p.description || '',
+        duration: '2-5 mins',
+        mantra: p.mantra || '',
+      }))
+    : poojaContent.procedure;
 
   // Load saved state from AsyncStorage
   useEffect(() => {
@@ -980,6 +1017,30 @@ export const PoojaDetailScreen: React.FC<Props> = ({
         <View style={styles.mainCard}>
           {/* Main Title Heading */}
           <Text style={styles.mainTitle}>{displayTitle}</Text>
+
+          {/* Child Subcategories / Subtitles Selector from DB */}
+          {apiData?.children && apiData.children.length > 0 && (
+            <View style={styles.childTypesSection}>
+              <Text style={styles.childTypesHeading}>విభాగాలు / రకములు (Sub-categories & Types):</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.childTypesRow}>
+                {apiData.children.map((child: any) => {
+                  const isSelected = activeChildId === child.id || (!activeChildId && (child.id === apiData.id || child.slug === apiData.slug));
+                  return (
+                    <TouchableOpacity
+                      key={child.id || child.slug}
+                      style={[styles.childTypePill, isSelected && styles.childTypePillActive]}
+                      onPress={() => setActiveChildId(child.id || child.slug)}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={[styles.childTypePillText, isSelected && styles.childTypePillTextActive]}>
+                        {child.title}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          )}
 
           {/* 4 Content Tabs: Overview | Procedure | Materials | Benefits */}
           <View style={styles.tabBar}>
@@ -1142,25 +1203,21 @@ export const PoojaDetailScreen: React.FC<Props> = ({
                   {displayTitle} — {ui.procedure}
                 </Text>
                 <Text style={styles.tabSectionSubtitle}>
-                  {poojaContent.procedure.length} Steps
+                  {stepsList.length} Steps
                 </Text>
               </View>
 
-              {poojaContent.procedure.map((step) => (
+              {stepsList.map((step: any) => (
                 <View key={step.stepNumber} style={styles.procedureStepCard}>
-                  {/* Step Header */}
-                  <View style={styles.procedureStepHeader}>
-                    <View style={styles.stepBadge}>
-                      <Text style={styles.stepBadgeText}>{step.stepNumber}</Text>
-                    </View>
-                    <View style={styles.stepTitleContainer}>
-                      <Text style={styles.stepTitle}>{step.title}</Text>
-                      <Text style={styles.stepDuration}>{step.duration}</Text>
-                    </View>
+                  {/* Prominent Saffron Subtitle Banner Header matching user screenshots */}
+                  <View style={styles.orangeSubtitleBanner}>
+                    <Text style={styles.orangeSubtitleText}>{step.title}</Text>
                   </View>
 
                   {/* Step Description */}
-                  <Text style={styles.stepDescription}>{step.description}</Text>
+                  {step.description ? (
+                    <Text style={styles.stepDescription}>{step.description}</Text>
+                  ) : null}
 
                   {/* Sacred Mantra Box (if available) */}
                   {step.mantra ? (
@@ -1673,6 +1730,68 @@ const styles = StyleSheet.create({
     fontSize: 12.5,
     fontWeight: '600',
     color: '#173D32',
+  },
+  // Subtitle Pill Banner Header (Orange background with white bold text matching screenshots)
+  orangeSubtitleBanner: {
+    backgroundColor: '#E65100', // Saffron / Orange as shown in user screenshot
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: 6,
+    marginBottom: 8,
+    alignSelf: 'flex-start',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  orangeSubtitleText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  // Subcategories / Types Selector Row
+  childTypesSection: {
+    backgroundColor: '#FFFBF2',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E6C687',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    marginBottom: 10,
+  },
+  childTypesHeading: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#8A6D3B',
+    marginBottom: 6,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  childTypesRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  childTypePill: {
+    backgroundColor: '#FFFDF8',
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    borderWidth: 1.2,
+    borderColor: '#DFA62E',
+  },
+  childTypePillActive: {
+    backgroundColor: '#E65100',
+    borderColor: '#E65100',
+  },
+  childTypePillText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#173D32',
+  },
+  childTypePillTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
   },
   procedureStepCard: {
     backgroundColor: '#FFFBF2',

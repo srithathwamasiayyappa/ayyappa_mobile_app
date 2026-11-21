@@ -21,13 +21,13 @@ import { PRODUCTION_BASE_URL } from '../../../services/api';
 // Helper to reliably resolve Deity ID from slug/title
 function resolveDeityFromSlugOrTitle(slug = '', title = ''): string {
   const str = `${slug} ${title}`.toLowerCase();
-  if (/ganesh|vignesh|vinayak|ganapath|modak|గణపతి|వినాయక|విఘ్నేశ్వర|గణేశ|గణప|మోదక/.test(str)) return 'ganesha';
-  if (/devi|durga|lakshmi|lalitha|kanakadhara|mahalakshmi|meenakshi|kamakshi|saraswathi|gomatha|kamadhenu|దేవి|లక్ష్మి|దుర్గ|లలిత|సరస్వతి|గోమాత|కామధేను|వరలక్ష్మి|మాళికాపురత్తమ్మ/.test(str)) return 'devi';
-  if (/ayyap|sastha|harivarasanam|shabarimala|uthara|sannidhanam|padi|maaladharan|sharanu|harathi|అయ్యప్ప|శాస్తా|శాస్త|శబరిమల|మాలాధారణ|హరివరాసనం|శరణం|హారతి|ఇరుముడి|పడి/.test(str)) return 'ayyappa';
-  if (/shiva|linga|bilva|rudra|natara|mrityunjaya|శివ|లింగ|బిల్వ|రుద్ర|మృత్యుంజయ|ఈశ్వర|కేదారేశ్వర|నటరాజ/.test(str)) return 'shiva';
-  if (/venkates|vishnu|koodalmanikya|achyuta|govinda|narayana|perumal|satyanarayana|వేంకట|వెంకట|విష్ణు|సత్యనారాయణ|గోవింద|నారాయణ|శ్రీనివాస/.test(str)) return 'venkateswara';
+  if (/ganesh|vignesh|vinayak|ganapath|modak|బొమ్మ|గణపతి|వినాయక|విఘ్నేశ్వర|గణేశ|గణప|మోదక/.test(str)) return 'ganesha';
+  if (/devi|durga|lakshmi|lalitha|kanakadhara|mahalakshmi|meenakshi|kamakshi|saraswathi|gomatha|kamadhenu|parameshwari|akhilandeshwari|దండాల|అంబ|దేవి|లక్ష్మి|దుర్గ|లలిత|సరస్వతి|గోమాత|కామధేను|వరలక్ష్మి|మాళికాపురత్తమ్మ/.test(str)) return 'devi';
+  if (/ayyap|sastha|harivarasanam|shabarimala|uthara|sannidhanam|padi|maaladharan|sharanu|harathi|గురు నాథ|గురునాథ|సాయంకాల|అయ్యప్ప|శాస్తా|శాస్త|శబరిమల|మాలాధారణ|హరివరాసనం|శరణం|హారతి|ఇరుముడి|పడి/.test(str)) return 'ayyappa';
+  if (/shiva|linga|bilva|rudra|natara|mrityunjaya|kedar|శివ|లింగ|బిల్వ|రుద్ర|మృత్యుంజయ|ఈశ్వర|కేదారేశ్వర|నటరాజ/.test(str)) return 'shiva';
+  if (/venkates|vishnu|koodalmanikya|achyuta|govinda|narayana|perumal|satyanarayana|guruvayoor|వేంకట|వెంకట|విష్ణు|సత్యనారాయణ|గోవింద|నారాయణ|శ్రీనివాస|గురువాయూరప్ప/.test(str)) return 'venkateswara';
   if (/hanuman|anjaneya|maruti|bajrang|sundarakanda|హనుమాన్|ఆంజనేయ|మారుతి|రామదూత/.test(str)) return 'hanuman';
-  if (/subrahmanya|murugan|kartikeya|saravana|shanmukha|vel|skanda|సుబ్రహ్మణ్య|మురుగన్|కార్తికేయ|షణ్ముఖ|స్కంద/.test(str)) return 'murugan';
+  if (/subrahmanya|murugan|kartikeya|saravana|shanmukha|vel|skanda|pazhani|సుబ్రహ్మణ్య|మురుగన్|కార్తికేయ|షణ్ముఖ|స్కంద|పళని/.test(str)) return 'murugan';
   return 'all';
 }
 
@@ -95,9 +95,23 @@ const MASTER_CATEGORY_CONTENT: Record<string, ListingItem[]> = {
       image: DEITY_IMAGES.ayyappa,
     },
     {
+      id: 'pooja-poorvaangam',
+      title: 'Pooja Poorvaangam',
+      desc: 'దీపారాధన, గురు ప్రార్థన, గణపతి ధ్యానము, సంకల్పము',
+      deityId: 'all',
+      image: DEITY_IMAGES.ayyappa,
+    },
+    {
       id: 'ganapathi-pooja',
       title: 'Ganapathi Pooja',
       desc: 'Complete vidhanam & mantras',
+      deityId: 'ganesha',
+      image: DEITY_IMAGES.ganesha,
+    },
+    {
+      id: 'vinayaka-vratha-kalpam',
+      title: 'Vinayaka Vratha Kalpam',
+      desc: 'వినాయక చవితి సంపూర్ణ వ్రత కల్ప విధానము',
       deityId: 'ganesha',
       image: DEITY_IMAGES.ganesha,
     },
@@ -116,9 +130,37 @@ const MASTER_CATEGORY_CONTENT: Record<string, ListingItem[]> = {
       image: DEITY_IMAGES.devi,
     },
     {
+      id: 'sri-devi-pooja',
+      title: 'Sri Devi Pooja',
+      desc: 'శ్రీ మాళికాపురత్తమ్మ నిత్య పూజా విధానం',
+      deityId: 'devi',
+      image: DEITY_IMAGES.devi,
+    },
+    {
+      id: 'sri-gomatha-pooja',
+      title: 'Sri Gomatha Pooja',
+      desc: 'కామధేను గోమాత పూజా విధానం & ప్రదక్షిణ మంత్రములు',
+      deityId: 'devi',
+      image: DEITY_IMAGES.devi,
+    },
+    {
+      id: 'varalakshmi-vratham',
+      title: 'Varalakshmi Vratham',
+      desc: 'వరలక్ష్మీ వ్రతం, తోరగ్రంథి పూజ మరియు కథ',
+      deityId: 'devi',
+      image: DEITY_IMAGES.devi,
+    },
+    {
       id: 'rudrabhishekam',
       title: 'Rudrabhishekam',
       desc: 'For health & removal of obstacles',
+      deityId: 'shiva',
+      image: DEITY_IMAGES.shiva,
+    },
+    {
+      id: 'kedareswara-vratham',
+      title: 'Kedareswara Vratham',
+      desc: 'దీపావళి పరమ పవిత్రమైన కేదారేశ్వర నోము విధానము',
       deityId: 'shiva',
       image: DEITY_IMAGES.shiva,
     },
@@ -248,6 +290,20 @@ const MASTER_CATEGORY_CONTENT: Record<string, ListingItem[]> = {
   ],
   bhajans: [
     {
+      id: 'om-guru-natha',
+      title: 'ఓం గురు నాథ',
+      desc: 'అయ్యప్ప గురు కీర్తన - ఓం గురు నాథ సద్గురు నాథ',
+      deityId: 'ayyappa',
+      image: DEITY_IMAGES.ayyappa,
+    },
+    {
+      id: 'saayamkaala-samayamlo',
+      title: 'సాయంకాల సమయంలో',
+      desc: 'సాయంకాల సమయంలో అయ్యప్ప భజన చేసెదము',
+      deityId: 'ayyappa',
+      image: DEITY_IMAGES.ayyappa,
+    },
+    {
       id: 'harivarasanam',
       title: 'Harivarasanam',
       desc: 'Sabarimala night devotional lullaby',
@@ -262,18 +318,32 @@ const MASTER_CATEGORY_CONTENT: Record<string, ListingItem[]> = {
       image: DEITY_IMAGES.ayyappa,
     },
     {
-      id: 'shiva-tandava',
-      title: 'Shiva Tandava Stotram',
-      desc: 'Rhythmic devotional hymn of Shiva',
-      deityId: 'shiva',
-      image: DEITY_IMAGES.shiva,
-    },
-    {
-      id: 'ganesha-sharanam',
-      title: 'Ganesha Sharanam',
-      desc: 'Morning obstacle-removal bhajans',
+      id: 'ganapathi-bhajanalu',
+      title: 'గణపతి భజనలు',
+      desc: 'గణపతి ఓం గణపతి ఓం - గౌరీ నందన గణపతి ఓం',
       deityId: 'ganesha',
       image: DEITY_IMAGES.ganesha,
+    },
+    {
+      id: 'saranam-ganesha',
+      title: 'శరణం గణేశ',
+      desc: 'శరణం గణేశ శరణం గణేశ విఘ్నవినాశక',
+      deityId: 'ganesha',
+      image: DEITY_IMAGES.ganesha,
+    },
+    {
+      id: 'dandalaamma-neeku-dandaalama',
+      title: 'దండాలమ్మా నీకు దండాలమ',
+      desc: 'మాళికాపురత్తమ్మ దేవీ కీర్తన',
+      deityId: 'devi',
+      image: DEITY_IMAGES.devi,
+    },
+    {
+      id: 'ambaparameshwari-akhilandeshwari',
+      title: 'అంబపరమేశ్వరి అఖిలాండేశ్వరి',
+      desc: 'ఆదిపరాశక్తి జగన్మాత భజన',
+      deityId: 'devi',
+      image: DEITY_IMAGES.devi,
     },
     {
       id: 'ayigiri-nandini-bhajan',
@@ -283,11 +353,39 @@ const MASTER_CATEGORY_CONTENT: Record<string, ListingItem[]> = {
       image: DEITY_IMAGES.devi,
     },
     {
+      id: 'shiva-tandava',
+      title: 'Shiva Tandava Stotram',
+      desc: 'Rhythmic devotional hymn of Shiva',
+      deityId: 'shiva',
+      image: DEITY_IMAGES.shiva,
+    },
+    {
+      id: 'guruvayoorappa',
+      title: 'గురువాయూరప్ప',
+      desc: 'గురువాయూరప్పా శరణం కృష్ణ ప్రభో',
+      deityId: 'venkateswara',
+      image: DEITY_IMAGES.venkateswara,
+    },
+    {
+      id: 'anjaneya-keerthana-eemira-dora',
+      title: 'ఆంజనేయ కీర్తన ఏమిరా దొర',
+      desc: 'రామదాసుడై నిలచిన ఆంజనేయ విభుమ్',
+      deityId: 'hanuman',
+      image: DEITY_IMAGES.hanuman,
+    },
+    {
       id: 'hanuman-bhajan',
       title: 'Sri Ram Jai Ram Jai Hanuman',
       desc: 'Uplifting devotional Sankirtan',
       deityId: 'hanuman',
       image: DEITY_IMAGES.hanuman,
+    },
+    {
+      id: 'pazhanimalai-swamiki',
+      title: 'పళనిమలై స్వామికి',
+      desc: 'షణ్ముఖ వేలవ స్వామికి హరోహర',
+      deityId: 'murugan',
+      image: DEITY_IMAGES.murugan,
     },
     {
       id: 'muruga-muruga-bhajan',
@@ -430,7 +528,7 @@ export const CategoryListingScreen: React.FC<Props> = ({
           // Filter by selected deity if server didn't already
           const finalItems = selectedFilter === 'all'
             ? mapped
-            : mapped.filter((item: ListingItem) => item.deityId === selectedFilter || item.deityId === 'all');
+            : mapped.filter((item: ListingItem) => item.deityId === selectedFilter);
 
           setDbItems(finalItems);
         } else if (!isCancelled) {
@@ -482,7 +580,7 @@ export const CategoryListingScreen: React.FC<Props> = ({
   // Filter items by selected deity tab
   const fallbackFilteredItems = selectedFilter === 'all'
     ? allCategoryItems
-    : allCategoryItems.filter((item) => item.deityId === selectedFilter || item.deityId === 'all');
+    : allCategoryItems.filter((item) => item.deityId === selectedFilter);
 
   const filteredItems = (dbItems && dbItems.length > 0) ? dbItems : fallbackFilteredItems;
 

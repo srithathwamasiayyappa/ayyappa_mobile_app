@@ -451,7 +451,13 @@ export default function App() {
   const handleOpenDetail = (id: string, title: string, deity?: string) => {
     const activeDeity = deity || 'all';
     if (id === 'bhajans' || id === 'harathis' || id === 'songs' || id === 'bhajans-songs') {
-      navigateTo('bhajans_songs', { id, title: title || 'Bhajans & Songs', deity: activeDeity });
+      navigateTo('category_listing', { id: 'bhajans', title: title || 'Bhajans & Songs', deity: activeDeity });
+    } else if (id === 'pooja' || id === 'pooja-vidhanam') {
+      navigateTo('category_listing', { id: 'pooja-vidhanam', title: title || 'Pooja Vidhanam', deity: activeDeity });
+    } else if (id === 'stotras' || id === 'astothrams') {
+      navigateTo('category_listing', { id: 'astothrams', title: title || 'Divine Stotras', deity: activeDeity });
+    } else if (id === 'slokas' || id === 'daily-slokas') {
+      navigateTo('category_listing', { id: 'slokas', title: title || 'Daily Slokas', deity: activeDeity });
     } else if (id === 'live-streams' || id === 'live' || id === 'live_streams' || id === 'live-darshan') {
       navigateTo('live_streams', { id, title: title || 'Live Streams', deity: activeDeity });
     } else if (id === 'temples' || id === 'temples-in-india' || id === 'temple_listing') {
@@ -466,7 +472,7 @@ export default function App() {
     } else if (id === 'festivals' || id === 'festival' || id === 'festivals-calendar' || id === 'temple-festivals') {
       navigateTo('festivals', { id, title: title || 'Festivals & Sacred Days', deity: activeDeity });
     } else {
-      const listingCategories = ['pooja-vidhanam', 'astothrams', 'slokas', 'bhajans', 'harathis'];
+      const listingCategories = ['pooja-vidhanam', 'pooja', 'astothrams', 'stotras', 'slokas', 'bhajans', 'songs', 'harathis'];
       if (listingCategories.includes(id) || !id.includes('-')) {
         navigateTo('category_listing', { id, title, deity: activeDeity });
       } else if (id.includes('pooja') || id.includes('vratham') || id.includes('abhishekam')) {
@@ -826,38 +832,14 @@ export default function App() {
             onSelectItem={(id, title) => {
               if (
                 activeDetail.id === 'pooja-vidhanam' ||
+                activeDetail.id === 'pooja' ||
                 id.includes('pooja') ||
                 id.includes('vratham') ||
                 id.includes('abhishekam')
               ) {
                 navigateTo('pooja_detail', { id, title });
-              } else if (
-                activeDetail.id === 'bhajans' ||
-                activeDetail.id === 'harathis' ||
-                id === 'bhajans' ||
-                id === 'harathis' ||
-                id.includes('bhajan') ||
-                id.includes('harathi')
-              ) {
-                navigateTo('bhajans_songs', { id, title });
-              } else if (
-                activeDetail.id === 'slokas' ||
-                activeDetail.id === 'astothrams' ||
-                id.includes('sloka') ||
-                id.includes('stotram') ||
-                id.includes('astothram') ||
-                id.includes('ashtottaram') ||
-                id.includes('tandava') ||
-                id.includes('pancharatnam') ||
-                id.includes('gayatri') ||
-                id.includes('suprabhatam') ||
-                id.includes('ashtakam') ||
-                id.includes('chalisa') ||
-                id.includes('kavasam')
-              ) {
-                navigateTo('sloka_detail', { id, title });
               } else {
-                navigateTo('detail', { id, title });
+                navigateTo('sloka_detail', { id, title });
               }
             }}
             onBack={handleGoBack}

@@ -515,42 +515,67 @@ export const SlokaDetailScreen: React.FC<Props> = ({
 
   // Look up Sloka dynamically from API with fallback to offline catalog
   const [apiSloka, setApiSloka] = useState<any>(null);
+  const [activeChildId, setActiveChildId] = useState<string | null>(null);
 
   useEffect(() => {
     let isCancelled = false;
     const fetchSloka = async () => {
       try {
-        let res = await fetch(`${API_BASE_URL}/categories/stotras/${itemId}?lang=${currentLanguage}`);
+        const targetId = activeChildId || itemId;
+        let res = await fetch(`${API_BASE_URL}/categories/subcategories/${encodeURIComponent(targetId)}?lang=${currentLanguage}`);
         let json = await res.json().catch(() => null);
         if (!json || !json.success || !json.data) {
-          res = await fetch(`${API_BASE_URL}/categories/${itemId}?lang=${currentLanguage}`);
+          res = await fetch(`${API_BASE_URL}/categories/stotras/${encodeURIComponent(targetId)}?lang=${currentLanguage}`);
+          json = await res.json().catch(() => null);
+        }
+        if (!json || !json.success || !json.data) {
+          res = await fetch(`${API_BASE_URL}/categories/${encodeURIComponent(targetId)}?lang=${currentLanguage}`);
           json = await res.json().catch(() => null);
         }
         if (!isCancelled && json && (json.data || json.contents)) {
           const d = json.data || json;
           const stanzas: any[] = [];
-          if (d.sacredText) {
-            const rawVerses = d.sacredText.split(/\n\s*\n/).filter(Boolean);
-            const rawMeanings = (d.meaning || '').split(/\n\s*\n/).filter(Boolean);
-            rawVerses.forEach((v: string, idx: number) => {
+          const rawText = d.sacredText || d.fullScriptureText || d.overview || '';
+          if (rawText) {
+            const rawSections = rawText.split(/(?=\[\s*[^\]]+\s*\])/g).filter(Boolean);
+            rawSections.forEach((sec: string, idx: number) => {
+              const headerMatch = sec.match(/\[\s*([^\]]+)\s*\]/);
+              const secTitle = headerMatch ? headerMatch[1].trim() : '';
+              const secBody = sec.replace(/\[\s*[^\]]+\s*\]/, '').trim();
+              if (secBody) {
+                stanzas.push({
+                  stanzaNumber: idx + 1,
+                  title: secTitle,
+                  sanskrit: secBody,
+                  telugu: secBody,
+                  englishTransliteration: '',
+                  meaning: (d.meaning || '').split(/\n\s*\n/)[idx] || d.meaning || ''
+                });
+              }
+            });
+          }
+          if (stanzas.length === 0 && d.procedure && d.procedure.length > 0) {
+            d.procedure.forEach((p: any, idx: number) => {
               stanzas.push({
-                stanzaNumber: idx + 1,
-                sanskrit: v,
-                telugu: v,
+                stanzaNumber: p.step || idx + 1,
+                title: p.title || '',
+                sanskrit: p.mantra || p.desc || '',
+                telugu: p.mantra || p.desc || '',
                 englishTransliteration: '',
-                meaning: rawMeanings[idx] || d.meaning || ''
+                meaning: p.desc || ''
               });
             });
           }
           if (stanzas.length > 0) {
             setApiSloka({
               id: d.slug || itemId,
-              deityId: d.slug?.includes('shiva') ? 'shiva' : d.slug?.includes('venkatesha') ? 'venkateswara' : d.slug?.includes('ayyappa') ? 'ayyappa' : 'ayyappa',
+              deityId: d.deityId || (d.slug?.includes('shiva') ? 'shiva' : d.slug?.includes('venkatesha') ? 'venkateswara' : d.slug?.includes('ayyappa') ? 'ayyappa' : 'ayyappa'),
               primaryTitleTelugu: d.title || title || 'దివ్య స్తోత్రం',
               englishTitle: d.slug?.replace(/-/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) || 'Stotra',
               sanskritTitle: d.title || 'स्तोत्रम्',
               audioDurationSeconds: 480,
               audioFormattedDuration: '08:00',
+              children: d.children || [],
               stanzas
             });
           }
@@ -561,7 +586,7 @@ export const SlokaDetailScreen: React.FC<Props> = ({
     };
     fetchSloka();
     return () => { isCancelled = true; };
-  }, [itemId, currentLanguage]);
+  }, [itemId, activeChildId, currentLanguage]);
 
   const sloka =
     apiSloka ||
@@ -841,6 +866,30 @@ export const SlokaDetailScreen: React.FC<Props> = ({
             <Text style={styles.slokaEnglishTitle}>{sloka.englishTitle}</Text>
           </View>
 
+          {/* Child Subcategories / Subtitle Types from DB */}
+          {sloka.children && sloka.children.length > 0 && (
+            <View style={styles.childTypesSection}>
+              <Text style={styles.childTypesHeading}>విభాగాలు / రకములు (Sub-categories & Types):</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.childTypesRow}>
+                {sloka.children.map((child: any) => {
+                  const isSelected = activeChildId === child.id || (!activeChildId && child.id === sloka.id);
+                  return (
+                    <TouchableOpacity
+                      key={child.id || child.slug}
+                      style={[styles.childTypePill, isSelected && styles.childTypePillActive]}
+                      onPress={() => setActiveChildId(child.id || child.slug)}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={[styles.childTypePillText, isSelected && styles.childTypePillTextActive]}>
+                        {child.title}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          )}
+
           {/* =========================================================================
               SACRED VERSES / CONTENT DISPLAY
              ========================================================================= */}
@@ -855,8 +904,19 @@ export const SlokaDetailScreen: React.FC<Props> = ({
                 displayText = stanza.meaning;
               }
 
+              const matchHeader = displayText ? displayText.match(/^\s*\[\s*([^\]]+)\s*\]/) : null;
+              const subtitleTitle = stanza.title || (matchHeader ? matchHeader[1].trim() : null);
+              const cleanText = matchHeader ? displayText.replace(/^\s*\[\s*([^\]]+)\s*\]\s*/, '') : displayText;
+
               return (
                 <View key={stanza.stanzaNumber} style={styles.stanzaContainer}>
+                  {/* Prominent Saffron Subtitle Banner matching user screenshots */}
+                  {subtitleTitle ? (
+                    <View style={styles.orangeSubtitleBanner}>
+                      <Text style={styles.orangeSubtitleText}>{subtitleTitle}</Text>
+                    </View>
+                  ) : null}
+
                   {activeTab === 'meaning' && (
                     <Text style={styles.verseNumberBadge}>
                       Verse {stanza.stanzaNumber} Explanation:
@@ -869,7 +929,7 @@ export const SlokaDetailScreen: React.FC<Props> = ({
                       { fontSize: 16.5 + fontSizeOffset },
                     ]}
                   >
-                    {displayText}
+                    {cleanText}
                   </Text>
                 </View>
               );
@@ -1205,6 +1265,70 @@ const styles = StyleSheet.create({
   versesSection: {
     marginBottom: 18,
     paddingHorizontal: 4,
+  },
+  // Subtitle Pill Banner Header (Orange background with white bold text matching screenshots)
+  orangeSubtitleBanner: {
+    backgroundColor: '#E65100', // Saffron / Orange as shown in user screenshot
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+    borderRadius: 6,
+    marginBottom: 10,
+    alignSelf: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  orangeSubtitleText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+    textAlign: 'center',
+  },
+  // Subcategories / Types Selector Row
+  childTypesSection: {
+    backgroundColor: '#FFFBF2',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E6C687',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    marginBottom: 14,
+    borderRadius: 10,
+  },
+  childTypesHeading: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#8A6D3B',
+    marginBottom: 6,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  childTypesRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  childTypePill: {
+    backgroundColor: '#FFFDF8',
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    borderWidth: 1.2,
+    borderColor: '#DFA62E',
+  },
+  childTypePillActive: {
+    backgroundColor: '#E65100',
+    borderColor: '#E65100',
+  },
+  childTypePillText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#173D32',
+  },
+  childTypePillTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
   },
   stanzaContainer: {
     marginBottom: 16,
