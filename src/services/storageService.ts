@@ -20,7 +20,7 @@ const STORAGE_KEYS = {
   PENDING_SELECTED_ROLE: '@ayyappa_pending_selected_role',
 };
 
-export type MobileScreen = 'splash' | 'welcome' | 'onboarding' | 'role_selection' | 'choose_deity' | 'auth' | 'language' | 'complete_profile' | 'home' | 'categories' | 'services' | 'category_listing' | 'pooja_detail' | 'sloka_detail' | 'bhajans_songs' | 'live_streams' | 'temples' | 'temple_detail' | 'food_donation' | 'donations' | 'notifications' | 'bookmarks' | 'profile' | 'edit_profile' | 'terms' | 'privacy_policy' | 'about' | 'contact' | 'detail' | 'panchangam' | 'festivals';
+export type MobileScreen = 'splash' | 'welcome' | 'onboarding' | 'role_selection' | 'choose_deity' | 'auth' | 'language' | 'complete_profile' | 'home' | 'categories' | 'services' | 'category_listing' | 'subcategory_types' | 'pooja_detail' | 'sloka_detail' | 'bhajans_songs' | 'live_streams' | 'temples' | 'temple_detail' | 'food_donation' | 'donations' | 'notifications' | 'bookmarks' | 'profile' | 'edit_profile' | 'terms' | 'privacy_policy' | 'about' | 'contact' | 'detail' | 'panchangam' | 'festivals';
 
 export interface AppPersistentState {
   currentScreen: MobileScreen;

@@ -2582,9 +2582,39 @@ export const ProfileScreen: React.FC<Props> = ({
               {deleteStep === 'REASON' ? (
                 <View style={{ marginTop: 8 }}>
                   <Text style={styles.deleteInputLabel}>{t('reasonPlaceholder')}</Text>
+                  
+                  {/* Industry-Level Quick Reason Selection Chips */}
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
+                    <View style={{ flexDirection: 'row', gap: 6, paddingVertical: 2 }}>
+                      {[
+                        'No longer using this account',
+                        'Privacy and data concerns',
+                        'Too many SMS / alerts',
+                        'Created duplicate account',
+                        'Other reason',
+                      ].map((r) => {
+                        const isSelected = deleteReason.startsWith(r);
+                        return (
+                          <TouchableOpacity
+                            key={r}
+                            onPress={() => setDeleteReason(r)}
+                            style={[
+                              styles.deityChip,
+                              isSelected && { backgroundColor: '#B71C1C', borderColor: '#B71C1C' },
+                            ]}
+                          >
+                            <Text style={[styles.deityChipText, isSelected && { color: '#FFFFFF', fontWeight: '700' }]}>
+                              {r}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </ScrollView>
+
                   <TextInput
                     style={styles.deleteReasonInput}
-                    placeholder="Enter reason for account deletion..."
+                    placeholder="Enter or customize reason for account deletion..."
                     placeholderTextColor="#A1887F"
                     multiline
                     numberOfLines={3}
