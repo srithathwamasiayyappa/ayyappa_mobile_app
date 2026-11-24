@@ -2041,6 +2041,7 @@ export default function EnterpriseSuperAdminDashboard() {
       const json = await res.json();
       if (json && json.data) {
         const data = json.data;
+        setViewDetail(data);
         const exact = data.translations?.find((t: any) => t.code === langCode);
         if (exact) {
           setSubFormTitle(exact.title || '');
@@ -2299,6 +2300,8 @@ export default function EnterpriseSuperAdminDashboard() {
       const json = await res.json();
       if (json && json.data) {
         const d = json.data;
+        setViewDetail(d);
+        setActiveViewTypeTab('all');
         const exact = d.translations?.find((t: any) => t.code === selectedLang);
         if (exact) {
           setSubFormTitle(exact.title || '');
@@ -2595,6 +2598,18 @@ export default function EnterpriseSuperAdminDashboard() {
         }
       }
     } catch {}
+
+    if (item.categoryId) {
+      try {
+        const resSub = await fetch(`${API_BASE_URL}/admin/subcategories/${item.categoryId}?lang=${selectedLang}`);
+        const jsonSub = await resSub.json();
+        if (jsonSub && jsonSub.data) {
+          setViewDetail(jsonSub.data);
+          const idx = jsonSub.data.contents?.findIndex((c: any) => Number(c.id) === Number(item.id));
+          setActiveViewTypeTab(idx !== -1 && idx !== undefined ? idx : 'all');
+        }
+      } catch {}
+    }
   };
 
   const handleSaveType = async () => {
@@ -5847,16 +5862,19 @@ export default function EnterpriseSuperAdminDashboard() {
                 <div className="flex items-center gap-3">
                   <button 
                     type="button"
-                    onClick={() => setPageMode('LIST')}
+                    onClick={() => {
+                      setPageMode('LIST');
+                      setViewDetail(null);
+                    }}
                     className="px-3 py-1.5 rounded-lg bg-[#0D2E21] hover:bg-[#133F2E] text-gray-200 text-xs font-semibold transition flex items-center gap-1.5 border border-[#1E5C41] shadow"
                   >
                     <ArrowLeft className="w-4 h-4 text-[#FFB300]" />
-                    <span>Back to Subcategories</span>
+                    <span>Back to List</span>
                   </button>
                   <div>
                     <h3 className="text-base font-bold text-[#FFB300] flex items-center gap-2">
-                      <Layers className="w-4 h-4 text-[#FFB300]" />
-                      <span>{editingSubId ? 'Edit Subcategory / Sanctum Composition' : 'Create Subcategory or Chapter'}</span>
+                      <Sparkles className="w-4 h-4 text-[#FFB300]" />
+                      <span>{editingSubId ? 'Edit Devotional Subcategory Sanctum Details' : 'Create Devotional Subcategory'}</span>
                     </h3>
                     <p className="text-xs text-emerald-400/80">
                       {editingSubId ? `Subcategory Record #${editingSubId} — Live Sanctum Worship Flow` : 'New Sacred Subcategory Record'}
@@ -5868,7 +5886,7 @@ export default function EnterpriseSuperAdminDashboard() {
                   {/* Language Selector in Edit Subcategory Mode */}
                   <div className="flex items-center gap-1.5 p-1 bg-[#061A13] border border-[#1E5C41] rounded-lg shadow-inner">
                     <Globe className="w-3.5 h-3.5 text-[#FFB300] ml-1.5" />
-                    <span className="text-[11px] font-bold text-gray-300 uppercase px-1">Lang:</span>
+                    <span className="text-[11px] font-bold text-gray-300 uppercase px-1">DB Lang:</span>
                     <div className="flex items-center gap-1 overflow-x-auto">
                       {languages.map(l => (
                         <button
@@ -5891,10 +5909,13 @@ export default function EnterpriseSuperAdminDashboard() {
 
                   <button 
                     type="button"
-                    onClick={() => setPageMode('LIST')}
+                    onClick={() => {
+                      setPageMode('LIST');
+                      setViewDetail(null);
+                    }}
                     className="px-4 py-2 bg-[#0D2E21] hover:bg-[#133F2E] border border-[#1E5C41] rounded-lg text-gray-200 font-semibold text-xs transition"
                   >
-                    Cancel
+                    Close
                   </button>
                   <button 
                     type="button"
@@ -5907,282 +5928,490 @@ export default function EnterpriseSuperAdminDashboard() {
                 </div>
               </div>
 
-              {/* 2-Column Grid: Left Edit Form & Right Live Devotional Reader Preview */}
+              {/* Exact View Detailed 2-Column Grid: Left Sacred Scroll Reader & Right Sanctum Console */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 
-                {/* LEFT: Sacred Input Form */}
-                <div className="lg:col-span-7 bg-[#082218] rounded-xl border border-[#1A4E38] p-6 shadow-xl space-y-5 text-xs">
-                  {/* Language Status Notice */}
-                  {editingSubId && !subFormTitle && (
-                    <div className="p-3 bg-amber-950/40 border border-amber-600/50 rounded-xl flex items-center gap-2 text-xs text-amber-200">
-                      <AlertCircle className="w-4 h-4 text-[#FFB300] flex-shrink-0" />
-                      <span>
-                        No <strong>{languages.find(l => l.code === selectedLang)?.name || selectedLang.toUpperCase()}</strong> translation exists in MariaDB yet. Enter title &amp; description below to create it directly in MySQL.
-                      </span>
+                {/* LEFT: Sacred Devotional Reader (Authentic Green & Gold Scroll) */}
+                <div className="lg:col-span-7 flex flex-col items-center">
+                  
+                  {/* TYPE TABS / SELECTOR: Allows toggling between All Sacred Types or viewing a specific Type */}
+                  {viewDetail?.contents && viewDetail.contents.length > 0 && (
+                    <div className="w-full mb-4 bg-[#082218] border border-[#1A4E38] rounded-xl p-3 shadow-lg space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-[#FFB300] uppercase tracking-wider flex items-center gap-1.5">
+                          <span>✨</span>
+                          <span>{subFormTitle || viewDetail.title} Types ({viewDetail.contents.length})</span>
+                        </span>
+                        <span className="text-[11px] text-emerald-400 font-mono">
+                          {activeViewTypeTab === 'all' 
+                            ? 'Showing: Complete Chanting Sequence' 
+                            : `Showing Type #${(typeof activeViewTypeTab === 'number' ? activeViewTypeTab : 0) + 1} of ${viewDetail.contents.length}`}
+                        </span>
+                      </div>
+
+                      {/* Interactive Horizontal Scrollable Type Cards */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                        <button
+                          type="button"
+                          onClick={() => setActiveViewTypeTab('all')}
+                          className={`p-2 rounded-lg text-left transition border flex flex-col justify-between gap-1 ${
+                            activeViewTypeTab === 'all'
+                              ? 'bg-[#FFB300] text-[#071C14] border-[#FFB300] font-bold shadow-md'
+                              : 'bg-[#061A13] text-gray-300 border-[#16422F] hover:border-[#FFB300]/50'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between w-full">
+                            <span className="text-[10px] font-mono uppercase">Full Flow</span>
+                            <span className="text-[9px] px-1 rounded bg-black/20">All</span>
+                          </div>
+                          <span className="truncate text-xs font-semibold">All {viewDetail.contents.length} Types</span>
+                        </button>
+
+                        {viewDetail.contents.map((step, idx) => (
+                          <button
+                            key={step.id || idx}
+                            type="button"
+                            onClick={() => setActiveViewTypeTab(idx)}
+                            className={`p-2 rounded-lg text-left transition border flex flex-col justify-between gap-1 ${
+                              activeViewTypeTab === idx
+                                ? 'bg-[#FFB300] text-[#071C14] border-[#FFB300] font-bold shadow-md'
+                                : 'bg-[#061A13] text-gray-300 border-[#16422F] hover:border-[#FFB300]/50'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between w-full">
+                              <span className="text-[10px] font-mono font-bold">#{idx + 1}</span>
+                              <span className="text-[9px] px-1 rounded bg-black/20">Type</span>
+                            </div>
+                            <span className="truncate text-xs font-semibold">{step.title}</span>
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   )}
 
-                  <div>
-                    <label className="block font-bold text-[#FFB300] uppercase tracking-wider mb-1.5">
-                      Select Parent Category (Hierarchy Target)
-                    </label>
-                    <select 
-                      value={subFormParentId}
-                      onChange={(e) => setSubFormParentId(Number(e.target.value))}
-                      className="w-full bg-[#061A13] border border-[#1E5C41] rounded-lg px-3 py-2 text-[#FEF08A] font-medium focus:outline-none focus:border-[#FFB300]"
-                    >
-                      <option value="">-- Choose Parent (e.g. Pooja Vidhanam, Divine Stotras, etc.) --</option>
-                      {parentLookupList.map(p => (
-                        <option key={p.id} value={p.id}>
-                          {p.parentId ? `└── [Sub-Level] ${p.title} (#${p.id})` : `[Main Category] ${p.title} (#${p.id})`}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block font-bold text-gray-300 uppercase mb-1">
-                        Subcategory Title ({selectedLang.toUpperCase()}) *
-                      </label>
-                      <input 
-                        type="text"
-                        value={subFormTitle}
-                        onChange={(e) => setSubFormTitle(e.target.value)}
-                        placeholder="e.g. శ్రీ సత్యనారాయణ స్వామి వ్రత కథ"
-                        className="w-full bg-[#061A13] border border-[#1E5C41] rounded-lg px-3 py-2 text-gray-100 focus:outline-none focus:border-[#FFB300]"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block font-bold text-gray-300 uppercase mb-1">
-                        URL Identifier (Slug) *
-                      </label>
-                      <input 
-                        type="text"
-                        value={subFormSlug}
-                        onChange={(e) => setSubFormSlug(e.target.value)}
-                        placeholder="e.g. satyanarayana-vratham"
-                        className="w-full bg-[#061A13] border border-[#1E5C41] rounded-lg px-3 py-2 text-[#FFB300] font-mono focus:outline-none focus:border-[#FFB300]"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Artwork Image Upload / Preview */}
-                  <div>
-                    <label className="block font-bold text-gray-300 uppercase mb-1">
-                      Subcategory Artwork / Image
-                    </label>
-                    <div className="p-4 bg-[#061A13] border border-[#1E5C41] rounded-xl flex flex-col sm:flex-row items-center gap-4">
-                      <div className="w-16 h-16 rounded-lg bg-[#071C14] border border-[#D4AF37]/50 overflow-hidden flex items-center justify-center flex-shrink-0">
-                        {subFormImageUrl ? (
-                          <img 
-                            src={subFormImageUrl.startsWith('http') || subFormImageUrl.startsWith('data:') ? subFormImageUrl : `${API_ORIGIN}${subFormImageUrl.startsWith('/') ? '' : '/'}${subFormImageUrl}`} 
-                            alt="Preview" 
-                            className="w-full h-full object-cover"
-                            onError={(e: any) => { e.currentTarget.style.display = 'none'; }}
-                          />
-                        ) : (
-                          <span className="text-xl">🪔</span>
-                        )}
-                      </div>
-                      <div className="flex-1 space-y-2 w-full">
-                        <div className="flex items-center gap-2">
-                          <label className="px-3 py-1.5 bg-[#0D2E21] hover:bg-[#133F2E] text-[#FFB300] rounded cursor-pointer border border-[#1E5C41] transition flex items-center gap-1.5 text-xs font-semibold">
-                            <Upload className="w-3.5 h-3.5" />
-                            <span>Upload Image File</span>
-                            <input type="file" accept="image/*" onChange={handleSubcategoryImageUpload} className="hidden" />
-                          </label>
-                          {subFormImageUrl && (
-                            <button
-                              type="button"
-                              onClick={() => setSubFormImageUrl('')}
-                              className="px-2 py-1 bg-red-950/40 text-red-400 hover:text-red-300 rounded text-xs border border-red-900/30"
-                            >
-                              Remove
-                            </button>
-                          )}
-                        </div>
-                        <input
-                          type="text"
-                          placeholder="Or paste artwork URL (e.g. /images/subcategories/pooja/ayyappa-pooja.webp)"
-                          value={subFormImageUrl}
-                          onChange={(e) => setSubFormImageUrl(e.target.value)}
-                          className="w-full bg-[#071C14] border border-[#1E5C41] rounded-md px-3 py-1.5 text-xs text-gray-300 font-mono placeholder-gray-600 focus:outline-none focus:border-[#FFB300]"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block font-bold text-gray-300 uppercase mb-1 flex items-center justify-between">
-                      <span>Sacred Notes / Procedure Description / Full Song Lyrics</span>
-                      <span className="text-[#FFB300] font-mono text-[10px]">Rich Text Mode</span>
-                    </label>
-                    <RichTextEditor
-                      value={subFormDescription}
-                      onChange={(val) => setSubFormDescription(val)}
-                      placeholder="Enter full step-by-step procedure, sankalpam, or chapter text..."
-                      minHeight="180px"
-                      hideTemplateBtn={true}
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between gap-3 pt-4 border-t border-[#1E5C41]">
-                    <button 
-                      type="button"
-                      onClick={() => openTranslationModal('categories', editingSubId || undefined, [
-                        { key: 'title', label: 'Subcategory Title', value: subFormTitle },
-                        { key: 'description', label: 'Sacred Notes', value: subFormDescription, isHtml: true }
-                      ], (trans, lang) => {
-                        if (trans.title) setSubFormTitle(trans.title);
-                        if (trans.description) setSubFormDescription(trans.description);
-                        if (lang) setSelectedLang(lang);
-                      })}
-                      className="bg-[#FFB300]/15 hover:bg-[#FFB300]/25 text-[#FFB300] border border-[#FFB300]/40 px-3.5 py-2 rounded-lg text-xs font-semibold transition flex items-center gap-1.5"
-                    >
-                      <Sparkles className="w-3.5 h-3.5 text-[#FFB300]" />
-                      <span>✨ Translate (v3)</span>
-                    </button>
-
-                    <div className="flex items-center gap-2">
-                      <button 
-                        type="button"
-                        onClick={() => setPageMode('LIST')}
-                        className="px-4 py-2 bg-[#0D2E21] hover:bg-[#133F2E] border border-[#1E5C41] rounded-lg text-gray-200 text-xs font-semibold transition"
-                      >
-                        Cancel
-                      </button>
-                      <button 
-                        type="button"
-                        onClick={handleSaveSubcategory}
-                        className="bg-[#FFB300] hover:bg-[#FFA000] text-[#071C14] px-5 py-2 rounded-lg text-xs font-bold transition shadow-lg shadow-amber-500/20"
-                      >
-                        Save Subcategory to MySQL
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* RIGHT: Live Sanctum Devotional Reader & Specs Preview */}
-                <div className="lg:col-span-5 space-y-5">
-                  <div className="flex items-center justify-between px-1 text-xs">
+                  <div className="w-full flex items-center justify-between mb-3 px-1 text-xs">
                     <span className="font-bold text-[#FFB300] uppercase tracking-wider flex items-center gap-1.5">
                       <span>📜</span>
-                      <span>Live Devotional Reader Preview</span>
+                      <span>Devotional Reader View</span>
+                      <span className="px-1.5 py-0.5 rounded bg-[#061A13] border border-[#16422F] text-[#FEF08A] font-mono text-[10px]">
+                        {languages.find(l => l.code === selectedLang)?.name || selectedLang.toUpperCase()}
+                      </span>
                     </span>
-                    <span className="text-[11px] text-emerald-400 font-mono">Real-time Mobile Card</span>
+                    <span className="text-[11px] text-emerald-400/90 font-mono">
+                      {viewDetail?.contents && viewDetail.contents.length > 0
+                        ? activeViewTypeTab === 'all'
+                          ? `${viewDetail.contents.length} Ordered Steps`
+                          : `Type #${(typeof activeViewTypeTab === 'number' ? activeViewTypeTab : 0) + 1} / ${viewDetail.contents.length}`
+                        : 'Single Sacred Composition'}
+                    </span>
                   </div>
 
                   {/* Sacred Scroll Outer Container */}
-                  <div className="w-full rounded-2xl overflow-hidden border-2 border-[#D4AF37]/60 shadow-[0_12px_45px_rgba(0,0,0,0.6),0_0_25px_rgba(212,175,55,0.15)] bg-[#071F17]">
+                  <div className="w-full max-w-lg rounded-2xl overflow-hidden border-2 border-[#D4AF37]/60 shadow-[0_12px_45px_rgba(0,0,0,0.6),0_0_25px_rgba(212,175,55,0.15)] bg-[#071F17]">
                     
                     {/* Top Sanctum Header */}
-                    <div className="bg-[#0A2A1E] text-[#FFB300] border-b border-[#1E5C41] px-4 py-2.5 flex items-center justify-between shadow">
-                      <div className="flex items-center gap-2 truncate">
+                    <div className="bg-[#0A2A1E] text-[#FFB300] border-b border-[#1E5C41] px-5 py-3 flex items-center justify-between shadow">
+                      <div className="flex items-center gap-2">
                         <span className="text-base">🪔</span>
-                        <span className="font-bold text-xs tracking-wide text-[#FFB300] truncate">
-                          {subFormTitle || 'Subcategory Title'}
+                        <span className="font-bold text-sm tracking-wide text-[#FFB300] truncate max-w-xs">
+                          {activeViewTypeTab !== 'all' && typeof activeViewTypeTab === 'number' && viewDetail?.contents?.[activeViewTypeTab]
+                            ? viewDetail.contents[activeViewTypeTab].title
+                            : (subFormTitle || viewDetail?.title || 'Subcategory')}
                         </span>
                       </div>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#071C14] border border-[#1E5C41] text-emerald-400">
-                        /{subFormSlug || 'slug'}
+                      <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-[#071C14] border border-[#1E5C41] text-emerald-400">
+                        /{activeViewTypeTab !== 'all' && typeof activeViewTypeTab === 'number' && (viewDetail?.contents?.[activeViewTypeTab] as any)?.slug
+                          ? (viewDetail?.contents?.[activeViewTypeTab] as any).slug
+                          : (subFormSlug || viewDetail?.slug || 'slug')}
                       </span>
                     </div>
 
-                    {/* Scroll Canvas with Sanctum Green & Divine Gold */}
-                    <div className="bg-gradient-to-b from-[#082218] via-[#0A291E] to-[#071D15] p-5 text-center text-xs leading-relaxed max-h-[500px] overflow-y-auto space-y-4">
+                    {/* Scroll Canvas with Sanctum Green & Divine Gold Typography */}
+                    <div className="bg-gradient-to-b from-[#082218] via-[#0A291E] to-[#071D15] p-6 text-center text-xs leading-relaxed max-h-[760px] overflow-y-auto space-y-5">
                       
                       {/* Top Sacred Arch Motif in Gold */}
-                      <div className="flex justify-center pt-1">
-                        <svg className="w-12 h-6 text-[#FFB300] opacity-80" viewBox="0 0 100 40" fill="currentColor">
+                      <div className="flex justify-center pt-2">
+                        <svg className="w-16 h-8 text-[#FFB300] opacity-80" viewBox="0 0 100 40" fill="currentColor">
                           <path d="M50 0 C40 15, 20 20, 0 20 C20 25, 45 35, 50 40 C55 35, 80 25, 100 20 C80 20, 60 15, 50 0 Z"></path>
                         </svg>
                       </div>
 
                       {/* Invocations */}
-                      <div className="space-y-0.5 text-xs font-semibold text-[#FDE68A]">
+                      <div className="space-y-1 text-sm font-semibold text-[#FDE68A]">
                         <p>śrī mahāgaṇādhipatayē namaḥ</p>
                         <p>śrī gurubhyō namaḥ</p>
                         <p className="font-bold text-[#FFB300]">hariḥ ōṁ</p>
                       </div>
 
-                      <div className="border-b border-dotted border-[#D4AF37]/40 w-3/4 mx-auto my-2"></div>
+                      <div className="border-b border-dotted border-[#D4AF37]/40 w-3/4 mx-auto my-3"></div>
 
-                      {/* Subcategory Title */}
-                      <h4 className="text-sm font-bold text-[#FFB300] tracking-wide">
-                        {subFormTitle || 'శ్రీ అయ్యప్ప స్వామి పూజ / భజన'}
-                      </h4>
-
-                      {/* Description / Sacred Notes Live Display */}
-                      {subFormDescription ? (
-                        <div 
-                          className="p-3 bg-[#061A13]/90 rounded-xl border border-[#1B563D] text-left text-xs font-serif leading-relaxed text-[#FEF08A] whitespace-pre-wrap max-h-60 overflow-y-auto"
-                          dangerouslySetInnerHTML={{ __html: subFormDescription }}
+                      {/* Editable Sacred Notes & Full Lyrics Area */}
+                      <div className="p-3.5 bg-[#061A13]/90 rounded-xl border border-[#1B563D] text-left max-w-md mx-auto space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold uppercase text-[#FFB300] tracking-wider block">
+                            Sacred Notes / Procedure Description / Full Lyrics
+                          </span>
+                          <span className="text-[9px] text-emerald-400 font-mono">Editable</span>
+                        </div>
+                        <RichTextEditor
+                          value={subFormDescription}
+                          onChange={(val) => setSubFormDescription(val)}
+                          placeholder="Enter full step-by-step procedure, sankalpam, or chapter text..."
+                          minHeight="140px"
+                          hideTemplateBtn={true}
                         />
-                      ) : (
-                        <p className="text-[11px] italic text-emerald-400/60 p-3 bg-[#061A13]/50 rounded-xl border border-dashed border-[#1B563D]">
-                          Enter Sacred Notes or Procedure Description on the left to see live preview here...
-                        </p>
+                      </div>
+
+                      {/* Attached Devotional Types / Verses (Full Flow Chanting Sequence) */}
+                      {viewDetail?.contents && viewDetail.contents.length > 0 && (
+                        <div className="space-y-6 pt-2">
+                          {(activeViewTypeTab === 'all' 
+                            ? viewDetail.contents 
+                            : [viewDetail.contents[typeof activeViewTypeTab === 'number' ? activeViewTypeTab : 0]]
+                          ).map((v, idx) => (
+                            <div key={v.id || idx} className="space-y-2.5">
+                              <h4 className="text-sm font-bold text-[#FFB300] tracking-wide uppercase flex items-center justify-center gap-1.5">
+                                <span>{v.title}</span>
+                              </h4>
+
+                              {v.sacredText && (
+                                <div className="text-sm font-bold text-[#FEF08A] font-serif leading-relaxed whitespace-pre-wrap max-w-md mx-auto py-1">
+                                  {v.sacredText}
+                                </div>
+                              )}
+
+                              {v.meaning && (
+                                <div className="text-xs italic text-[#A7F3D0] bg-[#061A13]/90 border border-[#1B563D] p-2.5 rounded-lg max-w-md mx-auto text-center leading-relaxed">
+                                  {v.meaning}
+                                </div>
+                              )}
+
+                              {activeViewTypeTab === 'all' && idx < (viewDetail?.contents?.length || 0) - 1 && (
+                                <div className="border-b border-dotted border-[#D4AF37]/35 w-3/4 mx-auto pt-4"></div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
                       )}
 
                       {/* Bottom Sacred Lotus Filigree Finish */}
-                      <div className="flex justify-center pt-2">
-                        <svg className="w-12 h-6 text-[#FFB300] opacity-80 transform rotate-180" viewBox="0 0 100 40" fill="currentColor">
+                      <div className="flex justify-center pt-4">
+                        <svg className="w-16 h-8 text-[#FFB300] opacity-80 transform rotate-180" viewBox="0 0 100 40" fill="currentColor">
                           <path d="M50 0 C40 15, 20 20, 0 20 C20 25, 45 35, 50 40 C55 35, 80 25, 100 20 C80 20, 60 15, 50 0 Z"></path>
                         </svg>
                       </div>
+
                     </div>
                   </div>
+                </div>
 
-                  {/* Specifications Card */}
-                  <div className="bg-[#082219] border border-[#1A4E38] rounded-xl p-4 shadow-xl space-y-3">
-                    <div className="flex items-center justify-between pb-2 border-b border-[#16422F]">
-                      <h4 className="text-xs font-bold text-[#FFB300] flex items-center gap-1.5">
-                        <Database className="w-3.5 h-3.5 text-[#FFB300]" />
-                        <span>Subcategory Attributes</span>
-                      </h4>
-                      <span className="text-[10px] text-[#FFB300] font-mono font-bold bg-[#061A13] px-2 py-0.5 rounded border border-[#16422F]">
-                        {editingSubId ? `Editing #${editingSubId}` : 'New Record'}
+                {/* RIGHT: Sanctum Specifications & 4-Cards Console */}
+                <div className="lg:col-span-5 space-y-5">
+                  
+                  {/* Card 1: Sanctum Specifications */}
+                  <div className="bg-[#082219] border border-[#1A4E38] rounded-xl p-5 shadow-xl space-y-4">
+                    <div className="flex items-center justify-between pb-3 border-b border-[#16422F]">
+                      <h3 className="text-sm font-bold text-[#FFB300] flex items-center gap-2">
+                        <Database className="w-4 h-4 text-[#FFB300]" />
+                        <span>Sanctum Specifications</span>
+                      </h3>
+                      <span className="text-xs text-[#FFB300] font-mono font-bold bg-[#061A13] px-2 py-0.5 rounded border border-[#16422F]">
+                        ID: #{editingSubId || 'New'}
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2.5 text-xs">
-                      <div className="bg-[#061A13] p-2.5 rounded-lg border border-[#16422F]">
-                        <span className="text-[9px] text-gray-400 uppercase block font-semibold">Hierarchy Target</span>
-                        <span className="text-[#FEF08A] font-medium truncate block">
-                          {(() => {
-                            const found = parentLookupList.find(p => Number(p.id) === Number(subFormParentId));
-                            return found ? found.title : 'Not Selected';
-                          })()}
-                        </span>
+                    <div className="space-y-3 text-xs">
+                      {/* Parent Category & Total Steps */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-[#061A13] p-3 rounded-lg border border-[#16422F]">
+                          <label className="text-[10px] text-gray-400 uppercase block font-semibold mb-1">Parent Category *</label>
+                          <select 
+                            value={subFormParentId}
+                            onChange={(e) => setSubFormParentId(Number(e.target.value))}
+                            className="w-full bg-[#071C14] border border-[#1E5C41] rounded px-2.5 py-1.5 text-xs text-[#FEF08A] font-medium focus:outline-none focus:border-[#FFB300]"
+                          >
+                            <option value="">-- Choose Parent --</option>
+                            {parentLookupList.map(p => (
+                              <option key={p.id} value={p.id}>
+                                {p.parentId ? `└── ${p.title}` : p.title}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="bg-[#061A13] p-3 rounded-lg border border-[#16422F]">
+                          <span className="text-[10px] text-gray-400 uppercase block font-semibold mb-1">Total Steps / Types</span>
+                          <span className="text-[#FFB300] font-bold text-xs block pt-1.5">
+                            {viewDetail?.contents?.length || 0} Sacred Steps
+                          </span>
+                        </div>
                       </div>
-                      <div className="bg-[#061A13] p-2.5 rounded-lg border border-[#16422F]">
-                        <span className="text-[9px] text-gray-400 uppercase block font-semibold">URL Identifier</span>
-                        <span className="text-[#FFB300] font-mono truncate block">/{subFormSlug || 'slug'}</span>
-                      </div>
-                    </div>
 
-                    {/* Artwork Preview if entered */}
-                    {subFormImageUrl && (
-                      <div className="bg-[#061A13] border border-[#16422F] rounded-lg p-2.5 flex items-center gap-2.5">
-                        <div className="w-10 h-10 rounded-lg overflow-hidden border border-[#D4AF37]/50 flex-shrink-0 bg-neutral-900 flex items-center justify-center">
-                          <img
-                            src={subFormImageUrl.startsWith('http') || subFormImageUrl.startsWith('data:') 
-                              ? subFormImageUrl 
-                              : `${API_ORIGIN}${subFormImageUrl.startsWith('/') ? '' : '/'}${subFormImageUrl}`}
-                            alt="Sanctum Artwork"
-                            className="w-full h-full object-cover"
-                            onError={(e: any) => { e.currentTarget.style.display = 'none'; }}
+                      {/* Subcategory Title & URL Identifier */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-[#061A13] p-3 rounded-lg border border-[#16422F]">
+                          <label className="text-[10px] text-gray-400 uppercase block font-semibold mb-1">
+                            Title ({selectedLang.toUpperCase()}) *
+                          </label>
+                          <input 
+                            type="text"
+                            value={subFormTitle}
+                            onChange={(e) => setSubFormTitle(e.target.value)}
+                            placeholder="e.g. Ayyappa Pooja Vidhanam"
+                            className="w-full bg-[#071C14] border border-[#1E5C41] rounded px-2.5 py-1.5 text-xs text-gray-100 font-semibold focus:outline-none focus:border-[#FFB300]"
                           />
                         </div>
-                        <div className="min-w-0">
-                          <span className="text-[9px] uppercase font-bold text-gray-400 tracking-wider">Sanctum Artwork</span>
-                          <p className="text-[10px] text-gray-400 font-mono truncate">{subFormImageUrl}</p>
+                        <div className="bg-[#061A13] p-3 rounded-lg border border-[#16422F]">
+                          <label className="text-[10px] text-gray-400 uppercase block font-semibold mb-1">
+                            URL Identifier *
+                          </label>
+                          <input 
+                            type="text"
+                            value={subFormSlug}
+                            onChange={(e) => setSubFormSlug(e.target.value)}
+                            placeholder="ayyappa-padi-pooja"
+                            className="w-full bg-[#071C14] border border-[#1E5C41] rounded px-2.5 py-1.5 text-xs text-[#FFB300] font-mono focus:outline-none focus:border-[#FFB300]"
+                          />
                         </div>
+                      </div>
+
+                      {/* Sanctum Artwork */}
+                      <div className="bg-[#061A13] border border-[#16422F] rounded-lg p-3 flex flex-col sm:flex-row items-center gap-3">
+                        <div className="w-14 h-14 rounded-lg overflow-hidden border border-[#D4AF37]/50 flex-shrink-0 bg-neutral-900 flex items-center justify-center">
+                          {subFormImageUrl ? (
+                            <img
+                              src={subFormImageUrl.startsWith('http') || subFormImageUrl.startsWith('data:') 
+                                ? subFormImageUrl 
+                                : `${API_ORIGIN}${subFormImageUrl.startsWith('/') ? '' : '/'}${subFormImageUrl}`}
+                              alt={subFormTitle}
+                              className="w-full h-full object-cover"
+                              onError={(e: any) => { e.currentTarget.style.display = 'none'; }}
+                            />
+                          ) : (
+                            <span className="text-xl">🪔</span>
+                          )}
+                        </div>
+                        <div className="flex-1 w-full space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Sanctum Artwork</span>
+                            <div className="flex items-center gap-1.5">
+                              <label className="px-2 py-0.5 bg-[#0D2E21] hover:bg-[#133F2E] text-[#FFB300] rounded cursor-pointer border border-[#1E5C41] text-[10px] font-semibold flex items-center gap-1">
+                                <Upload className="w-3 h-3" />
+                                <span>Upload</span>
+                                <input type="file" accept="image/*" onChange={handleSubcategoryImageUpload} className="hidden" />
+                              </label>
+                              {subFormImageUrl && (
+                                <button
+                                  type="button"
+                                  onClick={() => setSubFormImageUrl('')}
+                                  className="px-1.5 py-0.5 bg-red-950/40 text-red-400 hover:text-red-300 rounded text-[10px] border border-red-900/30"
+                                >
+                                  Clear
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                          <input
+                            type="text"
+                            placeholder="Artwork URL"
+                            value={subFormImageUrl}
+                            onChange={(e) => setSubFormImageUrl(e.target.value)}
+                            className="w-full bg-[#071C14] border border-[#1E5C41] rounded px-2 py-1 text-[11px] text-gray-300 font-mono placeholder-gray-600 focus:outline-none focus:border-[#FFB300]"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Card Bottom Actions */}
+                      <div className="pt-2 flex items-center justify-between gap-2 border-t border-[#16422F]">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPageMode('LIST');
+                            setViewDetail(null);
+                          }}
+                          className="px-3.5 py-1.5 bg-[#0D2E21] hover:bg-[#133F2E] border border-[#1E5C41] rounded-lg text-gray-200 text-xs font-semibold transition"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleSaveSubcategory}
+                          className="px-4 py-1.5 bg-[#FFB300] hover:bg-[#FFA000] text-[#071C14] rounded-lg text-xs font-bold transition shadow-lg shadow-amber-500/20 flex items-center gap-1.5"
+                        >
+                          <Save className="w-3.5 h-3.5" />
+                          <span>Save Subcategory to MySQL</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card 2: Database Multi-Language Translations */}
+                  <div className="bg-[#082219] border border-[#1A4E38] rounded-xl p-5 shadow-xl space-y-3">
+                    <div className="flex items-center justify-between pb-2 border-b border-[#16422F]">
+                      <span className="text-xs font-bold text-[#FFB300] uppercase tracking-wide">
+                        Database Multi-Language Translations ({viewDetail?.translations?.length || 0})
+                      </span>
+                      <button 
+                        type="button"
+                        onClick={() => openTranslationModal('categories', editingSubId || undefined, [
+                          { key: 'title', label: 'Subcategory Title', value: subFormTitle },
+                          { key: 'description', label: 'Sacred Notes', value: subFormDescription, isHtml: true }
+                        ], (trans, lang) => {
+                          if (trans.title) setSubFormTitle(trans.title);
+                          if (trans.description) setSubFormDescription(trans.description);
+                          if (lang) setSelectedLang(lang);
+                        })}
+                        className="bg-[#FFB300]/15 hover:bg-[#FFB300]/25 text-[#FFB300] border border-[#FFB300]/40 px-2.5 py-1 rounded text-[11px] font-semibold transition flex items-center gap-1"
+                      >
+                        <Sparkles className="w-3 h-3 text-[#FFB300]" />
+                        <span>✨ Translate (v3)</span>
+                      </button>
+                    </div>
+
+                    {viewDetail?.translations && viewDetail.translations.length > 0 ? (
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        {viewDetail.translations.map((tr) => (
+                          <div 
+                            key={tr.code} 
+                            onClick={() => handleEditSubcategoryChangeLang(tr.code)}
+                            className={`p-2.5 rounded-lg border space-y-0.5 cursor-pointer transition ${
+                              selectedLang === tr.code
+                                ? 'bg-[#0A3324] border-[#FFB300]'
+                                : 'bg-[#061A13] border-[#16422F] hover:border-[#FFB300]/50'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-[#FFB300] uppercase text-[10px]">{tr.name || tr.code}</span>
+                              <span className="font-mono text-gray-500 text-[9px]">{tr.code}</span>
+                            </div>
+                            <div className="font-semibold text-gray-200 text-xs truncate">{tr.title}</div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="p-3 bg-[#061A13] rounded-lg border border-[#16422F] text-center text-xs text-gray-400">
+                        No translations in DB yet. Click &quot;✨ Translate (v3)&quot; above to translate.
                       </div>
                     )}
                   </div>
+
+                  {/* Card 3: Subcategory Types & Stotras 4-Card Grid (Exact match with View Detailed) */}
+                  {viewDetail?.contents && viewDetail.contents.length > 0 && (
+                    <div className="bg-[#082219] border border-[#1A4E38] rounded-xl p-5 shadow-xl space-y-3">
+                      <div className="flex items-center justify-between pb-2 border-b border-[#16422F]">
+                        <span className="text-xs font-bold text-[#FFB300] uppercase tracking-wide flex items-center gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5 text-[#FFB300]" />
+                          <span>{subFormTitle || viewDetail.title} Types &amp; Stotras ({viewDetail.contents.length})</span>
+                        </span>
+                        <span className="text-[10px] text-emerald-400 font-mono">Select card to view detail</span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                        {viewDetail.contents.map((typeItem, tIdx) => {
+                          const isSelected = activeViewTypeTab === tIdx;
+                          return (
+                            <div
+                              key={typeItem.id || tIdx}
+                              onClick={() => setActiveViewTypeTab(tIdx)}
+                              className={`rounded-xl border p-3.5 cursor-pointer transition-all transform hover:-translate-y-0.5 shadow-md flex flex-col justify-between gap-3 ${
+                                isSelected
+                                  ? 'bg-[#0A3324] border-[#FFB300] shadow-[0_0_15px_rgba(255,179,0,0.2)]'
+                                  : 'bg-[#061A13] border-[#16422F] hover:border-[#FFB300]/60'
+                              }`}
+                            >
+                              <div>
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="px-1.5 py-0.5 rounded bg-[#FFB300] text-[#071C14] text-[10px] font-black font-mono">
+                                    #{tIdx + 1}
+                                  </span>
+                                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-[#0E2F23] border border-[#16422F] text-amber-300 font-medium">
+                                    Devotional Type
+                                  </span>
+                                </div>
+                                <h4 className="font-bold text-xs text-gray-100 line-clamp-1">
+                                  {typeItem.title}
+                                </h4>
+                                <p className="text-[11px] text-gray-400 line-clamp-2 mt-1 leading-snug">
+                                  {typeItem.meaning || typeItem.sacredText || 'Sacred devotional recitation.'}
+                                </p>
+                              </div>
+
+                              <div className="pt-2 border-t border-[#16422F]/60 flex items-center justify-between text-[11px]">
+                                <span className={`font-semibold ${isSelected ? 'text-[#FFB300]' : 'text-emerald-400'}`}>
+                                  {isSelected ? '✓ Viewing' : 'View Detail'}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenEditType(typeItem as any);
+                                  }}
+                                  className="px-2 py-0.5 bg-[#0E2F23] hover:bg-[#154634] text-[#FFB300] rounded text-[10px] font-bold border border-[#1E5C41] flex items-center gap-1"
+                                >
+                                  <Edit3 className="w-3 h-3" />
+                                  <span>Edit</span>
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Card 4: Chanting Sequence & Steps (Ordered) */}
+                  <div className="bg-[#082219] border border-[#1A4E38] rounded-xl p-5 shadow-xl space-y-3">
+                    <div className="flex items-center justify-between pb-2 border-b border-[#16422F]">
+                      <span className="text-xs font-bold text-gray-200 uppercase tracking-wide">
+                        Chanting Sequence &amp; Steps
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleOpenCreateType(editingSubId || viewDetail?.id)}
+                        className="px-2.5 py-1 bg-[#FFB300] hover:bg-[#FFA000] text-[#071C14] rounded-lg text-xs font-bold transition flex items-center gap-1 shadow"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Add Step</span>
+                      </button>
+                    </div>
+
+                    {viewDetail?.contents && viewDetail.contents.length > 0 ? (
+                      <div className="space-y-2 max-h-[380px] overflow-y-auto pr-1 text-xs">
+                        {viewDetail.contents.map((step, idx) => (
+                          <div 
+                            key={step.id || idx} 
+                            className="bg-[#061A13] p-3 rounded-lg border border-[#16422F] hover:border-[#FFB300]/40 transition flex items-center justify-between gap-3 group"
+                          >
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono text-[#FFB300] font-bold text-[10px]">#{idx + 1}</span>
+                                <span className="font-semibold text-gray-100 truncate">{step.title}</span>
+                              </div>
+                              {step.sacredText && (
+                                <p className="text-gray-400 text-[11px] truncate mt-0.5">{step.sacredText}</p>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditType(step as any)}
+                                className="p-1.5 hover:bg-[#0E2F23] rounded text-[#FFB300] transition"
+                                title="Edit this Step / Verse"
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="p-6 text-center text-xs text-gray-400 bg-[#061A13] rounded-lg border border-[#16422F]">
+                        <BookOpen className="w-6 h-6 mx-auto mb-2 text-[#FFB300] opacity-60" />
+                        <p className="font-semibold text-gray-300">No subcategory types / verses attached yet.</p>
+                        <p className="text-[11px] text-gray-400 mt-1">Click &quot;+ Add Step&quot; above to create worship steps and recitations under this subcategory.</p>
+                      </div>
+                    )}
+                  </div>
+
                 </div>
               </div>
             </div>
