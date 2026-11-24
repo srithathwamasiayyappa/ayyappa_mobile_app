@@ -203,7 +203,6 @@ export const ChooseDeityScreen: React.FC<ChooseDeityScreenProps> = ({
       <View style={styles.logoContainer}>
         <Image
           source={getLogoSource(SARANAM_DEITY_EMBLEM)}
-          defaultSource={SARANAM_DEITY_EMBLEM}
           onError={onLogoError}
           style={styles.logoImage}
           resizeMode="contain"

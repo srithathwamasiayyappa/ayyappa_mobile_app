@@ -958,7 +958,7 @@ export const AuthScreen: React.FC<Props> = ({
                       <TextInput
                         style={styles.phoneTextInput}
                         placeholder={t.fullNamePlaceholder || 'Full Name'}
-                        placeholderTextColor="#8A7B6B"
+                        placeholderTextColor="#7C8B82"
                         value={regName}
                         onChangeText={(val) => {
                           if (inputErrors.name) setInputErrors((prev) => ({ ...prev, name: false }));
@@ -982,7 +982,7 @@ export const AuthScreen: React.FC<Props> = ({
                     <TextInput
                       style={styles.phoneTextInput}
                       placeholder={t.mobilePlaceholder || 'Enter Mobile Number'}
-                      placeholderTextColor="#8A7B6B"
+                      placeholderTextColor="#7C8B82"
                       keyboardType="phone-pad"
                       maxLength={10}
                       value={currentStep === 'REGISTER' ? regPhone : loginPhone}
@@ -1555,11 +1555,13 @@ const styles = StyleSheet.create({
   },
   phoneTextInput: {
     flex: 1,
-    height: '100%',
-    fontFamily: Platform.select({ ios: 'Poppins-Bold', android: 'Poppins_700Bold', default: 'Poppins_700Bold' }),
-    fontSize: 13.5,
+    height: 44,
+    fontFamily: Platform.select({ ios: 'Poppins-Regular', android: 'Poppins_400Regular', default: 'Poppins_400Regular' }),
+    fontSize: 14,
     color: '#173D32',
     paddingVertical: 0,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
 
   // Consent Row (for REGISTER)

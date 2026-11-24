@@ -132,6 +132,23 @@ const DEITY_FILTERS = [
   { id: 'krishna', label: { en: 'Krishna', te: 'కృష్ణ', kn: 'ಕೃಷ್ಣ', ta: 'கிருஷ்ணன்', hi: 'कृष्ण', ml: 'കൃഷ്ണൻ' } },
 ];
 
+import { resolveMediaUrl } from '../../../services/api';
+
+const TempleItemThumbnail: React.FC<{ item: TempleItem }> = ({ item }) => {
+  const imgUrl = resolveMediaUrl(item.thumbnailUrl || item.heroImageUrl);
+  return (
+    <View style={styles.thumbnailContainer}>
+      {imgUrl ? (
+        <Image
+          source={{ uri: imgUrl }}
+          style={styles.thumbnailImageCrop}
+          resizeMode="cover"
+        />
+      ) : null}
+    </View>
+  );
+};
+
 export const TemplesListScreen: React.FC<Props> = ({
   currentLanguage,
   currentDeity,
@@ -184,34 +201,9 @@ export const TemplesListScreen: React.FC<Props> = ({
     setSelectedDeity('all');
   }, []);
 
-  // Thumbnail crop offsets from temples_list_ref.png or remote thumbnailUrl
+  // Thumbnail crop offsets from temples_list_ref.png or remote thumbnailUrl with automatic error fallback
   const renderThumbnail = (item: TempleItem) => {
-    if (item.thumbnailUrl) {
-      return (
-        <View style={styles.thumbnailContainer}>
-          <Image
-            source={{ uri: item.thumbnailUrl }}
-            style={styles.thumbnailImageCrop}
-            resizeMode="cover"
-            defaultSource={require('../../../../assets/temples_list_ref.png')}
-          />
-        </View>
-      );
-    }
-
-    const cropIdx = item.cropIndex ?? 0;
-    const cropOffsets = [-142, -215, -288, -360, -433];
-    const topOffset = cropOffsets[cropIdx % cropOffsets.length];
-
-    return (
-      <View style={styles.thumbnailContainer}>
-        <Image
-          source={require('../../../../assets/temples_list_ref.png')}
-          style={[styles.thumbnailImageCrop, { top: topOffset }]}
-          resizeMode="cover"
-        />
-      </View>
-    );
+    return <TempleItemThumbnail item={item} />;
   };
 
   const renderTempleCard = ({ item }: { item: TempleItem }) => {
@@ -280,10 +272,10 @@ export const TemplesListScreen: React.FC<Props> = ({
           </View>
 
           {/* Corner Filigrees */}
-          <View style={styles.headerRightOrnament}>
+          <View style={styles.headerRightOrnament} pointerEvents="none">
             <HeaderCornerFiligree flipped />
           </View>
-          <View style={styles.filigreeTopLeft}>
+          <View style={styles.filigreeTopLeft} pointerEvents="none">
             <HeaderCornerFiligree />
           </View>
         </SafeAreaView>
@@ -434,11 +426,12 @@ const styles = StyleSheet.create({
   headerBackButton: {
     position: 'absolute',
     left: 14,
-    zIndex: 20,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    zIndex: 999,
+    elevation: 8,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.18)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -575,10 +568,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#F0E0CB',
   },
   thumbnailImageCrop: {
-    width: 82,
-    height: 580,
-    position: 'absolute',
-    left: 0,
+    width: '100%',
+    height: '100%',
   },
   cardCenterInfo: {
     flex: 1,

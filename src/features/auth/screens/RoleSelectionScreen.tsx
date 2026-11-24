@@ -10,6 +10,7 @@ import {
   StatusBar,
   SafeAreaView,
   ImageBackground,
+  ScrollView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle } from 'react-native-svg';
@@ -130,8 +131,10 @@ export const RoleSelectionScreen: React.FC<RoleSelectionScreenProps> = ({
   const [selectedRole, setSelectedRole] = useState<UserRole>(initialRole);
 
   useEffect(() => {
-    // Instant cache warming for zero-latency image display
-    Asset.loadAsync([ROLE_BG, ROLE_DEVOTEE, ROLE_DHARMA_KARTHA, SARANAM_DEITY_EMBLEM]).catch(() => {});
+    try {
+      // Instant cache warming for zero-latency image display
+      Asset.loadAsync([ROLE_BG, ROLE_DEVOTEE, ROLE_DHARMA_KARTHA, SARANAM_DEITY_EMBLEM]).catch(() => {});
+    } catch {}
   }, []);
 
   const handleCardPress = (role: UserRole) => {
@@ -169,14 +172,17 @@ export const RoleSelectionScreen: React.FC<RoleSelectionScreenProps> = ({
         </View>
       </SafeAreaView>
 
-      {/* Main Fixed Screen Container */}
-      <View style={styles.mainContentContainer}>
+      {/* Main Scrollable Screen Container */}
+      <ScrollView
+        contentContainerStyle={styles.mainContentContainer}
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+      >
         {/* ================= TOP BRANDING AREA ================= */}
         <View style={styles.brandingSection}>
           {/* Official Saranam Ayyappa Deity Emblem Badge */}
           <Image
             source={getLogoSource(SARANAM_DEITY_EMBLEM)}
-            defaultSource={SARANAM_DEITY_EMBLEM}
             onError={onLogoError}
             style={styles.logoImage}
             resizeMode="contain"
@@ -184,13 +190,13 @@ export const RoleSelectionScreen: React.FC<RoleSelectionScreenProps> = ({
           />
 
           {/* Brand Name */}
-          <Text style={styles.brandTitle}>{branding.title}</Text>
+          <Text style={styles.brandTitle}>{branding?.title || 'Thathwamasi Ayyappa'}</Text>
 
           {/* Symmetrical Sacred Lotus Divider in Radiant Gold */}
           <BrandLotusDivider />
 
           {/* Tagline */}
-          <Text style={styles.taglineText}>{branding.tagline}</Text>
+          <Text style={styles.taglineText}>{branding?.tagline || 'Connect.. Pray.. Serve..'}</Text>
         </View>
 
         {/* ================= MAIN IVORY ROLE SELECTION PANEL ================= */}
@@ -337,7 +343,7 @@ export const RoleSelectionScreen: React.FC<RoleSelectionScreenProps> = ({
             </TouchableOpacity>
           </LinearGradient>
         </View>
-      </View>
+      </ScrollView>
     </ImageBackground>
   );
 };
@@ -387,7 +393,7 @@ const styles = StyleSheet.create({
 
   // Main Fixed Container
   mainContentContainer: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingBottom: Platform.OS === 'ios' ? (SCREEN_HEIGHT < 700 ? 16 : 24) : (SCREEN_HEIGHT < 700 ? 10 : 18),

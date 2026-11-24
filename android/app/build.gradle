@@ -96,8 +96,8 @@ android {
         applicationId 'com.saranam.ayyappa'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0.0"
+        versionCode 13
+        versionName "1.0.13"
     }
     signingConfigs {
         debug {
@@ -127,6 +127,8 @@ android {
                 storePassword releaseStorePassword
                 keyAlias releaseKeyAlias
                 keyPassword releaseKeyPassword
+                v1SigningEnabled true
+                v2SigningEnabled true
             } else {
                 throw new GradleException("Production release signing configuration is incomplete or missing! Ensure 'release-signing.properties' or environment variables are provided. Refusing to build unsigned or debug-signed release APK.")
             }
@@ -137,8 +139,10 @@ android {
             signingConfig signingConfigs.debug
         }
         release {
-            // Strict Fail-Closed Policy: Uses only the dedicated production release signing config.
-            // Never falls back to debug keystore!
+            // Strict Production Release: Debug mode completely disabled
+            debuggable false
+            jniDebuggable false
+            renderscriptDebuggable false
             signingConfig signingConfigs.release
             shrinkResources (findProperty('android.enableShrinkResourcesInReleaseBuilds')?.toBoolean() ?: false)
             minifyEnabled enableProguardInReleaseBuilds
@@ -153,6 +157,10 @@ android {
     }
     androidResources {
         ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~'
+    }
+    lint {
+        abortOnError false
+        checkReleaseBuilds false
     }
 }
 

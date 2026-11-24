@@ -199,6 +199,8 @@ const I18N_COMPLETE_PROFILE: Record<string, {
   nameRequiredError: string;
   saveSuccess: string;
   saveFailed: string;
+  optionalBadge: string;
+  clearSelection: string;
 }> = {
   te: {
     title: 'మీ ప్రొఫైల్‌ను పూర్తి చేయండి',
@@ -210,9 +212,9 @@ const I18N_COMPLETE_PROFILE: Record<string, {
     genderLabel: 'లింగము',
     genderPlaceholder: 'లింగాన్ని ఎంచుకోండి',
     rashiLabel: 'రాశి (Zodiac)',
-    rashiPlaceholder: 'మీ రాశిని ఎంచుకోండి',
+    rashiPlaceholder: 'మీ రాశిని ఎంచుకోండి (ఐచ్ఛికం)',
     nakshatraLabel: 'నక్షత్రం',
-    nakshatraPlaceholder: 'మీ నక్షత్రాన్ని ఎంచుకోండి',
+    nakshatraPlaceholder: 'మీ నక్షత్రాన్ని ఎంచుకోండి (ఐచ్ఛికం)',
     saveAndContinue: 'సేవ్ చేసి కొనసాగించండి',
     saving: 'భద్రపరుస్తున్నాము...',
     searchNakshatraPlaceholder: 'నక్షత్రాన్ని వెతకండి...',
@@ -225,6 +227,8 @@ const I18N_COMPLETE_PROFILE: Record<string, {
     nameRequiredError: 'దయచేసి మీ పూర్తి పేరు నమోదు చేయండి',
     saveSuccess: 'స్వామియే శరణం అయ్యప్ప! ప్రొఫైల్ విజయవంతంగా సేవ్ చేయబడింది.',
     saveFailed: 'ప్రొఫైల్ సేవ్ చేయడం విఫలమైంది. దయచేసి మళ్ళీ ప్రయత్నించండి.',
+    optionalBadge: 'ఐచ్ఛికం',
+    clearSelection: 'ఎంపికను తొలగించు (ఐచ్ఛికం)',
   },
   en: {
     title: 'Complete Your Profile',
@@ -236,9 +240,9 @@ const I18N_COMPLETE_PROFILE: Record<string, {
     genderLabel: 'Gender',
     genderPlaceholder: 'Select Gender',
     rashiLabel: 'Rashi (Zodiac)',
-    rashiPlaceholder: 'Select Rashi',
+    rashiPlaceholder: 'Select Rashi (Optional)',
     nakshatraLabel: 'Nakshatram',
-    nakshatraPlaceholder: 'Select Nakshatram',
+    nakshatraPlaceholder: 'Select Nakshatram (Optional)',
     saveAndContinue: 'Save & Continue',
     saving: 'Saving...',
     searchNakshatraPlaceholder: 'Search Nakshatra...',
@@ -251,6 +255,8 @@ const I18N_COMPLETE_PROFILE: Record<string, {
     nameRequiredError: 'Please enter your full name',
     saveSuccess: 'Swamiye Saranam Ayyappa! Profile saved successfully.',
     saveFailed: 'Failed to save profile. Please try again.',
+    optionalBadge: 'Optional',
+    clearSelection: 'Clear Selection (Optional)',
   },
   ta: {
     title: 'உங்கள் சுயவிவரத்தை முடிக்கவும்',
@@ -262,9 +268,9 @@ const I18N_COMPLETE_PROFILE: Record<string, {
     genderLabel: 'பாலினம்',
     genderPlaceholder: 'பாலினத்தைத் தேர்ந்தெடுக்கவும்',
     rashiLabel: 'ராசி (Zodiac)',
-    rashiPlaceholder: 'உங்கள் ராசியைத் தேர்ந்தெடுக்கவும்',
+    rashiPlaceholder: 'உங்கள் ராசியைத் தேர்ந்தெடுக்கவும் (விருப்பமானது)',
     nakshatraLabel: 'நட்சத்திரம்',
-    nakshatraPlaceholder: 'உங்கள் நட்சத்திரத்தைத் தேர்ந்தெடுக்கவும்',
+    nakshatraPlaceholder: 'உங்கள் நட்சத்திரத்தைத் தேர்ந்தெடுக்கவும் (விருப்பமானது)',
     saveAndContinue: 'சேமித்து தொடரவும்',
     saving: 'சேமிக்கிறது...',
     searchNakshatraPlaceholder: 'நட்சத்திரத்தைத் தேடவும்...',
@@ -277,6 +283,8 @@ const I18N_COMPLETE_PROFILE: Record<string, {
     nameRequiredError: 'தயவுசெய்து உங்கள் முழுப் பெயரை உள்ளிடவும்',
     saveSuccess: 'சுவாமியே சரணம் ஐயப்பா! சுயவிவரம் வெற்றிகரமாகச் சேமிக்கப்பட்டது.',
     saveFailed: 'சுயவிவரத்தைச் சேமிக்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்.',
+    optionalBadge: 'விருப்பமானது',
+    clearSelection: 'தெரிவை அகற்று (விருப்பமானது)',
   },
   kn: {
     title: 'ನಿಮ್ಮ ಪ್ರೊಫೈಲ್ ಪೂರ್ಣಗೊಳಿಸಿ',
@@ -288,9 +296,9 @@ const I18N_COMPLETE_PROFILE: Record<string, {
     genderLabel: 'ಲಿಂಗ',
     genderPlaceholder: 'ಲಿಂಗವನ್ನು ಆಯ್ಕೆಮಾಡಿ',
     rashiLabel: 'ರಾಶಿ (Zodiac)',
-    rashiPlaceholder: 'ನಿಮ್ಮ ರಾಶಿಯನ್ನು ಆಯ್ಕೆಮಾಡಿ',
+    rashiPlaceholder: 'ನಿಮ್ಮ ರಾಶಿಯನ್ನು ಆಯ್ಕೆಮಾಡಿ (ಐಚ್ಛಿಕ)',
     nakshatraLabel: 'ನಕ್ಷತ್ರ',
-    nakshatraPlaceholder: 'ನಿಮ್ಮ ನಕ್ಷತ್ರವನ್ನು ಆಯ್ಕೆಮಾಡಿ',
+    nakshatraPlaceholder: 'ನಿಮ್ಮ ನಕ್ಷತ್ರವನ್ನು ಆಯ್ಕೆಮಾಡಿ (ಐಚ್ಛಿಕ)',
     saveAndContinue: 'ಉಳಿಸಿ ಮತ್ತು ಮುಂದುವರಿಯಿರಿ',
     saving: 'ಉಳಿಸಲಾಗುತ್ತಿದೆ...',
     searchNakshatraPlaceholder: 'ನಕ್ಷತ್ರ ಹುಡುಕಿ...',
@@ -303,6 +311,8 @@ const I18N_COMPLETE_PROFILE: Record<string, {
     nameRequiredError: 'ದಯವಿಟ್ಟು ನಿಮ್ಮ ಪೂರ್ಣ ಹೆಸರನ್ನು ನಮೂದಿಸಿ',
     saveSuccess: 'ಸ್ವಾಮಿಯೇ ಶರಣಂ ಅಯ್ಯಪ್ಪ! ಪ್ರೊಫೈಲ್ ಯಶಸ್ವಿಯಾಗಿ ಉಳಿಸಲಾಗಿದೆ.',
     saveFailed: 'ಪ್ರೊಫೈಲ್ ಉಳಿಸಲು ವಿಫಲವಾಗಿದೆ. ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
+    optionalBadge: 'ಐಚ್ಛಿಕ',
+    clearSelection: 'ಆಯ್ಕೆಯನ್ನು ತೆರವುಗೊಳಿಸಿ (ಐಚ್ಛಿಕ)',
   },
   hi: {
     title: 'अपनी प्रोफ़ाइल पूरी करें',
@@ -314,9 +324,9 @@ const I18N_COMPLETE_PROFILE: Record<string, {
     genderLabel: 'लिंग',
     genderPlaceholder: 'लिंग चुनें',
     rashiLabel: 'राशि (Zodiac)',
-    rashiPlaceholder: 'अपनी राशि चुनें',
+    rashiPlaceholder: 'अपनी राशि चुनें (वैकल्पिक)',
     nakshatraLabel: 'नक्षत्र',
-    nakshatraPlaceholder: 'अपना नक्षत्र चुनें',
+    nakshatraPlaceholder: 'अपना नक्षत्र चुनें (वैकल्पिक)',
     saveAndContinue: 'सहेजें और आगे बढ़ें',
     saving: 'सहेजा जा रहा है...',
     searchNakshatraPlaceholder: 'नक्षत्र खोजें...',
@@ -329,6 +339,8 @@ const I18N_COMPLETE_PROFILE: Record<string, {
     nameRequiredError: 'कृपया अपना पूरा नाम दर्ज करें',
     saveSuccess: 'स्वामीये शरणम् अय्यप्पा! प्रोफ़ाइल सफलतापूर्वक सहेजी गई।',
     saveFailed: 'प्रोफ़ाइल सहेजने में विफल। कृपया पुन: प्रयास करें।',
+    optionalBadge: 'वैकल्पिक',
+    clearSelection: 'चयन साफ़ करें (वैकल्पिक)',
   },
   ml: {
     title: 'നിങ്ങളുടെ പ്രൊഫൈൽ പൂർത്തിയാക്കുക',
@@ -340,9 +352,9 @@ const I18N_COMPLETE_PROFILE: Record<string, {
     genderLabel: 'ലിംഗം',
     genderPlaceholder: 'ലിംഗം തിരഞ്ഞെടുക്കുക',
     rashiLabel: 'രാശി (Zodiac)',
-    rashiPlaceholder: 'നിങ്ങളുടെ രാശി തിരഞ്ഞെടുക്കുക',
+    rashiPlaceholder: 'നിങ്ങളുടെ രാശി തിരഞ്ഞെടുക്കുക (ഐച്ഛികം)',
     nakshatraLabel: 'നക്ഷത്രം',
-    nakshatraPlaceholder: 'നിങ്ങളുടെ നക്ഷത്രം തിരഞ്ഞെടുക്കുക',
+    nakshatraPlaceholder: 'നിങ്ങളുടെ നക്ഷത്രം തിരഞ്ഞെടുക്കുക (ഐച്ഛികം)',
     saveAndContinue: 'സേവ് ചെയ്തു തുടരുക',
     saving: 'സേവ് ചെയ്യുന്നു...',
     searchNakshatraPlaceholder: 'നക്ഷത്രം തിരയുക...',
@@ -355,6 +367,8 @@ const I18N_COMPLETE_PROFILE: Record<string, {
     nameRequiredError: 'ദയവായി നിങ്ങളുടെ മുഴുവൻ പേര് നൽകുക',
     saveSuccess: 'സ്വാമിയേ ശരണം അയ്യപ്പാ! പ്രൊഫൈൽ വിജയകരമായി സേവ് ചെയ്തു.',
     saveFailed: 'പ്രൊഫൈൽ സേവ് ചെയ്യാൻ കഴിഞ്ഞില്ല. വീണ്ടും ശ്രമിക്കുക.',
+    optionalBadge: 'ഐച്ഛികം',
+    clearSelection: 'തിരഞ്ഞെടുക്കൽ മാറ്റുക (ഐച്ഛികം)',
   },
 };
 
@@ -747,7 +761,12 @@ export const CompleteProfileScreen: React.FC<Props> = ({
                 <TempleShrineIcon />
               </View>
               <View style={styles.fieldContentWrapper}>
-                <Text style={styles.fieldTopLabel}>{t.rashiLabel}</Text>
+                <View style={styles.labelWithBadgeRow}>
+                  <Text style={styles.fieldTopLabel}>{t.rashiLabel}</Text>
+                  <View style={styles.optionalBadge}>
+                    <Text style={styles.optionalBadgeText}>{t.optionalBadge || 'Optional'}</Text>
+                  </View>
+                </View>
                 <Text style={[styles.fieldValueText, !selectedRashiName && styles.fieldPlaceholderText]} numberOfLines={1}>
                   {selectedRashiName || t.rashiPlaceholder}
                 </Text>
@@ -772,7 +791,12 @@ export const CompleteProfileScreen: React.FC<Props> = ({
                 <SacredChakraIcon />
               </View>
               <View style={styles.fieldContentWrapper}>
-                <Text style={styles.fieldTopLabel}>{t.nakshatraLabel}</Text>
+                <View style={styles.labelWithBadgeRow}>
+                  <Text style={styles.fieldTopLabel}>{t.nakshatraLabel}</Text>
+                  <View style={styles.optionalBadge}>
+                    <Text style={styles.optionalBadgeText}>{t.optionalBadge || 'Optional'}</Text>
+                  </View>
+                </View>
                 <Text style={[styles.fieldValueText, !selectedNakshatraName && styles.fieldPlaceholderText]} numberOfLines={1}>
                   {selectedNakshatraName || t.nakshatraPlaceholder}
                 </Text>
@@ -858,6 +882,21 @@ export const CompleteProfileScreen: React.FC<Props> = ({
               </TouchableOpacity>
             </View>
 
+            {/* Clear / None Option (Optional) */}
+            <TouchableOpacity
+              style={[styles.modalOptionRow, !selectedRashiId && styles.modalOptionSelected, { backgroundColor: '#F9F5EC' }]}
+              onPress={() => {
+                setSelectedRashiId(null);
+                setSelectedRashiName('');
+                setRashiModalOpen(false);
+              }}
+            >
+              <Text style={[styles.modalOptionText, !selectedRashiId && styles.modalOptionTextSelected, { fontStyle: 'italic', color: '#7D6A58' }]}>
+                — {t.clearSelection} —
+              </Text>
+              {!selectedRashiId && <Text style={styles.modalCheckmark}>✓</Text>}
+            </TouchableOpacity>
+
             <FlatList
               data={MASTER_RASHIS}
               keyExtractor={(item) => String(item.id)}
@@ -898,6 +937,21 @@ export const CompleteProfileScreen: React.FC<Props> = ({
                 <Text style={styles.modalCloseText}>✕</Text>
               </TouchableOpacity>
             </View>
+
+            {/* Clear / None Option (Optional) */}
+            <TouchableOpacity
+              style={[styles.modalOptionRow, !selectedNakshatraId && styles.modalOptionSelected, { backgroundColor: '#F9F5EC' }]}
+              onPress={() => {
+                setSelectedNakshatraId(null);
+                setSelectedNakshatraName('');
+                setNakshatraModalOpen(false);
+              }}
+            >
+              <Text style={[styles.modalOptionText, !selectedNakshatraId && styles.modalOptionTextSelected, { fontStyle: 'italic', color: '#7D6A58' }]}>
+                — {t.clearSelection} —
+              </Text>
+              {!selectedNakshatraId && <Text style={styles.modalCheckmark}>✓</Text>}
+            </TouchableOpacity>
 
             {/* Search Input */}
             <View style={styles.modalSearchBox}>
@@ -1123,6 +1177,27 @@ const styles = StyleSheet.create({
   fieldContentWrapper: {
     flex: 1,
     justifyContent: 'center',
+  },
+  labelWithBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 1,
+  },
+  optionalBadge: {
+    marginLeft: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 8,
+    backgroundColor: '#F3EADB',
+    borderWidth: 0.6,
+    borderColor: '#DFB460',
+  },
+  optionalBadgeText: {
+    fontSize: 9.5,
+    fontWeight: '700',
+    color: '#8A5D18',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
   },
   fieldTopLabel: {
     fontSize: 11,

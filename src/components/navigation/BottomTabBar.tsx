@@ -25,44 +25,53 @@ interface TabItem {
   order: number;
 }
 
+const SANNIDHI_LABELS: Record<string, string> = {
+  en: 'Sannidhi',
+  te: 'సన్నిధి',
+  kn: 'ಸನ್ನಿಧಿ',
+  ta: 'சந்நிதி',
+  hi: 'सन्निधि',
+  ml: 'സന്നിധി',
+};
+
 const DEFAULT_TABS: Record<string, TabItem[]> = {
   en: [
-    { key: 'home', label: 'Home', icon: 'home', order: 1 },
+    { key: 'home', label: 'Sannidhi', icon: 'home', order: 1 },
     { key: 'services', label: 'Services', icon: 'services', order: 2 },
     { key: 'temples', label: 'Temples', icon: 'temples', order: 3 },
     { key: 'panchangam', label: 'Panchangam', icon: 'panchangam', order: 4 },
     { key: 'profile', label: 'Profile', icon: 'profile', order: 5 },
   ],
   te: [
-    { key: 'home', label: 'Home', icon: 'home', order: 1 },
+    { key: 'home', label: 'సన్నిధి', icon: 'home', order: 1 },
     { key: 'services', label: 'Services', icon: 'services', order: 2 },
     { key: 'temples', label: 'Temples', icon: 'temples', order: 3 },
     { key: 'panchangam', label: 'Panchangam', icon: 'panchangam', order: 4 },
     { key: 'profile', label: 'Profile', icon: 'profile', order: 5 },
   ],
   kn: [
-    { key: 'home', label: 'Home', icon: 'home', order: 1 },
+    { key: 'home', label: 'ಸನ್ನಿಧಿ', icon: 'home', order: 1 },
     { key: 'services', label: 'Services', icon: 'services', order: 2 },
     { key: 'temples', label: 'Temples', icon: 'temples', order: 3 },
     { key: 'panchangam', label: 'Panchangam', icon: 'panchangam', order: 4 },
     { key: 'profile', label: 'Profile', icon: 'profile', order: 5 },
   ],
   ta: [
-    { key: 'home', label: 'Home', icon: 'home', order: 1 },
+    { key: 'home', label: 'சந்நிதி', icon: 'home', order: 1 },
     { key: 'services', label: 'Services', icon: 'services', order: 2 },
     { key: 'temples', label: 'Temples', icon: 'temples', order: 3 },
     { key: 'panchangam', label: 'Panchangam', icon: 'panchangam', order: 4 },
     { key: 'profile', label: 'Profile', icon: 'profile', order: 5 },
   ],
   hi: [
-    { key: 'home', label: 'Home', icon: 'home', order: 1 },
+    { key: 'home', label: 'सन्निधि', icon: 'home', order: 1 },
     { key: 'services', label: 'Services', icon: 'services', order: 2 },
     { key: 'temples', label: 'Temples', icon: 'temples', order: 3 },
     { key: 'panchangam', label: 'Panchangam', icon: 'panchangam', order: 4 },
     { key: 'profile', label: 'Profile', icon: 'profile', order: 5 },
   ],
   ml: [
-    { key: 'home', label: 'Home', icon: 'home', order: 1 },
+    { key: 'home', label: 'സന്നിധി', icon: 'home', order: 1 },
     { key: 'services', label: 'Services', icon: 'services', order: 2 },
     { key: 'temples', label: 'Temples', icon: 'temples', order: 3 },
     { key: 'panchangam', label: 'Panchangam', icon: 'panchangam', order: 4 },
@@ -143,7 +152,13 @@ export const BottomTabBar: React.FC<Props> = ({
     apiService.getBottomTabs(language)
       .then((fetchedTabs: TabItem[]) => {
         if (isMounted && Array.isArray(fetchedTabs) && fetchedTabs.length > 0) {
-          setTabs(fetchedTabs);
+          const mapped = fetchedTabs.map((t) => {
+            if (t.key === 'home') {
+              return { ...t, label: SANNIDHI_LABELS[language] || 'Sannidhi' };
+            }
+            return t;
+          });
+          setTabs(mapped);
         }
       })
       .catch(() => {

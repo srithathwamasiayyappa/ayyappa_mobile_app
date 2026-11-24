@@ -1,14 +1,41 @@
-# Add project specific ProGuard rules here.
-# By default, the flags in this file are appended to flags specified
-# in /usr/local/Cellar/android-sdk/24.3.3/tools/proguard/proguard-android.txt
-# You can edit the include path and order by changing the proguardFiles
-# directive in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# ProGuard & R8 Optimization Rules for Saranam Ayyappa Release
+-keepattributes *Annotation*,InnerClasses,EnclosingMethod,Signature,SourceFile,LineNumberTable
 
-# react-native-reanimated
--keep class com.swmansion.reanimated.** { *; }
+# React Native Core & Fabric / TurboModules
+-keep class com.facebook.react.** { *; }
 -keep class com.facebook.react.turbomodule.** { *; }
+-keep class com.facebook.jni.** { *; }
+-keepclassmembers class * {
+    @com.facebook.react.uimanager.annotations.ReactProp <methods>;
+    @com.facebook.react.uimanager.annotations.ReactPropGroup <methods>;
+}
 
-# Add any project specific keep options here:
+# React Native Reanimated
+-keep class com.swmansion.reanimated.** { *; }
+
+# Expo Modules Core & Plugins
+-keep class expo.modules.** { *; }
+
+# Firebase Core & Phone Authentication
+-keep class com.google.firebase.** { *; }
+-keep class io.invertase.firebase.** { *; }
+
+# Google Play Services & Google Sign-In
+-keep class com.google.android.gms.** { *; }
+-keep class co.apptailor.googlesignin.** { *; }
+
+# Native App Application & Activity Classes
+-keep class com.saranam.ayyappa.** { *; }
+-keep class com.reactnativecommunity.asyncstorage.** { *; }
+-keep class com.horcrux.svg.** { *; }
+-keep class com.facebook.hermes.** { *; }
+
+# Preserve line numbers for Google Play Console deobfuscation mapping
+-renamesourcefileattribute SourceFile
+
+# Suppress harmless build-time warnings for optional classes
+-dontwarn com.facebook.react.**
+-dontwarn io.invertase.firebase.**
+-dontwarn com.google.android.gms.**
+-dontwarn expo.modules.**
+

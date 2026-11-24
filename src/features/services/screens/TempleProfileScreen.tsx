@@ -17,7 +17,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { SupportedLanguage, TempleItem } from '../../../types';
-import { ApiService } from '../../../services/api';
+import { ApiService, resolveMediaUrl } from '../../../services/api';
 
 interface Props {
   templeId: string;
@@ -472,20 +472,13 @@ export const TempleProfileScreen: React.FC<Props> = ({
               HERO IMAGE BANNER: High-Resolution Temple Photo + Overlay + Back Arrow
              ========================================================================= */}
           <View style={styles.heroBannerContainer}>
-            <Image
-              source={
-                activeTemple.id === 'sabarimala'
-                  ? require('../../../../assets/temple_profile_ref.png')
-                  : require('../../../../assets/temples_list_ref.png')
-              }
-              style={[
-                styles.heroImageCrop,
-                activeTemple.id === 'sabarimala'
-                  ? { top: 0 }
-                  : { top: -((activeTemple.cropIndex ?? 0) * 80 + 40) },
-              ]}
-              resizeMode="cover"
-            />
+            {(activeTemple.heroImageUrl || activeTemple.thumbnailUrl) ? (
+              <Image
+                source={{ uri: resolveMediaUrl(activeTemple.heroImageUrl || activeTemple.thumbnailUrl) }}
+                style={styles.heroImageCrop}
+                resizeMode="cover"
+              />
+            ) : null}
 
             {/* Dark gradient for title legibility */}
             <LinearGradient
@@ -495,21 +488,18 @@ export const TempleProfileScreen: React.FC<Props> = ({
             />
 
             {/* Floating Top Header Over Hero Banner */}
-            <SafeAreaView style={styles.heroHeaderSafeArea}>
+            <SafeAreaView style={styles.heroHeaderSafeArea} pointerEvents="box-none">
               <TouchableOpacity
                 style={styles.heroBackButton}
                 onPress={onBack}
                 activeOpacity={0.7}
-                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
               >
                 <BackArrowIcon />
               </TouchableOpacity>
 
-              <View style={styles.heroCornerOrnamentRight}>
+              <View style={styles.heroCornerOrnamentRight} pointerEvents="none">
                 <HeaderCornerFiligree flipped />
-              </View>
-              <View style={styles.heroCornerOrnamentLeft}>
-                <HeaderCornerFiligree />
               </View>
             </SafeAreaView>
 
@@ -893,9 +883,10 @@ const styles = StyleSheet.create({
   },
   heroImageCrop: {
     width: '100%',
-    height: 480,
+    height: '100%',
     position: 'absolute',
     left: 0,
+    top: 0,
   },
   heroGradientOverlay: {
     position: 'absolute',
@@ -913,13 +904,15 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   heroBackButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(0,0,0,0.38)',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0,0,0,0.5)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 4,
+    marginLeft: 6,
+    zIndex: 999,
+    elevation: 8,
   },
   heroCornerOrnamentRight: {
     position: 'absolute',

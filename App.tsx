@@ -1,5 +1,6 @@
+import './src/polyfills';
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, View, Text, TextInput, BackHandler, ToastAndroid, Platform, Image, Dimensions } from 'react-native';
+import { StyleSheet, View, Text, TextInput, BackHandler, ToastAndroid, Platform, Image, Dimensions, TouchableOpacity } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -69,6 +70,7 @@ import { FoodDonationScreen } from './src/features/services/screens/FoodDonation
 import { DonationsScreen } from './src/features/services/screens/DonationsScreen';
 import { BottomTabBar } from './src/components/navigation/BottomTabBar';
 import { StorageService, MobileScreen } from './src/services/storageService';
+import { LocationService, standardizeCityName } from './src/services/locationService';
 import { SupportedLanguage, MainTab, TempleItem } from './src/types';
 import {
   useFonts,
@@ -84,11 +86,57 @@ interface DetailState {
   id: string;
   title: string;
   deity?: string;
+  rawId?: string;
 }
 
 interface NavHistoryEntry {
   screen: MobileScreen;
   detail: DetailState | null;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: any;
+}
+
+class AppErrorBoundary extends React.Component<{ children: React.ReactNode; onReset?: () => void }, ErrorBoundaryState> {
+  constructor(props: { children: React.ReactNode; onReset?: () => void }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: any) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: any, errorInfo: any) {
+    console.error('[AppErrorBoundary] Caught render error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View style={{ flex: 1, backgroundColor: '#FAF5EB', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+          <Text style={{ fontSize: 20, fontWeight: '700', color: '#06452E', marginBottom: 12, textAlign: 'center' }}>
+            Saranam Ayyappa
+          </Text>
+          <Text style={{ fontSize: 13, color: '#555', textAlign: 'center', marginBottom: 24, lineHeight: 20 }}>
+            {String(this.state.error?.message || this.state.error || 'A screen component could not be rendered')}
+          </Text>
+          <TouchableOpacity
+            style={{ backgroundColor: '#06452E', paddingHorizontal: 28, paddingVertical: 14, borderRadius: 24 }}
+            onPress={() => {
+              this.setState({ hasError: false, error: null });
+              if (this.props.onReset) this.props.onReset();
+            }}
+          >
+            <Text style={{ color: '#FFFDF8', fontWeight: '700', fontSize: 15 }}>Continue to Home →</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
 }
 
 export default function App() {
@@ -130,7 +178,23 @@ export default function App() {
   const [selectedRole, setSelectedRole] = useState<UserRole>('DEVOTEE');
   const [authInitialStep, setAuthInitialStep] = useState<'LOGIN' | 'REGISTER'>('LOGIN');
   const [isReady, setIsReady] = useState(false);
+  const [currentLocation, setCurrentLocation] = useState<string>('Bengaluru');
   const lastBackPressRef = useRef<number>(0);
+
+  // Sync and restore unified location state
+  useEffect(() => {
+    LocationService.getSavedLocation().then((loc) => {
+      if (loc && loc.cityName) {
+        setCurrentLocation(standardizeCityName(loc.cityName));
+      }
+    });
+  }, []);
+
+  const handleLocationChange = (city: string) => {
+    const std = standardizeCityName(city);
+    setCurrentLocation(std);
+    LocationService.saveLocation(std);
+  };
 
   // Unified navigator: pushes previous screen to history stack
   const navigateTo = (screen: MobileScreen, detail: DetailState | null = null) => {
@@ -155,6 +219,13 @@ export default function App() {
     }
 
     // 2. Fallbacks based on current screen
+    if (currentScreen === 'temple_detail') {
+      setCurrentScreen('temples');
+      setActiveDetail(null);
+      StorageService.saveNavigationState('temples', null);
+      return true;
+    }
+
     if (['panchangam', 'contact', 'detail', 'pooja_detail', 'sloka_detail', 'bhajans_songs', 'live_streams', 'services', 'about', 'category_listing', 'temples', 'food_donation', 'donations', 'notifications'].includes(currentScreen)) {
       setCurrentScreen('home');
       setActiveDetail(null);
@@ -324,6 +395,7 @@ export default function App() {
 
   // When devotee finishes or skips Onboarding -> Proceed to Choose Your Role
   const handleOnboardingFinish = () => {
+    console.log('[DevotionalApp] Onboarding completed -> Navigating to role_selection');
     StorageService.setOnboardingCompleted();
     setCurrentScreen('role_selection');
     StorageService.saveNavigationState('role_selection', null);
@@ -633,6 +705,7 @@ export default function App() {
 
       {/* Screen Body */}
       <View style={styles.body}>
+        <AppErrorBoundary onReset={() => setCurrentScreen('home')}>
         {currentScreen === 'splash' && (
           <SplashScreen onFinish={handleSplashFinish} />
         )}
@@ -692,7 +765,10 @@ export default function App() {
         {currentScreen === 'home' && (
           <HomeScreen
             currentLanguage={selectedLanguage}
+            currentUser={currentUser}
             currentDeity={currentDeity}
+            currentLocation={currentLocation}
+            onLocationChange={handleLocationChange}
             onOpenLanguageScreen={handleOpenLanguage}
             onOpenAboutScreen={handleOpenAbout}
             onOpenContactScreen={handleOpenContact}
@@ -806,6 +882,8 @@ export default function App() {
         {currentScreen === 'panchangam' && (
           <PanchangamScreen
             currentLanguage={selectedLanguage}
+            currentLocation={currentLocation}
+            onLocationChange={handleLocationChange}
             onBack={handleGoBack}
           />
         )}
@@ -823,14 +901,14 @@ export default function App() {
             categoryTitle={activeDetail.title}
             currentLanguage={selectedLanguage}
             initialDeity={activeDetail.deity || 'all'}
-            onSelectItem={(id, title) => {
+            onSelectItem={(id, title, rawId) => {
               if (
                 activeDetail.id === 'pooja-vidhanam' ||
                 id.includes('pooja') ||
                 id.includes('vratham') ||
                 id.includes('abhishekam')
               ) {
-                navigateTo('pooja_detail', { id, title });
+                navigateTo('pooja_detail', { id, title, rawId });
               } else if (
                 activeDetail.id === 'bhajans' ||
                 activeDetail.id === 'harathis' ||
@@ -926,6 +1004,7 @@ export default function App() {
           activeDetail && (
             <PoojaDetailScreen
               itemId={activeDetail.id}
+              rawId={activeDetail.rawId}
               title={activeDetail.title}
               currentLanguage={selectedLanguage}
               onBack={handleGoBack}
@@ -1007,6 +1086,7 @@ export default function App() {
             }}
           />
         )}
+        </AppErrorBoundary>
 
         {/* Sacred Devotional Watermark - Centered on Every Page Except Splash and Home Screens */}
         {currentScreen !== 'splash' && currentScreen !== 'home' && (

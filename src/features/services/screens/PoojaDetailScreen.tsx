@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -13,16 +13,30 @@ import {
   Modal,
   Alert,
   BackHandler,
+  RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle, Line, Polygon, Ellipse, Rect } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SupportedLanguage } from '../../../types';
+import { AYYAPPA_PADI_POOJA_ITEMS } from '../../../data/ayyappaSubcategoriesData';
+import { ApiService, resolveMediaUrl } from '../../../services/api';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: WINDOW_WIDTH, height: WINDOW_HEIGHT } = Dimensions.get('window');
+const { width: SCREEN_WIDTH_FULL, height: SCREEN_HEIGHT_FULL } = Dimensions.get('screen');
+const SCREEN_WIDTH = Math.min(WINDOW_WIDTH, SCREEN_WIDTH_FULL);
+const SCREEN_HEIGHT = Math.max(WINDOW_HEIGHT, SCREEN_HEIGHT_FULL);
+const isLargeOrTallScreen = SCREEN_HEIGHT >= 800 || (SCREEN_HEIGHT / SCREEN_WIDTH) >= 1.95;
+
+// Dynamic status bar / safe area height for Android (with explicit support for 6.7" & 6.8" screens)
+const ANDROID_STATUS_BAR_HEIGHT = Platform.OS === 'android'
+  ? Math.max(StatusBar.currentHeight || 0, isLargeOrTallScreen ? 44 : 36)
+  : 0;
 
 interface Props {
   itemId: string;
+  rawId?: string;
   title?: string;
   currentLanguage: SupportedLanguage;
   onBack: () => void;
@@ -42,6 +56,13 @@ const HeaderCornerFiligree = ({ flipped = false }: { flipped?: boolean }) => (
       <Circle cx="5" cy="16" r="1.5" fill="#FFD700" />
     </Svg>
   </View>
+);
+
+// Solid Maroon Play Triangle Icon for devotional cards
+const CardPlayTriangleIcon = () => (
+  <Svg width={14} height={16} viewBox="0 0 14 16" fill="none">
+    <Polygon points="2,1 13,8 2,15" fill="#173D32" />
+  </Svg>
 );
 
 // Back Arrow inside circular white button
@@ -843,16 +864,60 @@ const UI_TEXTS: Record<string, {
   },
 };
 
+
+// Helper to resolve deity medallion avatar
+const getSubItemMedallion = (item: any, defaultDeity: string = 'ayyappa') => {
+  if (item?.imageUrl || item?.image) {
+    const uri = resolveMediaUrl(item.imageUrl || item.image);
+    if (uri) return { uri };
+  }
+  const deityKey = item?.deityId || defaultDeity || 'ayyappa';
+  if (deityKey === 'ayyappa') {
+    return require('../../../../assets/deities/lord_ayyappa.png');
+  }
+  if (DEITY_IMAGES[deityKey]) {
+    return DEITY_IMAGES[deityKey];
+  }
+  return require('../../../../assets/deities/lord_ayyappa.png');
+};
+
 export const PoojaDetailScreen: React.FC<Props> = ({
   itemId,
+  rawId,
   title,
   currentLanguage,
   onBack,
 }) => {
-  const [activeTab, setActiveTab] = useState<DetailTab>('overview');
+  const [activeTab, setActiveTab] = useState<'procedure' | 'materials'>('procedure');
   const [checkedMaterials, setCheckedMaterials] = useState<Record<string, boolean>>({});
   const [isSaved, setIsSaved] = useState<boolean>(false);
   const [isVideoModalOpen, setIsVideoModalOpen] = useState<boolean>(false);
+
+  // Check if Ayyappa Padi Pooja (9 sacred items screen)
+  const isAyyappaPadiPooja =
+    itemId === 'ayyappa-padi-pooja' ||
+    rawId === '117' ||
+    itemId === '117' ||
+    rawId === '8' ||
+    itemId === '8' ||
+    rawId === '61' ||
+    itemId === '61' ||
+    String(itemId).toLowerCase().includes('padi') ||
+    (title && (
+      title.includes('పడి') ||
+      title.toLowerCase().includes('padi') ||
+      title.includes('Padi') ||
+      title.includes('అయ్యప్ప పూజ') ||
+      title.toLowerCase().includes('ayyappa pooja')
+    ));
+
+  // Sub-items state for ALL poojas
+  const [subItems, setSubItems] = useState<any[]>([]);
+  const [selectedSubItem, setSelectedSubItem] = useState<any | null>(null);
+  const [subItemDetail, setSubItemDetail] = useState<any | null>(null);
+  const [loadingSubItems, setLoadingSubItems] = useState<boolean>(true);
+  const [refreshingSubList, setRefreshingSubList] = useState<boolean>(false);
+  const [loadingDetail, setLoadingDetail] = useState<boolean>(false);
 
   // Look up detail content or fallback to Ayyappa Padi Pooja
   const poojaContent = POOJA_DETAILS[itemId] || POOJA_DETAILS['ayyappa-padi-pooja'];
@@ -862,6 +927,194 @@ export const PoojaDetailScreen: React.FC<Props> = ({
     poojaContent.defaultTitle;
   const deityImage = DEITY_IMAGES[poojaContent.deityId] || DEITY_IMAGES.ayyappa;
   const ui = UI_TEXTS[currentLanguage] || UI_TEXTS.en;
+
+  // Resolve parent ID for DB querying
+  const resolveParentQueryId = useCallback(() => {
+    const lowerItemId = String(itemId || '').toLowerCase();
+    const lowerTitle = String(title || '').toLowerCase();
+
+    // Lord Ayyappa / Padi Pooja
+    if (
+      itemId === 'ayyappa-padi-pooja' ||
+      rawId === '117' ||
+      itemId === '117' ||
+      rawId === '8' ||
+      itemId === '8' ||
+      rawId === '61' ||
+      itemId === '61' ||
+      lowerItemId.includes('padi') ||
+      lowerTitle.includes('పడి') ||
+      lowerTitle.includes('padi') ||
+      lowerTitle.includes('అయ్యప్ప పూజ') ||
+      lowerTitle.includes('ayyappa pooja')
+    ) {
+      return '8';
+    }
+
+    // Satyanarayana Vratham
+    if (
+      rawId === '25' ||
+      itemId === '25' ||
+      lowerItemId.includes('satyanarayana') ||
+      lowerTitle.includes('satyanarayana') ||
+      lowerTitle.includes('సత్యనారాయణ')
+    ) {
+      return '25';
+    }
+
+    // Ganapathi Pooja / Vinayaka
+    if (
+      rawId === '122' ||
+      rawId === '27' ||
+      rawId === '6' ||
+      lowerItemId.includes('ganapathi') ||
+      lowerItemId.includes('vinayaka') ||
+      lowerTitle.includes('గణపతి') ||
+      lowerTitle.includes('వినాయక')
+    ) {
+      return rawId === '27' ? '27' : (rawId === '6' ? '6' : '122');
+    }
+
+    // Rudrabhishekam / Shiva
+    if (
+      rawId === '130' ||
+      lowerItemId.includes('rudra') ||
+      lowerTitle.includes('రుద్ర') ||
+      lowerTitle.includes('rudra')
+    ) {
+      return '130';
+    }
+
+    // Varalakshmi Vratham
+    if (
+      rawId === '26' ||
+      lowerItemId.includes('varalakshmi') ||
+      lowerTitle.includes('వరలక్ష్మి')
+    ) {
+      return '26';
+    }
+
+    // Subramanya
+    if (
+      rawId === '137' ||
+      rawId === '7' ||
+      lowerItemId.includes('subramanya') ||
+      lowerTitle.includes('సుబ్రహ్మణ్య')
+    ) {
+      return rawId || '7';
+    }
+
+    return rawId || itemId;
+  }, [itemId, rawId, title]);
+
+  // Dynamically load subcategories for ANY clicked pooja from DB in currentLanguage
+  const loadSubItems = useCallback(async (isRefresh = false) => {
+    if (isRefresh) setRefreshingSubList(true);
+    else setLoadingSubItems(true);
+    try {
+      const parentId = resolveParentQueryId();
+      let liveItems = await ApiService.getSubcategories(parentId, currentLanguage);
+
+      if ((!liveItems || liveItems.length === 0) && rawId && rawId !== parentId) {
+        liveItems = await ApiService.getSubcategories(rawId, currentLanguage);
+      }
+
+      if ((!liveItems || liveItems.length === 0) && parentId === '8') {
+        liveItems = await ApiService.getSubcategories('sri-ayyappa-ashtottara', currentLanguage);
+      }
+
+      if (Array.isArray(liveItems) && liveItems.length > 0) {
+        const sorted = [...liveItems].sort(
+          (a, b) => Number(a.displayOrder || 0) - Number(b.displayOrder || 0)
+        );
+        setSubItems(sorted);
+      } else {
+        // Fallback for poojas not yet populated in DB:
+        if (parentId === '8' || isAyyappaPadiPooja) {
+          const localized = AYYAPPA_PADI_POOJA_ITEMS.map((item) => ({
+            ...item,
+            title: item.regionalTitles?.[currentLanguage] || item.regionalTitles?.te || item.title,
+            description: (item as any).regionalDescriptions?.[currentLanguage] || item.description || '',
+          }));
+          setSubItems(localized);
+        } else if (poojaContent && Array.isArray(poojaContent.procedure) && poojaContent.procedure.length > 0) {
+          const stepItems = poojaContent.procedure.map((step) => ({
+            id: `step-${step.stepNumber}`,
+            title: `${step.stepNumber}. ${step.title}`,
+            description: step.description,
+            mantra: step.mantra,
+            duration: step.duration,
+            deityId: poojaContent.deityId,
+          }));
+          setSubItems(stepItems);
+        } else {
+          setSubItems([]);
+        }
+      }
+    } catch (err) {
+      console.warn('Subcategories fetch error:', err);
+      if (isAyyappaPadiPooja) {
+        const localized = AYYAPPA_PADI_POOJA_ITEMS.map((item) => ({
+          ...item,
+          title: item.regionalTitles?.[currentLanguage] || item.regionalTitles?.te || item.title,
+          description: (item as any).regionalDescriptions?.[currentLanguage] || item.description || '',
+        }));
+        setSubItems(localized);
+      }
+    } finally {
+      setLoadingSubItems(false);
+      setRefreshingSubList(false);
+    }
+  }, [currentLanguage, isAyyappaPadiPooja, poojaContent, rawId, resolveParentQueryId]);
+
+  useEffect(() => {
+    loadSubItems();
+  }, [loadSubItems]);
+
+  const handleSelectSubItem = async (subItem: any) => {
+    setSelectedSubItem(subItem);
+    setLoadingDetail(true);
+    setSubItemDetail(null);
+    try {
+      const detail = await ApiService.getCategoryDetail(String(subItem.id), currentLanguage);
+      if (detail && (detail.description || detail.content)) {
+        setSubItemDetail(detail);
+      }
+    } catch (e) {
+      console.warn('Sub-item detail load notice:', e);
+    } finally {
+      setLoadingDetail(false);
+    }
+  };
+
+  // Resolve localized sub-item title
+  const getSubItemTitle = (item: any, index?: number): string => {
+    if (!item) return '';
+    if (item.title && typeof item.title === 'string' && item.title.trim()) {
+      return item.title.trim();
+    }
+    if (item.regionalTitles) {
+      if (item.regionalTitles[currentLanguage]) return item.regionalTitles[currentLanguage];
+      if (item.regionalTitles.en) return item.regionalTitles.en;
+      if (item.regionalTitles.te) return item.regionalTitles.te;
+    }
+    return item.name || item.slug || (index !== undefined ? `Item ${index + 1}` : '');
+  };
+
+  // Resolve localized sub-item subtitle
+  const getSubItemSubtitle = (item: any): string => {
+    if (!item) return '';
+    if (item.duration) return item.duration;
+    if (item.regionalDescriptions?.[currentLanguage]) {
+      const raw = item.regionalDescriptions[currentLanguage].replace(/^\[.*?\]\s*/, '').trim();
+      return raw.slice(0, 75) + (raw.length > 75 ? '...' : '');
+    }
+    if (item.description) {
+      const raw = item.description.replace(/^\[.*?\]\s*/, '').trim();
+      return raw.slice(0, 75) + (raw.length > 75 ? '...' : '');
+    }
+    return '';
+  };
 
   // Load saved state from AsyncStorage
   useEffect(() => {
@@ -881,12 +1134,16 @@ export const PoojaDetailScreen: React.FC<Props> = ({
   // Handle Hardware Back Button
   useEffect(() => {
     const onHardwareBack = () => {
+      if (selectedSubItem) {
+        setSelectedSubItem(null);
+        return true;
+      }
       onBack();
       return true;
     };
     const sub = BackHandler.addEventListener('hardwareBackPress', onHardwareBack);
     return () => sub.remove();
-  }, [onBack]);
+  }, [selectedSubItem, onBack]);
 
   const handleToggleMaterial = (matId: string) => {
     setCheckedMaterials((prev) => ({
@@ -920,1025 +1177,726 @@ export const PoojaDetailScreen: React.FC<Props> = ({
   const checkedCount = Object.values(checkedMaterials).filter(Boolean).length;
   const totalMaterials = poojaContent.materials.length;
 
-  return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor="#0C251E" />
+  // =========================================================================
+  // VIEW 2: FULL SACRED READING / PRAYER DETAIL (With Back to Sub-items List)
+  // =========================================================================
+  if (selectedSubItem) {
+    const currentTitle = getSubItemTitle(selectedSubItem);
+    const currentDesc =
+      subItemDetail?.description ||
+      subItemDetail?.content ||
+      selectedSubItem.description ||
+      selectedSubItem.content ||
+      '';
+    const subItemMedallion = getSubItemMedallion(selectedSubItem, poojaContent.deityId);
 
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* =========================================================================
-            HEADER: Deep Maroon Gradient + Corner Filigree + Deity Art + Hanging Lamps
-           ========================================================================= */}
+    return (
+      <SafeAreaView style={styles.screenContainer}>
+        <StatusBar barStyle="light-content" backgroundColor="#173D32" translucent />
+
+        {/* Top Header with Back Arrow to return to sub-items list */}
         <LinearGradient
-          colors={['#0C251E', '#173D32', '#0C251E']}
-          start={{ x: 0.5, y: 0 }}
-          end={{ x: 0.5, y: 1 }}
-          style={styles.header}
+          colors={['#173D32', '#173D32', '#0C251E']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.padiHeaderBar}
         >
-          {/* Top-Left Back Button */}
           <TouchableOpacity
-            style={styles.backButton}
-            onPress={onBack}
-            activeOpacity={0.8}
-            accessibilityLabel="Go Back"
+            style={styles.padiBackBtn}
+            onPress={() => setSelectedSubItem(null)}
+            activeOpacity={0.7}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            accessibilityRole="button"
+            accessibilityLabel="Back to list"
           >
-            <BackArrowIcon />
+            <Text style={styles.padiBackArrowText}>←</Text>
           </TouchableOpacity>
-
-          {/* Top Corner Filigree Ornaments */}
-          <View style={styles.filigreeTopLeft}>
-            <HeaderCornerFiligree />
-          </View>
-          <View style={styles.filigreeTopRight}>
+          <Text style={styles.padiHeaderTitle} numberOfLines={1}>
+            {currentTitle}
+          </Text>
+          <View style={styles.headerFiligreeWrapper}>
             <HeaderCornerFiligree flipped />
           </View>
-
-          {/* Left Hanging Brass Lamp */}
-          <HangingBrassLamp style={styles.hangingLampLeft} />
-
-          {/* Center Deity Artwork with Halo Aura */}
-          <View style={styles.deityHaloContainer}>
-            {/* Outer Golden Glow Circle */}
-            <View style={styles.deityOuterGlow} />
-
-            {/* Inner Golden Radial Ring */}
-            <View style={styles.deityInnerRing}>
-              <Image source={deityImage} style={styles.deityImage} resizeMode="cover" />
-            </View>
-          </View>
-
-          {/* Right Hanging Brass Lamp */}
-          <HangingBrassLamp style={styles.hangingLampRight} />
         </LinearGradient>
 
-        {/* =========================================================================
-            MAIN CARD: Cream Background + Rounded Top Corners + Gold Border
-           ========================================================================= */}
-        <View style={styles.mainCard}>
-          {/* Main Title Heading */}
-          <Text style={styles.mainTitle}>{displayTitle}</Text>
+        {/* Serene Deity Watermark Background */}
+        <Image
+          source={require('../../../../assets/ayyappa_watermark.png')}
+          style={styles.watermarkImage}
+          resizeMode="contain"
+        />
 
-          {/* 4 Content Tabs: Overview | Procedure | Materials | Benefits */}
-          <View style={styles.tabBar}>
-            <TouchableOpacity
-              style={[styles.tabPill, activeTab === 'overview' && styles.tabPillActive]}
-              onPress={() => setActiveTab('overview')}
-              activeOpacity={0.8}
-            >
-              <Text
-                style={[styles.tabPillText, activeTab === 'overview' && styles.tabPillTextActive]}
-              >
-                {ui.overview}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.tabPill, activeTab === 'procedure' && styles.tabPillActive]}
-              onPress={() => setActiveTab('procedure')}
-              activeOpacity={0.8}
-            >
-              <Text
-                style={[styles.tabPillText, activeTab === 'procedure' && styles.tabPillTextActive]}
-              >
-                {ui.procedure}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.tabPill, activeTab === 'materials' && styles.tabPillActive]}
-              onPress={() => setActiveTab('materials')}
-              activeOpacity={0.8}
-            >
-              <Text
-                style={[styles.tabPillText, activeTab === 'materials' && styles.tabPillTextActive]}
-              >
-                {ui.materials}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.tabPill, activeTab === 'benefits' && styles.tabPillActive]}
-              onPress={() => setActiveTab('benefits')}
-              activeOpacity={0.8}
-            >
-              <Text
-                style={[styles.tabPillText, activeTab === 'benefits' && styles.tabPillTextActive]}
-              >
-                {ui.benefits}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* =========================================================================
-              TAB 1: OVERVIEW TAB CONTENT
-             ========================================================================= */}
-          {activeTab === 'overview' && (
-            <View style={styles.tabContentContainer}>
-              {/* Section Sub-heading */}
-              <Text style={styles.overviewSectionTitle}>{displayTitle}</Text>
-
-              {/* Devotional Introduction Paragraph */}
-              <Text style={styles.overviewDescription}>
-                {poojaContent.overview.description}
-              </Text>
-
-              {/* Devotional Video Card with Thali & Play Button */}
-              <View style={styles.videoCard}>
+        <ScrollView
+          style={styles.subListScrollView}
+          contentContainerStyle={styles.detailScrollContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={loadingDetail}
+              onRefresh={() => handleSelectSubItem(selectedSubItem)}
+              colors={['#173D32', '#DFA62E']}
+              tintColor="#173D32"
+            />
+          }
+        >
+          <View style={styles.readingCard}>
+            {/* Card Header with Medallion */}
+            <View style={styles.readingCardHeader}>
+              <View style={styles.readingMedallionWrapper}>
                 <Image
-                  source={require('../../../../assets/pooja_detail_ref.jpg')}
-                  style={styles.videoThumbnailImage}
+                  source={subItemMedallion}
+                  style={styles.readingMedallionImage}
                   resizeMode="cover"
                 />
-                <View style={styles.videoDarkOverlay} />
-
-                {/* Central Maroon Circular Play Button */}
-                <TouchableOpacity
-                  style={styles.playButton}
-                  activeOpacity={0.85}
-                  onPress={() => setIsVideoModalOpen(true)}
-                  accessibilityLabel="Play Ritual Video"
-                >
-                  <PlayTriangleIcon />
-                </TouchableOpacity>
-
-                {/* Duration Tag */}
-                <View style={styles.videoTagContainer}>
-                  <Text style={styles.videoTagText}>{poojaContent.overview.videoDuration}</Text>
-                </View>
               </View>
+              <View style={styles.readingTitleContainer}>
+                <Text style={styles.readingTitle}>{currentTitle}</Text>
+                <Text style={styles.readingSubtitle}>
+                  {poojaContent.deityId === 'ayyappa'
+                    ? 'ఓం స్వామియే శరణమయ్యప్ప 🙏'
+                    : '|| శుభం భూయాత్ ||'}
+                </Text>
+              </View>
+            </View>
 
-              {/* Primary Action Button: "View Procedure (Step by Step)" */}
+            <View style={styles.readingDivider} />
+
+            {/* Devotional Content Text */}
+            {loadingDetail ? (
+              <View style={styles.readingLoadingBox}>
+                <ActivityIndicator size="large" color="#173D32" />
+                <Text style={styles.readingLoadingText}>
+                  {currentLanguage === 'te'
+                    ? 'భక్తి పూర్వక మంత్రములు లోడ్ అవుతున్నాయి...'
+                    : 'Loading sacred verses & mantras...'}
+                </Text>
+              </View>
+            ) : (
+              <View>
+                {selectedSubItem.mantra ? (
+                  <View style={styles.mantraBox}>
+                    <Text style={styles.mantraText}>{selectedSubItem.mantra}</Text>
+                  </View>
+                ) : null}
+                <Text style={styles.readingBodyText}>{currentDesc}</Text>
+              </View>
+            )}
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+  // =========================================================================
+  // VIEW 1: SUB-ITEMS LIST VIEW (Soft Cream #FAF5EB, Watermark, Ivory Cards)
+  // =========================================================================
+  return (
+    <SafeAreaView style={styles.screenContainer}>
+      <StatusBar barStyle="light-content" backgroundColor="#173D32" translucent />
+
+      {/* Sacred Header Bar */}
+      <LinearGradient
+        colors={['#173D32', '#173D32', '#0C251E']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.padiHeaderBar}
+      >
+        <TouchableOpacity
+          style={styles.padiBackBtn}
+          onPress={onBack}
+          activeOpacity={0.7}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+        >
+          <Text style={styles.padiBackArrowText}>←</Text>
+        </TouchableOpacity>
+        <Text style={styles.padiHeaderTitle} numberOfLines={1}>
+          {displayTitle}
+        </Text>
+        <View style={styles.headerFiligreeWrapper}>
+          <HeaderCornerFiligree flipped />
+        </View>
+      </LinearGradient>
+
+      {/* Serene Deity Watermark Background */}
+      <Image
+        source={require('../../../../assets/ayyappa_watermark.png')}
+        style={styles.watermarkImage}
+        resizeMode="contain"
+      />
+
+      {/* Top Segmented Tabs: [ Sacred Sub-Items / Vidhanam ] | [ Materials & Info ] */}
+      {poojaContent.materials.length > 0 ? (
+        <View style={styles.topSegmentedBar}>
+          <TouchableOpacity
+            style={[
+              styles.segmentedTab,
+              activeTab === 'procedure'
+                ? styles.segmentedTabActive
+                : styles.segmentedTabInactive,
+            ]}
+            onPress={() => setActiveTab('procedure')}
+            activeOpacity={0.8}
+          >
+            <Text
+              style={[
+                styles.segmentedTabText,
+                activeTab === 'procedure'
+                  ? styles.segmentedTabTextActive
+                  : styles.segmentedTabTextInactive,
+              ]}
+            >
+              {ui.procedure || 'Pooja Vidhanam'} ({subItems.length})
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.segmentedTab,
+              activeTab === 'materials'
+                ? styles.segmentedTabActive
+                : styles.segmentedTabInactive,
+            ]}
+            onPress={() => setActiveTab('materials')}
+            activeOpacity={0.8}
+          >
+            <Text
+              style={[
+                styles.segmentedTabText,
+                activeTab === 'materials'
+                  ? styles.segmentedTabTextActive
+                  : styles.segmentedTabTextInactive,
+              ]}
+            >
+              {ui.materials || 'Materials'} ({checkedCount}/{totalMaterials})
+            </Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
+
+      {/* When activeTab is materials, show materials checklist */}
+      {activeTab === 'materials' ? (
+        <ScrollView
+          style={styles.subListScrollView}
+          contentContainerStyle={styles.subListScrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.materialsCard}>
+            <View style={styles.materialsHeaderRow}>
+              <Text style={styles.materialsHeaderTitle}>
+                {ui.materials} ({checkedCount}/{totalMaterials} {ui.checked})
+              </Text>
               <TouchableOpacity
-                style={styles.viewProcedureButton}
-                activeOpacity={0.88}
-                onPress={() => setActiveTab('procedure')}
+                style={styles.saveHeaderBtn}
+                onPress={handleToggleSave}
+                activeOpacity={0.7}
               >
-                <LinearGradient
-                  colors={['#173D32', '#0C251E']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.viewProcedureGradient}
-                >
-                  <Text style={styles.viewProcedureText}>{ui.viewProcedure}</Text>
-                </LinearGradient>
+                <HeartFavoriteIcon isSaved={isSaved} />
               </TouchableOpacity>
+            </View>
 
-              {/* Bottom Row of 2 Action Buttons: Download PDF & Save */}
-              <View style={styles.actionButtonsRow}>
-                {/* Download PDF Button */}
+            {poojaContent.materials.map((mat) => {
+              const isChecked = !!checkedMaterials[mat.id];
+              return (
                 <TouchableOpacity
-                  style={styles.secondaryActionButton}
-                  activeOpacity={0.8}
-                  onPress={handleDownloadPdf}
+                  key={mat.id}
+                  style={styles.materialRow}
+                  activeOpacity={0.7}
+                  onPress={() => handleToggleMaterial(mat.id)}
                 >
-                  <DownloadTrayIcon />
-                  <Text style={styles.secondaryActionText}>{ui.downloadPdf}</Text>
-                </TouchableOpacity>
-
-                {/* Save / Favorite Button */}
-                <TouchableOpacity
-                  style={[styles.secondaryActionButton, isSaved && styles.secondaryActionSaved]}
-                  activeOpacity={0.8}
-                  onPress={handleToggleSave}
-                >
-                  <HeartFavoriteIcon isSaved={isSaved} />
+                  <View style={[styles.checkbox, isChecked && styles.checkboxActive]}>
+                    {isChecked && <CheckMarkIcon />}
+                  </View>
                   <Text
                     style={[
-                      styles.secondaryActionText,
-                      isSaved && styles.secondaryActionSavedText,
+                      styles.materialName,
+                      isChecked && styles.materialNameChecked,
                     ]}
                   >
-                    {isSaved ? ui.saved : ui.save}
+                    {mat.name}
                   </Text>
+                  <Text style={styles.materialQty}>{mat.quantity}</Text>
                 </TouchableOpacity>
-              </View>
+              );
+            })}
 
-              {/* Auspicious Days Card */}
-              <View style={styles.auspiciousCard}>
-                <View style={styles.auspiciousHeaderRow}>
-                  <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
-                    <Path
-                      d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
-                      fill="#DFA62E"
-                    />
-                  </Svg>
-                  <Text style={styles.auspiciousTitle}>{ui.auspiciousHeader}</Text>
-                </View>
+            {/* Auspicious Days Note */}
+            {poojaContent.auspiciousDays ? (
+              <View style={styles.auspiciousBox}>
+                <Text style={styles.auspiciousTitle}>✨ {ui.auspiciousHeader}</Text>
                 <Text style={styles.auspiciousBody}>{poojaContent.auspiciousDays}</Text>
               </View>
-            </View>
-          )}
+            ) : null}
 
-          {/* =========================================================================
-              TAB 2: PROCEDURE TAB (STEP-BY-STEP)
-             ========================================================================= */}
-          {activeTab === 'procedure' && (
-            <View style={styles.tabContentContainer}>
-              <View style={styles.tabSectionHeaderRow}>
-                <Text style={styles.tabSectionTitle}>
-                  {displayTitle} — {ui.procedure}
-                </Text>
-                <Text style={styles.tabSectionSubtitle}>
-                  {poojaContent.procedure.length} Steps
-                </Text>
-              </View>
-
-              {poojaContent.procedure.map((step) => (
-                <View key={step.stepNumber} style={styles.procedureStepCard}>
-                  {/* Step Header */}
-                  <View style={styles.procedureStepHeader}>
-                    <View style={styles.stepBadge}>
-                      <Text style={styles.stepBadgeText}>{step.stepNumber}</Text>
-                    </View>
-                    <View style={styles.stepTitleContainer}>
-                      <Text style={styles.stepTitle}>{step.title}</Text>
-                      <Text style={styles.stepDuration}>{step.duration}</Text>
-                    </View>
-                  </View>
-
-                  {/* Step Description */}
-                  <Text style={styles.stepDescription}>{step.description}</Text>
-
-                  {/* Sacred Mantra Box (if available) */}
-                  {step.mantra ? (
-                    <View style={styles.mantraBox}>
-                      <Text style={styles.mantraLabel}>Mantra / Sloka:</Text>
-                      <Text style={styles.mantraText}>{step.mantra}</Text>
-                    </View>
-                  ) : null}
-                </View>
-              ))}
-
-              {/* Quick Nav to Materials */}
-              <TouchableOpacity
-                style={styles.viewProcedureButton}
-                activeOpacity={0.88}
-                onPress={() => setActiveTab('materials')}
-              >
-                <LinearGradient
-                  colors={['#173D32', '#0C251E']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.viewProcedureGradient}
-                >
-                  <Text style={styles.viewProcedureText}>View Required Materials (Samagri) →</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {/* =========================================================================
-              TAB 3: MATERIALS TAB (CHECKABLE SAMAGRI LIST)
-             ========================================================================= */}
-          {activeTab === 'materials' && (
-            <View style={styles.tabContentContainer}>
-              <View style={styles.tabSectionHeaderRow}>
-                <Text style={styles.tabSectionTitle}>
-                  {ui.materials} Checklist
-                </Text>
-                <View style={styles.checkedCountBadge}>
-                  <Text style={styles.checkedCountText}>
-                    {checkedCount} / {totalMaterials} {ui.checked}
-                  </Text>
-                </View>
-              </View>
-
-              <Text style={styles.materialsNote}>
-                Tap each item as you gather the required sacred offerings.
+            {/* Download PDF Button */}
+            <TouchableOpacity
+              style={styles.downloadPdfButton}
+              onPress={handleDownloadPdf}
+              activeOpacity={0.8}
+            >
+              <DownloadTrayIcon />
+              <Text style={styles.downloadPdfText}>{ui.downloadPdf}</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      ) : (
+        /* Sub-items List View */
+        <ScrollView
+          style={styles.subListScrollView}
+          contentContainerStyle={styles.subListScrollContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshingSubList}
+              onRefresh={() => loadSubItems(true)}
+              colors={['#173D32', '#DFA62E']}
+              tintColor="#173D32"
+            />
+          }
+        >
+          {loadingSubItems && !refreshingSubList ? (
+            <View style={styles.subListLoadingBox}>
+              <ActivityIndicator size="large" color="#173D32" />
+              <Text style={styles.subListLoadingText}>
+                {currentLanguage === 'te'
+                  ? 'పూజా వివరములు లోడ్ అవుతున్నాయి...'
+                  : 'Loading sacred items...'}
               </Text>
+            </View>
+          ) : subItems.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>
+                {currentLanguage === 'te'
+                  ? 'ఈ పూజకు సంబంధించిన వివరాలు సిద్ధమవుతున్నాయి.'
+                  : 'Items for this pooja will be available soon.'}
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.subListCardsContainer}>
+              {subItems.map((item, index) => {
+                const itemTitle = getSubItemTitle(item, index);
+                const itemSubtitle = getSubItemSubtitle(item);
+                const medallion = getSubItemMedallion(item, poojaContent.deityId);
 
-              {poojaContent.materials.map((item) => {
-                const isChecked = !!checkedMaterials[item.id];
                 return (
                   <TouchableOpacity
-                    key={item.id}
-                    style={[styles.materialItemRow, isChecked && styles.materialItemRowChecked]}
-                    activeOpacity={0.75}
-                    onPress={() => handleToggleMaterial(item.id)}
+                    key={String(item.id || index)}
+                    style={styles.subItemCard}
+                    activeOpacity={0.82}
+                    onPress={() => handleSelectSubItem(item)}
+                    accessibilityRole="button"
+                    accessibilityLabel={itemTitle}
                   >
-                    <View style={[styles.checkbox, isChecked && styles.checkboxChecked]}>
-                      {isChecked && <CheckMarkIcon />}
+                    {/* Left: Circular Medallion Avatar with Deity */}
+                    <View style={styles.subItemMedallionWrapper}>
+                      <Image
+                        source={medallion}
+                        style={styles.subItemMedallionImage}
+                        resizeMode="cover"
+                      />
                     </View>
-                    <View style={styles.materialTextContainer}>
-                      <Text
-                        style={[
-                          styles.materialItemName,
-                          isChecked && styles.materialItemNameChecked,
-                        ]}
-                      >
-                        {item.name}
+
+                    {/* Center: Title & Subtitle in Current Language */}
+                    <View style={styles.subItemContent}>
+                      <Text style={styles.subItemCardTitle} numberOfLines={2}>
+                        {itemTitle}
                       </Text>
-                      <Text style={styles.materialItemQuantity}>{item.quantity}</Text>
+                      {itemSubtitle ? (
+                        <Text style={styles.subItemCardSubtitle} numberOfLines={1}>
+                          {itemSubtitle}
+                        </Text>
+                      ) : null}
+                    </View>
+
+                    {/* Right: Solid Play Triangle Icon */}
+                    <View style={styles.subItemPlayIconWrapper}>
+                      <CardPlayTriangleIcon />
                     </View>
                   </TouchableOpacity>
                 );
               })}
             </View>
           )}
-
-          {/* =========================================================================
-              TAB 4: BENEFITS TAB (PHALASTUTI & SIGNIFICANCE)
-             ========================================================================= */}
-          {activeTab === 'benefits' && (
-            <View style={styles.tabContentContainer}>
-              <View style={styles.tabSectionHeaderRow}>
-                <Text style={styles.tabSectionTitle}>
-                  {displayTitle} — {ui.benefits}
-                </Text>
-              </View>
-
-              {poojaContent.benefits.map((benefit, index) => (
-                <View key={index} style={styles.benefitCard}>
-                  <View style={styles.benefitIconContainer}>
-                    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-                      <Circle cx="12" cy="12" r="10" stroke="#173D32" strokeWidth="2" />
-                      <Path d="M8 12l3 3 5-5" stroke="#DFA62E" strokeWidth="2.5" />
-                    </Svg>
-                  </View>
-                  <View style={styles.benefitTextContainer}>
-                    <Text style={styles.benefitCardTitle}>{benefit.title}</Text>
-                    <Text style={styles.benefitCardDescription}>{benefit.description}</Text>
-                  </View>
-                </View>
-              ))}
-
-              {/* Auspicious Occasions Highlight */}
-              <View style={styles.auspiciousCard}>
-                <View style={styles.auspiciousHeaderRow}>
-                  <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
-                    <Path
-                      d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
-                      fill="#DFA62E"
-                    />
-                  </Svg>
-                  <Text style={styles.auspiciousTitle}>{ui.auspiciousHeader}</Text>
-                </View>
-                <Text style={styles.auspiciousBody}>{poojaContent.auspiciousDays}</Text>
-              </View>
-            </View>
-          )}
-        </View>
-      </ScrollView>
-
-      {/* =========================================================================
-          DEVOTIONAL VIDEO / AUDIO MODAL
-         ========================================================================= */}
-      <Modal
-        visible={isVideoModalOpen}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setIsVideoModalOpen(false)}
-      >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalContainer}>
-            {/* Modal Header */}
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{ui.videoModalTitle}</Text>
-              <TouchableOpacity
-                onPress={() => setIsVideoModalOpen(false)}
-                style={styles.modalCloseButton}
-              >
-                <Text style={styles.modalCloseButtonText}>✕</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Video Player Mockup / Display */}
-            <View style={styles.modalVideoPlayer}>
-              <Image
-                source={require('../../../../assets/pooja_detail_ref.jpg')}
-                style={styles.modalVideoImage}
-                resizeMode="cover"
-              />
-              <View style={styles.modalVideoOverlay}>
-                <View style={styles.modalPlayPulse}>
-                  <PlayTriangleIcon />
-                </View>
-              </View>
-            </View>
-
-            {/* Title & Description inside Modal */}
-            <View style={styles.modalBody}>
-              <Text style={styles.modalVideoName}>{displayTitle}</Text>
-              <Text style={styles.modalVideoDesc}>
-                Complete step-by-step video demonstration of the sacred ritual chanting, deepa
-                prajwalana, padi archana, and Harivarasanam.
-              </Text>
-
-              <TouchableOpacity
-                style={styles.modalDismissButton}
-                onPress={() => setIsVideoModalOpen(false)}
-              >
-                <Text style={styles.modalDismissText}>{ui.close}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
+  screenContainer: {
     flex: 1,
-    backgroundColor: '#0C251E',
+    backgroundColor: '#FAF5EB',
+    position: 'relative',
   },
-  scrollView: {
+  watermarkImage: {
+    position: 'absolute',
+    width: SCREEN_WIDTH * 0.88,
+    height: SCREEN_WIDTH * 0.88,
+    alignSelf: 'center',
+    top: '22%',
+    opacity: 0.07,
+  },
+  padiHeaderBar: {
+    height: 54 + ANDROID_STATUS_BAR_HEIGHT,
+    paddingTop: ANDROID_STATUS_BAR_HEIGHT,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    borderBottomWidth: 1.2,
+    borderBottomColor: '#DFA62E',
+  },
+  padiBackBtn: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 6,
+    zIndex: 10,
+  },
+  padiBackArrowText: {
+    color: '#FFF8EB',
+    fontSize: 24,
+    fontWeight: '700',
+    marginTop: Platform.OS === 'ios' ? -2 : -4,
+  },
+  padiHeaderTitle: {
     flex: 1,
-    backgroundColor: '#FFFDF8',
+    color: '#FFD700',
+    fontSize: 18,
+    fontWeight: '700',
+    fontFamily: Platform.select({ ios: 'Poppins-Bold', android: 'Poppins_700Bold', default: 'Poppins_700Bold' }),
+    letterSpacing: 0.3,
   },
-  scrollContent: {
-    paddingBottom: 40,
+  headerFiligreeWrapper: {
+    marginLeft: 8,
   },
 
-  // Header styles
-  header: {
-    height: 220,
-    width: '100%',
-    position: 'relative',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: Platform.OS === 'ios' ? 20 : StatusBar.currentHeight || 16,
+  // Segmented Tabs
+  topSegmentedBar: {
+    flexDirection: 'row',
+    paddingHorizontal: 14,
+    paddingTop: 10,
+    paddingBottom: 6,
+    gap: 10,
   },
-  backButton: {
-    position: 'absolute',
-    top: Platform.OS === 'ios' ? 44 : (StatusBar.currentHeight || 16) + 10,
-    left: 16,
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#FFFDF8',
-    justifyContent: 'center',
+  segmentedTab: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 20,
     alignItems: 'center',
-    zIndex: 10,
+    justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(223, 166, 46, 0.4)',
-    shadowColor: '#000',
+  },
+  segmentedTabActive: {
+    backgroundColor: '#173D32',
+    borderColor: '#DFA62E',
+    shadowColor: '#173D32',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3,
-    elevation: 4,
+    elevation: 3,
   },
-  filigreeTopLeft: {
-    position: 'absolute',
-    top: 4,
-    left: 4,
+  segmentedTabInactive: {
+    backgroundColor: '#FFFDF8',
+    borderColor: '#E6C898',
   },
-  filigreeTopRight: {
-    position: 'absolute',
-    top: 4,
-    right: 4,
+  segmentedTabText: {
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.2,
   },
-  hangingLampLeft: {
-    position: 'absolute',
-    left: 20,
-    top: 10,
+  segmentedTabTextActive: {
+    color: '#FFFFFF',
   },
-  hangingLampRight: {
-    position: 'absolute',
-    right: 20,
-    top: 10,
+  segmentedTabTextInactive: {
+    color: '#173D32',
   },
 
-  // Central Deity Glowing Aura
-  deityHaloContainer: {
+  // Sub-items List
+  subListScrollView: {
+    flex: 1,
+  },
+  subListScrollContent: {
+    paddingHorizontal: 14,
+    paddingTop: 8,
+    paddingBottom: 40,
+  },
+  subListCardsContainer: {
+    width: '100%',
+    gap: 10,
+  },
+  subItemCard: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-    marginTop: -8,
+    backgroundColor: '#FFFDF8',
+    borderRadius: 16,
+    borderWidth: 1.2,
+    borderColor: '#E6C898',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    shadowColor: '#071914',
+    shadowOffset: { width: 0, height: 1.5 },
+    shadowOpacity: 0.06,
+    shadowRadius: 3,
+    elevation: 2,
   },
-  deityOuterGlow: {
-    position: 'absolute',
-    width: 136,
-    height: 136,
-    borderRadius: 68,
-    backgroundColor: 'rgba(255, 215, 0, 0.16)',
-  },
-  deityInnerRing: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    borderWidth: 2.5,
-    borderColor: '#FFD700',
+  subItemMedallionWrapper: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 2,
+    borderColor: '#DFA62E',
     overflow: 'hidden',
-    backgroundColor: '#0C251E',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#FFD700',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.6,
-    shadowRadius: 10,
-    elevation: 8,
+    backgroundColor: '#173D32',
+    marginRight: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
   },
-  deityImage: {
+  subItemMedallionImage: {
     width: '100%',
     height: '100%',
   },
-
-  // Main Card
-  mainCard: {
-    backgroundColor: '#FFFDF8',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    marginTop: -22,
-    paddingTop: 20,
-    paddingHorizontal: 18,
-    borderWidth: 1.5,
-    borderBottomWidth: 0,
-    borderColor: '#E6C687',
-    minHeight: 500,
-  },
-  mainTitle: {
-    fontFamily: Platform.select({ ios: 'Poppins-Bold', android: 'Poppins_700Bold', web: 'Poppins, sans-serif', default: 'Poppins_700Bold' }),
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#173D32',
-    textAlign: 'center',
-    letterSpacing: 0.3,
-  },
-
-  // 4 Tabs (Pills)
-  tabBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 16,
-    marginBottom: 16,
-  },
-  tabPill: {
+  subItemContent: {
     flex: 1,
-    paddingVertical: 7,
-    marginHorizontal: 3,
-    borderRadius: 18,
-    backgroundColor: '#FFFDF8',
-    borderWidth: 1,
-    borderColor: '#D8B26E',
+    justifyContent: 'center',
+    paddingRight: 6,
+  },
+  subItemCardTitle: {
+    fontFamily: Platform.select({ ios: 'Poppins-Bold', android: 'Poppins_700Bold', default: 'Poppins_700Bold' }),
+    fontSize: 15.5,
+    fontWeight: '700',
+    color: '#0C251E',
+    marginBottom: 2,
+    letterSpacing: 0.2,
+  },
+  subItemCardSubtitle: {
+    fontSize: 12,
+    color: '#6B4B3D',
+    fontWeight: '500',
+    lineHeight: 16,
+  },
+  subItemPlayIconWrapper: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 4,
+  },
+  subListLoadingBox: {
+    padding: 40,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  tabPillActive: {
-    backgroundColor: '#173D32',
-    borderColor: '#173D32',
-    shadowColor: '#173D32',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  tabPillText: {
-    fontSize: 12.5,
+  subListLoadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#173D32',
     fontWeight: '600',
-    color: '#173D32',
   },
-  tabPillTextActive: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-  },
-
-  // Tab Content General
-  tabContentContainer: {
-    paddingTop: 4,
-  },
-
-  // Overview Tab
-  overviewSectionTitle: {
-    fontFamily: Platform.select({ ios: 'Poppins-Bold', android: 'Poppins_700Bold', web: 'Poppins, sans-serif', default: 'Poppins_700Bold' }),
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#173D32',
-    marginBottom: 6,
-  },
-  overviewDescription: {
-    fontSize: 13.5,
-    lineHeight: 20,
-    color: '#345147',
-    marginBottom: 14,
-  },
-
-  // Video Card
-  videoCard: {
-    height: 154,
-    borderRadius: 14,
-    overflow: 'hidden',
-    borderWidth: 1.5,
-    borderColor: '#DFA62E',
-    position: 'relative',
-    justifyContent: 'center',
+  emptyContainer: {
+    padding: 40,
     alignItems: 'center',
-    marginBottom: 16,
-    backgroundColor: '#0C251E',
+    justifyContent: 'center',
   },
-  videoThumbnailImage: {
-    width: '100%',
-    height: 420,
-    position: 'absolute',
-    top: -205,
+  emptyText: {
+    fontSize: 14.5,
+    color: '#6B4B3D',
+    textAlign: 'center',
+    lineHeight: 22,
   },
-  videoDarkOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.22)',
+
+  // Reading Detail Card
+  detailScrollContent: {
+    padding: 14,
+    paddingBottom: 40,
   },
-  playButton: {
+  readingCard: {
+    backgroundColor: '#FFFDF8',
+    borderRadius: 16,
+    padding: 18,
+    borderWidth: 1.2,
+    borderColor: '#E6C898',
+    elevation: 3,
+    shadowColor: '#071914',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+  },
+  readingCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  readingMedallionWrapper: {
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: '#173D32',
     borderWidth: 2,
-    borderColor: '#FFD700',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingLeft: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.45,
-    shadowRadius: 5,
-    elevation: 6,
-  },
-  videoTagContainer: {
-    position: 'absolute',
-    bottom: 8,
-    right: 10,
-    backgroundColor: 'rgba(30, 4, 6, 0.82)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-    borderWidth: 0.5,
     borderColor: '#DFA62E',
-  },
-  videoTagText: {
-    color: '#FFD700',
-    fontSize: 11,
-    fontWeight: '600',
-  },
-
-  // Primary Button: View Procedure (Step by Step)
-  viewProcedureButton: {
-    borderRadius: 24,
     overflow: 'hidden',
-    marginBottom: 14,
-    shadowColor: '#173D32',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.35,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  viewProcedureGradient: {
-    paddingVertical: 13,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  viewProcedureText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-  },
-
-  // Secondary Action Buttons (Download PDF & Save)
-  actionButtonsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  secondaryActionButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 11,
-    marginHorizontal: 4,
-    borderRadius: 20,
-    backgroundColor: '#FFFDF8',
-    borderWidth: 1.2,
-    borderColor: '#D8B26E',
-  },
-  secondaryActionSaved: {
-    backgroundColor: '#FFF1EE',
-    borderColor: '#173D32',
-  },
-  secondaryActionText: {
-    fontSize: 13.5,
-    fontWeight: '600',
-    color: '#173D32',
-    marginLeft: 8,
-  },
-  secondaryActionSavedText: {
-    color: '#173D32',
-    fontWeight: '700',
-  },
-
-  // Auspicious Card
-  auspiciousCard: {
-    backgroundColor: '#FFF8EB',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#E4BC72',
-    padding: 14,
-    marginTop: 6,
-  },
-  auspiciousHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  auspiciousTitle: {
-    fontSize: 13.5,
-    fontWeight: '700',
-    color: '#173D32',
-    marginLeft: 6,
-  },
-  auspiciousBody: {
-    fontSize: 13,
-    lineHeight: 18,
-    color: '#345147',
-  },
-
-  // Procedure Tab Styles
-  tabSectionHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  tabSectionTitle: {
-    fontFamily: Platform.select({ ios: 'Poppins-Bold', android: 'Poppins_700Bold', web: 'Poppins, sans-serif', default: 'Poppins_700Bold' }),
-    fontSize: 16.5,
-    fontWeight: '700',
-    color: '#173D32',
-  },
-  tabSectionSubtitle: {
-    fontSize: 12.5,
-    fontWeight: '600',
-    color: '#173D32',
-  },
-  procedureStepCard: {
-    backgroundColor: '#FFFBF2',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#E6C687',
-    padding: 14,
-    marginBottom: 12,
-  },
-  procedureStepHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  stepBadge: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
     backgroundColor: '#173D32',
-    borderWidth: 1,
-    borderColor: '#FFD700',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
   },
-  stepBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '700',
+  readingMedallionImage: {
+    width: '100%',
+    height: '100%',
   },
-  stepTitleContainer: {
+  readingTitleContainer: {
     flex: 1,
+    marginLeft: 12,
   },
-  stepTitle: {
-    fontSize: 14.5,
+  readingTitle: {
+    fontSize: 17,
     fontWeight: '700',
     color: '#173D32',
+    marginBottom: 3,
   },
-  stepDuration: {
-    fontSize: 11.5,
-    color: '#8A6D3B',
-    marginTop: 1,
+  readingSubtitle: {
+    fontSize: 12.5,
+    color: '#8A5A0A',
+    fontWeight: '600',
   },
-  stepDescription: {
-    fontSize: 13,
-    lineHeight: 19,
-    color: '#345147',
-    marginTop: 2,
+  readingDivider: {
+    height: 1.2,
+    backgroundColor: '#E6C898',
+    marginVertical: 12,
+  },
+  readingLoadingBox: {
+    padding: 30,
+    alignItems: 'center',
+  },
+  readingLoadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#173D32',
+  },
+  readingBodyText: {
+    fontSize: 15.5,
+    lineHeight: 26,
+    color: '#2C1D11',
+    fontWeight: '500',
+    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' }),
   },
   mantraBox: {
-    backgroundColor: '#FFF4DE',
-    borderRadius: 8,
-    borderLeftWidth: 3.5,
+    backgroundColor: 'rgba(223, 166, 46, 0.12)',
+    borderLeftWidth: 4,
     borderLeftColor: '#DFA62E',
-    padding: 10,
-    marginTop: 10,
-  },
-  mantraLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#173D32',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 4,
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 14,
   },
   mantraText: {
-    fontSize: 13,
-    lineHeight: 19,
-    color: '#173D32',
-    fontStyle: 'italic',
-  },
-
-  // Materials Tab Styles
-  checkedCountBadge: {
-    backgroundColor: '#173D32',
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  checkedCountText: {
-    color: '#FFFFFF',
-    fontSize: 11.5,
+    fontSize: 15,
+    lineHeight: 24,
+    color: '#8B4513',
     fontWeight: '700',
   },
-  materialsNote: {
-    fontSize: 12.5,
-    color: '#6E553F',
+
+  // Materials Tab View
+  materialsCard: {
+    backgroundColor: '#FFFDF8',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1.2,
+    borderColor: '#E6C898',
+    shadowColor: '#071914',
+    shadowOffset: { width: 0, height: 1.5 },
+    shadowOpacity: 0.06,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  materialsHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 12,
   },
-  materialItemRow: {
+  materialsHeaderTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#173D32',
+  },
+  saveHeaderBtn: {
+    padding: 4,
+  },
+  materialRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFBF2',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#E8CA94',
     paddingVertical: 10,
-    paddingHorizontal: 12,
-    marginBottom: 8,
-  },
-  materialItemRowChecked: {
-    backgroundColor: '#F3EFE6',
-    borderColor: '#C7B18E',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0E6D8',
   },
   checkbox: {
     width: 22,
     height: 22,
     borderRadius: 6,
-    borderWidth: 1.6,
-    borderColor: '#173D32',
-    justifyContent: 'center',
-    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#DFA62E',
     marginRight: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: '#FFFDF8',
   },
-  checkboxChecked: {
+  checkboxActive: {
     backgroundColor: '#173D32',
+    borderColor: '#173D32',
   },
-  materialTextContainer: {
+  materialName: {
     flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  materialItemName: {
-    fontSize: 13.5,
-    fontWeight: '600',
-    color: '#345147',
-    flex: 1,
-    paddingRight: 6,
-  },
-  materialItemNameChecked: {
-    textDecorationLine: 'line-through',
-    color: '#8A7768',
-  },
-  materialItemQuantity: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#173D32',
-  },
-
-  // Benefits Tab Styles
-  benefitCard: {
-    flexDirection: 'row',
-    backgroundColor: '#FFFBF2',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#E6C687',
-    padding: 12,
-    marginBottom: 10,
-  },
-  benefitIconContainer: {
-    width: 28,
-    height: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 10,
-    marginTop: 2,
-  },
-  benefitTextContainer: {
-    flex: 1,
-  },
-  benefitCardTitle: {
     fontSize: 14,
-    fontWeight: '700',
-    color: '#173D32',
-    marginBottom: 3,
+    color: '#0C251E',
+    fontWeight: '600',
   },
-  benefitCardDescription: {
-    fontSize: 12.8,
-    lineHeight: 18,
-    color: '#345147',
+  materialNameChecked: {
+    textDecorationLine: 'line-through',
+    color: '#9E9E9E',
   },
-
-  // Modal Styles
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    justifyContent: 'flex-end',
-  },
-  modalContainer: {
-    backgroundColor: '#FFFDF8',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingTop: 16,
-    paddingBottom: 30,
-    paddingHorizontal: 20,
-    maxHeight: '80%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  modalTitle: {
-    fontSize: 16.5,
-    fontWeight: '700',
-    color: '#173D32',
-  },
-  modalCloseButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#F0E6D2',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalCloseButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#173D32',
-  },
-  modalVideoPlayer: {
-    height: 180,
-    borderRadius: 14,
-    overflow: 'hidden',
-    position: 'relative',
-    backgroundColor: '#1C0407',
-    marginBottom: 14,
-  },
-  modalVideoImage: {
-    width: '100%',
-    height: '100%',
-  },
-  modalVideoOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalPlayPulse: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#173D32',
-    borderWidth: 2.5,
-    borderColor: '#FFD700',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingLeft: 4,
-  },
-  modalBody: {
-    paddingVertical: 4,
-  },
-  modalVideoName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#173D32',
-    marginBottom: 6,
-  },
-  modalVideoDesc: {
+  materialQty: {
     fontSize: 13,
-    lineHeight: 19,
-    color: '#345147',
-    marginBottom: 16,
+    color: '#8A5A0A',
+    fontWeight: '700',
   },
-  modalDismissButton: {
-    backgroundColor: '#173D32',
-    borderRadius: 20,
-    paddingVertical: 12,
+  auspiciousBox: {
+    backgroundColor: 'rgba(223, 166, 46, 0.1)',
+    borderRadius: 10,
+    padding: 12,
+    marginTop: 14,
+    borderWidth: 1,
+    borderColor: '#E6C898',
+  },
+  auspiciousTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#173D32',
+    marginBottom: 4,
+  },
+  auspiciousBody: {
+    fontSize: 12.5,
+    lineHeight: 18,
+    color: '#6B4B3D',
+  },
+  downloadPdfButton: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#173D32',
+    paddingVertical: 11,
+    borderRadius: 20,
+    marginTop: 16,
+    gap: 8,
   },
-  modalDismissText: {
+  downloadPdfText: {
     color: '#FFFFFF',
-    fontSize: 14.5,
+    fontSize: 14,
     fontWeight: '700',
   },
 });

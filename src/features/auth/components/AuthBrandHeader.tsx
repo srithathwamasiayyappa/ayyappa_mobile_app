@@ -17,7 +17,6 @@ export const AuthBrandHeader: React.FC<Props> = (props) => {
       <View style={styles.emblemContainer}>
         <Image
           source={getLogoSource(AYYAPPA_EMBLEM)}
-          defaultSource={AYYAPPA_EMBLEM}
           onError={onLogoError}
           style={styles.emblemImage}
           resizeMode="contain"
@@ -25,7 +24,7 @@ export const AuthBrandHeader: React.FC<Props> = (props) => {
       </View>
 
       {/* 2. Saranam Ayyappa (Exact Capitalization & Deep Maroon Editorial Serif Typography) */}
-      <Text style={styles.title}>{branding.title}</Text>
+      <Text style={styles.title}>{branding?.title || 'Saranam Ayyappa'}</Text>
 
       {/* 3. Decorative Flanked Mantra: — 🪷 Swamiye Saranam Ayyappa — */}
       <View style={styles.mantraRow}>

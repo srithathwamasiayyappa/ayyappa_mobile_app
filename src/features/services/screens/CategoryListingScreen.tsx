@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,20 +11,31 @@ import {
   Platform,
   Dimensions,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Polygon } from 'react-native-svg';
 import { SupportedLanguage } from '../../../types';
 import { CategoryListingSkeleton } from '../../../components/common/CategorySkeleton';
+import { ApiService, resolveMediaUrl } from '../../../services/api';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: WINDOW_WIDTH, height: WINDOW_HEIGHT } = Dimensions.get('window');
+const { width: SCREEN_WIDTH_FULL, height: SCREEN_HEIGHT_FULL } = Dimensions.get('screen');
+const SCREEN_WIDTH = Math.min(WINDOW_WIDTH, SCREEN_WIDTH_FULL);
+const SCREEN_HEIGHT = Math.max(WINDOW_HEIGHT, SCREEN_HEIGHT_FULL);
+const isLargeOrTallScreen = SCREEN_HEIGHT >= 800 || (SCREEN_HEIGHT / SCREEN_WIDTH) >= 1.95;
+
+// Dynamic status bar / safe area height for Android (with explicit support for 6.7" & 6.8" screens)
+const ANDROID_STATUS_BAR_HEIGHT = Platform.OS === 'android'
+  ? Math.max(StatusBar.currentHeight || 0, isLargeOrTallScreen ? 44 : 36)
+  : 0;
 
 interface Props {
   categoryId: string;
   categoryTitle?: string;
   currentLanguage: SupportedLanguage;
   initialDeity?: string;
-  onSelectItem: (id: string, title: string) => void;
+  onSelectItem: (id: string, title: string, rawId?: string) => void;
   onBack: () => void;
 }
 
@@ -55,6 +66,7 @@ const DEITY_IMAGES: Record<string, any> = {
 
 interface ListingItem {
   id: string;
+  rawId?: string;
   title: string;
   desc: string;
   deityId: string;
@@ -348,7 +360,9 @@ export const CategoryListingScreen: React.FC<Props> = ({
   onBack,
 }) => {
   const [selectedFilter, setSelectedFilter] = useState<string>('all');
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [dynamicItems, setDynamicItems] = useState<ListingItem[] | null>(null);
 
   useEffect(() => {
     if (initialDeity && initialDeity !== 'all') {
@@ -357,6 +371,59 @@ export const CategoryListingScreen: React.FC<Props> = ({
       setSelectedFilter('all');
     }
   }, [initialDeity, categoryId]);
+
+  // Load subcategories dynamically from DB via API (Instant live sync with Admin Panel)
+  const fetchSubcategories = useCallback(async (isRefresh = false) => {
+    if (isRefresh) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
+
+    try {
+      const items = await ApiService.getSubcategories(categoryId, currentLanguage);
+      if (Array.isArray(items) && items.length > 0) {
+        const mapped: ListingItem[] = items.map((item: any) => {
+          let deityId = 'ayyappa';
+          const text = `${item.slug || ''} ${item.title || ''}`.toLowerCase();
+          if (text.includes('ganapathi') || text.includes('ganesha')) deityId = 'ganesha';
+          else if (text.includes('satyanarayana') || text.includes('venkateswara') || text.includes('srinivasa') || text.includes('balaji')) deityId = 'venkateswara';
+          else if (text.includes('lakshmi') || text.includes('devi') || text.includes('durga') || text.includes('ammavari')) deityId = 'devi';
+          else if (text.includes('rudra') || text.includes('shiva') || text.includes('linga') || text.includes('pradosha')) deityId = 'shiva';
+          else if (text.includes('hanuman') || text.includes('anjaneya')) deityId = 'hanuman';
+          else if (text.includes('subramanya') || text.includes('muruga') || text.includes('sashti')) deityId = 'murugan';
+
+          let imageSource = DEITY_IMAGES[deityId] || DEITY_IMAGES.ayyappa;
+          const rawImg = item.imageUrl || item.image || item.artwork;
+          if (rawImg && typeof rawImg === 'string' && rawImg.trim()) {
+            imageSource = { uri: resolveMediaUrl(rawImg) };
+          }
+
+          return {
+            id: item.slug || String(item.id),
+            rawId: String(item.id),
+            title: item.title,
+            desc: item.description || '',
+            deityId,
+            image: imageSource,
+          };
+        });
+        setDynamicItems(mapped);
+      } else {
+        setDynamicItems(null);
+      }
+    } catch (e) {
+      console.warn('Error fetching dynamic subcategories:', e);
+      setDynamicItems(null);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [categoryId, currentLanguage]);
+
+  useEffect(() => {
+    fetchSubcategories();
+  }, [fetchSubcategories]);
 
   // Derive title
   const displayTitle = categoryTitle || (
@@ -386,8 +453,10 @@ export const CategoryListingScreen: React.FC<Props> = ({
       : categoryId
   );
 
-  // Fetch items based on category
-  const allCategoryItems = MASTER_CATEGORY_CONTENT[normalizedKey] || MASTER_CATEGORY_CONTENT[categoryId] || MASTER_CATEGORY_CONTENT['pooja-vidhanam'];
+  // Fetch items based on category (prefer dynamic DB items from admin panel)
+  const allCategoryItems = dynamicItems && dynamicItems.length > 0
+    ? dynamicItems
+    : (MASTER_CATEGORY_CONTENT[normalizedKey] || MASTER_CATEGORY_CONTENT[categoryId] || MASTER_CATEGORY_CONTENT['pooja-vidhanam']);
 
   // Filter items by selected deity tab
   const filteredItems = selectedFilter === 'all'
@@ -396,7 +465,7 @@ export const CategoryListingScreen: React.FC<Props> = ({
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor="#173D32" translucent={false} />
+      <StatusBar barStyle="light-content" backgroundColor="#173D32" translucent />
 
       {/* =========================================================
           1. SACRED MAROON HEADER WITH BACK ARROW & CORNER FILIGREE
@@ -485,8 +554,16 @@ export const CategoryListingScreen: React.FC<Props> = ({
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => fetchSubcategories(true)}
+            colors={['#173D32', '#DFA62E']}
+            tintColor="#173D32"
+          />
+        }
       >
-        {loading ? (
+        {loading && !refreshing ? (
           <CategoryListingSkeleton count={6} />
         ) : filteredItems.length === 0 ? (
           <View style={styles.emptyContainer}>
@@ -502,10 +579,26 @@ export const CategoryListingScreen: React.FC<Props> = ({
           <View style={styles.cardsContainer}>
             {filteredItems.map((item) => (
               <TouchableOpacity
-                key={item.id}
+                key={item.rawId || item.id}
                 style={styles.poojaCard}
                 activeOpacity={0.82}
-                onPress={() => onSelectItem(item.id, item.title)}
+                onPress={() => {
+                  const isPadiCard =
+                    item.id === 'ayyappa-padi-pooja' ||
+                    item.rawId === '117' ||
+                    item.id === '117' ||
+                    (item.id && String(item.id).toLowerCase().includes('padi')) ||
+                    (item.title && (
+                      item.title.includes('పడి') ||
+                      item.title.toLowerCase().includes('padi') ||
+                      item.title.includes('అయ్యప్ప పూజ')
+                    ));
+                  if (isPadiCard) {
+                    onSelectItem('ayyappa-padi-pooja', item.title, item.rawId || '117');
+                  } else {
+                    onSelectItem(item.id, item.title, item.rawId);
+                  }
+                }}
                 accessibilityRole="button"
                 accessibilityLabel={item.title}
               >
@@ -549,6 +642,7 @@ const styles = StyleSheet.create({
   },
   safeHeaderArea: {
     backgroundColor: '#173D32',
+    paddingTop: ANDROID_STATUS_BAR_HEIGHT,
   },
   headerBar: {
     height: 52,

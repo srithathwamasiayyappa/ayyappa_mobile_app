@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { GoldenTempleIcon, LocationMapPinIcon } from './HomeDevotionalIcons';
 import { SupportedLanguage } from '../../../types';
-import { ApiService } from '../../../services/api';
+import { ApiService, resolveMediaUrl } from '../../../services/api';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -22,11 +22,6 @@ interface Props {
   language: SupportedLanguage;
   onOpenDetail?: (id: string, title: string) => void;
 }
-
-const TEMPLE_IMG_1 = require('../../../../assets/home/temple_sabarimala.png');
-const TEMPLE_IMG_2 = require('../../../../assets/home/temple_venkateswara.png');
-const TEMPLE_IMG_3 = require('../../../../assets/home/temple_kottarakkara.png');
-const DEFAULT_TEMPLE_IMAGES = [TEMPLE_IMG_1, TEMPLE_IMG_2, TEMPLE_IMG_3];
 
 const SECTION_TRANSLATIONS: Record<
   SupportedLanguage,
@@ -84,7 +79,7 @@ export const FeaturedTemplesSection: React.FC<Props> = ({
       setError(null);
       const data = await ApiService.getTemples(language);
       if (Array.isArray(data) && data.length > 0) {
-        const mapped = data.slice(0, 9).map((t, idx) => {
+        const mapped = data.slice(0, 9).map((t) => {
           const loc = t.city && t.state 
             ? `${t.city}, ${t.state}` 
             : t.address || t.city || t.state || 'India';
@@ -92,8 +87,7 @@ export const FeaturedTemplesSection: React.FC<Props> = ({
             id: t.id,
             name: t.name || (t as any).originalName || 'Ayyappa Temple',
             location: loc,
-            thumbnailUrl: t.thumbnailUrl,
-            image: DEFAULT_TEMPLE_IMAGES[idx % DEFAULT_TEMPLE_IMAGES.length],
+            thumbnailUrl: t.thumbnailUrl || t.heroImageUrl,
           };
         });
         setFeaturedTemples(mapped);
@@ -184,10 +178,9 @@ export const FeaturedTemplesSection: React.FC<Props> = ({
                     source={{ uri: temple.thumbnailUrl }}
                     style={styles.cardImage}
                     resizeMode="cover"
-                    defaultSource={temple.image}
                   />
                 ) : (
-                  <Image source={temple.image} style={styles.cardImage} resizeMode="cover" />
+                  <View style={styles.cardImage} />
                 )}
                 <View style={styles.cardContent}>
                   <Text style={styles.templeName} numberOfLines={2}>

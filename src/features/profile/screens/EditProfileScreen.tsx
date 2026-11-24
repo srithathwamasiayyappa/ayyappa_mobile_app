@@ -728,8 +728,7 @@ export const EditProfileScreen: React.FC<Props> = ({
     if (!fullName.trim()) errs.fullName = 'Full Name is required';
     if (!dobYmd && !dobDisplay.trim()) errs.dob = 'Date of Birth is required';
     if (!gender) errs.gender = 'Gender is required';
-    if (!selectedRashiId && !selectedRashiName) errs.rashi = 'Rashi is required';
-    if (!selectedNakshatraId && !selectedNakshatraName) errs.nakshatra = 'Nakshatram is required';
+    // Rashi & Nakshatram are optional for devotees
     if (!email.trim()) {
       errs.email = 'Email is required';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
@@ -1037,12 +1036,12 @@ export const EditProfileScreen: React.FC<Props> = ({
               </View>
             </View>
 
-            {/* Row 2: Rashi, Nakshatram */}
+            {/* Row 2: Rashi, Nakshatram (Optional) */}
             <View style={styles.fieldRowWrap}>
               {/* Rashi */}
               <View style={[styles.fieldColumn, { flex: 1 }]}>
                 <Text style={styles.fieldLabel}>
-                  Rashi <Text style={styles.asterisk}>*</Text>
+                  Rashi <Text style={styles.optionalSubLabel}>(Optional)</Text>
                 </Text>
                 <TouchableOpacity
                   style={[styles.inputBox, errors.rashi && styles.inputError]}
@@ -1060,7 +1059,7 @@ export const EditProfileScreen: React.FC<Props> = ({
               {/* Nakshatram */}
               <View style={[styles.fieldColumn, { flex: 1 }]}>
                 <Text style={styles.fieldLabel}>
-                  Nakshatram <Text style={styles.asterisk}>*</Text>
+                  Nakshatram <Text style={styles.optionalSubLabel}>(Optional)</Text>
                 </Text>
                 <TouchableOpacity
                   style={[styles.inputBox, errors.nakshatra && styles.inputError]}
@@ -1417,6 +1416,22 @@ export const EditProfileScreen: React.FC<Props> = ({
           <View style={styles.modalOverlay}>
             <View style={[styles.modalCard, { maxHeight: '75%' }]}>
               <Text style={styles.modalTitle}>Select Your Rashi</Text>
+              <TouchableOpacity
+                style={[
+                  styles.pickerListItem,
+                  !selectedRashiId && styles.pickerListItemActive,
+                  { backgroundColor: '#F9F5EC' }
+                ]}
+                onPress={() => {
+                  setSelectedRashiId(null);
+                  setSelectedRashiName('');
+                  setRashiModalOpen(false);
+                }}
+              >
+                <Text style={styles.pickerItemGlyph}>—</Text>
+                <Text style={[styles.pickerItemText, { fontStyle: 'italic', color: '#7D6A58' }]}>None / Not Specified (Optional)</Text>
+                {!selectedRashiId && <Text style={styles.pickerItemCheck}>✓</Text>}
+              </TouchableOpacity>
               <FlatList
                 data={rashis}
                 keyExtractor={(item) => String(item.id)}
@@ -1458,6 +1473,22 @@ export const EditProfileScreen: React.FC<Props> = ({
           <View style={styles.modalOverlay}>
             <View style={[styles.modalCard, { maxHeight: '75%' }]}>
               <Text style={styles.modalTitle}>Select Janma Nakshatram</Text>
+              <TouchableOpacity
+                style={[
+                  styles.pickerListItem,
+                  !selectedNakshatraId && styles.pickerListItemActive,
+                  { backgroundColor: '#F9F5EC' }
+                ]}
+                onPress={() => {
+                  setSelectedNakshatraId(null);
+                  setSelectedNakshatraName('');
+                  setNakshatraModalOpen(false);
+                }}
+              >
+                <Text style={styles.pickerItemGlyph}>—</Text>
+                <Text style={[styles.pickerItemText, { fontStyle: 'italic', color: '#7D6A58' }]}>None / Not Specified (Optional)</Text>
+                {!selectedNakshatraId && <Text style={styles.pickerItemCheck}>✓</Text>}
+              </TouchableOpacity>
               <FlatList
                 data={nakshatras}
                 keyExtractor={(item) => String(item.id)}
@@ -2110,6 +2141,11 @@ const styles = StyleSheet.create({
   asterisk: {
     color: '#C62828',
     fontWeight: '700',
+  },
+  optionalSubLabel: {
+    color: '#8A5D18',
+    fontWeight: '500',
+    fontSize: 11,
   },
   inputBox: {
     flexDirection: 'row',
