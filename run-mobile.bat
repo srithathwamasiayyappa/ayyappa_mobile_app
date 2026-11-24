@@ -9,7 +9,6 @@ echo.
 :: Add Android SDK platform-tools to PATH so adb works
 set "PATH=%LOCALAPPDATA%\Android\Sdk\platform-tools;%PATH%"
 
-set "PNPM_CMD=C:\Users\THATIPALLY VINOD\AppData\Roaming\npm\pnpm.cmd"
 cd /d "%~dp0apps\mobile"
 
 echo Starting Expo Metro Bundler...
@@ -17,6 +16,10 @@ echo - To open in Expo Go: Scan the QR code shown below with Expo Go on your pho
 echo - To open over USB: Unlock your phone screen, allow USB debugging, then press 'a'.
 echo.
 
-npx expo start -c
+if exist "node_modules\.bin\expo.cmd" (
+  call "node_modules\.bin\expo.cmd" start --go -c
+) else (
+  call npx.cmd expo start --go -c
+)
 
 pause

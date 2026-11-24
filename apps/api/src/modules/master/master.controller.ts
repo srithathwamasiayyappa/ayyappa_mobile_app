@@ -79,4 +79,14 @@ export class MasterController {
       data: logos,
     };
   }
+
+  @Get('ui-translations')
+  async getUiTranslations(@Query('lang') lang?: string) {
+    const data = await this.masterService.getUiTranslations(lang || 'en');
+    return {
+      success: true,
+      language: lang || 'en',
+      data,
+    };
+  }
 }

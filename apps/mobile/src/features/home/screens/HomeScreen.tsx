@@ -46,7 +46,17 @@ import { FeaturedTemplesSection } from '../components/FeaturedTemplesSection';
 import { DailyInspirationSection } from '../components/DailyInspirationSection';
 import { AnnadanamSupportSection } from '../components/AnnadanamSupportSection';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: WINDOW_WIDTH, height: WINDOW_HEIGHT } = Dimensions.get('window');
+const { width: SCREEN_WIDTH_FULL, height: SCREEN_HEIGHT_FULL } = Dimensions.get('screen');
+const SCREEN_WIDTH = Math.min(WINDOW_WIDTH, SCREEN_WIDTH_FULL);
+const SCREEN_HEIGHT = Math.max(WINDOW_HEIGHT, SCREEN_HEIGHT_FULL);
+const isLargeOrTallScreen = SCREEN_HEIGHT >= 800 || (SCREEN_HEIGHT / SCREEN_WIDTH) >= 1.95;
+
+// Dynamic status bar / safe area height for Android (with explicit support for 6.7" & 6.8" screens)
+const ANDROID_STATUS_BAR_HEIGHT = Platform.OS === 'android'
+  ? Math.max(StatusBar.currentHeight || 0, isLargeOrTallScreen ? 44 : 36)
+  : 0;
+
 const HERO_CARD_MARGIN = 14;
 const BANNER_MARGIN = 0;
 const BANNER_WIDTH = SCREEN_WIDTH - (HERO_CARD_MARGIN * 2);
@@ -196,6 +206,7 @@ const HeroGoldDivider = () => (
 
 interface Props {
   currentLanguage: SupportedLanguage;
+  currentUser?: any;
   currentDeity?: DeityItem | null;
   currentLocation?: string;
   onLocationChange?: (city: string) => void;
@@ -450,22 +461,33 @@ export const HomeScreen: React.FC<Props> = ({
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor="#003D2E" translucent={false} />
+      <StatusBar barStyle="light-content" backgroundColor="#0F382C" translucent />
 
-      {/* =========================================================
-          UNIFIED DEVOTIONAL HEADER & HERO SECTION (REFERENCE DESIGN)
-         ========================================================= */}
-      <View style={styles.unifiedHeroSection}>
-        <StatusBar barStyle="light-content" backgroundColor="#0F382C" translucent={false} />
-        <SafeAreaView style={styles.safeHeaderArea}>
-          <LinearGradient
-            colors={['#0F382C', '#0A271E']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.unifiedHeaderContainer}
-          >
-            <HeaderCornerFlourishLeft />
-            <HeaderCornerFlourishRight />
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#0F382C', '#E7B844']}
+            tintColor="#0F382C"
+          />
+        }
+      >
+        {/* =========================================================
+            UNIFIED DEVOTIONAL HEADER & HERO SECTION (SCROLLS NATURALLY)
+           ========================================================= */}
+        <View style={styles.unifiedHeroSection}>
+          <SafeAreaView style={styles.safeHeaderArea}>
+            <LinearGradient
+              colors={['#0F382C', '#0A271E']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.unifiedHeaderContainer}
+            >
+              <HeaderCornerFlourishLeft />
+              <HeaderCornerFlourishRight />
 
             {/* Top Row: Title on Left, Location Dropdown, Bell & White Avatar on Right */}
             <View style={styles.headerTopRow}>
@@ -659,19 +681,6 @@ export const HomeScreen: React.FC<Props> = ({
           </LinearGradient>
         </SafeAreaView>
       </View>
-
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={['#0F382C', '#E7B844']}
-            tintColor="#0F382C"
-          />
-        }
-      >
 
         {/* =========================================================
             3. CURVED IVORY CONTAINER (SEAMLESS DEVOTIONAL TRANSITION)
@@ -1013,10 +1022,11 @@ export const HomeScreen: React.FC<Props> = ({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#FAF5EB',
+    backgroundColor: '#0F382C',
   },
   safeHeaderArea: {
     backgroundColor: '#0F382C',
+    paddingTop: ANDROID_STATUS_BAR_HEIGHT,
   },
   unifiedHeroSection: {
     backgroundColor: '#0F382C',
@@ -1787,7 +1797,7 @@ const styles = StyleSheet.create({
   },
   drawerHeader: {
     paddingHorizontal: 18,
-    paddingTop: Platform.OS === 'ios' ? 48 : 36,
+    paddingTop: Platform.OS === 'ios' ? 48 : ANDROID_STATUS_BAR_HEIGHT + 14,
     paddingBottom: 20,
     borderBottomWidth: 1,
     borderBottomColor: '#DFA62E',

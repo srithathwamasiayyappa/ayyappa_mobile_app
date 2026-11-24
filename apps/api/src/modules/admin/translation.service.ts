@@ -24,7 +24,7 @@ export interface TranslationResultMap {
 
 export interface TranslationResponseDto {
   success: boolean;
-  provider: 'google_cloud_v3' | 'devotional_engine';
+  provider: 'google_cloud_v3' | 'google_translator' | 'devotional_engine';
   sourceLang: string;
   results: TranslationResultMap;
   errors?: { [langCode: string]: string };
@@ -85,7 +85,7 @@ export class TranslationService {
     const htmlFieldsSet = new Set(dto.htmlFields || []);
     const results: TranslationResultMap = {};
     const errors: { [langCode: string]: string } = {};
-    let providerUsed: 'google_cloud_v3' | 'devotional_engine' = 'devotional_engine';
+    let providerUsed: 'google_cloud_v3' | 'google_translator' | 'devotional_engine' = 'devotional_engine';
 
     // Check if Google Cloud Translation is configured
     const gcpConfig = this.getGcpConfig();
@@ -104,17 +104,32 @@ export class TranslationService {
         try {
           if (gcpConfig.isAvailable) {
             // 1. Attempt Google Cloud Translation Advanced v3
-            const translated = await this.callGoogleCloudV3(textValue, sourceLang, targetLang, isHtml, gcpConfig);
-            results[targetLang][fieldKey] = this.applyDevotionalGlossary(translated, targetLang);
-            providerUsed = 'google_cloud_v3';
-          } else {
-            // 2. High-Precision Devotional Lexicon & Script Engine (Fallback when GCP not yet active)
-            const translated = this.devotionalFallbackTranslate(textValue, sourceLang, targetLang, isHtml);
-            results[targetLang][fieldKey] = translated;
+            try {
+              const translated = await this.callGoogleCloudV3(textValue, sourceLang, targetLang, isHtml, gcpConfig);
+              results[targetLang][fieldKey] = this.applyDevotionalGlossary(translated, targetLang);
+              providerUsed = 'google_cloud_v3';
+              continue;
+            } catch (gcpErr: any) {
+              this.logger.warn(`GCP v3 unavailable: ${gcpErr.message}. Attempting direct Google Translator.`);
+            }
+          }
+
+          // 2. Direct Google Translator API Engine (Fast & zero-credential)
+          try {
+            const googleTranslated = await this.callGoogleTranslateDirect(textValue, sourceLang, targetLang, isHtml);
+            results[targetLang][fieldKey] = this.applyDevotionalGlossary(googleTranslated, targetLang);
+            if (providerUsed !== 'google_cloud_v3') {
+              providerUsed = 'google_translator';
+            }
+          } catch (googleErr: any) {
+            // 3. Fallback to Devotional Lexicon & Script Engine
+            this.logger.warn(`Google Translator direct error for ${targetLang}:${fieldKey}: ${googleErr.message}. Using devotional glossary.`);
+            errors[targetLang] = googleErr.message || 'Google Translate error, used devotional fallback';
+            const fallback = this.devotionalFallbackTranslate(textValue, sourceLang, targetLang, isHtml);
+            results[targetLang][fieldKey] = fallback;
           }
         } catch (err: any) {
-          this.logger.warn(`GCP v3 translation error for ${targetLang}:${fieldKey}: ${err.message}. Falling back to devotional engine.`);
-          errors[targetLang] = err.message || 'Google Cloud Translation error, used devotional fallback';
+          errors[targetLang] = err.message || 'Translation error';
           const fallback = this.devotionalFallbackTranslate(textValue, sourceLang, targetLang, isHtml);
           results[targetLang][fieldKey] = fallback;
         }
@@ -129,6 +144,56 @@ export class TranslationService {
       errors: Object.keys(errors).length > 0 ? errors : undefined,
       glossaryApplied: true,
     };
+  }
+
+  /**
+   * Direct Google Translator Engine (Fast, resilient real-time translation)
+   */
+  private async callGoogleTranslateDirect(
+    text: string,
+    source: string,
+    target: string,
+    isHtml: boolean
+  ): Promise<string> {
+    const cleanText = text.trim();
+    if (!cleanText) return '';
+
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(
+      source || 'auto'
+    )}&tl=${encodeURIComponent(target)}&dt=t&q=${encodeURIComponent(cleanText)}`;
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 6000);
+
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)',
+          'Accept': '*/*',
+        },
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeout);
+
+      if (!response.ok) {
+        throw new Error(`Google Translate HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (Array.isArray(data) && Array.isArray(data[0])) {
+        const translatedParts = data[0].map((part: any) => (Array.isArray(part) ? part[0] : '')).filter(Boolean);
+        const combined = translatedParts.join('');
+        if (combined && combined.trim().length > 0) {
+          return combined;
+        }
+      }
+      throw new Error('Unrecognized response format from Google Translate');
+    } catch (e: any) {
+      clearTimeout(timeout);
+      throw e;
+    }
   }
 
   /**

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
+import { UI_TRANSLATIONS } from './ui-translations.data';
 
 const ALL_INDIAN_STATES = [
   'Andhra Pradesh', 'Telangana', 'Kerala', 'Tamil Nadu', 'Karnataka',
@@ -363,6 +364,29 @@ export class MasterService {
     } catch {
       return DEFAULT_DEITIES;
     }
+  }
+
+  /**
+   * Fetch complete UI translations dictionary directly from database / setting or fallback to master bundle
+   */
+  async getUiTranslations(lang = 'en') {
+    const targetLang = (lang || 'en').toLowerCase().trim();
+    try {
+      const setting = await this.prisma.appSetting.findUnique({
+        where: { key: `ui_translations_${targetLang}` },
+      });
+      if (setting && setting.value) {
+        const parsed = JSON.parse(setting.value);
+        if (parsed && typeof parsed === 'object') {
+          return {
+            ...(UI_TRANSLATIONS[targetLang] || UI_TRANSLATIONS.en || {}),
+            ...parsed,
+          };
+        }
+      }
+    } catch {}
+
+    return UI_TRANSLATIONS[targetLang] || UI_TRANSLATIONS.en || {};
   }
 
   /**

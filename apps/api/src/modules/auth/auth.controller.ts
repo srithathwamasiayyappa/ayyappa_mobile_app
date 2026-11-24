@@ -66,6 +66,41 @@ export class AuthController {
     const requestedRole = (body.role || 'CUSTOMER').toUpperCase();
     const reqIntent = body.intent ? body.intent.toUpperCase() : null;
 
+    // Default test mobile number bypass for seamless login / review
+    if (cleanPhone === '6302759527') {
+      try {
+        let testUser = await this.prisma.appUser.findFirst({
+          where: {
+            OR: [
+              { phoneNumber: '6302759527' },
+              { phoneNumber: '+916302759527' },
+              { phoneNumber: '916302759527' },
+            ],
+          },
+        });
+        if (!testUser) {
+          testUser = await this.prisma.appUser.create({
+            data: {
+              phoneNumber: '6302759527',
+              fullName: 'Ayyappa Devotee',
+              preferredLang: 'te',
+              isSuspended: false,
+              isDeleted: false,
+            },
+          });
+        }
+      } catch (e) {
+        this.logger.warn(`Default test user upsert notice: ${e?.message || e}`);
+      }
+      return {
+        success: true,
+        isRegistered: true,
+        isSuspended: false,
+        message: 'Default login mobile verified. Proceed with OTP 123456.',
+        navigationAction: 'LOGIN',
+      };
+    }
+
     let user = null;
     let memberships: any[] = [];
     try {
@@ -230,6 +265,17 @@ export class AuthController {
 
     const cleanPhone = phoneNumber.trim().replace(/[^0-9]/g, '').slice(-10);
 
+    // Default test mobile number bypass
+    if (cleanPhone === '6302759527') {
+      KeyedOtpManager.saveChallenge('6302759527', '123456');
+      return {
+        success: true,
+        message: 'Default verification code: 123456',
+        phoneNumber: '6302759527',
+        otp: '123456',
+      };
+    }
+
     // Enforce 30s cooldown
     const cooldownRemaining = KeyedOtpManager.getRemainingCooldown(cleanPhone);
     if (cooldownRemaining > 0) {
@@ -314,6 +360,17 @@ export class AuthController {
 
     const cleanPhone = phoneNumber.trim().replace(/[^0-9]/g, '').slice(-10);
 
+    // Default test mobile number bypass
+    if (cleanPhone === '6302759527') {
+      KeyedOtpManager.saveChallenge('6302759527', '123456');
+      return {
+        success: true,
+        message: 'Default verification code: 123456',
+        phoneNumber: '6302759527',
+        otp: '123456',
+      };
+    }
+
     // Verify OTP through MSG91 or KeyedOtpManager
     const isMsg91Active = Boolean(process.env.MSG91_AUTH_KEY);
     if (otp.trim() === '123456') {
@@ -358,6 +415,24 @@ export class AuthController {
       },
     });
 
+    // Write audit log for administrator review in admin panel
+    try {
+      await this.prisma.adminAuditLog.create({
+        data: {
+          action: 'USER_DELETION_REQUESTED',
+          targetType: 'APP_USER',
+          targetId: String(user.id),
+          detailsJson: JSON.stringify({
+            userId: user.id,
+            phone: cleanPhone,
+            fullName: user.fullName,
+            reason: reason ? reason.trim().slice(0, 500) : 'Requested by devotee with verified OTP',
+            requestedAt: new Date().toISOString(),
+          }),
+        },
+      });
+    } catch {}
+
     return {
       success: true,
       message: 'Your devotee account has been permanently deleted.',
@@ -393,6 +468,17 @@ export class AuthController {
     }
 
     const cleanPhone = phoneNumber.trim().replace(/[^0-9]/g, '').slice(-10);
+
+    // Default test mobile number bypass
+    if (cleanPhone === '6302759527') {
+      KeyedOtpManager.saveChallenge('6302759527', '123456');
+      return {
+        success: true,
+        message: 'Default verification code: 123456',
+        phoneNumber: '6302759527',
+        otp: '123456',
+      };
+    }
 
     // Verify OTP through MSG91 (Production) or KeyedOtpManager (Local Dev)
     const isMsg91Active = Boolean(process.env.MSG91_AUTH_KEY);
@@ -475,6 +561,52 @@ export class AuthController {
     }
 
     const cleanPhone = phoneNumber.trim().replace(/[^0-9]/g, '').slice(-10);
+
+    // Default test mobile number bypass
+    if (cleanPhone === '6302759527') {
+      if (otp.trim() !== '123456') {
+        throw new BadRequestException('Invalid OTP. Please enter 123456 for default test account.');
+      }
+      let testUser = null;
+      try {
+        testUser = await this.prisma.appUser.findFirst({
+          where: {
+            OR: [
+              { phoneNumber: '6302759527' },
+              { phoneNumber: '+916302759527' },
+              { phoneNumber: '916302759527' },
+            ],
+          },
+        });
+        if (!testUser) {
+          testUser = await this.prisma.appUser.create({
+            data: {
+              phoneNumber: '6302759527',
+              fullName: 'Ayyappa Devotee',
+              preferredLang: 'te',
+              isSuspended: false,
+              isDeleted: false,
+              lastActiveAt: new Date(),
+            },
+          });
+        }
+      } catch (e) {
+        this.logger.warn(`Default test user find/create notice: ${e?.message || e}`);
+      }
+      return {
+        success: true,
+        message: 'Successfully logged in with default test credentials.',
+        user: {
+          id: testUser?.id || 1,
+          phoneNumber: '6302759527',
+          fullName: testUser?.fullName || 'Ayyappa Devotee',
+          email: testUser?.email || 'devotee@saranamayyappa.in',
+          role: role.toUpperCase() === 'DHARMA_KARTHA' ? 'DHARMA_KARTHA' : 'CUSTOMER',
+          preferredLang: testUser?.preferredLang || 'te',
+        },
+        token: `session_token_6302759527_${Date.now()}`,
+      };
+    }
 
     // Verify OTP through MSG91 (Production) or KeyedOtpManager (Local Dev)
     const isMsg91Active = Boolean(process.env.MSG91_AUTH_KEY);

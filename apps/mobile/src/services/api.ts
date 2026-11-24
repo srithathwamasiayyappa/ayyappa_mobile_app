@@ -396,19 +396,47 @@ export const ApiService = {
     }));
   },
 
-  // 3b. Fetch Home Page 10 Devotional Services dynamically from DB via API
+  // 3b. Fetch Home Page 10 Devotional Services dynamically from DB via API (/categories/services)
   async getHomeServices(
     lang: SupportedLanguage = 'en'
-  ): Promise<Array<{ id: string; key: string; title: string; icon?: string; displayOrder: number }>> {
+  ): Promise<Array<{ id: string; key: string; title: string; sub?: string; icon?: string; artwork?: string; displayOrder: number }>> {
     const fetchServices = async (baseUrl: string) => {
-      const res = await fetch(`${baseUrl}/home/categories?lang=${lang}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json();
-      if (json && Array.isArray(json.data) && json.data.length > 0) {
-        return json.data;
-      }
-      if (Array.isArray(json) && json.length > 0) {
-        return json;
+      // 1. Try public categories/services first
+      try {
+        const res = await fetch(`${baseUrl}/categories/services?lang=${lang}`);
+        if (res.ok) {
+          const json = await res.json();
+          const list = json?.data || (Array.isArray(json) ? json : []);
+          if (Array.isArray(list) && list.length > 0) {
+            return list.map((item: any) => ({
+              id: String(item.id || item.serviceId),
+              key: String(item.serviceId || item.id),
+              title: item.title,
+              sub: item.sub || '',
+              icon: item.icon,
+              artwork: resolveMediaUrl(item.artwork),
+              displayOrder: Number(item.displayOrder || 0),
+            }));
+          }
+        }
+      } catch {}
+
+      // 2. Try admin category-services
+      const adminRes = await fetch(`${baseUrl}/admin/category-services`);
+      if (adminRes.ok) {
+        const json = await adminRes.json();
+        const list = json?.data || (Array.isArray(json) ? json : []);
+        if (Array.isArray(list) && list.length > 0) {
+          return list.map((item: any) => ({
+            id: String(item.id || item.serviceId),
+            key: String(item.serviceId || item.id),
+            title: item.title,
+            sub: item.sub || '',
+            icon: item.icon,
+            artwork: resolveMediaUrl(item.artwork),
+            displayOrder: Number(item.displayOrder || 0),
+          }));
+        }
       }
       throw new Error('Invalid home services data');
     };
@@ -425,16 +453,104 @@ export const ApiService = {
     }
   },
 
-  // 4. Fetch Specific Record / Subpage Detail from DB via API (Strictly NO fake or fallback data)
-  async getCategoryDetail(id: string, lang: SupportedLanguage = 'en'): Promise<any> {
+  // 3c. Fetch Dynamic Subcategories from DB via API (/admin/subcategories)
+  async getSubcategories(
+    parentSlugOrId?: string,
+    lang: SupportedLanguage = 'en',
+    search?: string
+  ): Promise<any[]> {
+    const parent = parentSlugOrId || 'all';
+    const qs = `parentId=${encodeURIComponent(parent)}&lang=${encodeURIComponent(lang)}${search ? `&search=${encodeURIComponent(search.trim())}` : ''}&limit=100`;
+
+    const fetchFrom = async (baseUrl: string) => {
+      const res = await fetch(`${baseUrl}/admin/subcategories?${qs}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      const list = json?.data || (Array.isArray(json) ? json : []);
+      if (Array.isArray(list)) {
+        return list.map((item: any) => ({
+          ...item,
+          imageUrl: resolveMediaUrl(item.imageUrl || item.image),
+        }));
+      }
+      return [];
+    };
+
     try {
-      const res = await fetch(`${API_BASE_URL}/categories/${id}?lang=${lang}`);
-      if (res.ok) return await res.json();
+      const data = await fetchFrom(API_BASE_URL);
+      if (data && data.length > 0) return data;
     } catch {}
 
     try {
-      const res = await fetch(`${PRODUCTION_BASE_URL}/categories/${id}?lang=${lang}`);
-      if (res.ok) return await res.json();
+      const data = await fetchFrom(PRODUCTION_BASE_URL);
+      if (data && data.length > 0) return data;
+    } catch {}
+
+    return [];
+  },
+
+  // 3d. Fetch 9 Sacred Ayyappa Padi Pooja Data items dynamically from DB (parentId: 8)
+  async getAyyappaPadiPoojaSubcategories(lang: SupportedLanguage = 'te'): Promise<any[]> {
+    // Parent ID 8 is 'sri-ayyappa-ashtottara' (Lord Ayyappa subcategories: 61 to 69)
+    try {
+      const res = await this.getSubcategories('8', lang);
+      if (Array.isArray(res) && res.length > 0) {
+        return res.sort((a, b) => (Number(a.displayOrder || 0) - Number(b.displayOrder || 0)));
+      }
+    } catch {}
+
+    // Fallback search by slug
+    try {
+      const res = await this.getSubcategories('sri-ayyappa-ashtottara', lang);
+      if (Array.isArray(res) && res.length > 0) {
+        return res.sort((a, b) => (Number(a.displayOrder || 0) - Number(b.displayOrder || 0)));
+      }
+    } catch {}
+
+    return [];
+  },
+
+  // 4. Fetch Specific Record / Subpage Detail from DB via API (Strictly NO fake or fallback data)
+  async getCategoryDetail(id: string, lang: SupportedLanguage = 'en'): Promise<any> {
+    const fetchFrom = async (baseUrl: string) => {
+      // 1. Try admin subcategory detail first
+      try {
+        const subRes = await fetch(`${baseUrl}/admin/subcategories/${encodeURIComponent(id)}?lang=${lang}`);
+        if (subRes.ok) {
+          const subJson = await subRes.json();
+          const detail = subJson?.data || subJson;
+          if (detail && detail.id) {
+            return {
+              ...detail,
+              imageUrl: resolveMediaUrl(detail.imageUrl || detail.image),
+            };
+          }
+        }
+      } catch {}
+
+      // 2. Try category detail
+      const res = await fetch(`${baseUrl}/categories/${encodeURIComponent(id)}?lang=${lang}`);
+      if (res.ok) {
+        const json = await res.json();
+        const detail = json?.data || json;
+        if (detail && detail.id) {
+          return {
+            ...detail,
+            imageUrl: resolveMediaUrl(detail.imageUrl || detail.image),
+          };
+        }
+      }
+      return null;
+    };
+
+    try {
+      const detail = await fetchFrom(API_BASE_URL);
+      if (detail) return detail;
+    } catch {}
+
+    try {
+      const detail = await fetchFrom(PRODUCTION_BASE_URL);
+      if (detail) return detail;
     } catch {}
 
     return null;
@@ -1278,7 +1394,7 @@ export const ApiService = {
 
   async getBottomTabs(lang: SupportedLanguage = 'en'): Promise<Array<{ key: MainTab; label: string; icon: string; order: number }>> {
     const fallbackTabs: Array<{ key: MainTab; label: string; icon: string; order: number }> = [
-      { key: 'home', label: 'Home', icon: 'home', order: 1 },
+      { key: 'home', label: 'Sannidhi', icon: 'home', order: 1 },
       { key: 'services', label: 'Services', icon: 'services', order: 2 },
       { key: 'temples', label: 'Temples', icon: 'temples', order: 3 },
       { key: 'panchangam', label: 'Panchangam', icon: 'panchangam', order: 4 },
@@ -1291,7 +1407,7 @@ export const ApiService = {
       if (res.ok) {
         const json = await res.json();
         if (json?.success && Array.isArray(json.tabs) && json.tabs.length > 0) {
-          return json.tabs;
+          return json.tabs.map((t: any) => t.key === 'home' ? { ...t, label: 'Sannidhi' } : t);
         }
       }
     } catch {
@@ -1304,7 +1420,7 @@ export const ApiService = {
       if (res.ok) {
         const json = await res.json();
         if (json?.success && Array.isArray(json.tabs) && json.tabs.length > 0) {
-          return json.tabs;
+          return json.tabs.map((t: any) => t.key === 'home' ? { ...t, label: 'Sannidhi' } : t);
         }
       }
     } catch {

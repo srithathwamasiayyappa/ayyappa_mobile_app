@@ -1,6 +1,6 @@
 import './src/polyfills';
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, View, Text, TextInput, BackHandler, ToastAndroid, Platform, Image, Dimensions } from 'react-native';
+import { StyleSheet, View, Text, TextInput, BackHandler, ToastAndroid, Platform, Image, Dimensions, TouchableOpacity } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -86,6 +86,7 @@ interface DetailState {
   id: string;
   title: string;
   deity?: string;
+  rawId?: string;
 }
 
 interface NavHistoryEntry {
@@ -900,14 +901,14 @@ export default function App() {
             categoryTitle={activeDetail.title}
             currentLanguage={selectedLanguage}
             initialDeity={activeDetail.deity || 'all'}
-            onSelectItem={(id, title) => {
+            onSelectItem={(id, title, rawId) => {
               if (
                 activeDetail.id === 'pooja-vidhanam' ||
                 id.includes('pooja') ||
                 id.includes('vratham') ||
                 id.includes('abhishekam')
               ) {
-                navigateTo('pooja_detail', { id, title });
+                navigateTo('pooja_detail', { id, title, rawId });
               } else if (
                 activeDetail.id === 'bhajans' ||
                 activeDetail.id === 'harathis' ||
@@ -1003,6 +1004,7 @@ export default function App() {
           activeDetail && (
             <PoojaDetailScreen
               itemId={activeDetail.id}
+              rawId={activeDetail.rawId}
               title={activeDetail.title}
               currentLanguage={selectedLanguage}
               onBack={handleGoBack}

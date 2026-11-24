@@ -189,13 +189,7 @@ export class DharmaKarthaService {
     templeId: number;
     role: string;
     status: string;
-  }> = [
-    // Authorized test memberships
-    { id: 1, userId: 1, templeId: 2, role: 'OWNER', status: 'APPROVED' },
-    { id: 2, userId: 1, templeId: 4, role: 'OWNER', status: 'APPROVED' },
-    { id: 3, userId: 2, templeId: 1, role: 'OWNER', status: 'APPROVED' },
-    { id: 4, userId: 3, templeId: 6, role: 'OWNER', status: 'APPROVED' },
-  ];
+  }> = [];
 
   private devTemples: Array<any> = [...SEED_TEMPLES];
   private devTimings: Array<any> = [
@@ -222,11 +216,7 @@ export class DharmaKarthaService {
     { id: 16, templeId: 4, title: 'Sayarakshai (Evening Pooja)', timeWindow: '04:30 PM – 05:15 PM', description: 'Evening deeparadhana with sacred nagaswaram music', sortOrder: 4, isActive: true },
     { id: 17, templeId: 4, title: 'Palliarai Pooja', timeWindow: '09:30 PM – 10:00 PM', description: 'Procession carrying Lord Sundareswarar to Goddess Meenakshi bedchamber', sortOrder: 5, isActive: true },
   ];
-  private devUpdateRequests: Array<any> = [
-    { id: 1, templeId: 2, requestedById: 1, category: 'TIMINGS', status: 'PENDING' },
-    { id: 2, templeId: 2, requestedById: 1, category: 'INFO', status: 'PENDING' },
-    { id: 3, templeId: 4, requestedById: 1, category: 'FESTIVALS', status: 'PENDING' },
-  ];
+  private devUpdateRequests: Array<any> = [];
   private devFestivals: Array<any> = [
     // Pre-seeded temple festivals with detailed information
     {
@@ -1160,9 +1150,13 @@ export class DharmaKarthaService {
           select: { templeId: true },
         });
         targetIds = memberships.map((m: any) => m.templeId);
+        // If Dharma Kartha has NO managed temples, return 0 festivals
         if (targetIds.length === 0) {
-          const allTemples = await (this.prisma as any).temple.findMany({ select: { id: true } });
-          targetIds = allTemples.map((t: any) => t.id);
+          return {
+            success: true,
+            total: 0,
+            festivals: [],
+          };
         }
       }
 
@@ -1189,20 +1183,16 @@ export class DharmaKarthaService {
           specialPoojaInfo: f.specialPoojaInfo || '',
           status: f.status || 'PUBLISHED',
           isAnnual: f.isAnnual,
-          templeName: f.temple?.name || 'Sri Dharma Sastha Ayyappa Swamy Temple',
+          templeName: f.temple?.name || '',
           createdAt: f.createdAt,
         })),
       };
     } catch (err) {
-      console.warn('Fallback to devFestivals:', err);
-      const festivals = this.devFestivals;
+      console.warn('getOwnerFestivals error:', err);
       return {
         success: true,
-        total: festivals.length,
-        festivals: festivals.map((f) => {
-          const temple = this.devTemples.find((t) => t.id === f.templeId);
-          return { ...f, templeName: temple?.name || 'Sri Dharma Sastha Ayyappa Swamy Temple' };
-        }),
+        total: 0,
+        festivals: [],
       };
     }
   }
@@ -1374,9 +1364,13 @@ export class DharmaKarthaService {
           select: { templeId: true },
         });
         targetIds = memberships.map((m: any) => m.templeId);
+        // If Dharma Kartha has NO managed temples, return 0 events
         if (targetIds.length === 0) {
-          const allTemples = await (this.prisma as any).temple.findMany({ select: { id: true } });
-          targetIds = allTemples.map((t: any) => t.id);
+          return {
+            success: true,
+            total: 0,
+            events: [],
+          };
         }
       }
 
@@ -1403,19 +1397,15 @@ export class DharmaKarthaService {
           imageUrl: e.imageUrl || '',
           category: e.category || 'SEVA_PROGRAMME',
           status: e.status || 'PUBLISHED',
-          templeName: e.temple?.name || 'Sri Dharma Sastha Ayyappa Swamy Temple',
+          templeName: e.temple?.name || '',
         })),
       };
     } catch (err) {
-      console.warn('Fallback to devEvents:', err);
-      const events = this.devEvents;
+      console.warn('getOwnerEvents error:', err);
       return {
         success: true,
-        total: events.length,
-        events: events.map((e) => {
-          const temple = this.devTemples.find((t) => t.id === e.templeId);
-          return { ...e, templeName: temple?.name || 'Sri Dharma Sastha Ayyappa Swamy Temple' };
-        }),
+        total: 0,
+        events: [],
       };
     }
   }
@@ -1658,9 +1648,18 @@ export class DharmaKarthaService {
           select: { templeId: true },
         });
         targetIds = memberships.map((m: any) => m.templeId);
+        // If Dharma Kartha has NO managed temples, return 0 media
         if (targetIds.length === 0) {
-          const allTemples = await (this.prisma as any).temple.findMany({ select: { id: true } });
-          targetIds = allTemples.map((t: any) => t.id);
+          return {
+            success: true,
+            stats: {
+              totalPhotos: 0,
+              published: 0,
+              pending: 0,
+              videos: 0,
+            },
+            media: [],
+          };
         }
       }
 
@@ -1696,25 +1695,21 @@ export class DharmaKarthaService {
           sortOrder: m.sortOrder,
           isApproved: m.isApproved,
           status: m.isApproved ? 'PUBLISHED' : 'PENDING_APPROVAL',
-          templeName: m.temple?.name || 'Sri Dharma Sastha Ayyappa Swamy Temple',
+          templeName: m.temple?.name || '',
           createdAt: m.createdAt,
         })),
       };
     } catch (err) {
-      console.warn('Fallback to devMedia:', err);
-      const media = this.devMedia;
+      console.warn('getOwnerMedia error:', err);
       return {
         success: true,
         stats: {
-          totalPhotos: media.length,
-          published: media.filter((m) => m.status === 'PUBLISHED').length,
-          pending: media.filter((m) => m.status === 'PENDING_APPROVAL').length,
-          videos: media.filter((m) => m.type === 'Video').length,
+          totalPhotos: 0,
+          published: 0,
+          pending: 0,
+          videos: 0,
         },
-        media: media.map((m) => {
-          const temple = this.devTemples.find((t) => t.id === m.templeId);
-          return { ...m, templeName: temple?.name || 'Sri Dharma Sastha Ayyappa Swamy Temple' };
-        }),
+        media: [],
       };
     }
   }

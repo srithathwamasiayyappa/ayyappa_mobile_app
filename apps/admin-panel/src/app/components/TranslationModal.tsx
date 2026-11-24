@@ -110,6 +110,8 @@ export const TranslationModal: React.FC<TranslationModalProps> = ({
         setProviderBadge(
           data.provider === 'google_cloud_v3' 
             ? 'Google Cloud Translation Advanced (v3) + Sacred Glossary' 
+            : data.provider === 'google_translator'
+            ? 'Google Translator Engine (Real-Time) + Sacred Glossary'
             : 'Saranam Ayyappa Devotional Sacred Engine'
         );
       }
@@ -196,11 +198,11 @@ export const TranslationModal: React.FC<TranslationModalProps> = ({
             </div>
             <div>
               <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <span>Google Cloud Translation Advanced</span>
-                <span className="text-[10px] font-mono uppercase bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full">v3 API</span>
+                <span>Google Translator & Devotional Localization</span>
+                <span className="text-[10px] font-mono uppercase bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full">Google Translate Engine</span>
               </h3>
               <p className="text-xs text-gray-400">
-                Generate high-fidelity Telugu, Kannada, Tamil, & Hindi translations with devotional glossary preservation
+                Generate high-fidelity Telugu, Kannada, Tamil, Hindi, & English translations with devotional glossary preservation
               </p>
             </div>
           </div>

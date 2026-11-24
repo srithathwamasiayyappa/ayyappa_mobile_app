@@ -1,6 +1,10 @@
 node_modules/
 .expo/
 dist/
+out/
+apps/admin-panel/out/
+apps/website/dist/
+apps/website/dist-subpath/
 .next/
 apps/admin-panel/.next/
 npm-debug.*
