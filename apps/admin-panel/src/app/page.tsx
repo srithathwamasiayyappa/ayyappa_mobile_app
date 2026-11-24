@@ -367,7 +367,7 @@ export default function EnterpriseSuperAdminDashboard() {
     try {
       const token = localStorage.getItem('ayyappa_admin_token');
       const saved = localStorage.getItem('ayyappa_admin_profile');
-      if (token) {
+      if (token && token !== 'dev_master_token_authenticated') {
         setIsAuthenticated(true);
         if (saved) {
           try {
@@ -377,6 +377,10 @@ export default function EnterpriseSuperAdminDashboard() {
           } catch {}
         }
         loadAdminProfile();
+      } else {
+        localStorage.removeItem('ayyappa_admin_token');
+        localStorage.removeItem('ayyappa_admin_profile');
+        setIsAuthenticated(false);
       }
     } catch {} finally {
       setIsAuthChecking(false);
@@ -880,7 +884,7 @@ export default function EnterpriseSuperAdminDashboard() {
     }
   }, [notification]);
 
-  // Auth Handler
+  // Auth Handler: Strictly Dynamic Verification via Live API / Database (Zero Fallback / Mock Data)
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError(null);
@@ -888,36 +892,15 @@ export default function EnterpriseSuperAdminDashboard() {
       const res = await fetch(`${API_BASE_URL}/admin/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: loginEmail, password: loginPassword })
+        body: JSON.stringify({ email: loginEmail.trim(), password: loginPassword })
       });
       const data = await res.json();
       if (!res.ok) {
-        // Developer / emergency fallback authentication for admin access
-        if (
-          loginEmail.toLowerCase().trim() === 'admin@ayyappa.org' ||
-          loginEmail.toLowerCase().trim() === 'superadmin@saranamayyappa.in' ||
-          loginEmail.toLowerCase().trim() === 'admin@saranamayyappa.org'
-        ) {
-          const fallbackAdmin = {
-            id: 1,
-            email: loginEmail.toLowerCase().trim(),
-            fullName: 'Swamiye Saranam Ayyappa Master Admin',
-            role: 'SUPER_ADMIN'
-          };
-          setIsAuthenticated(true);
-          setAdminProfile(fallbackAdmin);
-          setEditFullName(fallbackAdmin.fullName);
-          setActiveTab('dashboard');
-          setExpandedSection(null);
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('ayyappa_admin_token', 'dev_master_token_authenticated');
-            localStorage.setItem('ayyappa_admin_profile', JSON.stringify(fallbackAdmin));
-          }
-          setNotification(`Welcome back, ${fallbackAdmin.fullName}!`);
-          return;
-        }
-
-        setAuthError(data.message || 'Login failed. Invalid credentials.');
+        setAuthError(data.message || 'Invalid administrative credentials. Access denied.');
+        return;
+      }
+      if (!data.token || !data.admin) {
+        setAuthError('Authentication response invalid. Please contact server administrator.');
         return;
       }
       setIsAuthenticated(true);
@@ -926,28 +909,12 @@ export default function EnterpriseSuperAdminDashboard() {
       setActiveTab('dashboard');
       setExpandedSection(null);
       if (typeof window !== 'undefined') {
-        localStorage.setItem('ayyappa_admin_token', data.token || 'authenticated');
+        localStorage.setItem('ayyappa_admin_token', data.token);
         localStorage.setItem('ayyappa_admin_profile', JSON.stringify(data.admin));
       }
       setNotification(`Welcome back, ${data.admin.fullName}!`);
     } catch {
-      // In case network or backend error occurs
-      const fallbackAdmin = {
-        id: 1,
-        email: loginEmail || 'admin@ayyappa.org',
-        fullName: 'Swamiye Saranam Ayyappa Master Admin',
-        role: 'SUPER_ADMIN'
-      };
-      setIsAuthenticated(true);
-      setAdminProfile(fallbackAdmin);
-      setEditFullName(fallbackAdmin.fullName);
-      setActiveTab('dashboard');
-      setExpandedSection(null);
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('ayyappa_admin_token', 'dev_master_token_authenticated');
-        localStorage.setItem('ayyappa_admin_profile', JSON.stringify(fallbackAdmin));
-      }
-      setNotification(`Welcome back, ${fallbackAdmin.fullName}!`);
+      setAuthError('Unable to connect to authentication server. Please check your network connection.');
     }
   };
 
