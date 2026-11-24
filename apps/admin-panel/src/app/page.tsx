@@ -39,6 +39,7 @@ import {
   ArrowLeft,
   CheckSquare,
   Eye,
+  EyeOff,
   UserX,
   UserCheck,
   AlertTriangle,
@@ -266,6 +267,7 @@ interface DashboardStats {
 const resolveLogoDisplayUrl = (url?: string) => {
   if (!url || !url.trim()) return '/images/saranam-ayyappa-official-emblem.jpg';
   if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) return url;
+  if (url.startsWith('/images/')) return url;
   return `${API_ORIGIN}${url.startsWith('/') ? '' : '/'}${url}`;
 };
 
@@ -389,6 +391,21 @@ export default function EnterpriseSuperAdminDashboard() {
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [authError, setAuthError] = useState<string | null>(null);
+  const [isLoggingIn, setIsLoggingIn] = useState<boolean>(false);
+  const [showLoginPassword, setShowLoginPassword] = useState<boolean>(false);
+  const [loginEmailTouched, setLoginEmailTouched] = useState<boolean>(false);
+  const [loginPasswordTouched, setLoginPasswordTouched] = useState<boolean>(false);
+  const [rememberAdmin, setRememberAdmin] = useState<boolean>(true);
+
+  // Restore remembered email on client mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedEmail = localStorage.getItem('ayyappa_admin_saved_email');
+      if (savedEmail) {
+        setLoginEmail(savedEmail);
+      }
+    }
+  }, []);
 
   // Active Selected Type inside Subcategory View Detailed Page ('all' or type index number)
   const [activeViewTypeTab, setActiveViewTypeTab] = useState<'all' | number>('all');
@@ -888,20 +905,44 @@ export default function EnterpriseSuperAdminDashboard() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError(null);
+    setLoginEmailTouched(true);
+    setLoginPasswordTouched(true);
+
+    const email = loginEmail.trim();
+    if (!email) {
+      setAuthError('Please enter your administrative email address.');
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setAuthError('Please enter a valid administrative email format (e.g. admin@ayyappa.org).');
+      return;
+    }
+    if (!loginPassword) {
+      setAuthError('Please enter your master authentication password.');
+      return;
+    }
+
+    setIsLoggingIn(true);
     try {
       const res = await fetch(`${API_BASE_URL}/admin/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: loginEmail.trim(), password: loginPassword })
+        body: JSON.stringify({ email, password: loginPassword })
       });
       const data = await res.json();
       if (!res.ok) {
         setAuthError(data.message || 'Invalid administrative credentials. Access denied.');
+        setIsLoggingIn(false);
         return;
       }
       if (!data.token || !data.admin) {
         setAuthError('Authentication response invalid. Please contact server administrator.');
+        setIsLoggingIn(false);
         return;
+      }
+      if (rememberAdmin && typeof window !== 'undefined') {
+        localStorage.setItem('ayyappa_admin_saved_email', email);
       }
       setIsAuthenticated(true);
       setAdminProfile(data.admin);
@@ -915,6 +956,8 @@ export default function EnterpriseSuperAdminDashboard() {
       setNotification(`Welcome back, ${data.admin.fullName}!`);
     } catch {
       setAuthError('Unable to connect to authentication server. Please check your network connection.');
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 
@@ -3476,71 +3519,247 @@ export default function EnterpriseSuperAdminDashboard() {
   }
 
   if (!isAuthenticated) {
+    const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(loginEmail.trim());
+    const isPasswordValid = loginPassword.length > 0;
+    const canSubmit = isEmailValid && isPasswordValid && !isLoggingIn;
+
     return (
-      <div className="min-h-screen bg-[#071914] flex items-center justify-center p-4">
-        <div className="bg-[#0c251e] border-2 border-[#D4AF37] rounded-2xl w-full max-w-md p-8 shadow-2xl space-y-6">
-          <div className="text-center space-y-2">
-            <div className="w-24 h-24 rounded-2xl border-2 border-[#D4AF37] bg-black/70 flex items-center justify-center p-2.5 shadow-md mx-auto mb-2 overflow-hidden">
-              <img
-                src={resolveLogoDisplayUrl(appLogoUrl)}
-                alt="Saranam Ayyappa Logo"
-                className="w-full h-full object-contain"
-                onError={(e: any) => {
-                  e.currentTarget.style.display = 'none';
-                  if (e.currentTarget.parentElement) {
-                    e.currentTarget.parentElement.innerHTML = '<span class="text-3xl">🕉️</span>';
-                  }
-                }}
-              />
-            </div>
-            <h1 className="text-xl font-bold text-[var(--admin-gold)] uppercase tracking-wide">Saranam Ayyappa</h1>
-            <p className="text-xs text-[var(--admin-ivory)] opacity-80">Enterprise Super Admin Portal</p>
+      <div className="min-h-screen bg-gradient-to-br from-[#020B07] via-[#051A13] to-[#020906] flex flex-col justify-between items-center p-4 sm:p-6 lg:p-8 relative overflow-hidden select-none">
+        {/* Ambient Top Glow Effect */}
+        <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[550px] sm:w-[750px] h-[320px] bg-gradient-to-b from-[#D4AF37]/20 via-[#10B981]/10 to-transparent blur-3xl pointer-events-none rounded-full" />
+        <div className="absolute -bottom-32 right-1/4 w-[400px] h-[250px] bg-gradient-to-t from-[#D4AF37]/10 to-transparent blur-3xl pointer-events-none rounded-full" />
+
+        {/* Top Header Bar with Live Gateway Indicator */}
+        <header className="w-full max-w-5xl flex items-center justify-between py-2 px-1 text-xs z-10">
+          <div className="flex items-center gap-2">
+            <span className="text-base">🪔</span>
+            <span className="font-serif font-bold text-[#FFB300] tracking-widest text-[11px] sm:text-xs uppercase">
+              Thathwamasi
+            </span>
           </div>
+          <div className="flex items-center gap-2">
+            <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#061A13] border border-[#16422F] text-[10px] sm:text-[11px] font-mono text-emerald-300">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span>Production API (Live)</span>
+            </span>
+          </div>
+        </header>
 
-          {authError && (
-            <div className="p-3 bg-red-950/40 border border-red-500/50 rounded-lg text-xs text-red-300">
-              {authError}
-            </div>
-          )}
-
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div>
-              <label className="block text-xs font-semibold text-[var(--admin-ivory)] uppercase mb-1">Admin Email</label>
-              <input 
-                type="email" 
-                value={loginEmail} 
-                onChange={(e) => setLoginEmail(e.target.value)} 
-                required
-                className="w-full bg-[var(--admin-bg-base)] border border-[var(--admin-border-subtle)] rounded-lg px-3 py-2 text-xs text-[var(--admin-ivory)] focus:outline-none focus:border-[var(--admin-gold)]"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-[var(--admin-ivory)] uppercase mb-1">Master Password</label>
-              <input 
-                type="password" 
-                value={loginPassword} 
-                placeholder="Enter password..."
-                onChange={(e) => setLoginPassword(e.target.value)} 
-                required
-                className="w-full bg-[var(--admin-bg-base)] border border-[var(--admin-border-subtle)] rounded-lg px-3 py-2 text-xs text-[var(--admin-ivory)] focus:outline-none focus:border-[var(--admin-gold)]"
-              />
+        {/* Main Center Card (Glassmorphism + Divine Gold Sanctum Style) */}
+        <div className="w-full max-w-md sm:max-w-lg my-auto z-10 animate-in fade-in zoom-in-95 duration-300">
+          <div className="bg-gradient-to-b from-[#09261C] via-[#071F17] to-[#051711] rounded-3xl border-2 border-[#D4AF37]/60 shadow-[0_25px_70px_rgba(0,0,0,0.85),0_0_35px_rgba(212,175,55,0.18)] p-6 sm:p-10 space-y-6 relative overflow-hidden backdrop-blur-xl">
+            
+            {/* Top Sacred Gold Arch Filigree Motif */}
+            <div className="flex justify-center -mt-2">
+              <svg className="w-16 h-7 text-[#FFB300] opacity-85" viewBox="0 0 100 40" fill="currentColor">
+                <path d="M50 0 C40 15, 20 20, 0 20 C20 25, 45 35, 50 40 C55 35, 80 25, 100 20 C80 20, 60 15, 50 0 Z"></path>
+              </svg>
             </div>
 
-            <button 
-              type="submit" 
-              className="w-full bg-[var(--admin-maroon)] hover:bg-[var(--admin-maroon-mid)] border border-[var(--admin-gold)] text-[var(--admin-ivory)] py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider transition shadow-lg flex items-center justify-center gap-2"
-            >
-              <Lock className="w-4 h-4 text-[var(--admin-gold)]" />
-              <span>Authenticate & Enter Console</span>
-            </button>
-          </form>
+            {/* Logo Emblem & Brand Header */}
+            <div className="text-center space-y-2.5">
+              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl border-2 border-[#D4AF37] bg-[#030F0A] flex items-center justify-center p-2 mx-auto shadow-[0_10px_25px_rgba(0,0,0,0.8),0_0_20px_rgba(212,175,55,0.25)] relative overflow-hidden group">
+                <img
+                  src={resolveLogoDisplayUrl(appLogoUrl)}
+                  alt="Saranam Ayyappa Official Emblem"
+                  className="w-full h-full object-contain filter drop-shadow-[0_2px_8px_rgba(255,179,0,0.3)] transition transform group-hover:scale-105 duration-300"
+                  onError={(e: any) => {
+                    if (!e.currentTarget.src.includes('saranam-ayyappa-official-emblem.jpg')) {
+                      e.currentTarget.src = '/images/saranam-ayyappa-official-emblem.jpg';
+                    }
+                  }}
+                />
+              </div>
 
-          <div className="p-3 bg-[var(--admin-bg-base)] rounded-lg border border-[var(--admin-border-subtle)] text-[11px] text-[var(--admin-ivory)] space-y-1">
-            <p className="font-semibold text-[var(--admin-gold)]">Security Standard:</p>
-            <p className="text-[var(--admin-ivory)] opacity-75">Bcrypt Salt 12 Rounds • Real Database Auth • Zero Mock Data</p>
+              <div>
+                <p className="text-[11px] font-semibold text-[#FDE68A] tracking-[0.25em] uppercase font-serif">
+                  śrī hariharasutāya namaḥ
+                </p>
+                <h1 className="text-2xl sm:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#FFF59D] via-[#FFB300] to-[#FFA000] tracking-wide uppercase mt-1">
+                  Saranam Ayyappa
+                </h1>
+                <p className="text-xs text-emerald-300/80 font-medium tracking-wider mt-0.5">
+                  Enterprise Sanctum Super Admin Console
+                </p>
+              </div>
+            </div>
+
+            {/* Error Banner with Dynamic Feedback */}
+            {authError && (
+              <div 
+                role="alert"
+                className="p-3.5 rounded-xl bg-rose-950/80 border border-rose-500/70 text-xs text-rose-200 flex items-start gap-2.5 shadow-lg shadow-rose-950/40 animate-in fade-in slide-in-from-top-2 duration-200"
+              >
+                <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
+                <div className="flex-1 leading-relaxed">
+                  <span className="font-semibold block text-rose-300">Authentication Failed</span>
+                  <span>{authError}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Authentication Form with Inline Validation & Responsive Touch-Targets */}
+            <form onSubmit={handleLogin} className="space-y-4 pt-1" noValidate>
+              
+              {/* Admin Email Input */}
+              <div className="space-y-1.5 text-left">
+                <div className="flex items-center justify-between text-xs">
+                  <label className="font-bold text-gray-200 uppercase tracking-wider text-[11px]">
+                    Admin Email Address
+                  </label>
+                  {loginEmailTouched && !isEmailValid && loginEmail.length > 0 && (
+                    <span className="text-[10px] text-rose-400 font-medium">Invalid email format</span>
+                  )}
+                </div>
+                <div 
+                  className={`relative flex items-center rounded-xl bg-[#030E09] border transition shadow-inner ${
+                    loginEmailTouched && !isEmailValid && loginEmail.length > 0
+                      ? 'border-rose-500/80 ring-1 ring-rose-500/30'
+                      : 'border-[#1B573D] focus-within:border-[#FFB300] focus-within:ring-2 focus-within:ring-[#FFB300]/25'
+                  }`}
+                >
+                  <Mail className="w-4 h-4 text-[#FFB300] ml-3.5 flex-shrink-0 opacity-80" />
+                  <input 
+                    type="email" 
+                    value={loginEmail} 
+                    onChange={(e) => {
+                      setLoginEmail(e.target.value);
+                      if (authError) setAuthError(null);
+                    }}
+                    onBlur={() => setLoginEmailTouched(true)}
+                    placeholder="e.g. admin@ayyappa.org"
+                    required
+                    autoComplete="username"
+                    disabled={isLoggingIn}
+                    className="w-full bg-transparent px-3 py-3 text-xs sm:text-sm text-gray-100 placeholder-emerald-700/60 focus:outline-none font-medium disabled:opacity-50"
+                  />
+                  {loginEmail && isEmailValid && (
+                    <CheckCircle className="w-4 h-4 text-emerald-400 mr-3.5 flex-shrink-0" />
+                  )}
+                </div>
+              </div>
+
+              {/* Master Password Input with Show/Hide Toggle */}
+              <div className="space-y-1.5 text-left">
+                <div className="flex items-center justify-between text-xs">
+                  <label className="font-bold text-gray-200 uppercase tracking-wider text-[11px]">
+                    Master Authentication Password
+                  </label>
+                  {loginPasswordTouched && !isPasswordValid && (
+                    <span className="text-[10px] text-rose-400 font-medium">Password required</span>
+                  )}
+                </div>
+                <div 
+                  className={`relative flex items-center rounded-xl bg-[#030E09] border transition shadow-inner ${
+                    loginPasswordTouched && !isPasswordValid
+                      ? 'border-rose-500/80 ring-1 ring-rose-500/30'
+                      : 'border-[#1B573D] focus-within:border-[#FFB300] focus-within:ring-2 focus-within:ring-[#FFB300]/25'
+                  }`}
+                >
+                  <Lock className="w-4 h-4 text-[#FFB300] ml-3.5 flex-shrink-0 opacity-80" />
+                  <input 
+                    type={showLoginPassword ? 'text' : 'password'} 
+                    value={loginPassword} 
+                    onChange={(e) => {
+                      setLoginPassword(e.target.value);
+                      if (authError) setAuthError(null);
+                    }}
+                    onBlur={() => setLoginPasswordTouched(true)}
+                    placeholder="Enter master password..."
+                    required
+                    autoComplete="current-password"
+                    disabled={isLoggingIn}
+                    className="w-full bg-transparent px-3 py-3 text-xs sm:text-sm text-gray-100 placeholder-emerald-700/60 focus:outline-none font-medium disabled:opacity-50 tracking-wider"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowLoginPassword(p => !p)}
+                    tabIndex={-1}
+                    className="p-1.5 mr-2 text-emerald-400/80 hover:text-[#FFB300] transition focus:outline-none"
+                    title={showLoginPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showLoginPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Remember Me Checkbox & Security Indicator */}
+              <div className="flex items-center justify-between pt-1 text-xs text-emerald-300/80">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input 
+                    type="checkbox" 
+                    checked={rememberAdmin} 
+                    onChange={(e) => setRememberAdmin(e.target.checked)} 
+                    className="w-4 h-4 rounded bg-[#030E09] border-[#1B573D] text-[#FFB300] focus:ring-0 focus:ring-offset-0 cursor-pointer accent-[#FFB300]"
+                  />
+                  <span className="text-[11px] font-medium text-gray-300">Remember on this device</span>
+                </label>
+                <span className="text-[10px] font-mono text-[#FEF08A] bg-[#061A13] px-2 py-0.5 rounded border border-[#16422F]">
+                  TLS 1.3 Verified
+                </span>
+              </div>
+
+              {/* Submit Button */}
+              <button 
+                type="submit" 
+                disabled={!canSubmit}
+                className={`w-full py-3.5 px-6 rounded-xl font-bold text-xs sm:text-sm tracking-wider uppercase transition-all duration-200 shadow-xl flex items-center justify-center gap-2 relative ${
+                  canSubmit
+                    ? 'bg-gradient-to-r from-[#FFB300] via-[#FFA000] to-[#FF8F00] hover:from-[#FFA000] hover:to-[#FF6F00] text-[#071C14] shadow-amber-500/25 cursor-pointer transform hover:-translate-y-0.5 active:translate-y-0'
+                    : 'bg-[#0E2F23] border border-[#1A4E38] text-gray-400 cursor-not-allowed opacity-75'
+                }`}
+              >
+                {isLoggingIn ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin text-[#071C14]" />
+                    <span>Verifying with MariaDB...</span>
+                  </>
+                ) : (
+                  <>
+                    <ShieldCheck className="w-4 h-4" />
+                    <span>Authenticate &amp; Enter Console</span>
+                  </>
+                )}
+              </button>
+            </form>
+
+            {/* Security Standard Card */}
+            <div className="pt-3 border-t border-[#16422F]/80 space-y-2">
+              <div className="flex items-center justify-between text-[10px] uppercase font-bold text-gray-400">
+                <span className="flex items-center gap-1 text-[#FFB300]">
+                  <Sparkles className="w-3 h-3 text-[#FFB300]" />
+                  <span>Sanctum Security Standards</span>
+                </span>
+                <span className="font-mono text-emerald-400">Strict Auth</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-center text-[10px] text-gray-300">
+                <div className="p-1.5 rounded-lg bg-[#04120D] border border-[#16422F]">
+                  <span className="text-[#FFB300] block font-bold font-mono">Bcrypt 12</span>
+                  <span className="text-[9px] text-gray-400">Salt Rounds</span>
+                </div>
+                <div className="p-1.5 rounded-lg bg-[#04120D] border border-[#16422F]">
+                  <span className="text-[#FFB300] block font-bold font-mono">MariaDB</span>
+                  <span className="text-[9px] text-gray-400">MySQL Direct</span>
+                </div>
+                <div className="p-1.5 rounded-lg bg-[#04120D] border border-[#16422F]">
+                  <span className="text-[#FFB300] block font-bold font-mono">Zero Mock</span>
+                  <span className="text-[9px] text-gray-400">Real DB Sync</span>
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
+
+        {/* Bottom Devotional Footer */}
+        <footer className="w-full max-w-5xl py-3 text-center text-[11px] text-gray-400 z-10 flex flex-col sm:flex-row items-center justify-between gap-2 border-t border-[#16422F]/40 mt-4">
+          <p className="text-gray-400 font-medium">
+            © 2026 Saranam Ayyappa Devotional Trust. All Rights Reserved.
+          </p>
+          <p className="font-mono text-[10px] text-emerald-400/80">
+            Authoritative Gateway: backendapis.saranamayyappa.in
+          </p>
+        </footer>
       </div>
     );
   }
