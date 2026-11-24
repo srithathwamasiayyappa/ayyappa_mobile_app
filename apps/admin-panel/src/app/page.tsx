@@ -156,6 +156,10 @@ interface FullCategoryDetail {
   parentSlug?: string | null;
   parentTitle?: string | null;
   imageUrl?: string | null;
+  hasExactTranslation?: boolean;
+  exactTitle?: string | null;
+  exactDescription?: string | null;
+  requestedLang?: string;
   translations?: Array<{ code: string; name: string; title: string; description: string | null }>;
   subcategories?: Array<{ id: string; title: string; slug: string; description: string | null }>;
   contents?: Array<{ id: number; title: string; sacredText: string | null; meaning: string | null }>;
@@ -1964,6 +1968,157 @@ export default function EnterpriseSuperAdminDashboard() {
     }
   };
 
+  // Dynamic Language Switcher for View Detailed Page (Queries DB via API for specific language)
+  const handleViewDetailChangeLang = async (langCode: string) => {
+    if (!viewDetail) return;
+    setSelectedLang(langCode);
+    setLoading(true);
+    try {
+      if (viewDetail.isType) {
+        // Devotional Subcategory Type / Sacred Verse
+        const res = await fetch(`${API_BASE_URL}/admin/content/${viewDetail.id}?lang=${langCode}`);
+        const json = await res.json();
+        if (json && json.data) {
+          const item = json.data;
+          let parentDetails: any = null;
+          if (item.categoryId) {
+            try {
+              const pRes = await fetch(`${API_BASE_URL}/admin/subcategories/${item.categoryId}?lang=${langCode}`);
+              const pJson = await pRes.json();
+              if (pJson && pJson.data) parentDetails = pJson.data;
+            } catch {}
+          }
+          setViewDetail((prev: any) => ({
+            ...prev,
+            title: item.title,
+            sacredText: item.sacredText || '',
+            meaning: item.meaning || '',
+            description: parentDetails?.description || item.meaning || '',
+            parentTitle: parentDetails?.title || prev?.parentTitle,
+            hasExactTranslation: item.hasExactTranslation,
+            requestedLang: langCode,
+            contents: parentDetails?.contents && parentDetails.contents.length > 0
+              ? parentDetails.contents
+              : [{
+                  id: item.id,
+                  title: item.title,
+                  slug: item.slug,
+                  sacredText: item.sacredText,
+                  meaning: item.meaning
+                }]
+          }));
+        }
+      } else if (viewDetail.isSubcategory || viewDetail.parentId) {
+        // Devotional Subcategory
+        const res = await fetch(`${API_BASE_URL}/admin/subcategories/${viewDetail.id}?lang=${langCode}`);
+        const json = await res.json();
+        if (json && json.data) {
+          setViewDetail(json.data);
+        }
+      } else {
+        // Master Category
+        const res = await fetch(`${API_BASE_URL}/categories/${viewDetail.id}?lang=${langCode}`);
+        const json = await res.json();
+        const data = json.data || json;
+        if (data) {
+          setViewDetail(data);
+        }
+      }
+    } catch (e) {
+      console.error('Error fetching view details for language:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Dynamic Language Switcher for Edit Subcategory (Fetches translation from DB via API; no mock fallback)
+  const handleEditSubcategoryChangeLang = async (langCode: string) => {
+    setSelectedLang(langCode);
+    if (!editingSubId) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/subcategories/${editingSubId}?lang=${langCode}`);
+      const json = await res.json();
+      if (json && json.data) {
+        const data = json.data;
+        const exact = data.translations?.find((t: any) => t.code === langCode);
+        if (exact) {
+          setSubFormTitle(exact.title || '');
+          setSubFormDescription(exact.description || '');
+        } else if (data.hasExactTranslation) {
+          setSubFormTitle(data.exactTitle || data.title || '');
+          setSubFormDescription(data.exactDescription || data.description || '');
+        } else {
+          // No translation in DB for this language yet: leave blank so user can enter fresh translation
+          setSubFormTitle('');
+          setSubFormDescription('');
+        }
+      }
+    } catch (e) {
+      console.error('Error fetching subcategory translation for language:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Dynamic Language Switcher for Edit Subcategory Type (Fetches translation from DB via API; no mock fallback)
+  const handleEditTypeChangeLang = async (langCode: string) => {
+    setSelectedLang(langCode);
+    if (!editingTypeId) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/content/${editingTypeId}?lang=${langCode}`);
+      const json = await res.json();
+      if (json && json.data) {
+        const data = json.data;
+        if (data.hasExactTranslation) {
+          setTypeFormTitle(data.exactTitle || data.title || '');
+          setTypeFormSacredText(data.exactSacredText || data.sacredText || '');
+          setTypeFormMeaning(data.exactMeaning || data.meaning || '');
+        } else if (langCode === 'te' || langCode === 'en') {
+          setTypeFormTitle(data.title || '');
+          setTypeFormSacredText(data.sacredText || '');
+          setTypeFormMeaning(data.meaning || '');
+        } else {
+          // No translation in DB for this language yet: clear fields for new entry
+          setTypeFormTitle('');
+          setTypeFormSacredText('');
+          setTypeFormMeaning('');
+        }
+      }
+    } catch (e) {
+      console.error('Error fetching type translation for language:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Dynamic Language Switcher for Edit Category (Fetches translation from DB via API; no mock fallback)
+  const handleEditCategoryChangeLang = async (langCode: string) => {
+    setSelectedLang(langCode);
+    if (!editingId) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/categories/${editingId}?lang=${langCode}`);
+      const json = await res.json();
+      const data = json.data || json;
+      if (data) {
+        const exact = data.translations?.find((t: any) => (t.language?.code || t.code) === langCode);
+        if (exact) {
+          setFormTitle(exact.title || '');
+          setFormDescription(exact.description || '');
+        } else {
+          setFormTitle('');
+          setFormDescription('');
+        }
+      }
+    } catch (e) {
+      console.error('Error fetching category translation for language:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleOpenViewSubcategory = async (id: string) => {
     setLoading(true);
     setActiveViewTypeTab('all');
@@ -2128,15 +2283,32 @@ export default function EnterpriseSuperAdminDashboard() {
     setPageMode('EDIT_SUBCATEGORY');
   };
 
-  const handleOpenEditSubcategory = (item: SubcategoryItem) => {
+  const handleOpenEditSubcategory = async (item: SubcategoryItem) => {
     setEditingSubId(item.id);
     setSubFormTitle(item.title);
     setSubFormSlug(item.slug);
     setSubFormParentId(item.parentId);
-    setSubFormDescription(item.description);
+    setSubFormDescription(item.description || '');
     setSubFormImageUrl(item.imageUrl || '');
     setIsSubModalOpen(true);
     setPageMode('EDIT_SUBCATEGORY');
+
+    // Dynamically fetch translation for currently active language directly from DB
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/subcategories/${item.id}?lang=${selectedLang}`);
+      const json = await res.json();
+      if (json && json.data) {
+        const d = json.data;
+        const exact = d.translations?.find((t: any) => t.code === selectedLang);
+        if (exact) {
+          setSubFormTitle(exact.title || '');
+          setSubFormDescription(exact.description || '');
+        } else if (d.hasExactTranslation) {
+          setSubFormTitle(d.exactTitle || d.title || '');
+          setSubFormDescription(d.exactDescription || d.description || '');
+        }
+      }
+    } catch {}
   };
 
   const handleSubcategoryImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -2388,7 +2560,7 @@ export default function EnterpriseSuperAdminDashboard() {
     setPageMode('EDIT_TYPE');
   };
 
-  const handleOpenEditType = (item: DevotionalContentItem) => {
+  const handleOpenEditType = async (item: DevotionalContentItem) => {
     setEditingTypeId(item.id);
     setTypeFormTitle(item.title);
     setTypeFormSlug(item.slug);
@@ -2409,6 +2581,20 @@ export default function EnterpriseSuperAdminDashboard() {
     setTypeFormDisplayOrder(item.displayOrder || 1);
     setTypeFormIsPublished(item.isPublished !== false);
     setPageMode('EDIT_TYPE');
+
+    // Dynamically fetch translation for currently active language directly from DB
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/content/${item.id}?lang=${selectedLang}`);
+      const json = await res.json();
+      if (json && json.data) {
+        const d = json.data;
+        if (d.hasExactTranslation) {
+          setTypeFormTitle(d.exactTitle || d.title || '');
+          setTypeFormSacredText(d.exactSacredText || d.sacredText || '');
+          setTypeFormMeaning(d.exactMeaning || d.meaning || '');
+        }
+      }
+    } catch {}
   };
 
   const handleSaveType = async () => {
@@ -2428,7 +2614,8 @@ export default function EnterpriseSuperAdminDashboard() {
       sacredText: typeFormSacredText.trim(),
       meaning: typeFormMeaning.trim(),
       displayOrder: Number(typeFormDisplayOrder) || 1,
-      isPublished: typeFormIsPublished
+      isPublished: typeFormIsPublished,
+      lang: selectedLang
     };
 
     setLoading(true);
@@ -4850,7 +5037,31 @@ export default function EnterpriseSuperAdminDashboard() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2.5">
+                  {/* Real-time Dynamic Language Switcher (Direct from DB via API) */}
+                  <div className="flex items-center gap-1.5 p-1 bg-[#061A13] border border-[#1E5C41] rounded-lg shadow-inner">
+                    <Globe className="w-3.5 h-3.5 text-[#FFB300] ml-1.5" />
+                    <span className="text-[11px] font-bold text-gray-300 uppercase px-1">DB Lang:</span>
+                    <div className="flex items-center gap-1 overflow-x-auto">
+                      {languages.map(l => (
+                        <button
+                          key={l.code}
+                          type="button"
+                          onClick={() => handleViewDetailChangeLang(l.code)}
+                          className={`px-2.5 py-1 rounded text-xs font-semibold transition flex items-center gap-1 ${
+                            selectedLang === l.code
+                              ? 'bg-[#FFB300] text-[#071C14] font-bold shadow'
+                              : 'text-gray-300 hover:text-[#FFB300] hover:bg-[#0D2E21]'
+                          }`}
+                          title={`Switch to ${l.name} (${l.code}) — Dynamically fetched from MySQL via API`}
+                        >
+                          <span>{l.nativeName || l.name}</span>
+                          <span className="text-[10px] opacity-70 uppercase font-mono">({l.code})</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   <button
                     type="button"
                     onClick={() => {
@@ -4979,6 +5190,9 @@ export default function EnterpriseSuperAdminDashboard() {
                     <span className="font-bold text-[#FFB300] uppercase tracking-wider flex items-center gap-1.5">
                       <span>📜</span>
                       <span>Devotional Reader View</span>
+                      <span className="px-1.5 py-0.5 rounded bg-[#061A13] border border-[#16422F] text-[#FEF08A] font-mono text-[10px]">
+                        {languages.find(l => l.code === selectedLang)?.name || selectedLang.toUpperCase()}
+                      </span>
                     </span>
                     <span className="text-[11px] text-emerald-400/90 font-mono">
                       {viewDetail.contents && viewDetail.contents.length > 0
@@ -4988,6 +5202,43 @@ export default function EnterpriseSuperAdminDashboard() {
                         : 'Single Sacred Composition'}
                     </span>
                   </div>
+
+                  {/* Real-time Dynamic Language DB Status Banner */}
+                  {viewDetail.hasExactTranslation === false && selectedLang !== 'te' && (
+                    <div className="w-full max-w-lg mb-3 p-3 bg-amber-950/40 border border-amber-600/50 rounded-xl flex items-center justify-between text-xs text-amber-200 shadow-md">
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4 text-[#FFB300] flex-shrink-0" />
+                        <span>
+                          No <strong>{languages.find(l => l.code === selectedLang)?.name || selectedLang.toUpperCase()}</strong> translation exists in MariaDB yet.
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (viewDetail.isType) {
+                            openTranslationModal('devotional_contents', viewDetail.id, [
+                              { key: 'title', label: 'Title', value: viewDetail.title },
+                              { key: 'sacredText', label: 'Sacred Chant', value: viewDetail.sacredText },
+                              { key: 'meaning', label: 'Meaning', value: viewDetail.meaning }
+                            ], () => {
+                              handleViewDetailChangeLang(selectedLang);
+                            });
+                          } else {
+                            openTranslationModal('categories', viewDetail.id, [
+                              { key: 'title', label: 'Title', value: viewDetail.title },
+                              { key: 'description', label: 'Sacred Notes', value: viewDetail.description, isHtml: true }
+                            ], () => {
+                              handleViewDetailChangeLang(selectedLang);
+                            });
+                          }
+                        }}
+                        className="px-2.5 py-1 bg-[#FFB300] hover:bg-[#FFA000] text-[#071C14] font-bold rounded text-xs transition flex items-center gap-1 flex-shrink-0 ml-2"
+                      >
+                        <Sparkles className="w-3 h-3 text-[#071C14]" />
+                        <span>Add in DB</span>
+                      </button>
+                    </div>
+                  )}
 
                   {/* Sacred Scroll Outer Container */}
                   <div className="w-full max-w-lg rounded-2xl overflow-hidden border-2 border-[#D4AF37]/60 shadow-[0_12px_45px_rgba(0,0,0,0.6),0_0_25px_rgba(212,175,55,0.15)] bg-[#071F17]">
@@ -5352,7 +5603,31 @@ export default function EnterpriseSuperAdminDashboard() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2.5">
+                  {/* Language Selector in Edit Category Mode */}
+                  <div className="flex items-center gap-1.5 p-1 bg-[#061A13] border border-[#1E5C41] rounded-lg shadow-inner">
+                    <Globe className="w-3.5 h-3.5 text-[#FFB300] ml-1.5" />
+                    <span className="text-[11px] font-bold text-gray-300 uppercase px-1">Lang:</span>
+                    <div className="flex items-center gap-1 overflow-x-auto">
+                      {languages.map(l => (
+                        <button
+                          key={l.code}
+                          type="button"
+                          onClick={() => handleEditCategoryChangeLang(l.code)}
+                          className={`px-2.5 py-1 rounded text-xs font-semibold transition flex items-center gap-1 ${
+                            selectedLang === l.code
+                              ? 'bg-[#FFB300] text-[#071C14] font-bold shadow'
+                              : 'text-gray-300 hover:text-[#FFB300] hover:bg-[#0D2E21]'
+                          }`}
+                          title={`Edit ${l.name} (${l.code}) — Dynamically fetched from MySQL via API`}
+                        >
+                          <span>{l.nativeName || l.name}</span>
+                          <span className="text-[10px] opacity-70 uppercase font-mono">({l.code})</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   <button 
                     type="button"
                     onClick={() => setPageMode('LIST')}
@@ -5376,6 +5651,16 @@ export default function EnterpriseSuperAdminDashboard() {
                 
                 {/* LEFT: Category Input Form */}
                 <div className="lg:col-span-7 bg-[#082218] rounded-xl border border-[#1A4E38] p-6 shadow-xl space-y-5 text-xs">
+                  {/* Language Status Notice */}
+                  {editingId && !formTitle && (
+                    <div className="p-3 bg-amber-950/40 border border-amber-600/50 rounded-xl flex items-center gap-2 text-xs text-amber-200">
+                      <AlertCircle className="w-4 h-4 text-[#FFB300] flex-shrink-0" />
+                      <span>
+                        No <strong>{languages.find(l => l.code === selectedLang)?.name || selectedLang.toUpperCase()}</strong> translation exists in MariaDB yet. Enter title &amp; description below to create it directly in MySQL.
+                      </span>
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block font-bold text-gray-300 uppercase mb-1">
@@ -5579,7 +5864,31 @@ export default function EnterpriseSuperAdminDashboard() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2.5">
+                  {/* Language Selector in Edit Subcategory Mode */}
+                  <div className="flex items-center gap-1.5 p-1 bg-[#061A13] border border-[#1E5C41] rounded-lg shadow-inner">
+                    <Globe className="w-3.5 h-3.5 text-[#FFB300] ml-1.5" />
+                    <span className="text-[11px] font-bold text-gray-300 uppercase px-1">Lang:</span>
+                    <div className="flex items-center gap-1 overflow-x-auto">
+                      {languages.map(l => (
+                        <button
+                          key={l.code}
+                          type="button"
+                          onClick={() => handleEditSubcategoryChangeLang(l.code)}
+                          className={`px-2.5 py-1 rounded text-xs font-semibold transition flex items-center gap-1 ${
+                            selectedLang === l.code
+                              ? 'bg-[#FFB300] text-[#071C14] font-bold shadow'
+                              : 'text-gray-300 hover:text-[#FFB300] hover:bg-[#0D2E21]'
+                          }`}
+                          title={`Edit ${l.name} (${l.code}) — Dynamically fetched from MySQL via API`}
+                        >
+                          <span>{l.nativeName || l.name}</span>
+                          <span className="text-[10px] opacity-70 uppercase font-mono">({l.code})</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   <button 
                     type="button"
                     onClick={() => setPageMode('LIST')}
@@ -5603,6 +5912,16 @@ export default function EnterpriseSuperAdminDashboard() {
                 
                 {/* LEFT: Sacred Input Form */}
                 <div className="lg:col-span-7 bg-[#082218] rounded-xl border border-[#1A4E38] p-6 shadow-xl space-y-5 text-xs">
+                  {/* Language Status Notice */}
+                  {editingSubId && !subFormTitle && (
+                    <div className="p-3 bg-amber-950/40 border border-amber-600/50 rounded-xl flex items-center gap-2 text-xs text-amber-200">
+                      <AlertCircle className="w-4 h-4 text-[#FFB300] flex-shrink-0" />
+                      <span>
+                        No <strong>{languages.find(l => l.code === selectedLang)?.name || selectedLang.toUpperCase()}</strong> translation exists in MariaDB yet. Enter title &amp; description below to create it directly in MySQL.
+                      </span>
+                    </div>
+                  )}
+
                   <div>
                     <label className="block font-bold text-[#FFB300] uppercase tracking-wider mb-1.5">
                       Select Parent Category (Hierarchy Target)
@@ -5894,7 +6213,31 @@ export default function EnterpriseSuperAdminDashboard() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2.5">
+                  {/* Language Selector in Edit Type Mode */}
+                  <div className="flex items-center gap-1.5 p-1 bg-[#061A13] border border-[#1E5C41] rounded-lg shadow-inner">
+                    <Globe className="w-3.5 h-3.5 text-[#FFB300] ml-1.5" />
+                    <span className="text-[11px] font-bold text-gray-300 uppercase px-1">Lang:</span>
+                    <div className="flex items-center gap-1 overflow-x-auto">
+                      {languages.map(l => (
+                        <button
+                          key={l.code}
+                          type="button"
+                          onClick={() => handleEditTypeChangeLang(l.code)}
+                          className={`px-2.5 py-1 rounded text-xs font-semibold transition flex items-center gap-1 ${
+                            selectedLang === l.code
+                              ? 'bg-[#FFB300] text-[#071C14] font-bold shadow'
+                              : 'text-gray-300 hover:text-[#FFB300] hover:bg-[#0D2E21]'
+                          }`}
+                          title={`Edit ${l.name} (${l.code}) — Dynamically fetched from MySQL via API`}
+                        >
+                          <span>{l.nativeName || l.name}</span>
+                          <span className="text-[10px] opacity-70 uppercase font-mono">({l.code})</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   <button 
                     type="button"
                     onClick={() => setPageMode('LIST')}
@@ -5918,6 +6261,16 @@ export default function EnterpriseSuperAdminDashboard() {
                 
                 {/* LEFT: Sacred Input Form */}
                 <div className="lg:col-span-7 bg-[#082218] rounded-xl border border-[#1A4E38] p-6 shadow-xl space-y-5 text-xs">
+                  {/* Language Status Notice */}
+                  {editingTypeId && !typeFormTitle && (
+                    <div className="p-3 bg-amber-950/40 border border-amber-600/50 rounded-xl flex items-center gap-2 text-xs text-amber-200">
+                      <AlertCircle className="w-4 h-4 text-[#FFB300] flex-shrink-0" />
+                      <span>
+                        No <strong>{languages.find(l => l.code === selectedLang)?.name || selectedLang.toUpperCase()}</strong> translation exists in MariaDB yet. Enter chanting verse &amp; meaning below to create it directly in MySQL.
+                      </span>
+                    </div>
+                  )}
+
                   {/* Cascading Category & Subcategory Assignment */}
                   <div className="bg-[#061A13] p-4 rounded-xl border border-[#1E5C41] space-y-3">
                     <div className="flex items-center justify-between pb-2 border-b border-[#16422F]">
