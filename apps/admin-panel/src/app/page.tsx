@@ -4086,17 +4086,23 @@ export default function EnterpriseSuperAdminDashboard() {
             </span>
           </div>
 
-          {/* Right-side corner Profile & Account Dropdown Widget (Hover only) */}
-          <div 
-            className="relative"
-            onMouseEnter={() => setIsProfileDropdownOpen(true)}
-            onMouseLeave={() => setIsProfileDropdownOpen(false)}
-          >
-            <div 
-              className="flex items-center gap-3 px-3 py-1.5 rounded-xl bg-[var(--admin-bg-card)] border border-[var(--admin-border-subtle)] hover:border-[var(--admin-gold)] transition group shadow-md cursor-pointer"
+          {/* Right-side corner Profile & Account Dropdown Widget (Click-triggered Dropdown) */}
+          <div className="relative">
+            {/* Click-outside backdrop overlay to close dropdown */}
+            {isProfileDropdownOpen && (
+              <div 
+                className="fixed inset-0 z-30" 
+                onClick={() => setIsProfileDropdownOpen(false)} 
+              />
+            )}
+
+            <button 
+              type="button"
+              onClick={() => setIsProfileDropdownOpen(prev => !prev)}
+              className="relative z-40 flex items-center gap-3 px-3 py-1.5 rounded-xl bg-[var(--admin-bg-card)] border border-[var(--admin-border-subtle)] hover:border-[var(--admin-gold)] transition group shadow-md cursor-pointer text-left focus:outline-none"
             >
               <div className="w-8 h-8 rounded-full bg-[var(--admin-maroon-dark)] border-2 border-[var(--admin-gold)] flex items-center justify-center text-xs font-bold text-[var(--admin-gold)] shadow flex-shrink-0">
-                S
+                {adminProfile?.fullName ? adminProfile.fullName.charAt(0).toUpperCase() : 'S'}
               </div>
               <div className="text-left hidden sm:block max-w-[150px]">
                 <p className="text-xs font-bold text-[var(--admin-ivory)] truncate group-hover:text-[var(--admin-gold)] transition">
@@ -4105,9 +4111,9 @@ export default function EnterpriseSuperAdminDashboard() {
                 <p className="text-[10px] text-[var(--admin-gold)] font-medium leading-tight">My Account</p>
               </div>
               <ChevronDown className={`w-3.5 h-3.5 text-[var(--admin-gold)] transition-transform duration-200 ${isProfileDropdownOpen ? 'rotate-180' : ''}`} />
-            </div>
+            </button>
 
-            {/* Dynamic Dropdown Menu on Hover */}
+            {/* Dynamic Click-Triggered Dropdown Menu */}
             {isProfileDropdownOpen && (
               <div 
                 className="absolute right-0 top-full mt-2 w-60 bg-[var(--admin-bg-card)] border border-[var(--admin-border-subtle)] rounded-xl shadow-2xl p-2 z-50 space-y-1 backdrop-blur-md animate-in fade-in slide-in-from-top-2 duration-150"
@@ -4118,6 +4124,7 @@ export default function EnterpriseSuperAdminDashboard() {
                 </div>
 
                 <button
+                  type="button"
                   onClick={() => {
                     setActiveTab('profile');
                     setIsProfileDropdownOpen(false);
@@ -4129,6 +4136,7 @@ export default function EnterpriseSuperAdminDashboard() {
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => {
                     setIsProfileDropdownOpen(false);
                     handleLogout();
