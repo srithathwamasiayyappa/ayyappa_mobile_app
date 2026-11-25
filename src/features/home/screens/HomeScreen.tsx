@@ -686,9 +686,10 @@ export const HomeScreen: React.FC<Props> = ({
             3. CURVED IVORY CONTAINER (SEAMLESS DEVOTIONAL TRANSITION)
            ========================================================= */}
         <View style={styles.curvedTransitionContainer}>
-          {/* SECTION 1: SIX DEVOTIONAL SHORTCUTS (3x2 GRID) */}
+          {/* SECTION 1: DEVOTIONAL SHORTCUTS (FETCHED DYNAMICALLY FROM DB VIA API) */}
           <DevotionalShortcuts
             language={currentLanguage}
+            services={services}
             onOpenDetail={onOpenDetail}
             onOpenPanchangam={onOpenPanchangam}
             onNavigateToCategories={onNavigateToCategories}

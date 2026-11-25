@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Dimensions, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
@@ -11,9 +11,22 @@ import {
   DevotionalCategoriesGridIcon,
 } from './HomeDevotionalIcons';
 import { SupportedLanguage } from '../../../types';
+import { ApiService } from '../../../services/api';
+
+export interface DevotionalServiceItem {
+  id: string;
+  key?: string;
+  serviceId?: string;
+  title: string;
+  sub?: string;
+  icon?: string;
+  artwork?: string;
+  displayOrder?: number;
+}
 
 interface Props {
   language: SupportedLanguage;
+  services?: DevotionalServiceItem[];
   onOpenDetail?: (id: string, title: string) => void;
   onOpenPanchangam?: () => void;
   onNavigateToCategories?: () => void;
@@ -30,6 +43,12 @@ const SHORTCUT_TRANSLATIONS: Record<
     slokasBhajans: string;
     donations: string;
     specialSevas: string;
+    stotras: string;
+    slokas: string;
+    bhajans: string;
+    darshan: string;
+    festivals: string;
+    annadanam: string;
   }
 > = {
   en: {
@@ -41,6 +60,12 @@ const SHORTCUT_TRANSLATIONS: Record<
     slokasBhajans: 'Slokas & Bhajans',
     donations: 'Donations',
     specialSevas: 'Special Sevas',
+    stotras: 'Divine Stotras',
+    slokas: 'Daily Slokas',
+    bhajans: 'Bhajans & Songs',
+    darshan: 'Live Darshan',
+    festivals: 'Temple Festivals',
+    annadanam: 'Annadanam Seva',
   },
   te: {
     sectionTitle: 'భక్తి ప్రయాణం ఇక్కడే ప్రారంభం',
@@ -51,6 +76,12 @@ const SHORTCUT_TRANSLATIONS: Record<
     slokasBhajans: 'శ్లోకాలు & భజనలు',
     donations: 'విరాళాలు',
     specialSevas: 'ప్రత్యేక సేవలు',
+    stotras: 'దివ్య స్తోత్రాలు',
+    slokas: 'నిత్య శ్లోకాలు',
+    bhajans: 'భజనలు & పాటలు',
+    darshan: 'ప్రత్యక్ష దర్శనం',
+    festivals: 'ఆలయ ఉత్సవాలు',
+    annadanam: 'అన్నదాన సేవ',
   },
   kn: {
     sectionTitle: 'ಭಕ್ತಿ ಪ್ರಯಾಣ ಇಲ್ಲಿಂದ ಪ್ರಾರಂಭ',
@@ -61,6 +92,12 @@ const SHORTCUT_TRANSLATIONS: Record<
     slokasBhajans: 'ಶ್ಲೋಕಗಳು & ಭಜನೆಗಳು',
     donations: 'ದೇಣಿಗೆಗಳು',
     specialSevas: 'ವಿಶೇಷ ಸೇವೆಗಳು',
+    stotras: 'ದಿವ್ಯ ಸ್ತೋತ್ರಗಳು',
+    slokas: 'ನಿತ್ಯ ಶ್ಲೋಕಗಳು',
+    bhajans: 'ಭಜನೆಗಳು & ಹಾಡುಗಳು',
+    darshan: 'ನೇರ ದರ್ಶನ',
+    festivals: 'ದೇವಾಲಯ ಉತ್ಸವಗಳು',
+    annadanam: 'ಅನ್ನದಾನ ಸೇವೆ',
   },
   ta: {
     sectionTitle: 'பக்திப் பயணம் இங்கே தொடங்குகிறது',
@@ -71,6 +108,12 @@ const SHORTCUT_TRANSLATIONS: Record<
     slokasBhajans: 'ஸ்லோகங்கள் & பஜனைகள்',
     donations: 'நன்கொடைகள்',
     specialSevas: 'சிறப்பு சேவைகள்',
+    stotras: 'திவ்ய ஸ்தோத்திரங்கள்',
+    slokas: 'தினசரி ஸ்லோகங்கள்',
+    bhajans: 'பஜனைகள் & பாடல்கள்',
+    darshan: 'நேரடி தரிசனம்',
+    festivals: 'கோயில் திருவிழாக்கள்',
+    annadanam: 'அன்னதான சேவை',
   },
   hi: {
     sectionTitle: 'भक्ति यात्रा यहाँ से शुरू होती है',
@@ -81,75 +124,166 @@ const SHORTCUT_TRANSLATIONS: Record<
     slokasBhajans: 'श्लोक & भजन',
     donations: 'दान',
     specialSevas: 'विशेष सेवाएं',
+    stotras: 'दिव्य स्तोत्र',
+    slokas: 'दैनिक श्लोक',
+    bhajans: 'भजन & गीत',
+    darshan: 'लाइव दर्शन',
+    festivals: 'मंदिर उत्सव',
+    annadanam: 'अन्नदान सेवा',
   },
 };
 
+function resolveCardData(
+  item: DevotionalServiceItem,
+  t: (typeof SHORTCUT_TRANSLATIONS)['en'],
+  lang: SupportedLanguage,
+  onOpenDetail?: (id: string, title: string) => void,
+  onOpenPanchangam?: () => void
+) {
+  const rawKey = (item.serviceId || item.key || item.id || '').toLowerCase();
+  const rawTitle = (item.title || '').toLowerCase();
+  const rawIcon = (item.icon || '').toLowerCase();
+
+  let displayTitle = item.title;
+  let iconElement = <BrassDiyaIcon size={21} color="#D97706" />;
+  let medallionBg = '#FFF3DC';
+  let medallionBorder = '#F5C249';
+  let pressHandler = () => onOpenDetail?.(item.serviceId || item.id, displayTitle);
+
+  if (rawKey.includes('panchangam') || rawTitle.includes('panchangam') || rawIcon.includes('calendar')) {
+    displayTitle = lang !== 'en' && t.panchangam ? t.panchangam : item.title;
+    iconElement = <GreenCalendarIcon size={21} color="#2E7D32" />;
+    medallionBg = '#EAF7EE';
+    medallionBorder = '#81C784';
+    pressHandler = () => onOpenPanchangam?.();
+  } else if (rawKey.includes('pooja') || rawTitle.includes('pooja') || rawIcon.includes('flame')) {
+    displayTitle = lang !== 'en' && t.poojaVidhanam ? t.poojaVidhanam : item.title;
+    iconElement = <BrassDiyaIcon size={21} color="#D97706" />;
+    medallionBg = '#FFF3DC';
+    medallionBorder = '#F5C249';
+    pressHandler = () => onOpenDetail?.('pooja-vidhanam', displayTitle);
+  } else if (rawKey.includes('temple') || rawTitle.includes('temple') || rawIcon.includes('landmark')) {
+    displayTitle = lang !== 'en' && t.temples ? t.temples : item.title;
+    iconElement = <GoldenTempleIcon size={21} color="#D4932A" />;
+    medallionBg = '#FFF8E7';
+    medallionBorder = '#FFD54F';
+    pressHandler = () => onOpenDetail?.('temples', displayTitle);
+  } else if (rawKey.includes('stotra') || rawTitle.includes('stotra') || rawIcon.includes('bookopen')) {
+    displayTitle = lang !== 'en' && t.stotras ? t.stotras : item.title;
+    iconElement = <MusicalNotesIcon size={21} color="#7B1FA2" />;
+    medallionBg = '#F8EEFC';
+    medallionBorder = '#CE93D8';
+    pressHandler = () => onOpenDetail?.('stotras', displayTitle);
+  } else if (rawKey.includes('sloka') || rawTitle.includes('sloka') || (rawIcon.includes('sparkles') && !rawTitle.includes('festival'))) {
+    displayTitle = lang !== 'en' && t.slokas ? t.slokas : item.title;
+    iconElement = <MusicalNotesIcon size={21} color="#7B1FA2" />;
+    medallionBg = '#F8EEFC';
+    medallionBorder = '#CE93D8';
+    pressHandler = () => onOpenDetail?.('slokas', displayTitle);
+  } else if (rawKey.includes('bhajan') || rawKey.includes('song') || rawTitle.includes('bhajan') || rawIcon.includes('music')) {
+    displayTitle = lang !== 'en' && t.slokasBhajans ? t.slokasBhajans : item.title;
+    iconElement = <MusicalNotesIcon size={21} color="#7B1FA2" />;
+    medallionBg = '#F8EEFC';
+    medallionBorder = '#CE93D8';
+    pressHandler = () => onOpenDetail?.('bhajans_songs', displayTitle);
+  } else if (rawKey.includes('donation') || rawTitle.includes('donation')) {
+    displayTitle = lang !== 'en' && t.donations ? t.donations : item.title;
+    iconElement = <HeartInHandsIcon size={21} color="#E53935" />;
+    medallionBg = '#FFEBEE';
+    medallionBorder = '#EF9A9A';
+    pressHandler = () => onOpenDetail?.('donations', displayTitle);
+  } else if (rawKey.includes('annadanam') || rawTitle.includes('annadanam') || rawIcon.includes('heart')) {
+    displayTitle = lang !== 'en' && t.annadanam ? t.annadanam : item.title;
+    iconElement = <HeartInHandsIcon size={21} color="#E53935" />;
+    medallionBg = '#FFEBEE';
+    medallionBorder = '#EF9A9A';
+    pressHandler = () => onOpenDetail?.('donations', displayTitle);
+  } else if (rawKey.includes('darshan') || rawKey.includes('live') || rawTitle.includes('darshan') || rawIcon.includes('tv')) {
+    displayTitle = lang !== 'en' && t.darshan ? t.darshan : item.title;
+    iconElement = <PrayingHandsIcon size={21} color="#E65100" />;
+    medallionBg = '#FFF3E0';
+    medallionBorder = '#FFB74D';
+    pressHandler = () => onOpenDetail?.('temples', displayTitle);
+  } else if (rawKey.includes('festival') || rawTitle.includes('festival')) {
+    displayTitle = lang !== 'en' && t.festivals ? t.festivals : item.title;
+    iconElement = <GoldenTempleIcon size={21} color="#D4932A" />;
+    medallionBg = '#FFF8E7';
+    medallionBorder = '#FFD54F';
+    pressHandler = () => onOpenDetail?.('festivals', displayTitle);
+  } else if (rawKey.includes('seva') || rawTitle.includes('seva')) {
+    displayTitle = lang !== 'en' && t.specialSevas ? t.specialSevas : item.title;
+    iconElement = <PrayingHandsIcon size={21} color="#E65100" />;
+    medallionBg = '#FFF3E0';
+    medallionBorder = '#FFB74D';
+    pressHandler = () => onOpenDetail?.('donations', displayTitle);
+  }
+
+  return {
+    id: item.id || rawKey,
+    title: displayTitle,
+    icon: iconElement,
+    medallionBg,
+    medallionBorder,
+    onPress: pressHandler,
+  };
+}
+
 export const DevotionalShortcuts: React.FC<Props> = ({
   language,
+  services: propServices,
   onOpenDetail,
   onOpenPanchangam,
   onNavigateToCategories,
 }) => {
   const t = SHORTCUT_TRANSLATIONS[language] || SHORTCUT_TRANSLATIONS.en;
+  const [dbServices, setDbServices] = useState<DevotionalServiceItem[]>(propServices || []);
+  const [loading, setLoading] = useState<boolean>(!propServices || propServices.length === 0);
 
-  // 6 Devotional Shortcuts with distinct sacred theme medallions
-  const allShortcuts = [
-    {
-      id: 'pooja-vidhanam',
-      title: t.poojaVidhanam,
-      icon: <BrassDiyaIcon size={21} color="#D97706" />,
-      medallionBg: '#FFF3DC',
-      medallionBorder: '#F5C249',
-      onPress: () => onOpenDetail?.('pooja-vidhanam', 'Pooja Vidhanam'),
-    },
-    {
-      id: 'panchangam',
-      title: t.panchangam,
-      icon: <GreenCalendarIcon size={21} color="#2E7D32" />,
-      medallionBg: '#EAF7EE',
-      medallionBorder: '#81C784',
-      onPress: () => onOpenPanchangam?.(),
-    },
-    {
-      id: 'temples',
-      title: t.temples,
-      icon: <GoldenTempleIcon size={21} color="#D4932A" />,
-      medallionBg: '#FFF8E7',
-      medallionBorder: '#FFD54F',
-      onPress: () => onOpenDetail?.('temples', 'Temples in India'),
-    },
-    {
-      id: 'bhajans-songs',
-      title: t.slokasBhajans,
-      icon: <MusicalNotesIcon size={21} color="#7B1FA2" />,
-      medallionBg: '#F8EEFC',
-      medallionBorder: '#CE93D8',
-      onPress: () => onOpenDetail?.('bhajans_songs', 'Slokas & Bhajans'),
-    },
-    {
-      id: 'donations',
-      title: t.donations,
-      icon: <HeartInHandsIcon size={21} color="#E53935" />,
-      medallionBg: '#FFEBEE',
-      medallionBorder: '#EF9A9A',
-      onPress: () => onOpenDetail?.('donations', 'Donations'),
-    },
-    {
-      id: 'special-sevas',
-      title: t.specialSevas,
-      icon: <PrayingHandsIcon size={21} color="#E65100" />,
-      medallionBg: '#FFF3E0',
-      medallionBorder: '#FFB74D',
-      onPress: () => onOpenDetail?.('donations', 'Special Sevas'),
-    },
-  ];
+  // Dynamically fetch services from DB via API response
+  useEffect(() => {
+    let isMounted = true;
+    const fetchServices = async () => {
+      try {
+        const fetched = await ApiService.getHomeServices(language);
+        if (isMounted && Array.isArray(fetched) && fetched.length > 0) {
+          setDbServices(fetched);
+        }
+      } catch (err) {
+        console.warn('[DevotionalShortcuts] Dynamic DB fetch notice:', err);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+    fetchServices();
+    return () => {
+      isMounted = false;
+    };
+  }, [language]);
 
-  // Exactly 2 cards in each row (3 rows of 2)
-  const row1 = allShortcuts.slice(0, 2);
-  const row2 = allShortcuts.slice(2, 4);
-  const row3 = allShortcuts.slice(4, 6);
+  // Sync if propServices update from parent
+  useEffect(() => {
+    if (propServices && propServices.length > 0) {
+      setDbServices(propServices);
+      setLoading(false);
+    }
+  }, [propServices]);
 
-  const renderCard = (item: (typeof allShortcuts)[0]) => (
+  // Display top 6 devotional shortcuts from database in 3x2 grid
+  const displayItems = useMemo(() => {
+    const list = dbServices.slice(0, 6);
+    return list.map((item) => resolveCardData(item, t, language, onOpenDetail, onOpenPanchangam));
+  }, [dbServices, t, language, onOpenDetail, onOpenPanchangam]);
+
+  // Group into rows of 2 cards
+  const rows = useMemo(() => {
+    const r: Array<typeof displayItems> = [];
+    for (let i = 0; i < displayItems.length; i += 2) {
+      r.push(displayItems.slice(i, i + 2));
+    }
+    return r;
+  }, [displayItems]);
+
+  const renderCard = (item: (typeof displayItems)[0]) => (
     <TouchableOpacity
       key={item.id}
       style={styles.cardWrapper}
@@ -210,10 +344,12 @@ export const DevotionalShortcuts: React.FC<Props> = ({
         </TouchableOpacity>
       </View>
 
-      {/* 2 Cards Per Row (3 Rows) */}
-      <View style={styles.row}>{row1.map(renderCard)}</View>
-      <View style={[styles.row, { marginTop: 8 }]}>{row2.map(renderCard)}</View>
-      <View style={[styles.row, { marginTop: 8 }]}>{row3.map(renderCard)}</View>
+      {/* Dynamic Cards Grid fetched from Database API */}
+      {rows.map((row, index) => (
+        <View key={`row-${index}`} style={[styles.row, index > 0 && { marginTop: 8 }]}>
+          {row.map(renderCard)}
+        </View>
+      ))}
     </View>
   );
 };
