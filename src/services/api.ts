@@ -370,26 +370,56 @@ export const ApiService = {
     }
   },
 
-  // 3c. Fetch Dynamic Subcategories from DB via API (/admin/subcategories)
+  // 3c. Fetch Dynamic Subcategories from DB via API (/categories/subcategories or /admin/subcategories)
   async getSubcategories(
     parentSlugOrId?: string,
     lang: SupportedLanguage = 'en',
-    search?: string
+    search?: string,
+    deity?: string
   ): Promise<any[]> {
-    const parent = parentSlugOrId || 'all';
-    const qs = `parentId=${encodeURIComponent(parent)}&lang=${encodeURIComponent(lang)}${search ? `&search=${encodeURIComponent(search.trim())}` : ''}&limit=100`;
+    const queryParts: string[] = [];
+    if (parentSlugOrId && parentSlugOrId !== 'all') {
+      queryParts.push(`parentId=${encodeURIComponent(parentSlugOrId)}`);
+      queryParts.push(`parent=${encodeURIComponent(parentSlugOrId)}`);
+    }
+    if (lang) queryParts.push(`lang=${encodeURIComponent(lang)}`);
+    if (search && search.trim()) queryParts.push(`search=${encodeURIComponent(search.trim())}`);
+    if (deity && deity !== 'all') queryParts.push(`deity=${encodeURIComponent(deity)}`);
+    queryParts.push('limit=100');
+
+    const qs = queryParts.join('&');
 
     const fetchFrom = async (baseUrl: string) => {
-      const res = await fetch(`${baseUrl}/admin/subcategories?${qs}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json();
-      const list = json?.data || (Array.isArray(json) ? json : []);
-      if (Array.isArray(list)) {
-        return list.map((item: any) => ({
-          ...item,
-          imageUrl: resolveMediaUrl(item.imageUrl || item.image),
-        }));
-      }
+      // 1. Try public /categories/subcategories endpoint first (supports deity filtering)
+      try {
+        const res = await fetch(`${baseUrl}/categories/subcategories?${qs}`);
+        if (res.ok) {
+          const json = await res.json();
+          const list = json?.data || (Array.isArray(json) ? json : []);
+          if (Array.isArray(list) && list.length > 0) {
+            return list.map((item: any) => ({
+              ...item,
+              imageUrl: resolveMediaUrl(item.imageUrl || item.image),
+            }));
+          }
+        }
+      } catch (_) {}
+
+      // 2. Try admin /admin/subcategories endpoint
+      try {
+        const adminRes = await fetch(`${baseUrl}/admin/subcategories?${qs}`);
+        if (adminRes.ok) {
+          const json = await adminRes.json();
+          const list = json?.data || (Array.isArray(json) ? json : []);
+          if (Array.isArray(list) && list.length > 0) {
+            return list.map((item: any) => ({
+              ...item,
+              imageUrl: resolveMediaUrl(item.imageUrl || item.image),
+            }));
+          }
+        }
+      } catch (_) {}
+
       return [];
     };
 

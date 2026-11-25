@@ -93,41 +93,33 @@ export const CategoryListingScreen: React.FC<Props> = ({
   onSelectItem,
   onBack,
 }) => {
-  const [selectedFilter, setSelectedFilter] = useState<string>('all');
+  const [selectedFilter, setSelectedFilter] = useState<string>(initialDeity || 'all');
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [dynamicItems, setDynamicItems] = useState<ListingItem[] | null>(null);
 
-  useEffect(() => {
-    if (initialDeity && initialDeity !== 'all') {
-      setSelectedFilter(initialDeity);
-    } else {
-      setSelectedFilter('all');
-    }
-  }, [initialDeity, categoryId]);
-
   // Load subcategories dynamically from DB via API (Instant live sync with Admin Panel)
-  const fetchSubcategories = useCallback(async (isRefresh = false) => {
+  const fetchSubcategories = useCallback(async (isRefresh = false, overrideDeity?: string) => {
     if (isRefresh) {
       setRefreshing(true);
     } else {
       setLoading(true);
     }
 
+    const deityToFetch = overrideDeity !== undefined ? overrideDeity : selectedFilter;
+
     try {
-      const items = await ApiService.getSubcategories(categoryId, currentLanguage);
+      const items = await ApiService.getSubcategories(
+        categoryId,
+        currentLanguage,
+        undefined,
+        deityToFetch !== 'all' ? deityToFetch : undefined
+      );
+
       if (Array.isArray(items) && items.length > 0) {
         const mapped: ListingItem[] = items.map((item: any) => {
-          let deityId = 'ayyappa';
-          const text = `${item.slug || ''} ${item.title || ''}`.toLowerCase();
-          if (text.includes('ganapathi') || text.includes('ganesha')) deityId = 'ganesha';
-          else if (text.includes('satyanarayana') || text.includes('venkateswara') || text.includes('srinivasa') || text.includes('balaji')) deityId = 'venkateswara';
-          else if (text.includes('lakshmi') || text.includes('devi') || text.includes('durga') || text.includes('ammavari')) deityId = 'devi';
-          else if (text.includes('rudra') || text.includes('shiva') || text.includes('linga') || text.includes('pradosha')) deityId = 'shiva';
-          else if (text.includes('hanuman') || text.includes('anjaneya')) deityId = 'hanuman';
-          else if (text.includes('subramanya') || text.includes('muruga') || text.includes('sashti')) deityId = 'murugan';
-
-          let imageSource = DEITY_IMAGES[deityId] || DEITY_IMAGES.ayyappa;
+          const itemDeity = (item.deityId || (deityToFetch !== 'all' ? deityToFetch : 'ayyappa')).toLowerCase();
+          let imageSource = DEITY_IMAGES[itemDeity] || DEITY_IMAGES.ayyappa;
           const rawImg = item.imageUrl || item.image || item.artwork;
           if (rawImg && typeof rawImg === 'string' && rawImg.trim()) {
             imageSource = { uri: resolveMediaUrl(rawImg) };
@@ -137,27 +129,34 @@ export const CategoryListingScreen: React.FC<Props> = ({
             id: item.slug || String(item.id),
             rawId: String(item.id),
             title: item.title,
-            desc: item.description || '',
-            deityId,
+            desc: item.description || item.desc || '',
+            deityId: itemDeity,
             image: imageSource,
           };
         });
         setDynamicItems(mapped);
       } else {
-        setDynamicItems(null);
+        setDynamicItems([]);
       }
     } catch (e) {
       console.warn('Error fetching dynamic subcategories:', e);
-      setDynamicItems(null);
+      setDynamicItems([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [categoryId, currentLanguage]);
+  }, [categoryId, currentLanguage, selectedFilter]);
 
   useEffect(() => {
-    fetchSubcategories();
-  }, [fetchSubcategories]);
+    const activeD = initialDeity && initialDeity !== 'all' ? initialDeity : 'all';
+    setSelectedFilter(activeD);
+    fetchSubcategories(false, activeD);
+  }, [initialDeity, categoryId]);
+
+  const handleFilterChange = (filterId: string) => {
+    setSelectedFilter(filterId);
+    fetchSubcategories(false, filterId);
+  };
 
   // Derive title
   const displayTitle = categoryTitle || (
@@ -241,7 +240,7 @@ export const CategoryListingScreen: React.FC<Props> = ({
             return (
               <TouchableOpacity
                 key={tab.id}
-                onPress={() => setSelectedFilter(tab.id)}
+                onPress={() => handleFilterChange(tab.id)}
                 activeOpacity={0.8}
                 style={[
                   styles.filterTab,
@@ -291,7 +290,7 @@ export const CategoryListingScreen: React.FC<Props> = ({
             <Text style={styles.emptyText}>No items available for this deity.</Text>
             <TouchableOpacity
               style={styles.showAllBtn}
-              onPress={() => setSelectedFilter('all')}
+              onPress={() => handleFilterChange('all')}
             >
               <Text style={styles.showAllText}>Show All</Text>
             </TouchableOpacity>
