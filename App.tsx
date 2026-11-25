@@ -179,6 +179,7 @@ export default function App() {
   const [authInitialStep, setAuthInitialStep] = useState<'LOGIN' | 'REGISTER'>('LOGIN');
   const [isReady, setIsReady] = useState(false);
   const [currentLocation, setCurrentLocation] = useState<string>('Bengaluru');
+  const [pendingServiceTarget, setPendingServiceTarget] = useState<{ id: string; title: string } | null>(null);
   const lastBackPressRef = useRef<number>(0);
 
   // Sync and restore unified location state
@@ -416,10 +417,19 @@ export default function App() {
     StorageService.saveNavigationState('onboarding', null);
   };
 
-  // When devotee chooses Deity and taps Continue -> Proceed to Home (or Complete Profile if pending)
+  // When devotee chooses Deity and taps Continue -> Proceed to Home or to selected Service
   const handleDeityContinue = (selectedDeity: any) => {
     setCurrentDeity(selectedDeity);
     StorageService.setStoredDeity(selectedDeity);
+
+    if (pendingServiceTarget) {
+      const target = pendingServiceTarget;
+      setPendingServiceTarget(null);
+      const deitySlug = selectedDeity.slug || selectedDeity.id || 'all';
+      handleOpenDetail(target.id, target.title, deitySlug, true);
+      return;
+    }
+
     if (navHistory.length > 0 && navHistory[navHistory.length - 1].screen === 'profile') {
       handleGoBack();
     } else if (currentUser && (!currentUser.profileOnboardingStatus || currentUser.profileOnboardingStatus === 'PENDING')) {
@@ -452,8 +462,13 @@ export default function App() {
     }
   };
 
-  // When devotee taps Back on Choose Deity -> Return to Language Selection
+  // When devotee taps Back on Choose Deity -> Return to previous screen or Language Selection
   const handleDeityBack = () => {
+    if (pendingServiceTarget) {
+      setPendingServiceTarget(null);
+      handleGoBack();
+      return;
+    }
     setCurrentScreen('language');
     StorageService.saveNavigationState('language', null);
   };
@@ -520,8 +535,39 @@ export default function App() {
     }
   };
 
-  const handleOpenDetail = (id: string, title: string, deity?: string) => {
-    const activeDeity = deity || 'all';
+  const isGodSelectionService = (sId: string): boolean => {
+    const s = (sId || '').toLowerCase();
+    return (
+      s === 'pooja' ||
+      s === 'pooja-vidhanam' ||
+      s === 'poojalu-vrathaalu' ||
+      s.includes('pooja') ||
+      s === 'stotras' ||
+      s === 'stotram' ||
+      s === 'sutras' ||
+      s === 'astothram' ||
+      s === 'astothrams' ||
+      s === 'divine-stotras' ||
+      s.includes('stotra') ||
+      s.includes('sutra') ||
+      s === 'slokas' ||
+      s === 'daily-slokas' ||
+      s.includes('sloka') ||
+      s === 'bhajans' ||
+      s === 'songs' ||
+      s === 'bhajans-songs' ||
+      s === 'bhajans_songs' ||
+      s.includes('bhajan')
+    );
+  };
+
+  const handleOpenDetail = (id: string, title: string, deity?: string, forceDirect = false) => {
+    if (!forceDirect && isGodSelectionService(id)) {
+      setPendingServiceTarget({ id, title });
+      navigateTo('choose_deity');
+      return;
+    }
+    const activeDeity = deity || currentDeity?.id || currentDeity?.slug || 'all';
     if (id === 'bhajans' || id === 'harathis' || id === 'songs' || id === 'bhajans-songs') {
       navigateTo('bhajans_songs', { id, title: title || 'Bhajans & Songs', deity: activeDeity });
     } else if (id === 'live-streams' || id === 'live' || id === 'live_streams' || id === 'live-darshan') {

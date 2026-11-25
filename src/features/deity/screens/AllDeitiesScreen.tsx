@@ -343,33 +343,13 @@ export const AllDeitiesScreen: React.FC<AllDeitiesScreenProps> = ({
           category: selectedCategory,
         });
         if (!isCancelled) {
-          setDeitiesList(results);
+          setDeitiesList(results || []);
         }
       } catch (err: any) {
         if (!isCancelled) {
-          // Graceful fallback to bundled catalog
-          let filtered: DeityItem[] = [...ALL_DEITIES_CATALOG];
-          if (selectedCategory && selectedCategory !== 'all') {
-            if (selectedCategory === 'popular') {
-              filtered = filtered.filter((d: any) => d.category === 'popular' || d.isFeatured);
-            } else {
-              filtered = filtered.filter((d: any) => d.category === selectedCategory);
-            }
-          }
-          if (searchQuery && searchQuery.trim()) {
-            const q = searchQuery.trim().toLowerCase();
-            filtered = filtered.filter(
-              (d: any) =>
-                (d.name && d.name.toLowerCase().includes(q)) ||
-                (d.teluguName && d.teluguName.includes(q)) ||
-                (d.tamilName && d.tamilName.includes(q)) ||
-                (d.kannadaName && d.kannadaName.includes(q)) ||
-                (d.hindiName && d.hindiName.includes(q)) ||
-                (d.aliases && d.aliases.some((a: string) => a.toLowerCase().includes(q)))
-            );
-          }
-          setDeitiesList(filtered);
-          setError(null);
+          console.warn('AllDeities DB fetch notice:', err?.message || err);
+          setError(err?.message || 'Failed to load deities from database');
+          setDeitiesList([]);
         }
       } finally {
         if (!isCancelled) {

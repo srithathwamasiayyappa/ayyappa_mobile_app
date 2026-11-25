@@ -44,20 +44,9 @@ export interface ChooseDeityScreenProps {
   onBack: () => void;
 }
 
-const READY_DEITY_IDS = new Set([
-  'ayyappa',
-  'shiva',
-  'ganesha',
-  'ganapathi',
-  'murugan',
-  'karthikeya',
-]);
-
 export const isDeityComingSoon = (deity: DeityItem | null | undefined): boolean => {
   if (!deity) return false;
-  if (deity.isComingSoon !== undefined) return deity.isComingSoon;
-  const slug = (deity.id || (deity as any).slug || '').toLowerCase();
-  return !READY_DEITY_IDS.has(slug);
+  return deity.isComingSoon === true || deity.isActive === false;
 };
 
 export const ChooseDeityScreen: React.FC<ChooseDeityScreenProps> = ({
@@ -75,36 +64,31 @@ export const ChooseDeityScreen: React.FC<ChooseDeityScreenProps> = ({
   const [comingSoonToast, setComingSoonToast] = useState<string | null>(null);
   const [showAllDeities, setShowAllDeities] = useState<boolean>(false);
 
-  // Fetch featured deities directly from DB via API
+  // Fetch featured deities directly from DB via API (Strictly NO fallback, static, or fake data)
   const loadFeaturedDeities = async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await ApiService.getDeities({ featured: true });
+      let data = await ApiService.getDeities({ featured: true });
+      if (!data || data.length === 0) {
+        data = await ApiService.getDeities();
+      }
       if (!data || data.length === 0) {
         throw new Error('No deities returned from database');
       }
       setFeaturedDeities(data);
 
       const stored = await StorageService.getStoredDeity();
-      if (stored && !isDeityComingSoon(stored)) {
-        const found = data.find((d) => d.id === stored.id || d.name === stored.name);
+      if (stored) {
+        const found = data.find((d) => d.id === stored.id || d.name === stored.name || (d as any).slug === stored.id);
         setSelectedDeity(found || stored);
       } else {
-        const firstReady = data.find((d) => !isDeityComingSoon(d)) || data[0];
-        setSelectedDeity(firstReady);
+        setSelectedDeity(data[0]);
       }
     } catch (err: any) {
-      // Graceful offline fallback to bundled featured catalog
-      const fallback = (ALL_DEITIES_CATALOG || []).filter((d) => d.isFeatured);
-      if (fallback.length > 0) {
-        setFeaturedDeities(fallback);
-        const firstReady = fallback.find((d) => !isDeityComingSoon(d)) || fallback[0];
-        setSelectedDeity(firstReady);
-        setError(null);
-      } else {
-        setError(err?.message || 'Failed to load deities from database');
-      }
+      console.warn('Deities DB fetch notice:', err?.message || err);
+      setError(err?.message || 'Failed to load deities from database');
+      setFeaturedDeities([]);
     } finally {
       setLoading(false);
     }
@@ -169,13 +153,8 @@ export const ChooseDeityScreen: React.FC<ChooseDeityScreenProps> = ({
     onContinue(selectedDeity);
   };
 
-  // Catalog of all deities when expanded (from API or bundled catalog)
-  const allDeitiesList =
-    featuredDeities.length > 6
-      ? featuredDeities
-      : (ALL_DEITIES_CATALOG && ALL_DEITIES_CATALOG.length > 6
-          ? (ALL_DEITIES_CATALOG as DeityItem[])
-          : featuredDeities);
+  // Catalog of all deities when expanded (strictly from database API response)
+  const allDeitiesList = featuredDeities;
 
   // Initial state strictly renders 6 cards only; expands to all upon tapping "View All Deities"
   const displayedDeities = showAllDeities
