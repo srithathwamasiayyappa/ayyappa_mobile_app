@@ -663,7 +663,7 @@ export default function EnterpriseSuperAdminDashboard() {
   const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
   const [isUpdatingTicket, setIsUpdatingTicket] = useState(false);
 
-  // Devotional Services State (from /categories/services API)
+  // Devotional Services State (strictly fetched from DB via API, zero mock/fake data)
   const [devotionalServices, setDevotionalServices] = useState<any[]>([]);
   const [loadingServices, setLoadingServices] = useState<boolean>(false);
   const [serviceSearch, setServiceSearch] = useState<string>('');
@@ -1341,12 +1341,25 @@ export default function EnterpriseSuperAdminDashboard() {
     setLoadingServices(true);
     try {
       const res = await fetch(`${API_BASE_URL}/categories/services`);
-      const json = await res.json();
-      if (json?.data && Array.isArray(json.data)) {
-        setDevotionalServices(json.data);
+      if (res.ok) {
+        const json = await res.json();
+        if (json?.data && Array.isArray(json.data) && json.data.length > 0) {
+          setDevotionalServices(json.data);
+          return;
+        }
       }
+      const adminRes = await fetch(`${API_BASE_URL}/admin/category-services`);
+      if (adminRes.ok) {
+        const adminJson = await adminRes.json();
+        if (adminJson?.data && Array.isArray(adminJson.data) && adminJson.data.length > 0) {
+          setDevotionalServices(adminJson.data);
+          return;
+        }
+      }
+      setDevotionalServices([]);
     } catch (e) {
-      console.error('Failed to load category services:', e);
+      console.warn('Notice loading category services:', e);
+      setDevotionalServices([]);
     } finally {
       setLoadingServices(false);
     }
@@ -3608,8 +3621,8 @@ export default function EnterpriseSuperAdminDashboard() {
                 </div>
                 <div
                   className={`relative flex items-center rounded-xl bg-[#030E09] border transition shadow-inner ${loginEmailTouched && !isEmailValid && loginEmail.length > 0
-                      ? 'border-rose-500/80 ring-1 ring-rose-500/30'
-                      : 'border-[#1B573D] focus-within:border-[#FFB300] focus-within:ring-2 focus-within:ring-[#FFB300]/25'
+                    ? 'border-rose-500/80 ring-1 ring-rose-500/30'
+                    : 'border-[#1B573D] focus-within:border-[#FFB300] focus-within:ring-2 focus-within:ring-[#FFB300]/25'
                     }`}
                 >
                   <Mail className="w-4 h-4 text-[#FFB300] ml-3.5 flex-shrink-0 opacity-80" />
@@ -3645,8 +3658,8 @@ export default function EnterpriseSuperAdminDashboard() {
                 </div>
                 <div
                   className={`relative flex items-center rounded-xl bg-[#030E09] border transition shadow-inner ${loginPasswordTouched && !isPasswordValid
-                      ? 'border-rose-500/80 ring-1 ring-rose-500/30'
-                      : 'border-[#1B573D] focus-within:border-[#FFB300] focus-within:ring-2 focus-within:ring-[#FFB300]/25'
+                    ? 'border-rose-500/80 ring-1 ring-rose-500/30'
+                    : 'border-[#1B573D] focus-within:border-[#FFB300] focus-within:ring-2 focus-within:ring-[#FFB300]/25'
                     }`}
                 >
                   <Lock className="w-4 h-4 text-[#FFB300] ml-3.5 flex-shrink-0 opacity-80" />
@@ -3694,8 +3707,8 @@ export default function EnterpriseSuperAdminDashboard() {
                 type="submit"
                 disabled={!canSubmit}
                 className={`w-full py-3.5 px-6 rounded-xl font-bold text-sm tracking-wide transition-all duration-200 shadow-xl flex items-center justify-center gap-2 relative ${canSubmit
-                    ? 'bg-gradient-to-r from-[#FFB300] via-[#FFA000] to-[#FF8F00] hover:from-[#FFA000] hover:to-[#FF6F00] text-[#071C14] shadow-amber-500/25 cursor-pointer transform hover:-translate-y-0.5 active:translate-y-0'
-                    : 'bg-[#0E2F23] border border-[#1A4E38] text-gray-400 cursor-not-allowed opacity-75'
+                  ? 'bg-gradient-to-r from-[#FFB300] via-[#FFA000] to-[#FF8F00] hover:from-[#FFA000] hover:to-[#FF6F00] text-[#071C14] shadow-amber-500/25 cursor-pointer transform hover:-translate-y-0.5 active:translate-y-0'
+                  : 'bg-[#0E2F23] border border-[#1A4E38] text-gray-400 cursor-not-allowed opacity-75'
                   }`}
               >
                 {isLoggingIn ? (
@@ -4068,12 +4081,12 @@ export default function EnterpriseSuperAdminDashboard() {
           role="alert"
           aria-live="assertive"
           className={`fixed top-6 right-6 z-[99999] flex items-start gap-3 p-4 rounded-xl shadow-2xl backdrop-blur-xl border max-w-md w-full transition-all transform animate-in slide-in-from-top-4 duration-300 ${adminToast.type === 'warning'
-              ? 'bg-[#211604]/95 border-amber-500/60 text-amber-200 shadow-amber-950/40'
-              : adminToast.type === 'error'
-                ? 'bg-[#260a0a]/95 border-rose-500/60 text-rose-200 shadow-rose-950/40'
-                : adminToast.type === 'info'
-                  ? 'bg-[#081e2b]/95 border-sky-500/60 text-sky-200 shadow-sky-950/40'
-                  : 'bg-[#0c2419]/95 border-emerald-500/60 text-emerald-200 shadow-emerald-950/40'
+            ? 'bg-[#211604]/95 border-amber-500/60 text-amber-200 shadow-amber-950/40'
+            : adminToast.type === 'error'
+              ? 'bg-[#260a0a]/95 border-rose-500/60 text-rose-200 shadow-rose-950/40'
+              : adminToast.type === 'info'
+                ? 'bg-[#081e2b]/95 border-sky-500/60 text-sky-200 shadow-sky-950/40'
+                : 'bg-[#0c2419]/95 border-emerald-500/60 text-emerald-200 shadow-emerald-950/40'
             }`}
         >
           <div className="flex-shrink-0 mt-0.5">
@@ -4139,8 +4152,8 @@ export default function EnterpriseSuperAdminDashboard() {
                     <button
                       onClick={item.onClick}
                       className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all ${item.isActive
-                          ? 'bg-orange-600/25 text-[#FFB300] border border-orange-500/40 shadow-sm'
-                          : 'text-gray-400 hover:text-gray-200 hover:bg-neutral-800/60'
+                        ? 'bg-orange-600/25 text-[#FFB300] border border-orange-500/40 shadow-sm'
+                        : 'text-gray-400 hover:text-gray-200 hover:bg-neutral-800/60'
                         }`}
                     >
                       <div className="flex items-center gap-3 truncate">
@@ -4161,8 +4174,8 @@ export default function EnterpriseSuperAdminDashboard() {
                             key={sub.key}
                             onClick={sub.onClick}
                             className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-[11px] font-medium transition-all text-left group ${sub.isActive
-                                ? 'bg-gradient-to-r from-orange-500/20 to-amber-500/10 text-[#FFB300] font-semibold border border-[#FFB300]/40 shadow-sm'
-                                : 'text-gray-400 hover:text-gray-100 hover:bg-neutral-800/60'
+                              ? 'bg-gradient-to-r from-orange-500/20 to-amber-500/10 text-[#FFB300] font-semibold border border-[#FFB300]/40 shadow-sm'
+                              : 'text-gray-400 hover:text-gray-100 hover:bg-neutral-800/60'
                               }`}
                           >
                             <div className="flex items-center gap-2 truncate">
@@ -4185,8 +4198,8 @@ export default function EnterpriseSuperAdminDashboard() {
                   key={item.key}
                   onClick={item.onClick}
                   className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${item.isActive
-                      ? 'bg-orange-600/25 text-[#FFB300] border border-orange-500/40 shadow-sm'
-                      : 'text-gray-400 hover:text-gray-200 hover:bg-neutral-800/60'
+                    ? 'bg-orange-600/25 text-[#FFB300] border border-orange-500/40 shadow-sm'
+                    : 'text-gray-400 hover:text-gray-200 hover:bg-neutral-800/60'
                     }`}
                 >
                   <Icon className="w-4 h-4 flex-shrink-0 text-orange-400/90" />
@@ -4207,8 +4220,8 @@ export default function EnterpriseSuperAdminDashboard() {
                     key={sec.key}
                     onClick={sec.onClick}
                     className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${sec.isActive
-                        ? 'bg-orange-600/25 text-[#FFB300] border border-orange-500/40 shadow-sm'
-                        : 'text-gray-400 hover:text-gray-200 hover:bg-neutral-800/60'
+                      ? 'bg-orange-600/25 text-[#FFB300] border border-orange-500/40 shadow-sm'
+                      : 'text-gray-400 hover:text-gray-200 hover:bg-neutral-800/60'
                       }`}
                   >
                     <SecIcon className="w-4 h-4 flex-shrink-0 text-orange-400/90" />
@@ -4384,71 +4397,143 @@ export default function EnterpriseSuperAdminDashboard() {
               </div>
 
               {/* Devotional Services Grid Matching User Reference Image */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                {devotionalServices
-                  .filter((s) => {
-                    if (!serviceSearch.trim()) return true;
-                    const q = serviceSearch.toLowerCase();
-                    const matchTitle = s.title?.toLowerCase().includes(q);
-                    const matchSub = s.sub?.toLowerCase().includes(q);
-                    const matchId = (s.serviceId || s.id)?.toLowerCase().includes(q);
-                    return matchTitle || matchSub || matchId;
-                  })
-                  .map((service, index) => {
-                    const sKey = service.serviceId || service.id;
-                    const artworkSrc = service.artwork || categoryArtworkMap[sKey] || categoryArtworkMap[service.id];
-                    return (
-                      <div
-                        key={service.id || service.serviceId || index}
-                        onClick={() => handleOpenViewService(service)}
-                        className="bg-[#1E1E1E] hover:bg-[#252525] rounded-2xl border border-[#2C2C2C] hover:border-[#FFB300]/50 p-4 transition-all duration-200 hover:shadow-2xl flex flex-col justify-between gap-3 group cursor-pointer relative"
+                {loadingServices ? (
+                  <div className="flex flex-col items-center justify-center p-12 bg-[#1A1A1A] rounded-2xl border border-[#2C2C2C] text-gray-400">
+                    <RefreshCw className="w-8 h-8 animate-spin text-amber-400 mb-3" />
+                    <p className="text-sm font-semibold">Loading devotional services from database...</p>
+                  </div>
+                ) : devotionalServices.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center p-12 bg-[#1A1A1A] rounded-2xl border border-[#2C2C2C] text-center">
+                    <FolderTree className="w-12 h-12 text-amber-400/50 mb-3" />
+                    <h3 className="text-sm font-bold text-gray-200">No Devotional Services Found in Database</h3>
+                    <p className="text-xs text-gray-400 mt-1 max-w-md">
+                      The database category_services directory has not been populated yet. Click below to load or add services.
+                    </p>
+                    <div className="flex items-center gap-3 mt-4">
+                      <button
+                        onClick={loadCategoryServices}
+                        className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-black font-bold text-xs rounded-lg transition"
                       >
-                        <div className="flex items-start justify-between gap-3">
-                          {/* 1. Left Medallion Icon with Divine Glyph */}
-                          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#2A2A2A] to-[#141414] border border-[#3A3A3A] group-hover:border-[#FFB300]/40 flex items-center justify-center flex-shrink-0 shadow-inner">
-                            {renderServiceIcon(service.icon || service.id)}
-                          </div>
+                        Reload from API
+                      </button>
+                      <button
+                        onClick={handleOpenCreateService}
+                        className="px-4 py-2 bg-[#252525] hover:bg-[#333333] text-gray-200 font-bold text-xs rounded-lg border border-[#3C3C3C] transition"
+                      >
+                        + Add Devotional Service
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                    {devotionalServices
+                      .filter((s) => {
+                        if (!serviceSearch.trim()) return true;
+                        const q = serviceSearch.toLowerCase();
+                        const matchTitle = s.title?.toLowerCase().includes(q);
+                        const matchSub = s.sub?.toLowerCase().includes(q);
+                        const matchId = (s.serviceId || s.id)?.toLowerCase().includes(q);
+                        return matchTitle || matchSub || matchId;
+                      })
+                      .map((service, index) => {
+                        const sKey = service.serviceId || service.id;
+                        const artworkSrc = service.artwork || categoryArtworkMap[sKey] || categoryArtworkMap[service.id];
+                        return (
+                          <div
+                            key={service.id || service.serviceId || index}
+                            onClick={() => handleOpenViewService(service)}
+                            className="bg-[#1E1E1E] hover:bg-[#252525] rounded-2xl border border-[#2C2C2C] hover:border-[#FFB300]/50 p-4 transition-all duration-200 hover:shadow-2xl flex flex-col justify-between gap-3 group cursor-pointer relative"
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              {/* 1. Left Medallion Icon with Divine Glyph */}
+                              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#2A2A2A] to-[#141414] border border-[#3A3A3A] group-hover:border-[#FFB300]/40 flex items-center justify-center flex-shrink-0 shadow-inner">
+                                {renderServiceIcon(service.icon || service.id)}
+                              </div>
 
-                          {/* 2. Middle Information (Title + Subtitle) */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <h3 className="font-bold text-sm text-gray-100 group-hover:text-[#FFB300] transition truncate">
-                                {service.title}
-                              </h3>
-                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-neutral-800 text-gray-400 font-mono">
-                                #{service.displayOrder || index + 1}
-                              </span>
-                            </div>
-                            <p className="text-xs text-gray-400 truncate mt-0.5 font-medium">
-                              {service.sub || 'Step-by-step sacred rituals'}
-                            </p>
-                            <div className="flex items-center gap-2 mt-1.5">
-                              <span className="text-[10px] text-gray-500 font-mono bg-[#141414] px-1.5 py-0.5 rounded border border-[#2C2C2C]">
-                                {service.url}
-                              </span>
-                              <span className={`text-[10px] font-medium flex items-center gap-1 ${service.isActive !== false ? 'text-emerald-400' : 'text-gray-400'}`}>
-                                <span className={`w-1.5 h-1.5 rounded-full ${service.isActive !== false ? 'bg-emerald-400 animate-pulse' : 'bg-gray-500'}`} />
-                                {service.isActive !== false ? 'Active' : 'Inactive'}
-                              </span>
-                            </div>
-                          </div>
+                              {/* 2. Middle Information (Title + Subtitle) */}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <h3 className="font-bold text-sm text-gray-100 group-hover:text-[#FFB300] transition truncate">
+                                    {service.title}
+                                  </h3>
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-neutral-800 text-gray-400 font-mono">
+                                    #{service.displayOrder || index + 1}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-gray-400 truncate mt-0.5 font-medium">
+                                  {service.sub || 'Step-by-step sacred rituals'}
+                                </p>
+                                <div className="flex items-center gap-2 mt-1.5">
+                                  <span className="text-[10px] text-gray-500 font-mono bg-[#141414] px-1.5 py-0.5 rounded border border-[#2C2C2C]">
+                                    {service.url}
+                                  </span>
+                                  <span className={`text-[10px] font-medium flex items-center gap-1 ${service.isActive !== false ? 'text-emerald-400' : 'text-gray-400'}`}>
+                                    <span className={`w-1.5 h-1.5 rounded-full ${service.isActive !== false ? 'bg-emerald-400 animate-pulse' : 'bg-gray-500'}`} />
+                                    {service.isActive !== false ? 'Active' : 'Inactive'}
+                                  </span>
+                                </div>
+                              </div>
 
-                          {/* 3. Devotional Line Artwork & Arrow */}
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            {artworkSrc ? (
-                              <div className="relative group/art w-12 h-12 flex items-center justify-center rounded-xl overflow-hidden bg-neutral-900 border border-neutral-800">
-                                <img
-                                  src={resolveArtworkUrl(artworkSrc)}
-                                  alt={service.title}
-                                  className="w-10 h-10 object-contain opacity-85 group-hover:opacity-100 transition transform group-hover:scale-105"
-                                  onError={(e: any) => { e.currentTarget.style.display = 'none'; }}
-                                />
+                              {/* 3. Devotional Line Artwork & Arrow */}
+                              <div className="flex items-center gap-2 flex-shrink-0">
+                                {artworkSrc ? (
+                                  <div className="relative group/art w-12 h-12 flex items-center justify-center rounded-xl overflow-hidden bg-neutral-900 border border-neutral-800">
+                                    <img
+                                      src={resolveArtworkUrl(artworkSrc)}
+                                      alt={service.title}
+                                      className="w-10 h-10 object-contain opacity-85 group-hover:opacity-100 transition transform group-hover:scale-105"
+                                      onError={(e: any) => { e.currentTarget.style.display = 'none'; }}
+                                    />
+                                    <label
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="absolute inset-0 bg-black/70 opacity-0 group-hover/art:opacity-100 flex items-center justify-center cursor-pointer transition rounded-xl"
+                                      title="Upload / Change Category Image"
+                                    >
+                                      <Upload className="w-4 h-4 text-amber-400" />
+                                      <input
+                                        type="file"
+                                        accept="image/png, image/jpeg, image/webp"
+                                        onChange={(e) => handleQuickServiceArtworkUpload(service.id || service.serviceId, e)}
+                                        className="hidden"
+                                      />
+                                    </label>
+                                  </div>
+                                ) : (
+                                  <label
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="w-12 h-12 flex items-center justify-center rounded-xl bg-neutral-900 border border-dashed border-neutral-700 hover:border-amber-400 text-gray-500 hover:text-amber-400 cursor-pointer transition"
+                                    title="Upload Category Image"
+                                  >
+                                    <Upload className="w-4 h-4" />
+                                    <input
+                                      type="file"
+                                      accept="image/png, image/jpeg, image/webp"
+                                      onChange={(e) => handleQuickServiceArtworkUpload(service.id || service.serviceId, e)}
+                                      className="hidden"
+                                    />
+                                  </label>
+                                )}
+
+                                <div className="w-7 h-7 rounded-full border border-[#3A3A3A] bg-[#141414] flex items-center justify-center text-gray-400 group-hover:text-[#FFB300] group-hover:border-[#FFB300]/50 transition">
+                                  <ArrowRight className="w-3.5 h-3.5" />
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Card Footer Action Bar */}
+                            <div className="pt-2.5 border-t border-[#2A2A2A] flex items-center justify-between text-xs">
+                              <span className="text-[11px] text-gray-400 font-mono flex items-center gap-1">
+                                <span className="text-gray-500">ID:</span>
+                                <span className="text-amber-400/90">{sKey}</span>
+                              </span>
+
+                              <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                                 <label
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="absolute inset-0 bg-black/70 opacity-0 group-hover/art:opacity-100 flex items-center justify-center cursor-pointer transition rounded-xl"
-                                  title="Upload / Change Category Image"
+                                  title="Upload / Replace Category Image"
+                                  className="px-2 py-1 bg-[#141414] hover:bg-[#252525] text-gray-300 hover:text-emerald-400 rounded border border-[#2C2C2C] flex items-center gap-1 text-[11px] font-semibold transition cursor-pointer"
                                 >
-                                  <Upload className="w-4 h-4 text-amber-400" />
+                                  <Upload className="w-3 h-3 text-emerald-400" />
+                                  <span>Image</span>
                                   <input
                                     type="file"
                                     accept="image/png, image/jpeg, image/webp"
@@ -4456,98 +4541,55 @@ export default function EnterpriseSuperAdminDashboard() {
                                     className="hidden"
                                   />
                                 </label>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const sKey = service.serviceId || service.id;
+                                    setSelectedParentCategoryFilter(sKey);
+                                    loadSubcategories(1, '', selectedLang, sKey);
+                                    setActiveTab('subcategories');
+                                  }}
+                                  title="Manage Subcategories under this Category"
+                                  className="px-2 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded border border-amber-500/30 flex items-center gap-1 text-[11px] font-semibold transition"
+                                >
+                                  <Layers className="w-3 h-3 text-amber-400" />
+                                  <span>Subcategories</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleOpenViewService(service, e)}
+                                  title="View Details by ID"
+                                  className="px-2 py-1 bg-[#141414] hover:bg-[#252525] text-gray-300 hover:text-white rounded border border-[#2C2C2C] flex items-center gap-1 text-[11px] font-semibold transition"
+                                >
+                                  <Eye className="w-3 h-3 text-sky-400" />
+                                  <span>View</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleOpenEditService(service, e)}
+                                  title="Edit Devotional Service"
+                                  className="px-2 py-1 bg-[#141414] hover:bg-[#252525] text-gray-300 hover:text-amber-400 rounded border border-[#2C2C2C] flex items-center gap-1 text-[11px] font-semibold transition"
+                                >
+                                  <Edit3 className="w-3 h-3 text-amber-400" />
+                                  <span>Edit</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleDeleteCategoryService(service, e)}
+                                  title="Delete Devotional Service"
+                                  className="px-2 py-1 bg-[#141414] hover:bg-rose-950/40 text-gray-300 hover:text-red-400 rounded border border-[#2C2C2C] hover:border-red-900/40 flex items-center gap-1 text-[11px] font-semibold transition"
+                                >
+                                  <Trash2 className="w-3 h-3 text-red-400" />
+                                  <span>Delete</span>
+                                </button>
                               </div>
-                            ) : (
-                              <label
-                                onClick={(e) => e.stopPropagation()}
-                                className="w-12 h-12 flex items-center justify-center rounded-xl bg-neutral-900 border border-dashed border-neutral-700 hover:border-amber-400 text-gray-500 hover:text-amber-400 cursor-pointer transition"
-                                title="Upload Category Image"
-                              >
-                                <Upload className="w-4 h-4" />
-                                <input
-                                  type="file"
-                                  accept="image/png, image/jpeg, image/webp"
-                                  onChange={(e) => handleQuickServiceArtworkUpload(service.id || service.serviceId, e)}
-                                  className="hidden"
-                                />
-                              </label>
-                            )}
-
-                            <div className="w-7 h-7 rounded-full border border-[#3A3A3A] bg-[#141414] flex items-center justify-center text-gray-400 group-hover:text-[#FFB300] group-hover:border-[#FFB300]/50 transition">
-                              <ArrowRight className="w-3.5 h-3.5" />
                             </div>
                           </div>
-                        </div>
-
-                        {/* Card Footer Action Bar */}
-                        <div className="pt-2.5 border-t border-[#2A2A2A] flex items-center justify-between text-xs">
-                          <span className="text-[11px] text-gray-400 font-mono flex items-center gap-1">
-                            <span className="text-gray-500">ID:</span>
-                            <span className="text-amber-400/90">{sKey}</span>
-                          </span>
-
-                          <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-                            <label
-                              title="Upload / Replace Category Image"
-                              className="px-2 py-1 bg-[#141414] hover:bg-[#252525] text-gray-300 hover:text-emerald-400 rounded border border-[#2C2C2C] flex items-center gap-1 text-[11px] font-semibold transition cursor-pointer"
-                            >
-                              <Upload className="w-3 h-3 text-emerald-400" />
-                              <span>Image</span>
-                              <input
-                                type="file"
-                                accept="image/png, image/jpeg, image/webp"
-                                onChange={(e) => handleQuickServiceArtworkUpload(service.id || service.serviceId, e)}
-                                className="hidden"
-                              />
-                            </label>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                const sKey = service.serviceId || service.id;
-                                setSelectedParentCategoryFilter(sKey);
-                                loadSubcategories(1, '', selectedLang, sKey);
-                                setActiveTab('subcategories');
-                              }}
-                              title="Manage Subcategories under this Category"
-                              className="px-2 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded border border-amber-500/30 flex items-center gap-1 text-[11px] font-semibold transition"
-                            >
-                              <Layers className="w-3 h-3 text-amber-400" />
-                              <span>Subcategories</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={(e) => handleOpenViewService(service, e)}
-                              title="View Details by ID"
-                              className="px-2 py-1 bg-[#141414] hover:bg-[#252525] text-gray-300 hover:text-white rounded border border-[#2C2C2C] flex items-center gap-1 text-[11px] font-semibold transition"
-                            >
-                              <Eye className="w-3 h-3 text-sky-400" />
-                              <span>View</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={(e) => handleOpenEditService(service, e)}
-                              title="Edit Devotional Service"
-                              className="px-2 py-1 bg-[#141414] hover:bg-[#252525] text-gray-300 hover:text-amber-400 rounded border border-[#2C2C2C] flex items-center gap-1 text-[11px] font-semibold transition"
-                            >
-                              <Edit3 className="w-3 h-3 text-amber-400" />
-                              <span>Edit</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={(e) => handleDeleteCategoryService(service, e)}
-                              title="Delete Devotional Service"
-                              className="px-2 py-1 bg-[#141414] hover:bg-rose-950/40 text-gray-300 hover:text-red-400 rounded border border-[#2C2C2C] hover:border-red-900/40 flex items-center gap-1 text-[11px] font-semibold transition"
-                            >
-                              <Trash2 className="w-3 h-3 text-red-400" />
-                              <span>Delete</span>
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-              </div>
+                        );
+                      })}
+                </div>
+              )}
 
               {/* Empty state if search has no matches */}
               {devotionalServices.length > 0 &&
@@ -5117,8 +5159,8 @@ export default function EnterpriseSuperAdminDashboard() {
                                 onClick={() => handleToggleTempleActive(t)}
                                 title={t.isActive ? 'Active in Portal (Click to Hide)' : 'Hidden (Click to Publish)'}
                                 className={`px-2.5 py-1 rounded text-[10px] font-semibold flex items-center gap-1.5 transition ${t.isActive
-                                    ? 'bg-emerald-950 text-emerald-300 border border-emerald-800/50 hover:bg-emerald-900'
-                                    : 'bg-neutral-800 text-gray-400 border border-gray-700 hover:bg-neutral-700'
+                                  ? 'bg-emerald-950 text-emerald-300 border border-emerald-800/50 hover:bg-emerald-900'
+                                  : 'bg-neutral-800 text-gray-400 border border-gray-700 hover:bg-neutral-700'
                                   }`}
                               >
                                 <span className={`w-1.5 h-1.5 rounded-full ${t.isActive ? 'bg-emerald-400' : 'bg-gray-500'}`} />
@@ -5213,8 +5255,8 @@ export default function EnterpriseSuperAdminDashboard() {
                           type="button"
                           onClick={() => handleViewDetailChangeLang(l.code)}
                           className={`px-2.5 py-1 rounded text-xs font-semibold transition flex items-center gap-1 ${selectedLang === l.code
-                              ? 'bg-[#FFB300] text-[#071C14] font-bold shadow'
-                              : 'text-gray-300 hover:text-[#FFB300] hover:bg-[#0D2E21]'
+                            ? 'bg-[#FFB300] text-[#071C14] font-bold shadow'
+                            : 'text-gray-300 hover:text-[#FFB300] hover:bg-[#0D2E21]'
                             }`}
                           title={`Switch to ${l.name} (${l.code}) — Dynamically fetched from MySQL via API`}
                         >
@@ -5314,8 +5356,8 @@ export default function EnterpriseSuperAdminDashboard() {
                           type="button"
                           onClick={() => setActiveViewTypeTab('all')}
                           className={`p-2 rounded-lg text-left transition border flex flex-col justify-between gap-1 ${activeViewTypeTab === 'all'
-                              ? 'bg-[#FFB300] text-[#071C14] border-[#FFB300] font-bold shadow-md'
-                              : 'bg-[#061A13] text-gray-300 border-[#16422F] hover:border-[#FFB300]/50'
+                            ? 'bg-[#FFB300] text-[#071C14] border-[#FFB300] font-bold shadow-md'
+                            : 'bg-[#061A13] text-gray-300 border-[#16422F] hover:border-[#FFB300]/50'
                             }`}
                         >
                           <div className="flex items-center justify-between w-full">
@@ -5332,8 +5374,8 @@ export default function EnterpriseSuperAdminDashboard() {
                             type="button"
                             onClick={() => setActiveViewTypeTab(idx)}
                             className={`p-2 rounded-lg text-left transition border flex flex-col justify-between gap-1 ${activeViewTypeTab === idx
-                                ? 'bg-[#FFB300] text-[#071C14] border-[#FFB300] font-bold shadow-md'
-                                : 'bg-[#061A13] text-gray-300 border-[#16422F] hover:border-[#FFB300]/50'
+                              ? 'bg-[#FFB300] text-[#071C14] border-[#FFB300] font-bold shadow-md'
+                              : 'bg-[#061A13] text-gray-300 border-[#16422F] hover:border-[#FFB300]/50'
                               }`}
                           >
                             <div className="flex items-center justify-between w-full">
@@ -5639,8 +5681,8 @@ export default function EnterpriseSuperAdminDashboard() {
                               key={typeItem.id || tIdx}
                               onClick={() => setActiveViewTypeTab(tIdx)}
                               className={`rounded-xl border p-3.5 cursor-pointer transition-all transform hover:-translate-y-0.5 shadow-md flex flex-col justify-between gap-3 ${isSelected
-                                  ? 'bg-[#0A3324] border-[#FFB300] shadow-[0_0_15px_rgba(255,179,0,0.2)]'
-                                  : 'bg-[#061A13] border-[#16422F] hover:border-[#FFB300]/60'
+                                ? 'bg-[#0A3324] border-[#FFB300] shadow-[0_0_15px_rgba(255,179,0,0.2)]'
+                                : 'bg-[#061A13] border-[#16422F] hover:border-[#FFB300]/60'
                                 }`}
                             >
                               <div>
@@ -5774,8 +5816,8 @@ export default function EnterpriseSuperAdminDashboard() {
                           type="button"
                           onClick={() => handleEditCategoryChangeLang(l.code)}
                           className={`px-2.5 py-1 rounded text-xs font-semibold transition flex items-center gap-1 ${selectedLang === l.code
-                              ? 'bg-[#FFB300] text-[#071C14] font-bold shadow'
-                              : 'text-gray-300 hover:text-[#FFB300] hover:bg-[#0D2E21]'
+                            ? 'bg-[#FFB300] text-[#071C14] font-bold shadow'
+                            : 'text-gray-300 hover:text-[#FFB300] hover:bg-[#0D2E21]'
                             }`}
                           title={`Edit ${l.name} (${l.code}) — Dynamically fetched from MySQL via API`}
                         >
@@ -6037,8 +6079,8 @@ export default function EnterpriseSuperAdminDashboard() {
                           type="button"
                           onClick={() => handleEditSubcategoryChangeLang(l.code)}
                           className={`px-2.5 py-1 rounded text-xs font-semibold transition flex items-center gap-1 ${selectedLang === l.code
-                              ? 'bg-[#FFB300] text-[#071C14] font-bold shadow'
-                              : 'text-gray-300 hover:text-[#FFB300] hover:bg-[#0D2E21]'
+                            ? 'bg-[#FFB300] text-[#071C14] font-bold shadow'
+                            : 'text-gray-300 hover:text-[#FFB300] hover:bg-[#0D2E21]'
                             }`}
                           title={`Edit ${l.name} (${l.code}) — Dynamically fetched from MySQL via API`}
                         >
@@ -6097,8 +6139,8 @@ export default function EnterpriseSuperAdminDashboard() {
                           type="button"
                           onClick={() => setActiveViewTypeTab('all')}
                           className={`p-2 rounded-lg text-left transition border flex flex-col justify-between gap-1 ${activeViewTypeTab === 'all'
-                              ? 'bg-[#FFB300] text-[#071C14] border-[#FFB300] font-bold shadow-md'
-                              : 'bg-[#061A13] text-gray-300 border-[#16422F] hover:border-[#FFB300]/50'
+                            ? 'bg-[#FFB300] text-[#071C14] border-[#FFB300] font-bold shadow-md'
+                            : 'bg-[#061A13] text-gray-300 border-[#16422F] hover:border-[#FFB300]/50'
                             }`}
                         >
                           <div className="flex items-center justify-between w-full">
@@ -6114,8 +6156,8 @@ export default function EnterpriseSuperAdminDashboard() {
                             type="button"
                             onClick={() => setActiveViewTypeTab(idx)}
                             className={`p-2 rounded-lg text-left transition border flex flex-col justify-between gap-1 ${activeViewTypeTab === idx
-                                ? 'bg-[#FFB300] text-[#071C14] border-[#FFB300] font-bold shadow-md'
-                                : 'bg-[#061A13] text-gray-300 border-[#16422F] hover:border-[#FFB300]/50'
+                              ? 'bg-[#FFB300] text-[#071C14] border-[#FFB300] font-bold shadow-md'
+                              : 'bg-[#061A13] text-gray-300 border-[#16422F] hover:border-[#FFB300]/50'
                               }`}
                           >
                             <div className="flex items-center justify-between w-full">
@@ -6414,8 +6456,8 @@ export default function EnterpriseSuperAdminDashboard() {
                             key={tr.code}
                             onClick={() => handleEditSubcategoryChangeLang(tr.code)}
                             className={`p-2.5 rounded-lg border space-y-0.5 cursor-pointer transition ${selectedLang === tr.code
-                                ? 'bg-[#0A3324] border-[#FFB300]'
-                                : 'bg-[#061A13] border-[#16422F] hover:border-[#FFB300]/50'
+                              ? 'bg-[#0A3324] border-[#FFB300]'
+                              : 'bg-[#061A13] border-[#16422F] hover:border-[#FFB300]/50'
                               }`}
                           >
                             <div className="flex items-center justify-between">
@@ -6452,8 +6494,8 @@ export default function EnterpriseSuperAdminDashboard() {
                               key={typeItem.id || tIdx}
                               onClick={() => setActiveViewTypeTab(tIdx)}
                               className={`rounded-xl border p-3.5 cursor-pointer transition-all transform hover:-translate-y-0.5 shadow-md flex flex-col justify-between gap-3 ${isSelected
-                                  ? 'bg-[#0A3324] border-[#FFB300] shadow-[0_0_15px_rgba(255,179,0,0.2)]'
-                                  : 'bg-[#061A13] border-[#16422F] hover:border-[#FFB300]/60'
+                                ? 'bg-[#0A3324] border-[#FFB300] shadow-[0_0_15px_rgba(255,179,0,0.2)]'
+                                : 'bg-[#061A13] border-[#16422F] hover:border-[#FFB300]/60'
                                 }`}
                             >
                               <div>
@@ -6592,8 +6634,8 @@ export default function EnterpriseSuperAdminDashboard() {
                           type="button"
                           onClick={() => handleEditTypeChangeLang(l.code)}
                           className={`px-2.5 py-1 rounded text-xs font-semibold transition flex items-center gap-1 ${selectedLang === l.code
-                              ? 'bg-[#FFB300] text-[#071C14] font-bold shadow'
-                              : 'text-gray-300 hover:text-[#FFB300] hover:bg-[#0D2E21]'
+                            ? 'bg-[#FFB300] text-[#071C14] font-bold shadow'
+                            : 'text-gray-300 hover:text-[#FFB300] hover:bg-[#0D2E21]'
                             }`}
                           title={`Edit ${l.name} (${l.code}) — Dynamically fetched from MySQL via API`}
                         >
@@ -7307,8 +7349,8 @@ export default function EnterpriseSuperAdminDashboard() {
                             loadSubcategories(1, searchQuery, selectedLang, 'all');
                           }}
                           className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${selectedParentCategoryFilter === 'all'
-                              ? 'bg-[#FFB300] text-black shadow-lg shadow-amber-500/20 font-bold'
-                              : 'bg-[#141414] text-gray-300 hover:text-white border border-[#2C2C2C]'
+                            ? 'bg-[#FFB300] text-black shadow-lg shadow-amber-500/20 font-bold'
+                            : 'bg-[#141414] text-gray-300 hover:text-white border border-[#2C2C2C]'
                             }`}
                         >
                           <span>All Categories</span>
@@ -7358,8 +7400,8 @@ export default function EnterpriseSuperAdminDashboard() {
                                 loadSubcategories(1, searchQuery, selectedLang, targetId);
                               }}
                               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${isSelected
-                                  ? 'bg-[#FFB300] text-black shadow-lg shadow-amber-500/20 font-bold'
-                                  : 'bg-[#141414] text-gray-300 hover:text-white border border-[#2C2C2C]'
+                                ? 'bg-[#FFB300] text-black shadow-lg shadow-amber-500/20 font-bold'
+                                : 'bg-[#141414] text-gray-300 hover:text-white border border-[#2C2C2C]'
                                 }`}
                             >
                               <span>{cat.icon}</span>
@@ -7554,8 +7596,8 @@ export default function EnterpriseSuperAdminDashboard() {
 
                                     <td className="px-5 py-3 whitespace-nowrap">
                                       <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${sub.isAudio
-                                          ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
-                                          : 'bg-sky-500/10 text-sky-400 border border-sky-500/30'
+                                        ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
+                                        : 'bg-sky-500/10 text-sky-400 border border-sky-500/30'
                                         }`}>
                                         {sub.isAudio ? '🎵 Audio Track' : '📜 Vidhanam / Stotra'}
                                       </span>
@@ -8264,8 +8306,8 @@ export default function EnterpriseSuperAdminDashboard() {
                             loadFestivals(1, festivalSearch, yr);
                           }}
                           className={`px-3 py-1 rounded-md text-xs font-bold transition ${festivalYear === yr
-                              ? 'bg-[#D84315] text-white shadow-sm'
-                              : 'text-gray-400 hover:text-gray-100 hover:bg-neutral-800'
+                            ? 'bg-[#D84315] text-white shadow-sm'
+                            : 'text-gray-400 hover:text-gray-100 hover:bg-neutral-800'
                             }`}
                         >
                           {yr === 'all' ? 'All Years' : yr === '2026' ? '2026 (Active)' : yr}
@@ -8337,8 +8379,8 @@ export default function EnterpriseSuperAdminDashboard() {
                               </td>
                               <td className="px-6 py-4">
                                 <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${f.isPublished !== false
-                                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                                    : 'bg-neutral-700 text-gray-400'
+                                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                  : 'bg-neutral-700 text-gray-400'
                                   }`}>
                                   <span className={`w-1.5 h-1.5 rounded-full ${f.isPublished !== false ? 'bg-emerald-400 animate-pulse' : 'bg-gray-400'}`}></span>
                                   {f.isPublished !== false ? 'Published' : 'Draft'}
@@ -8454,8 +8496,8 @@ export default function EnterpriseSuperAdminDashboard() {
                       key={item.key}
                       onClick={() => setSelectedCmsKey(item.key)}
                       className={`p-4 rounded-xl border transition-all text-left flex items-start gap-3.5 ${isSelected
-                          ? 'bg-[#1C1C1C] border-[#FFB300] shadow-lg shadow-amber-950/30'
-                          : 'bg-[#181818] border-[#2C2C2C] hover:border-neutral-600 hover:bg-[#1E1E1E]'
+                        ? 'bg-[#1C1C1C] border-[#FFB300] shadow-lg shadow-amber-950/30'
+                        : 'bg-[#181818] border-[#2C2C2C] hover:border-neutral-600 hover:bg-[#1E1E1E]'
                         }`}
                     >
                       <div className={`p-2.5 rounded-lg ${isSelected ? 'bg-orange-500/20 text-[#FFB300] border border-orange-500/40' : 'bg-neutral-800 text-gray-400'}`}>
@@ -8707,8 +8749,8 @@ export default function EnterpriseSuperAdminDashboard() {
                 <button
                   onClick={() => { setUserSubTab('all'); setSelectedUserSubtitle('devotees'); }}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all ${userSubTab === 'all' && selectedUserSubtitle === 'devotees'
-                      ? 'bg-[#FFB300] text-black shadow-lg shadow-amber-950/20'
-                      : 'text-gray-400 hover:text-gray-200 hover:bg-[#252525]'
+                    ? 'bg-[#FFB300] text-black shadow-lg shadow-amber-950/20'
+                    : 'text-gray-400 hover:text-gray-200 hover:bg-[#252525]'
                     }`}
                 >
                   <Users className="w-4 h-4" />
@@ -8717,8 +8759,8 @@ export default function EnterpriseSuperAdminDashboard() {
                 <button
                   onClick={() => { setUserSubTab('all'); setSelectedUserSubtitle('dharma_karthas'); loadDharmaKarthas(); }}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all ${userSubTab === 'all' && selectedUserSubtitle === 'dharma_karthas'
-                      ? 'bg-amber-600 text-white shadow-lg shadow-amber-950/20'
-                      : 'text-gray-400 hover:text-gray-200 hover:bg-[#252525]'
+                    ? 'bg-amber-600 text-white shadow-lg shadow-amber-950/20'
+                    : 'text-gray-400 hover:text-gray-200 hover:bg-[#252525]'
                     }`}
                 >
                   <ShieldCheck className="w-4 h-4" />
@@ -8727,8 +8769,8 @@ export default function EnterpriseSuperAdminDashboard() {
                 <button
                   onClick={() => setUserSubTab('requests')}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all relative ${userSubTab === 'requests'
-                      ? 'bg-rose-600 text-white shadow-lg shadow-rose-950/20'
-                      : 'text-gray-400 hover:text-gray-200 hover:bg-[#252525]'
+                    ? 'bg-rose-600 text-white shadow-lg shadow-rose-950/20'
+                    : 'text-gray-400 hover:text-gray-200 hover:bg-[#252525]'
                     }`}
                 >
                   <AlertTriangle className="w-4 h-4 text-amber-300" />
@@ -9181,8 +9223,8 @@ export default function EnterpriseSuperAdminDashboard() {
                             key={temple.id}
                             onClick={() => setSelectedDkTempleIndex(idx)}
                             className={`px-3 py-1 rounded-lg text-xs font-semibold transition ${selectedDkTempleIndex === idx
-                                ? 'bg-amber-600 text-white shadow-sm'
-                                : 'bg-[#222] text-gray-300 hover:bg-[#2C2C2C]'
+                              ? 'bg-amber-600 text-white shadow-sm'
+                              : 'bg-[#222] text-gray-300 hover:bg-[#2C2C2C]'
                               }`}
                           >
                             🛕 {temple.name}
@@ -9208,8 +9250,8 @@ export default function EnterpriseSuperAdminDashboard() {
                               <button
                                 onClick={() => setActiveDkDetailTab('about')}
                                 className={`px-3.5 py-2 rounded-t-lg font-semibold transition flex items-center gap-1.5 border-b-2 ${activeDkDetailTab === 'about'
-                                    ? 'border-amber-500 text-amber-400 bg-[#1E1E1E]'
-                                    : 'border-transparent text-gray-400 hover:text-gray-200'
+                                  ? 'border-amber-500 text-amber-400 bg-[#1E1E1E]'
+                                  : 'border-transparent text-gray-400 hover:text-gray-200'
                                   }`}
                               >
                                 <Landmark className="w-3.5 h-3.5" />
@@ -9218,8 +9260,8 @@ export default function EnterpriseSuperAdminDashboard() {
                               <button
                                 onClick={() => setActiveDkDetailTab('speciality')}
                                 className={`px-3.5 py-2 rounded-t-lg font-semibold transition flex items-center gap-1.5 border-b-2 ${activeDkDetailTab === 'speciality'
-                                    ? 'border-amber-500 text-amber-400 bg-[#1E1E1E]'
-                                    : 'border-transparent text-gray-400 hover:text-gray-200'
+                                  ? 'border-amber-500 text-amber-400 bg-[#1E1E1E]'
+                                  : 'border-transparent text-gray-400 hover:text-gray-200'
                                   }`}
                               >
                                 <Sparkles className="w-3.5 h-3.5" />
@@ -9228,8 +9270,8 @@ export default function EnterpriseSuperAdminDashboard() {
                               <button
                                 onClick={() => setActiveDkDetailTab('contact')}
                                 className={`px-3.5 py-2 rounded-t-lg font-semibold transition flex items-center gap-1.5 border-b-2 ${activeDkDetailTab === 'contact'
-                                    ? 'border-amber-500 text-amber-400 bg-[#1E1E1E]'
-                                    : 'border-transparent text-gray-400 hover:text-gray-200'
+                                  ? 'border-amber-500 text-amber-400 bg-[#1E1E1E]'
+                                  : 'border-transparent text-gray-400 hover:text-gray-200'
                                   }`}
                               >
                                 <Phone className="w-3.5 h-3.5" />
@@ -9238,8 +9280,8 @@ export default function EnterpriseSuperAdminDashboard() {
                               <button
                                 onClick={() => setActiveDkDetailTab('timings')}
                                 className={`px-3.5 py-2 rounded-t-lg font-semibold transition flex items-center gap-1.5 border-b-2 ${activeDkDetailTab === 'timings'
-                                    ? 'border-amber-500 text-amber-400 bg-[#1E1E1E]'
-                                    : 'border-transparent text-gray-400 hover:text-gray-200'
+                                  ? 'border-amber-500 text-amber-400 bg-[#1E1E1E]'
+                                  : 'border-transparent text-gray-400 hover:text-gray-200'
                                   }`}
                               >
                                 <Clock className="w-3.5 h-3.5" />
@@ -9248,8 +9290,8 @@ export default function EnterpriseSuperAdminDashboard() {
                               <button
                                 onClick={() => setActiveDkDetailTab('events')}
                                 className={`px-3.5 py-2 rounded-t-lg font-semibold transition flex items-center gap-1.5 border-b-2 ${activeDkDetailTab === 'events'
-                                    ? 'border-amber-500 text-amber-400 bg-[#1E1E1E]'
-                                    : 'border-transparent text-gray-400 hover:text-gray-200'
+                                  ? 'border-amber-500 text-amber-400 bg-[#1E1E1E]'
+                                  : 'border-transparent text-gray-400 hover:text-gray-200'
                                   }`}
                               >
                                 <Calendar className="w-3.5 h-3.5" />
@@ -9258,8 +9300,8 @@ export default function EnterpriseSuperAdminDashboard() {
                               <button
                                 onClick={() => setActiveDkDetailTab('festivals')}
                                 className={`px-3.5 py-2 rounded-t-lg font-semibold transition flex items-center gap-1.5 border-b-2 ${activeDkDetailTab === 'festivals'
-                                    ? 'border-amber-500 text-amber-400 bg-[#1E1E1E]'
-                                    : 'border-transparent text-gray-400 hover:text-gray-200'
+                                  ? 'border-amber-500 text-amber-400 bg-[#1E1E1E]'
+                                  : 'border-transparent text-gray-400 hover:text-gray-200'
                                   }`}
                               >
                                 <Flame className="w-3.5 h-3.5" />
@@ -9268,8 +9310,8 @@ export default function EnterpriseSuperAdminDashboard() {
                               <button
                                 onClick={() => setActiveDkDetailTab('gallery')}
                                 className={`px-3.5 py-2 rounded-t-lg font-semibold transition flex items-center gap-1.5 border-b-2 ${activeDkDetailTab === 'gallery'
-                                    ? 'border-amber-500 text-amber-400 bg-[#1E1E1E]'
-                                    : 'border-transparent text-gray-400 hover:text-gray-200'
+                                  ? 'border-amber-500 text-amber-400 bg-[#1E1E1E]'
+                                  : 'border-transparent text-gray-400 hover:text-gray-200'
                                   }`}
                               >
                                 <ImageIcon className="w-3.5 h-3.5" />
@@ -10052,8 +10094,8 @@ export default function EnterpriseSuperAdminDashboard() {
                         key={cat}
                         onClick={() => setDeityCategoryFilter(cat)}
                         className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${deityCategoryFilter === cat
-                            ? 'bg-[#FFB300] text-black shadow-md'
-                            : 'bg-[#141414] text-gray-400 hover:text-white border border-[#2C2C2C]'
+                          ? 'bg-[#FFB300] text-black shadow-md'
+                          : 'bg-[#141414] text-gray-400 hover:text-white border border-[#2C2C2C]'
                           }`}
                       >
                         {cat === 'ALL' ? 'All Deities' : cat}
@@ -10094,8 +10136,8 @@ export default function EnterpriseSuperAdminDashboard() {
                     <div
                       key={deity.id}
                       className={`bg-[#1E1E1E] rounded-xl border transition-all duration-200 hover:shadow-2xl flex flex-col justify-between overflow-hidden ${deity.isActive
-                          ? 'border-[#2C2C2C] hover:border-[#FFB300]/60'
-                          : 'border-red-900/30 opacity-75'
+                        ? 'border-[#2C2C2C] hover:border-[#FFB300]/60'
+                        : 'border-red-900/30 opacity-75'
                         }`}
                     >
                       {/* Card Banner Image or Header */}
@@ -10121,10 +10163,10 @@ export default function EnterpriseSuperAdminDashboard() {
                         <div className="absolute top-3 left-3 right-3 flex items-center justify-between">
                           <span
                             className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${deity.category === 'Goddess'
-                                ? 'bg-rose-950/80 text-rose-300 border border-rose-800/40'
-                                : deity.category === 'Avatar'
-                                  ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/40'
-                                  : 'bg-amber-950/80 text-amber-300 border border-amber-800/40'
+                              ? 'bg-rose-950/80 text-rose-300 border border-rose-800/40'
+                              : deity.category === 'Avatar'
+                                ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/40'
+                                : 'bg-amber-950/80 text-amber-300 border border-amber-800/40'
                               }`}
                           >
                             {deity.category}
@@ -10134,8 +10176,8 @@ export default function EnterpriseSuperAdminDashboard() {
                             onClick={() => handleToggleDeityStatus(deity)}
                             title={deity.isActive ? 'Active in Portal' : 'Inactive'}
                             className={`px-2 py-0.5 rounded text-[10px] font-semibold flex items-center gap-1 transition ${deity.isActive
-                                ? 'bg-emerald-900/60 text-emerald-300 border border-emerald-700/50'
-                                : 'bg-gray-800 text-gray-400 border border-gray-700'
+                              ? 'bg-emerald-900/60 text-emerald-300 border border-emerald-700/50'
+                              : 'bg-gray-800 text-gray-400 border border-gray-700'
                               }`}
                           >
                             <span className={`w-1.5 h-1.5 rounded-full ${deity.isActive ? 'bg-emerald-400 animate-pulse' : 'bg-gray-500'}`} />
@@ -11438,8 +11480,8 @@ export default function EnterpriseSuperAdminDashboard() {
                 <div>
                   <span className="text-[10px] uppercase font-bold text-gray-400 block mb-0.5">Publish Status</span>
                   <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold ${selectedViewFestival.isPublished !== false
-                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                      : 'bg-neutral-700 text-gray-300'
+                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                    : 'bg-neutral-700 text-gray-300'
                     }`}>
                     {selectedViewFestival.isPublished !== false ? 'Published & Active' : 'Draft / Archived'}
                   </span>
@@ -11515,9 +11557,9 @@ export default function EnterpriseSuperAdminDashboard() {
                 <div className="flex items-center gap-2">
                   <span className="font-mono text-sm font-bold text-[#FFB300]">{selectedTicket.ticket_number}</span>
                   <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${selectedTicket.status === 'OPEN' ? 'bg-amber-950/60 text-amber-300 border-amber-800/40' :
-                      selectedTicket.status === 'IN_PROGRESS' ? 'bg-sky-950/60 text-sky-300 border-sky-800/40' :
-                        selectedTicket.status === 'RESOLVED' ? 'bg-emerald-950/60 text-emerald-300 border-emerald-800/40' :
-                          'bg-neutral-800 text-gray-400 border-neutral-700'
+                    selectedTicket.status === 'IN_PROGRESS' ? 'bg-sky-950/60 text-sky-300 border-sky-800/40' :
+                      selectedTicket.status === 'RESOLVED' ? 'bg-emerald-950/60 text-emerald-300 border-emerald-800/40' :
+                        'bg-neutral-800 text-gray-400 border-neutral-700'
                     }`}>
                     {selectedTicket.status}
                   </span>
@@ -11883,8 +11925,8 @@ export default function EnterpriseSuperAdminDashboard() {
                           type="button"
                           onClick={() => setTempleForm({ ...templeForm, templeType: type.id })}
                           className={`text-left p-3 rounded-lg border transition-all flex flex-col justify-between ${isSelected
-                              ? 'bg-amber-950/40 border-[#FFB300] shadow-md ring-1 ring-[#FFB300]/50'
-                              : 'bg-[#1C1C1C] border-[#2C2C2C] hover:border-neutral-600'
+                            ? 'bg-amber-950/40 border-[#FFB300] shadow-md ring-1 ring-[#FFB300]/50'
+                            : 'bg-[#1C1C1C] border-[#2C2C2C] hover:border-neutral-600'
                             }`}
                         >
                           <div className="flex items-center justify-between mb-1">

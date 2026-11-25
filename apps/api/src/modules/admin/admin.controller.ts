@@ -1212,28 +1212,43 @@ export class AdminController {
       ];
     }
 
-    const [totalRecords, items] = await Promise.all([
-      this.prisma.devotionalContent.count({ where }),
-      this.prisma.devotionalContent.findMany({
-        where,
-        skip,
-        take,
-        orderBy: { displayOrder: 'asc' },
-        include: { category: true }
-      })
-    ]);
+    try {
+      const [totalRecords, items] = await Promise.all([
+        this.prisma.devotionalContent.count({ where }),
+        this.prisma.devotionalContent.findMany({
+          where,
+          skip,
+          take,
+          orderBy: { displayOrder: 'asc' },
+          include: { category: true }
+        })
+      ]);
 
-    return {
-      data: items,
-      meta: {
-        page: pageNum,
-        limit: take,
-        totalRecords,
-        totalPages: Math.ceil(totalRecords / take),
-        hasNextPage: pageNum < Math.ceil(totalRecords / take),
-        hasPreviousPage: pageNum > 1
-      }
-    };
+      return {
+        data: items,
+        meta: {
+          page: pageNum,
+          limit: take,
+          totalRecords,
+          totalPages: Math.ceil(totalRecords / take),
+          hasNextPage: pageNum < Math.ceil(totalRecords / take),
+          hasPreviousPage: pageNum > 1
+        }
+      };
+    } catch (err: any) {
+      console.warn('getDevotionalContent error handled safely:', err?.message);
+      return {
+        data: [],
+        meta: {
+          page: pageNum,
+          limit: take,
+          totalRecords: 0,
+          totalPages: 0,
+          hasNextPage: false,
+          hasPreviousPage: false
+        }
+      };
+    }
   }
 
   // 6b. Single Devotional Content / Subcategory Type Detail from DB
@@ -3055,41 +3070,52 @@ export class AdminController {
 
   @Get('category-services')
   async getCategoryServices() {
-    const defaultServices = [
-      { id: 'pooja', serviceId: 'pooja', title: 'Pooja Vidhanam', sub: 'Step-by-step sacred rituals', icon: 'Flame', url: '/subcategories', artwork: '/images/categories/art-pooja-trans.png', displayOrder: 1, isActive: true },
-      { id: 'stotras', serviceId: 'stotras', title: 'Divine Stotras', sub: 'Sacred Hymns & Chants', icon: 'BookOpen', url: '/stotras', artwork: '/images/categories/art-stotras-trans.png', displayOrder: 2, isActive: true },
-      { id: 'slokas', serviceId: 'slokas', title: 'Daily Slokas', sub: 'Verses for Meditation', icon: 'Scroll', url: '/slokas', artwork: '/images/categories/art-slokas-trans.png', displayOrder: 3, isActive: true },
-      { id: 'songs', serviceId: 'songs', title: 'Bhajans & Songs', sub: 'Devotional Melodies', icon: 'Music', url: '/songs', artwork: '/images/categories/art-bhajans-trans.png', displayOrder: 4, isActive: true },
-      { id: 'live-streams', serviceId: 'live-streams', title: 'Live Darshan', sub: 'Daily Temple Streams', icon: 'Tv', url: '/live-streams', artwork: '/images/categories/art-live-trans.png', displayOrder: 5, isActive: true },
-      { id: 'panchangam', serviceId: 'panchangam', title: 'Panchangam', sub: 'Auspicious Timings', icon: 'Calendar', url: '/panchangam', artwork: '/images/categories/art-panchangam-trans.png', displayOrder: 6, isActive: true },
-      { id: 'festivals', serviceId: 'festivals', title: 'Temple Festivals', sub: 'Annual Celebrations', icon: 'Sparkles', url: '/festivals', artwork: '/images/categories/art-stotras-trans.png', displayOrder: 7, isActive: true },
-      { id: 'temples', serviceId: 'temples', title: 'Sacred Temples', sub: 'Shrines & Pilgrimages', icon: 'Landmark', url: '/temples', artwork: '/images/categories/art-temples-trans.png', displayOrder: 8, isActive: true },
-      { id: 'donations', serviceId: 'donations', title: 'Annadanam Seva', sub: 'Meal Offering & Seva', icon: 'HeartHandshake', url: '/donations', artwork: '/images/categories/art-donations-trans.png', displayOrder: 9, isActive: true },
-    ];
+    try {
+      // 1. Query dedicated category_services table from MySQL DB
+      if ((this.prisma as any).categoryService) {
+        const items = await (this.prisma as any).categoryService.findMany({
+          orderBy: { displayOrder: 'asc' }
+        });
+        if (items && items.length > 0) {
+          return {
+            success: true,
+            total: items.length,
+            data: items.map((item: any) => ({
+              id: item.serviceId,
+              serviceId: item.serviceId,
+              title: item.title,
+              sub: item.sub || '',
+              icon: item.icon,
+              url: item.url,
+              artwork: item.artwork || '',
+              displayOrder: item.displayOrder,
+              isActive: item.isActive ?? true
+            }))
+          };
+        }
+      }
 
-    const setting = await this.prisma.appSetting.findUnique({ where: { key: 'category_services' } });
-    let services = defaultServices;
-    if (setting && setting.value) {
-      try {
+      // 2. Query dynamic app_settings for category_services in MySQL DB
+      const setting = await this.prisma.appSetting.findUnique({ where: { key: 'category_services' } });
+      if (setting && setting.value) {
         const parsed = JSON.parse(setting.value);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          services = parsed;
+          return {
+            success: true,
+            total: parsed.length,
+            data: parsed
+          };
         }
-      } catch {}
-    } else {
-      try {
-        await this.prisma.appSetting.upsert({
-          where: { key: 'category_services' },
-          update: { value: JSON.stringify(defaultServices) },
-          create: { key: 'category_services', value: JSON.stringify(defaultServices), description: 'Devotional Services Directory' }
-        });
-      } catch {}
+      }
+    } catch (e: any) {
+      console.warn('[Admin] getCategoryServices database error:', e?.message);
     }
 
+    // Zero fallback / mock data: strictly return database result
     return {
       success: true,
-      total: services.length,
-      data: services
+      total: 0,
+      data: []
     };
   }
 

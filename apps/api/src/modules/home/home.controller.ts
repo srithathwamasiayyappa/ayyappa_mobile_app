@@ -277,31 +277,36 @@ export class HomeController {
         }
       }
     } catch (e) {
-      // Fallback cleanly
+      console.warn('[Home] getDevotionalServices database error:', e);
     }
 
-    const fallbackServices = [
-      { id: 'pooja', serviceId: 'pooja', title: 'Pooja Vidhanam', sub: 'Step-by-step sacred rituals', icon: 'Flame', url: '/subcategories', displayOrder: 1 },
-      { id: 'stotras', serviceId: 'stotras', title: 'Divine Stotras', sub: 'Sacred Hymns & Chants', icon: 'BookOpen', url: '/stotras', displayOrder: 2 },
-      { id: 'slokas', serviceId: 'slokas', title: 'Daily Slokas', sub: 'Verses for Meditation', icon: 'Scroll', url: '/slokas', displayOrder: 3 },
-      { id: 'songs', serviceId: 'songs', title: 'Bhajans & Songs', sub: 'Devotional Melodies', icon: 'Music', url: '/songs', displayOrder: 4 },
-      { id: 'live-streams', serviceId: 'live-streams', title: 'Live Darshan', sub: 'Daily Temple Streams', icon: 'Tv', url: '/live-streams', displayOrder: 5 },
-      { id: 'panchangam', serviceId: 'panchangam', title: 'Panchangam', sub: 'Auspicious Timings', icon: 'Calendar', url: '/panchangam', displayOrder: 6 },
-      { id: 'festivals', serviceId: 'festivals', title: 'Temple Festivals', sub: 'Annual Celebrations', icon: 'Sparkles', url: '/festivals', displayOrder: 7 },
-      { id: 'temples', serviceId: 'temples', title: 'Sacred Temples', sub: 'Shrines & Pilgrimages', icon: 'Landmark', url: '/temples', displayOrder: 8 },
-      { id: 'donations', serviceId: 'donations', title: 'Annadanam Seva', sub: 'Meal Offering & Seva', icon: 'HeartHandshake', url: '/donations', displayOrder: 9 },
-    ];
+    // Check dynamic app_settings for category_services in database
+    try {
+      const setting = await this.prisma.appSetting.findUnique({
+        where: { key: 'category_services' }
+      });
+      if (setting && setting.value) {
+        const parsed = JSON.parse(setting.value);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          let filtered = parsed;
+          if (search && search.trim() !== '') {
+            const q = search.trim().toLowerCase();
+            filtered = parsed.filter((s: any) => s.title?.toLowerCase().includes(q) || s.sub?.toLowerCase().includes(q) || s.serviceId?.toLowerCase().includes(q));
+          }
+          return {
+            success: true,
+            data: filtered,
+            count: filtered.length
+          };
+        }
+      }
+    } catch {}
 
-    let filtered = fallbackServices;
-    if (search && search.trim() !== '') {
-      const q = search.trim().toLowerCase();
-      filtered = fallbackServices.filter(s => s.title.toLowerCase().includes(q) || s.sub.toLowerCase().includes(q) || s.serviceId.toLowerCase().includes(q));
-    }
-
+    // Strictly fetched from DB: return empty array if no data exists in database
     return {
       success: true,
-      data: filtered,
-      count: filtered.length,
+      data: [],
+      count: 0,
     };
   }
 
