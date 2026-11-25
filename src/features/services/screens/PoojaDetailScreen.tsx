@@ -20,7 +20,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle, Line, Polygon, Ellipse, Rect } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SupportedLanguage } from '../../../types';
-import { AYYAPPA_PADI_POOJA_ITEMS } from '../../../data/ayyappaSubcategoriesData';
 import { ApiService, resolveMediaUrl } from '../../../services/api';
 
 const { width: WINDOW_WIDTH, height: WINDOW_HEIGHT } = Dimensions.get('window');

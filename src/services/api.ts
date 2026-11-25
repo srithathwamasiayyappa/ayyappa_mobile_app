@@ -305,95 +305,12 @@ export const ApiService = {
         const prodResults = await fetchFromEndpoint(PRODUCTION_BASE_URL);
         if (Array.isArray(prodResults) && prodResults.length > 0) return prodResults;
       } catch (prodErr) {
-        console.warn('Categories DB fetch error, serving verified devotional services catalog:', prodErr);
+        console.warn('Categories DB fetch notice:', prodErr);
       }
     }
 
-    // 9 Core Devotional Services specified by the API across all 5 languages
-    const DEFAULT_SERVICES: Record<SupportedLanguage, Array<{ id: string; serviceId: string; title: string; sub: string; icon: string; url: string; artwork: string; displayOrder: number }>> = {
-      en: [
-        { id: 'pooja', serviceId: 'pooja', title: 'Pooja Vidhanam', sub: 'Step-by-step sacred rituals', icon: 'Flame', url: '/subcategories', artwork: '/images/categories/art-pooja-trans.png', displayOrder: 1 },
-        { id: 'stotras', serviceId: 'stotras', title: 'Divine Stotras', sub: 'Sacred Hymns & Chants', icon: 'BookOpen', url: '/stotras', artwork: '/images/categories/art-stotras-trans.png', displayOrder: 2 },
-        { id: 'slokas', serviceId: 'slokas', title: 'Daily Slokas', sub: 'Verses for Meditation', icon: 'Scroll', url: '/slokas', artwork: '/images/categories/art-slokas-trans.png', displayOrder: 3 },
-        { id: 'songs', serviceId: 'songs', title: 'Bhajans & Songs', sub: 'Devotional Melodies', icon: 'Music', url: '/songs', artwork: '/images/categories/art-bhajans-trans.png', displayOrder: 4 },
-        { id: 'live-streams', serviceId: 'live-streams', title: 'Live Darshan', sub: 'Daily Temple Streams', icon: 'Tv', url: '/live-streams', artwork: '/images/categories/art-live-trans.png', displayOrder: 5 },
-        { id: 'panchangam', serviceId: 'panchangam', title: 'Panchangam', sub: 'Auspicious Timings', icon: 'Calendar', url: '/panchangam', artwork: '/images/categories/art-panchangam-trans.png', displayOrder: 6 },
-        { id: 'festivals', serviceId: 'festivals', title: 'Temple Festivals', sub: 'Annual Celebrations', icon: 'Sparkles', url: '/festivals', artwork: '/images/categories/art-stotras-trans.png', displayOrder: 7 },
-        { id: 'temples', serviceId: 'temples', title: 'Sacred Temples', sub: 'Shrines & Pilgrimages', icon: 'Landmark', url: '/temples', artwork: '/images/categories/art-temples-trans.png', displayOrder: 8 },
-        { id: 'donations', serviceId: 'donations', title: 'Annadanam Seva', sub: 'Meal Offering & Seva', icon: 'HeartHandshake', url: '/donations', artwork: '/images/categories/art-donations-trans.png', displayOrder: 9 },
-      ],
-      te: [
-        { id: 'pooja', serviceId: 'pooja', title: 'పూజా విధానం', sub: 'దశలవారీ పూజా పద్ధతులు & నియమాలు', icon: 'Flame', url: '/subcategories', artwork: '/images/categories/art-pooja-trans.png', displayOrder: 1 },
-        { id: 'stotras', serviceId: 'stotras', title: 'దివ్య స్తోత్రాలు', sub: 'శక్తివంతమైన భక్తి స్తోత్రాలు', icon: 'BookOpen', url: '/stotras', artwork: '/images/categories/art-stotras-trans.png', displayOrder: 2 },
-        { id: 'slokas', serviceId: 'slokas', title: 'నిత్య శ్లోకాలు', sub: 'ధ్యాన శ్లోకాలు & అర్థాలు', icon: 'Scroll', url: '/slokas', artwork: '/images/categories/art-slokas-trans.png', displayOrder: 3 },
-        { id: 'songs', serviceId: 'songs', title: 'భజనలు & కీర్తనలు', sub: 'భక్తి గీతాలు & హారతులు', icon: 'Music', url: '/songs', artwork: '/images/categories/art-bhajans-trans.png', displayOrder: 4 },
-        { id: 'live-streams', serviceId: 'live-streams', title: 'ప్రత్యక్ష దర్శనం', sub: 'ఆలయ ప్రత్యక్ష ప్రసారాలు', icon: 'Tv', url: '/live-streams', artwork: '/images/categories/art-live-trans.png', displayOrder: 5 },
-        { id: 'panchangam', serviceId: 'panchangam', title: 'నిత్య పంచాంగం', sub: 'తిథి, నక్షత్రం & శుభ ముహూర్తాలు', icon: 'Calendar', url: '/panchangam', artwork: '/images/categories/art-panchangam-trans.png', displayOrder: 6 },
-        { id: 'festivals', serviceId: 'festivals', title: 'ఆలయ పండుగలు', sub: 'వార్షిక ఉత్సవాలు & విశేషాలు', icon: 'Sparkles', url: '/festivals', artwork: '/images/categories/art-stotras-trans.png', displayOrder: 7 },
-        { id: 'temples', serviceId: 'temples', title: 'పవిత్ర దేవాలయాలు', sub: 'పుణ్యక్షేత్రాలు & తీర్థయాత్రలు', icon: 'Landmark', url: '/temples', artwork: '/images/categories/art-temples-trans.png', displayOrder: 8 },
-        { id: 'donations', serviceId: 'donations', title: 'అన్నదాన సేవ', sub: 'నిత్యాన్నదానం & సేవా సహకారం', icon: 'HeartHandshake', url: '/donations', artwork: '/images/categories/art-donations-trans.png', displayOrder: 9 },
-      ],
-      kn: [
-        { id: 'pooja', serviceId: 'pooja', title: 'ಪೂಜಾ ವಿಧಾನ', sub: 'ಹಂತ-ಹಂತದ ಪೂಜಾ ವಿಧಾನಗಳು', icon: 'Flame', url: '/subcategories', artwork: '/images/categories/art-pooja-trans.png', displayOrder: 1 },
-        { id: 'stotras', serviceId: 'stotras', title: 'ದಿವ್ಯ ಸ್ತೋತ್ರಗಳು', sub: 'ಶಕ್ತಿಶಾಲಿ ಭಕ್ತಿ ಸ್ತೋತ್ರಗಳು', icon: 'BookOpen', url: '/stotras', artwork: '/images/categories/art-stotras-trans.png', displayOrder: 2 },
-        { id: 'slokas', serviceId: 'slokas', title: 'ನಿತ್ಯ ಶ್ಲೋಕಗಳು', sub: 'ಧ್ಯಾನ ಶ್ಲೋಕಗಳು & ಅರ್ಥಗಳು', icon: 'Scroll', url: '/slokas', artwork: '/images/categories/art-slokas-trans.png', displayOrder: 3 },
-        { id: 'songs', serviceId: 'songs', title: 'ಭಜನೆಗಳು & ಕೀರ್ತನೆಗಳು', sub: 'ಭಕ್ತಿಗೀತೆಗಳು & ಆರತಿಗಳು', icon: 'Music', url: '/songs', artwork: '/images/categories/art-bhajans-trans.png', displayOrder: 4 },
-        { id: 'live-streams', serviceId: 'live-streams', title: 'ನೇರ ದರ್ಶನ', sub: 'ದೇವಾಲಯ ನೇರ ಪ್ರಸಾರಗಳು', icon: 'Tv', url: '/live-streams', artwork: '/images/categories/art-live-trans.png', displayOrder: 5 },
-        { id: 'panchangam', serviceId: 'panchangam', title: 'ದೈನಂದಿನ ಪಂಚಾಂಗ', sub: 'ತಿಥಿ, ನಕ್ಷತ್ರ & ಶುಭ ಮುಹೂರ್ತ', icon: 'Calendar', url: '/panchangam', artwork: '/images/categories/art-panchangam-trans.png', displayOrder: 6 },
-        { id: 'festivals', serviceId: 'festivals', title: 'ದೇವಾಲಯ ಹಬ್ಬಗಳು', sub: 'ವಾರ್ಷಿಕ ಹಬ್ಬಗಳು & ವಿಶೇಷಗಳು', icon: 'Sparkles', url: '/festivals', artwork: '/images/categories/art-stotras-trans.png', displayOrder: 7 },
-        { id: 'temples', serviceId: 'temples', title: 'ಪವಿತ್ರ ದೇವಾಲಯಗಳು', sub: 'ಪುಣ್ಯಕ್ಷೇತ್ರಗಳು & ಯಾತ್ರೆಗಳು', icon: 'Landmark', url: '/temples', artwork: '/images/categories/art-temples-trans.png', displayOrder: 8 },
-        { id: 'donations', serviceId: 'donations', title: 'ಅನ್ನದಾನ ಸೇವೆ', sub: 'ನಿತ್ಯಾನ್ನದಾನ & ಸೇವಾ ಸಹಕಾರ', icon: 'HeartHandshake', url: '/donations', artwork: '/images/categories/art-donations-trans.png', displayOrder: 9 },
-      ],
-      ta: [
-        { id: 'pooja', serviceId: 'pooja', title: 'பூஜை முறை', sub: 'படி படியான பூஜை முறைகள்', icon: 'Flame', url: '/subcategories', artwork: '/images/categories/art-pooja-trans.png', displayOrder: 1 },
-        { id: 'stotras', serviceId: 'stotras', title: 'தெய்வீக ஸ்தோத்திரங்கள்', sub: 'சக்திவாய்ந்த பக்தி துதிகள்', icon: 'BookOpen', url: '/stotras', artwork: '/images/categories/art-stotras-trans.png', displayOrder: 2 },
-        { id: 'slokas', serviceId: 'slokas', title: 'தினசரி ஸ்லோகங்கள்', sub: 'தியான ஸ்லோகங்கள் & பொருள்', icon: 'Scroll', url: '/slokas', artwork: '/images/categories/art-slokas-trans.png', displayOrder: 3 },
-        { id: 'songs', serviceId: 'songs', title: 'பஜனைகள் & பாடல்கள்', sub: 'பக்திப் பாடல்கள் & ஆரத்திகள்', icon: 'Music', url: '/songs', artwork: '/images/categories/art-bhajans-trans.png', displayOrder: 4 },
-        { id: 'live-streams', serviceId: 'live-streams', title: 'நேரலை தரிசனம்', sub: 'கோயில் நேரலை ஒளிபரப்புகள்', icon: 'Tv', url: '/live-streams', artwork: '/images/categories/art-live-trans.png', displayOrder: 5 },
-        { id: 'panchangam', serviceId: 'panchangam', title: 'தினசரி பஞ்சாங்கம்', sub: 'திதி, நட்சத்திரம் & சுப முகூர்த்தம்', icon: 'Calendar', url: '/panchangam', artwork: '/images/categories/art-panchangam-trans.png', displayOrder: 6 },
-        { id: 'festivals', serviceId: 'festivals', title: 'கோயில் திருவிழாக்கள்', sub: 'ஆண்டு விழாக்கள் & சிறப்புகள்', icon: 'Sparkles', url: '/festivals', artwork: '/images/categories/art-stotras-trans.png', displayOrder: 7 },
-        { id: 'temples', serviceId: 'temples', title: 'புனித திருக்கோயில்கள்', sub: 'திருத்தலங்கள் & யாத்திரைகள்', icon: 'Landmark', url: '/temples', artwork: '/images/categories/art-temples-trans.png', displayOrder: 8 },
-        { id: 'donations', serviceId: 'donations', title: 'அன்னதான சேவை', sub: 'அன்னதானம் & சேவைப் பங்களிப்பு', icon: 'HeartHandshake', url: '/donations', artwork: '/images/categories/art-donations-trans.png', displayOrder: 9 },
-      ],
-      hi: [
-        { id: 'pooja', serviceId: 'pooja', title: 'पूजा विधान', sub: 'चरण-दर-चरण पूजा पद्धतियां', icon: 'Flame', url: '/subcategories', artwork: '/images/categories/art-pooja-trans.png', displayOrder: 1 },
-        { id: 'stotras', serviceId: 'stotras', title: 'दिव्य स्तोत्र', sub: 'पावन भक्ति स्तोत्र', icon: 'BookOpen', url: '/stotras', artwork: '/images/categories/art-stotras-trans.png', displayOrder: 2 },
-        { id: 'slokas', serviceId: 'slokas', title: 'दैनिक श्लोक', sub: 'ध्यान श्लोक और अर्थ', icon: 'Scroll', url: '/slokas', artwork: '/images/categories/art-slokas-trans.png', displayOrder: 3 },
-        { id: 'songs', serviceId: 'songs', title: 'भजन और कीर्तन', sub: 'भक्ति गीत और आरतियां', icon: 'Music', url: '/songs', artwork: '/images/categories/art-bhajans-trans.png', displayOrder: 4 },
-        { id: 'live-streams', serviceId: 'live-streams', title: 'लाइव दर्शन', sub: 'मंदिर सीधा प्रसारण', icon: 'Tv', url: '/live-streams', artwork: '/images/categories/art-live-trans.png', displayOrder: 5 },
-        { id: 'panchangam', serviceId: 'panchangam', title: 'दैनिक पंचांग', sub: 'तिथि, नक्षत्र और शुभ मुहूर्त', icon: 'Calendar', url: '/panchangam', artwork: '/images/categories/art-panchangam-trans.png', displayOrder: 6 },
-        { id: 'festivals', serviceId: 'festivals', title: 'मंदिर उत्सव', sub: 'वार्षिक उत्सव और व्रत', icon: 'Sparkles', url: '/festivals', artwork: '/images/categories/art-stotras-trans.png', displayOrder: 7 },
-        { id: 'temples', serviceId: 'temples', title: 'पवित्र मंदिर', sub: 'तीर्थ स्थल और देवालय', icon: 'Landmark', url: '/temples', artwork: '/images/categories/art-temples-trans.png', displayOrder: 8 },
-        { id: 'donations', serviceId: 'donations', title: 'अन्नदान सेवा', sub: 'महाप्रसाद एवं सेवा सहयोग', icon: 'HeartHandshake', url: '/donations', artwork: '/images/categories/art-donations-trans.png', displayOrder: 9 },
-      ],
-    };
-
-    const targetList = DEFAULT_SERVICES[lang] || DEFAULT_SERVICES.en;
-    let filtered = targetList;
-    if (search && search.trim() !== '') {
-      const q = search.trim().toLowerCase();
-      filtered = targetList.filter(
-        (c) => c.title.toLowerCase().includes(q) || c.serviceId.toLowerCase().includes(q) || c.sub.toLowerCase().includes(q)
-      );
-    }
-
-    return filtered.map((item) => ({
-      id: item.id,
-      serviceId: item.serviceId,
-      slug: item.serviceId,
-      title: item.title,
-      sub: item.sub,
-      description: item.sub,
-      icon: item.icon,
-      url: item.url,
-      artwork: item.artwork,
-      displayOrder: item.displayOrder,
-      isActive: true,
-      isAudio: item.id === 'songs',
-      audioDurationSec: 40,
-      totalTime: '00:40',
-      chantLyric: item.sub,
-    }));
+    // Zero fallback: strictly return database result
+    return [];
   },
 
   // 3b. Fetch Home Page 10 Devotional Services dynamically from DB via API (/categories/services)
