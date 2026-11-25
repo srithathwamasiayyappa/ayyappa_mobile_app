@@ -453,10 +453,8 @@ export const CategoryListingScreen: React.FC<Props> = ({
       : categoryId
   );
 
-  // Fetch items based on category (prefer dynamic DB items from admin panel)
-  const allCategoryItems = dynamicItems && dynamicItems.length > 0
-    ? dynamicItems
-    : (MASTER_CATEGORY_CONTENT[normalizedKey] || MASTER_CATEGORY_CONTENT[categoryId] || MASTER_CATEGORY_CONTENT['pooja-vidhanam']);
+  // Strictly database-driven via API: zero mock or fallback data
+  const allCategoryItems = dynamicItems || [];
 
   // Filter items by selected deity tab
   const filteredItems = selectedFilter === 'all'

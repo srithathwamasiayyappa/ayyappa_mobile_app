@@ -1029,38 +1029,12 @@ export const PoojaDetailScreen: React.FC<Props> = ({
         );
         setSubItems(sorted);
       } else {
-        // Fallback for poojas not yet populated in DB:
-        if (parentId === '8' || isAyyappaPadiPooja) {
-          const localized = AYYAPPA_PADI_POOJA_ITEMS.map((item) => ({
-            ...item,
-            title: item.regionalTitles?.[currentLanguage] || item.regionalTitles?.te || item.title,
-            description: (item as any).regionalDescriptions?.[currentLanguage] || item.description || '',
-          }));
-          setSubItems(localized);
-        } else if (poojaContent && Array.isArray(poojaContent.procedure) && poojaContent.procedure.length > 0) {
-          const stepItems = poojaContent.procedure.map((step) => ({
-            id: `step-${step.stepNumber}`,
-            title: `${step.stepNumber}. ${step.title}`,
-            description: step.description,
-            mantra: step.mantra,
-            duration: step.duration,
-            deityId: poojaContent.deityId,
-          }));
-          setSubItems(stepItems);
-        } else {
-          setSubItems([]);
-        }
+        // Strictly zero mock / fallback data: show authentic empty state if DB has 0 items
+        setSubItems([]);
       }
     } catch (err) {
       console.warn('Subcategories fetch error:', err);
-      if (isAyyappaPadiPooja) {
-        const localized = AYYAPPA_PADI_POOJA_ITEMS.map((item) => ({
-          ...item,
-          title: item.regionalTitles?.[currentLanguage] || item.regionalTitles?.te || item.title,
-          description: (item as any).regionalDescriptions?.[currentLanguage] || item.description || '',
-        }));
-        setSubItems(localized);
-      }
+      setSubItems([]);
     } finally {
       setLoadingSubItems(false);
       setRefreshingSubList(false);
