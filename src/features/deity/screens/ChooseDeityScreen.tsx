@@ -102,6 +102,7 @@ export const ChooseDeityScreen: React.FC<ChooseDeityScreenProps> = ({
       try {
         const data = await ApiService.getDeities({
           search: queryText || undefined,
+          lang: currentLanguage,
         });
         setDeities(Array.isArray(data) ? data : []);
       } catch (err: any) {
@@ -113,7 +114,7 @@ export const ChooseDeityScreen: React.FC<ChooseDeityScreenProps> = ({
         setRefreshing(false);
       }
     },
-    []
+    [currentLanguage]
   );
 
   useEffect(() => {
@@ -137,11 +138,12 @@ export const ChooseDeityScreen: React.FC<ChooseDeityScreenProps> = ({
   };
 
   const getLocalizedName = (item: DeityItem): string => {
-    if (currentLanguage === 'te' && item.teluguName) return item.teluguName;
-    if (currentLanguage === 'ta' && item.tamilName) return item.tamilName;
-    if (currentLanguage === 'kn' && item.kannadaName) return item.kannadaName;
-    if (currentLanguage === 'hi' && item.hindiName) return item.hindiName;
-    return item.name || item.teluguName || '';
+    if (currentLanguage === 'en') return item.englishName || item.name;
+    if (currentLanguage === 'te') return item.teluguName || item.name;
+    if (currentLanguage === 'ta') return item.tamilName || item.englishName || item.name;
+    if (currentLanguage === 'kn') return item.kannadaName || item.englishName || item.name;
+    if (currentLanguage === 'hi') return item.hindiName || item.englishName || item.name;
+    return item.name || item.englishName || item.teluguName || '';
   };
 
   const getSubtitle = (item: DeityItem): string => {
@@ -152,10 +154,19 @@ export const ChooseDeityScreen: React.FC<ChooseDeityScreenProps> = ({
     if (Array.isArray(aliases) && aliases.length > 0) {
       return aliases.slice(0, 3).join(' • ');
     }
-    if (item.name && item.teluguName && currentLanguage !== 'en') {
-      return item.name;
+    if (currentLanguage === 'te') {
+      return 'భక్తి పూజలు, స్తోత్రాలు & సేవలు';
     }
-    return 'Devotional Prayers & Poojas';
+    if (currentLanguage === 'ta') {
+      return 'பக்தி பூஜைகள் மற்றும் ஸ்தோத்திரங்கள்';
+    }
+    if (currentLanguage === 'kn') {
+      return 'ಭಕ್ತಿ ಪೂಜೆಗಳು ಮತ್ತು ಸ್ತೋತ್ರಗಳು';
+    }
+    if (currentLanguage === 'hi') {
+      return 'भक्ति पूजा, स्तोत्र एवं सेवाएं';
+    }
+    return 'Devotional Prayers, Sevas & Stotras';
   };
 
   const screenTitle = SCREEN_TITLES[currentLanguage] || SCREEN_TITLES.en;

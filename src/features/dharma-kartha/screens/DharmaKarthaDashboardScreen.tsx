@@ -31,6 +31,7 @@ interface Props {
   onOpenNotifications: () => void;
   onOpenTerms: () => void;
   onOpenPrivacyPolicy: () => void;
+  onOpenRefundPolicy?: () => void;
   onOpenAbout: () => void;
   onLogout: () => void;
   onSwitchToDevotee?: () => void;
@@ -47,6 +48,7 @@ export const DharmaKarthaDashboardScreen: React.FC<Props> = ({
   onOpenNotifications,
   onOpenTerms,
   onOpenPrivacyPolicy,
+  onOpenRefundPolicy,
   onOpenAbout,
   onLogout,
   onSwitchToDevotee,
@@ -528,6 +530,12 @@ export const DharmaKarthaDashboardScreen: React.FC<Props> = ({
           <TouchableOpacity style={styles.menuItem} onPress={onOpenPrivacyPolicy}>
             <Text style={styles.menuIcon}>🔒</Text>
             <Text style={styles.menuLabel}>Privacy Policy</Text>
+            <Text style={styles.menuChevron}>›</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.menuItem} onPress={onOpenRefundPolicy || onOpenTerms}>
+            <Text style={styles.menuIcon}>💳</Text>
+            <Text style={styles.menuLabel}>Refund & Cancellation Policy</Text>
             <Text style={styles.menuChevron}>›</Text>
           </TouchableOpacity>
 

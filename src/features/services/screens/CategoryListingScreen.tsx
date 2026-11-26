@@ -35,7 +35,7 @@ interface Props {
   categoryTitle?: string;
   currentLanguage: SupportedLanguage;
   initialDeity?: string;
-  onSelectItem: (id: string, title: string, rawId?: string) => void;
+  onSelectItem: (id: string, title: string, rawId?: string, isCategoryWithTypes?: boolean) => void;
   onBack: () => void;
 }
 
@@ -74,7 +74,7 @@ interface ListingItem {
 }
 
 // Filter tabs definition (All | Ayyappa | Shiva | Devi | Ganesha | Venkateswara | Hanuman | Murugan)
-const FILTER_TABS = [
+const BASE_FILTER_TABS = [
   { id: 'all', label: 'All' },
   { id: 'ayyappa', label: 'Ayyappa' },
   { id: 'shiva', label: 'Shiva' },
@@ -84,6 +84,48 @@ const FILTER_TABS = [
   { id: 'hanuman', label: 'Hanuman' },
   { id: 'murugan', label: 'Murugan' },
 ];
+
+const DEITY_TAB_LABELS: Record<string, Record<string, string>> = {
+  te: {
+    all: 'అన్నీ',
+    ayyappa: 'అయ్యప్ప',
+    shiva: 'శివ',
+    devi: 'దేవి',
+    ganesha: 'వినాయక',
+    venkateswara: 'వెంకటేశ్వర',
+    hanuman: 'హనుమాన్',
+    murugan: 'సుబ్రహ్మణ్య',
+  },
+  en: {
+    all: 'All',
+    ayyappa: 'Ayyappa',
+    shiva: 'Shiva',
+    devi: 'Devi',
+    ganesha: 'Ganesha',
+    venkateswara: 'Venkateswara',
+    hanuman: 'Hanuman',
+    murugan: 'Murugan',
+  },
+};
+
+// Safe Devotional Artwork Thumbnail with automatic deity fallback on network error
+const CardThumbnail: React.FC<{ source: any; deityId: string }> = ({ source, deityId }) => {
+  const fallback = DEITY_IMAGES[deityId] || DEITY_IMAGES.ayyappa;
+  const [imgSrc, setImgSrc] = useState<any>(source || fallback);
+
+  useEffect(() => {
+    setImgSrc(source || fallback);
+  }, [source, deityId]);
+
+  return (
+    <Image
+      source={imgSrc}
+      style={styles.imageThumbnail}
+      resizeMode="cover"
+      onError={() => setImgSrc(fallback)}
+    />
+  );
+};
 
 export const CategoryListingScreen: React.FC<Props> = ({
   categoryId = 'pooja-vidhanam',
@@ -97,6 +139,20 @@ export const CategoryListingScreen: React.FC<Props> = ({
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [dynamicItems, setDynamicItems] = useState<ListingItem[] | null>(null);
+
+  // Dynamic filter tabs including active deity
+  const filterTabs = React.useMemo(() => {
+    if (!initialDeity || initialDeity === 'all') return BASE_FILTER_TABS;
+    const exists = BASE_FILTER_TABS.some((t) => t.id === initialDeity);
+    if (!exists) {
+      const cleanLabel = initialDeity
+        .replace(/^lord-/, '')
+        .replace(/-/g, ' ')
+        .replace(/\b\w/g, (l) => l.toUpperCase());
+      return [...BASE_FILTER_TABS, { id: initialDeity, label: cleanLabel }];
+    }
+    return BASE_FILTER_TABS;
+  }, [initialDeity]);
 
   // Load subcategories dynamically from DB via API (Instant live sync with Admin Panel)
   const fetchSubcategories = useCallback(async (isRefresh = false, overrideDeity?: string) => {
@@ -118,7 +174,19 @@ export const CategoryListingScreen: React.FC<Props> = ({
 
       if (Array.isArray(items) && items.length > 0) {
         const mapped: ListingItem[] = items.map((item: any) => {
-          const itemDeity = (item.deityId || (deityToFetch !== 'all' ? deityToFetch : 'ayyappa')).toLowerCase();
+          const isAyyappa = /ayyap|sastha|padi|irumudi|kettu|kattu|maaladharan|poorvaang|మాలాధారణ|పూర్వాంగ|శబరి|అయ్యప్ప|ఇరుముడి/.test((item.slug + ' ' + (item.title || '')).toLowerCase());
+          let detectedDeity = item.deityId ? item.deityId.toLowerCase() : '';
+          if (!detectedDeity || detectedDeity === 'all') {
+            const txt = (item.slug + ' ' + (item.title || '')).toLowerCase();
+            if (/shiva|linga|rudra|vishwanath|shankara|renuka|శివ|లింగ|రుద్ర|విశ్వనాథ|శంకర|శఙ్కర|రేణుక/.test(txt)) detectedDeity = 'shiva';
+            else if (/devi|durga|lakshmi|vasavi|akhiland|kanyaka|దేవి|లక్ష్మి|దుర్గ|వాసవి|వాసవీ|అఖిలాండ|కన్యక/.test(txt)) detectedDeity = 'devi';
+            else if (/venkates|vishnu|ramanuja|వేంకట|వెంకట|విష్ణు|రామానుజ/.test(txt)) detectedDeity = 'venkateswara';
+            else if (/ganesh|vignesh|vinayak|గణపతి|వినాయక|విఘ్నేశ్వర/.test(txt)) detectedDeity = 'ganesha';
+            else if (/hanuman|anjaneya|హనుమాన్|ఆంజనేయ/.test(txt)) detectedDeity = 'hanuman';
+            else if (/subrahmanya|murugan|సుబ్రహ్మణ్య|మురుగన్/.test(txt)) detectedDeity = 'murugan';
+            else detectedDeity = isAyyappa ? 'ayyappa' : (deityToFetch !== 'all' ? deityToFetch : 'ayyappa');
+          }
+          const itemDeity = detectedDeity.toLowerCase();
           let imageSource = DEITY_IMAGES[itemDeity] || DEITY_IMAGES.ayyappa;
           const rawImg = item.imageUrl || item.image || item.artwork;
           if (rawImg && typeof rawImg === 'string' && rawImg.trim()) {
@@ -178,10 +246,162 @@ export const CategoryListingScreen: React.FC<Props> = ({
   // Strictly database-driven via API: zero mock or fallback data
   const allCategoryItems = dynamicItems || [];
 
-  // Filter items by selected deity tab
-  const filteredItems = selectedFilter === 'all'
-    ? allCategoryItems
-    : allCategoryItems.filter((item) => item.deityId === selectedFilter || item.deityId === 'all');
+  // Items are fetched directly from MySQL DB via server-side deity query
+  // Strict Category Isolation: Ensures Pooja Vidhanam, Divine Stotras, Daily Slokas, and Bhajans never mix
+  const filteredItems = React.useMemo(() => {
+    if (!allCategoryItems || allCategoryItems.length === 0) return [];
+
+    const normCat = (categoryId || '').toLowerCase();
+
+    // 1. POOJA VIDHANAM: Show ONLY Poojas, Vrathams, Abhishekam, Tarpanam, Vidhanam (Exclude Stotras, Slokas, Songs)
+    if (normCat === 'pooja-vidhanam' || normCat === 'pooja' || normCat.includes('pooja') || normCat.includes('vrath')) {
+      return allCategoryItems.filter((item) => {
+        const titleLower = (item.title || '').toLowerCase();
+        const slugLower = (item.id || '').toLowerCase();
+        const text = `${titleLower} ${slugLower}`;
+
+        // Explicitly include Sri Mahaganapathi, Sri Subrahmanyeshwara, and Sri Dharma Sastha parent cards
+        if (
+          text.includes('మహాగణపతి') ||
+          text.includes('mahaganapathi') ||
+          text.includes('మహా గణపతి') ||
+          text.includes('సుబ్రహ్మణ్య') ||
+          text.includes('subrahmanya') ||
+          text.includes('subramanya') ||
+          text.includes('ధర్మ శాస్త') ||
+          text.includes('ధర్మశాస్త') ||
+          text.includes('dharma sastha') ||
+          text.includes('dharmasastha') ||
+          slugLower === 'sri-vigneshwara-ashtottara' ||
+          slugLower === 'sri-maha-ganapathi-pooja' ||
+          slugLower === 'sri-subramanya-ashtottara' ||
+          slugLower === 'sri-subrahmanya' ||
+          slugLower === 'sri-ayyappa-ashtottara' ||
+          slugLower === 'sri-dharma-sastha-pooja' ||
+          slugLower === 'sri-dharma-sastha' ||
+          item.rawId === '3' ||
+          item.rawId === '11' ||
+          item.rawId === '6' ||
+          item.rawId === '7' ||
+          item.rawId === '8' ||
+          item.rawId === '25' ||
+          item.rawId === '26' ||
+          item.rawId === '27' ||
+          item.rawId === '28' ||
+          item.rawId === '120' ||
+          item.rawId === '130' ||
+          item.rawId === '229'
+        ) {
+          return true;
+        }
+
+        const isStotra =
+          text.includes('stotram') ||
+          text.includes('స్తోత్రం') ||
+          text.includes('స్తోత్ర') ||
+          text.includes('pancharatnam') ||
+          text.includes('పంచరత్న') ||
+          text.includes('ashtothram') ||
+          text.includes('ashtottara') ||
+          text.includes('అష్టోత్తర') ||
+          text.includes('kavacham') ||
+          text.includes('కవచం') ||
+          text.includes('sahasranama') ||
+          text.includes('సహస్రనామ');
+
+        const isSloka =
+          text.includes('sloka') ||
+          text.includes('శ్లోక') ||
+          text.includes('suprabhatam') ||
+          text.includes('సుప్రభాత');
+
+        const isSong =
+          text.includes('bhajan') ||
+          text.includes('భజన') ||
+          text.includes('keerthana') ||
+          text.includes('కీర్తన') ||
+          text.includes('harathi') ||
+          text.includes('హారతి') ||
+          text.includes('song');
+
+        if (isStotra || isSloka || isSong) {
+          const isExplicitPooja =
+            text.includes('pooja') ||
+            text.includes('పూజ') ||
+            text.includes('vidhanam') ||
+            text.includes('విధానం') ||
+            text.includes('vratham') ||
+            text.includes('వ్రతం') ||
+            text.includes('tarpanam') ||
+            text.includes('తర్పణ') ||
+            text.includes('abhishekam') ||
+            text.includes('అభిషేక') ||
+            text.includes('katha') ||
+            text.includes('కథ');
+
+          return isExplicitPooja && !text.includes('pancharatnam') && !text.includes('stotram') && !text.includes('స్తోత్రం') && !text.includes('స్తోత్ర');
+        }
+
+        return true;
+      });
+    }
+
+    // 2. DIVINE STOTRAS: Show ONLY Stotras, Ashtothrams, Kavachams, Pancharatnams (Exclude standalone Poojas and Songs)
+    if (normCat === 'stotras' || normCat === 'divine-stotras' || normCat.includes('stotra') || normCat === 'astothrams') {
+      return allCategoryItems.filter((item) => {
+        const titleLower = (item.title || '').toLowerCase();
+        const slugLower = (item.id || '').toLowerCase();
+        const text = `${titleLower} ${slugLower}`;
+
+        const isPurePooja =
+          (text.includes('pooja') || text.includes('పూజ') || text.includes('tarpanam') || text.includes('vratham')) &&
+          !text.includes('stotra') &&
+          !text.includes('స్తోత్ర') &&
+          !text.includes('ashtottara') &&
+          !text.includes('అష్టోత్తర') &&
+          !text.includes('pancharatnam');
+
+        const isSong = text.includes('bhajan') || text.includes('భజన') || text.includes('harathi') || text.includes('హారతి');
+
+        return !isPurePooja && !isSong;
+      });
+    }
+
+    // 3. DAILY SLOKAS: Show ONLY Slokas & Verses
+    if (normCat === 'slokas' || normCat === 'daily-slokas' || normCat.includes('sloka')) {
+      return allCategoryItems.filter((item) => {
+        const titleLower = (item.title || '').toLowerCase();
+        const slugLower = (item.id || '').toLowerCase();
+        const text = `${titleLower} ${slugLower}`;
+        return !text.includes('pooja') && !text.includes('పూజ') && !text.includes('bhajan') && !text.includes('భజన');
+      });
+    }
+
+    // 4. BHAJANS & SONGS: Show ONLY Songs, Bhajans, Harathis
+    if (normCat === 'bhajans' || normCat === 'songs' || normCat === 'harathis' || normCat.includes('bhajan') || normCat.includes('song')) {
+      return allCategoryItems.filter((item) => {
+        const titleLower = (item.title || '').toLowerCase();
+        const slugLower = (item.id || '').toLowerCase();
+        const text = `${titleLower} ${slugLower}`;
+        return (
+          text.includes('bhajan') ||
+          text.includes('song') ||
+          text.includes('harathi') ||
+          text.includes('keerthana') ||
+          text.includes('harivarasanam') ||
+          text.includes('భజన') ||
+          text.includes('హారతి') ||
+          text.includes('కీర్తన') ||
+          text.includes('హరివరాసనం') ||
+          text.includes('గీతం') ||
+          item.rawId === '11' ||
+          item.rawId === '13'
+        );
+      });
+    }
+
+    return allCategoryItems;
+  }, [allCategoryItems, categoryId]);
 
   return (
     <View style={styles.root}>
@@ -235,7 +455,7 @@ export const CategoryListingScreen: React.FC<Props> = ({
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.filterScrollContent}
         >
-          {FILTER_TABS.map((tab) => {
+          {filterTabs.map((tab) => {
             const isSelected = selectedFilter === tab.id;
             return (
               <TouchableOpacity
@@ -257,10 +477,14 @@ export const CategoryListingScreen: React.FC<Props> = ({
                     end={{ x: 1, y: 1 }}
                     style={styles.filterTabGradient}
                   >
-                    <Text style={styles.filterTextSelected}>{tab.label}</Text>
+                    <Text style={styles.filterTextSelected}>
+                      {DEITY_TAB_LABELS[currentLanguage]?.[tab.id] || tab.label}
+                    </Text>
                   </LinearGradient>
                 ) : (
-                  <Text style={styles.filterTextUnselected}>{tab.label}</Text>
+                  <Text style={styles.filterTextUnselected}>
+                    {DEITY_TAB_LABELS[currentLanguage]?.[tab.id] || tab.label}
+                  </Text>
                 )}
               </TouchableOpacity>
             );
@@ -303,6 +527,64 @@ export const CategoryListingScreen: React.FC<Props> = ({
                 style={styles.poojaCard}
                 activeOpacity={0.82}
                 onPress={() => {
+                  const isCategoryWithTypes =
+                    item.id === 'sri-vigneshwara-ashtottara' ||
+                    item.id === 'sri-maha-ganapathi-pooja' ||
+                    item.id === 'sri-subramanya-ashtottara' ||
+                    item.id === 'sri-subrahmanya' ||
+                    item.id === 'sri-subrahmanyeshwara' ||
+                    item.id === 'sri-ayyappa-ashtottara' ||
+                    item.id === 'sri-dharma-sastha-pooja' ||
+                    item.id === 'sri-dharma-sastha' ||
+                    item.id === 'sri-ayyappa-sharanu-gosha' ||
+                    item.id === 'ayyappa-harathi' ||
+                    item.id === 'mangala-harathi' ||
+                    item.id === 'ganapathi-bhajanalu' ||
+                    item.rawId === '3' ||
+                    item.rawId === '11' ||
+                    item.rawId === '93' ||
+                    item.rawId === '6' ||
+                    item.rawId === '7' ||
+                    item.rawId === '8' ||
+                    item.rawId === '21' ||
+                    item.rawId === '25' ||
+                    item.rawId === '26' ||
+                    item.rawId === '27' ||
+                    item.rawId === '28' ||
+                    item.rawId === '52' ||
+                    item.rawId === '120' ||
+                    item.rawId === '130' ||
+                    item.rawId === '229' ||
+                    item.id === 'ashtottaramulu' ||
+                    item.id === 'kedareswara-vratham' ||
+                    item.id === 'rudrabhishekam' ||
+                    item.id === 'shiva-stotram-sub' ||
+                    item.id === 'varalakshmi-vratham' ||
+                    item.id === 'varalakshmi-vratha-kalpam' ||
+                    item.id === 'sri-satyanarayana-swamy-vratham' ||
+                    item.id === 'satyanarayana-vratham' ||
+                    item.id === 'vinayaka-vratha-kalpam' ||
+                    (item.title && item.title.includes('అష్టోత్తరములు')) ||
+                    (item.title && item.title.includes('వరలక్ష్మి')) ||
+                    (item.title && item.title.includes('సత్యనారాయణ')) ||
+                    (item.title && item.title.includes('వినాయక వ్రత')) ||
+                    (item.title && (
+                      item.title.includes('మహాగణపతి') ||
+                      item.title.toLowerCase().includes('mahaganapathi') ||
+                      item.title.includes('సుబ్రహ్మణ్య') ||
+                      item.title.toLowerCase().includes('subrahmanya') ||
+                      item.title.toLowerCase().includes('subramanya') ||
+                      item.title.includes('ధర్మ శాస్త') ||
+                      item.title.includes('ధర్మశాస్త') ||
+                      item.title.toLowerCase().includes('dharma sastha') ||
+                      item.title.toLowerCase().includes('dharmasastha')
+                    ));
+
+                  if (isCategoryWithTypes) {
+                    onSelectItem(item.id, item.title, item.rawId, true);
+                    return;
+                  }
+
                   const isPadiCard =
                     item.id === 'ayyappa-padi-pooja' ||
                     item.rawId === '117' ||
@@ -324,10 +606,9 @@ export const CategoryListingScreen: React.FC<Props> = ({
               >
                 {/* Left: Square Devotional Artwork Thumbnail */}
                 <View style={styles.imageThumbnailWrapper}>
-                  <Image
+                  <CardThumbnail
                     source={item.image}
-                    style={styles.imageThumbnail}
-                    resizeMode="cover"
+                    deityId={item.deityId}
                   />
                   <View style={styles.imageThumbnailBorder} />
                 </View>

@@ -13,6 +13,7 @@ export interface LanguageItem {
 export interface DeityItem {
   id: string;
   name: string;
+  englishName?: string;
   teluguName?: string;
   kannadaName?: string;
   tamilName?: string;

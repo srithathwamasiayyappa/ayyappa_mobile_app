@@ -207,8 +207,12 @@ export const ApiService = {
     search?: string;
     category?: string;
     featured?: boolean;
+    lang?: string;
   }): Promise<DeityItem[]> {
     const queryParts: string[] = [];
+    if (params?.lang && params.lang.trim()) {
+      queryParts.push(`lang=${encodeURIComponent(params.lang.trim())}`);
+    }
     if (params?.search && params.search.trim()) {
       queryParts.push(`search=${encodeURIComponent(params.search.trim())}`);
     }
@@ -460,12 +464,57 @@ export const ApiService = {
   // 4. Fetch Specific Record / Subpage Detail from DB via API (Strictly NO fake or fallback data)
   async getCategoryDetail(id: string, lang: SupportedLanguage = 'en'): Promise<any> {
     const fetchFrom = async (baseUrl: string) => {
-      // 1. Try admin subcategory detail first
+      // 1. Try public subcategories detail endpoint first (returns procedure, mantras, materials, benefits from DB)
+      try {
+        const pubRes = await fetch(`${baseUrl}/categories/subcategories/${encodeURIComponent(id)}?lang=${lang}`);
+        if (pubRes.ok) {
+          const pubJson = await pubRes.json();
+          const detail = pubJson?.data || pubJson;
+          if (detail && (detail.id || detail.slug || detail.title)) {
+            return {
+              ...detail,
+              imageUrl: resolveMediaUrl(detail.imageUrl || detail.image || detail.heroImage),
+            };
+          }
+        }
+      } catch {}
+
+      // 2. Try admin subcategory detail
       try {
         const subRes = await fetch(`${baseUrl}/admin/subcategories/${encodeURIComponent(id)}?lang=${lang}`);
         if (subRes.ok) {
           const subJson = await subRes.json();
           const detail = subJson?.data || subJson;
+          if (detail && (detail.id || detail.slug || detail.title)) {
+            return {
+              ...detail,
+              imageUrl: resolveMediaUrl(detail.imageUrl || detail.image),
+            };
+          }
+        }
+      } catch {}
+
+      // 3. Try stotra detail
+      try {
+        const stotraRes = await fetch(`${baseUrl}/categories/stotras/${encodeURIComponent(id)}?lang=${lang}`);
+        if (stotraRes.ok) {
+          const stotraJson = await stotraRes.json();
+          const detail = stotraJson?.data || stotraJson;
+          if (detail && (detail.id || detail.slug || detail.title)) {
+            return {
+              ...detail,
+              imageUrl: resolveMediaUrl(detail.imageUrl || detail.image),
+            };
+          }
+        }
+      } catch {}
+
+      // 4. Try category detail
+      try {
+        const res = await fetch(`${baseUrl}/categories/${encodeURIComponent(id)}?lang=${lang}`);
+        if (res.ok) {
+          const json = await res.json();
+          const detail = json?.data || json;
           if (detail && detail.id) {
             return {
               ...detail,
@@ -475,18 +524,6 @@ export const ApiService = {
         }
       } catch {}
 
-      // 2. Try category detail
-      const res = await fetch(`${baseUrl}/categories/${encodeURIComponent(id)}?lang=${lang}`);
-      if (res.ok) {
-        const json = await res.json();
-        const detail = json?.data || json;
-        if (detail && detail.id) {
-          return {
-            ...detail,
-            imageUrl: resolveMediaUrl(detail.imageUrl || detail.image),
-          };
-        }
-      }
       return null;
     };
 

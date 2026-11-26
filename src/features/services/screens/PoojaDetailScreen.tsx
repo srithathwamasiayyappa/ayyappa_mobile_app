@@ -193,547 +193,8 @@ interface PoojaDetailContent {
   auspiciousDays: string;
 }
 
-// Master Pooja Detail Information (Dynamic for all poojas)
-const POOJA_DETAILS: Record<string, PoojaDetailContent> = {
-  'ayyappa-padi-pooja': {
-    id: 'ayyappa-padi-pooja',
-    deityId: 'ayyappa',
-    defaultTitle: 'Ayyappa Padi Pooja',
-    regionalTitles: {
-      en: 'Ayyappa Padi Pooja',
-      te: 'అయ్యప్ప పడి పూజ',
-      ta: 'ஐயப்ப படி பூஜை',
-      kn: 'ಅಯ್ಯಪ್ಪ ಪಡಿ ಪೂಜೆ',
-      hi: 'अय्यप्पा पडी पूजा',
-      ml: 'അയ്യപ്പ പടി പൂജ',
-    },
-    overview: {
-      heading: 'Ayyappa Padi Pooja',
-      description:
-        'A sacred worship of Lord Ayyappa, especially during Mandala season, to seek His grace, strength and spiritual upliftment.',
-      videoDuration: '45 mins • Full Ritual Walkthrough',
-    },
-    procedure: [
-      {
-        stepNumber: 1,
-        title: 'Shuddhi & Deepa Prajwalana',
-        duration: '10 Mins',
-        description:
-          'Cleanse the altar and sanctify the pooja space with holy theertham. Place two holy brass lamps facing east and light them with pure sesame oil or cow ghee.',
-        mantra: 'దీపజ్యోతిః పరబ్రహ్మ దీపజ్యోతిః జనార్దనః | దీపో హరతు మే పాపం దీపజ్యోతిర్నమోస్తుతే ||',
-      },
-      {
-        stepNumber: 2,
-        title: 'Ganapathi Dhyanam & Sankalpam',
-        duration: '15 Mins',
-        description:
-          'Invoke Lord Vigneshwara with turmeric Ganapathi (Pasupu Ganapathi) for obstacle-free pooja. Devotee holds akshatas and flowers to make the sacred vow (Sankalpa) citing gotra, nakshatra, and righteous wishes.',
-        mantra: 'శుక్లాంబరధరం విష్ణుం శశివర్ణం చతుర్భుజం | ప్రసన్నవదనం ధ్యాయేత్ సర్వవిఘ్నోపశాంతయే ||',
-      },
-      {
-        stepNumber: 3,
-        title: 'Guru Vandanam & Sastha Avahanam',
-        duration: '15 Mins',
-        description:
-          'Offer salutations to the Guru Swami. Invoke Sri Dharma Sastha upon the consecrated peetam with holy flowers and sandalwood paste.',
-        mantra: 'లోకవీరం మహా పూజ్యం సర్వరక్షాకరం విభుమ్ | మనోజవం మదమథనం శాస్తారం ప్రణమామ్యహమ్ ||',
-      },
-      {
-        stepNumber: 4,
-        title: 'Ashtothara Shatanama Archana',
-        duration: '20 Mins',
-        description:
-          'Perform archana offering 108 holy names of Lord Ayyappa using fresh jasmine flowers, bilva leaves, kumkuma, and sacred akshatas.',
-        mantra: 'ఓం స్వామినే నమః | ఓం శబరీగిరీశాయ నమః | ఓం హరిహరపుత్రాయ నమః | ఓం ఆనందరూపాయ నమః ||',
-      },
-      {
-        stepNumber: 5,
-        title: 'Pathinettam Padi Pooja (18 Holy Steps)',
-        duration: '30 Mins',
-        description:
-          'Consecrate each of the 18 holy steps representing the spiritual ascent: mastery over 5 Indriyas, 8 Ragas, 3 Gunas, Vidya & Avidya. Light holy camphor and ghee deepams on each step.',
-        mantra: 'ఓం ప్రథమ పద్యై నమః ... ఓం అష్టాదశ పద్యై నమః | స్వామియే శరణం అయ్యప్ప ||',
-      },
-      {
-        stepNumber: 6,
-        title: 'Harivarasanam & Mangala Harathi',
-        duration: '15 Mins',
-        description:
-          'Perform the sacred camphor wave (Karpura Harathi) to Lord Sastha amidst the ringing of bells and conch. Conclude by singing the peaceful divine lullaby Harivarasanam.',
-        mantra: 'హరివరాసనం విశ్వమోహనం హరిదధీశ్వరం ఆరాధ్యపాదుకమ్ | అరివిమర్దనం నిత్యనర్తనం హరిహరాత్మజం దేవమాశ్రయే ||',
-      },
-      {
-        stepNumber: 7,
-        title: 'Naivedyam & Prasada Viniyogam',
-        duration: '10 Mins',
-        description:
-          'Offer consecrated coconuts, Neyyappam, Aravana Payasam, panchamritam, and bananas. Prostrate before the Lord and distribute the prasadam to all devotees.',
-      },
-    ],
-    materials: [
-      { id: 'm1', name: 'Clean Coconuts (Pathinettam Padi)', quantity: '18 Nos', category: 'essential' },
-      { id: 'm2', name: 'Brass Kuthuvilakku Lamps', quantity: '2 Pairs', category: 'essential' },
-      { id: 'm3', name: 'Pure Cow Ghee / Sesame Oil', quantity: '1 Litre', category: 'essential' },
-      { id: 'm4', name: 'Long Cotton Wicks (Pari Vathulu)', quantity: '1 Packet', category: 'essential' },
-      { id: 'm5', name: 'Pure Camphor (Karpooram)', quantity: '100g', category: 'dravyas' },
-      { id: 'm6', name: 'Turmeric (Pasupu) & Kumkuma', quantity: '200g each', category: 'dravyas' },
-      { id: 'm7', name: 'Pure Sandalwood Paste (Chandanam)', quantity: '50g', category: 'dravyas' },
-      { id: 'm8', name: 'Akshatas (Raw Rice with Turmeric)', quantity: '250g', category: 'dravyas' },
-      { id: 'm9', name: 'Fresh Jasmine & Marigold Garlands', quantity: '3 Strings', category: 'flowers' },
-      { id: 'm10', name: 'Fresh Bilva & Tulasi Leaves', quantity: '1 Bowl', category: 'flowers' },
-      { id: 'm11', name: 'Betel Leaves & Betel Nuts', quantity: '21 Pairs', category: 'naivedyam' },
-      { id: 'm12', name: 'Assorted Fresh Fruits & Bananas', quantity: '1 Basket', category: 'naivedyam' },
-      { id: 'm13', name: 'Jaggery (Bellam) & Rice for Payasam', quantity: '500g', category: 'naivedyam' },
-      { id: 'm14', name: 'Brass Pooja Thali & Panchapatra', quantity: '1 Set', category: 'essential' },
-      { id: 'm15', name: 'Incense Sticks (Agarbathi) & Dhoop', quantity: '1 Packet', category: 'dravyas' },
-    ],
-    benefits: [
-      {
-        title: 'Spiritual Upliftment & Mental Serenity',
-        description:
-          'Dissolves inner restlessness, builds profound mental discipline, and purifies thoughts through the divine presence of Sri Dharma Sastha.',
-      },
-      {
-        title: 'Mitigation of Shani Dosha',
-        description:
-          'Lord Ayyappa is the supreme protector from Saturn’s malefic influences. Performing Padi Pooja brings relief from Sade Sati, Ashtama Shani, and planetary afflictions.',
-      },
-      {
-        title: 'Family Harmony & Household Protection',
-        description:
-          'Brings unity, mutual understanding, and divine protection to the entire household, dispelling negative energies.',
-      },
-      {
-        title: 'Inner Mastery of 18 Virtues',
-        description:
-          'The sacred 18 steps symbolize crossing beyond the 5 sensory organs, 8 emotional vices (kama, krodha, moha, etc.), and 3 gunas to merge with supreme divine consciousness.',
-      },
-    ],
-    auspiciousDays: 'Mandala Kalam (Nov 15 - Dec 26), Makara Vilakku, Saturdays, and monthly Sankranti.',
-  },
-  'ganapathi-pooja': {
-    id: 'ganapathi-pooja',
-    deityId: 'ganesha',
-    defaultTitle: 'Ganapathi Pooja',
-    regionalTitles: {
-      en: 'Ganapathi Pooja',
-      te: 'శ్రీ గణపతి పూజ',
-      ta: 'ஸ்ரீ கணபதி பூஜை',
-      kn: 'ಶ್ರೀ ಗಣಪತಿ ಪೂಜೆ',
-      hi: 'श्री गणपति पूजा',
-      ml: 'ഗണപതി പൂജ',
-    },
-    overview: {
-      heading: 'Ganapathi Pooja',
-      description:
-        'The foundational worship of Lord Vigneshwara, remover of all obstacles and granter of intellect and auspicious beginnings.',
-      videoDuration: '30 mins • Complete Vidhanam Walkthrough',
-    },
-    procedure: [
-      {
-        stepNumber: 1,
-        title: 'Deepa Prajwalana & Achamanam',
-        duration: '5 Mins',
-        description: 'Light the sacred lamps and perform holy Achamanam purifying mind and body.',
-        mantra: 'ఓం కేశవాయ స్వాహా | ఓం నారాయణాయ స్వాహా | ఓం మాధవాయ స్వాహా ||',
-      },
-      {
-        stepNumber: 2,
-        title: 'Pasupu Ganapathi Sthapana',
-        duration: '10 Mins',
-        description: 'Form Lord Ganesha with pure turmeric paste upon betel leaves and invoke His divine presence.',
-        mantra: 'ఓం గం గణపతయే నమః | ప్రాణప్రతిష్ఠాపయామి ||',
-      },
-      {
-        stepNumber: 3,
-        title: 'Shodashopachara Pooja',
-        duration: '15 Mins',
-        description: 'Offer 16 sacred services including Asana, Padya, Arghya, Snana, Vastram, and Gandham.',
-      },
-      {
-        stepNumber: 4,
-        title: 'Durva (Garika) & Red Flower Archana',
-        duration: '15 Mins',
-        description: 'Perform archana with 21 shoots of fresh green Durva grass and bright red flowers.',
-        mantra: 'ఓం సుముఖాయ నమః | ఓం ఏకదంతాయ నమః | ఓం కపిలాయ నమః | ఓం గజకర్ణకాయ నమః ||',
-      },
-      {
-        stepNumber: 5,
-        title: 'Modaka Naivedyam & Harathi',
-        duration: '10 Mins',
-        description: 'Offer 21 steamed modakas, sweet laddus, coconuts, and wave camphor harathi.',
-      },
-    ],
-    materials: [
-      { id: 'gm1', name: 'Turmeric Powder (Pure Pasupu)', quantity: '100g', category: 'essential' },
-      { id: 'gm2', name: 'Fresh Durva Grass (Garika)', quantity: '21 Shoots', category: 'flowers' },
-      { id: 'gm3', name: 'Red Hibiscus / Roses', quantity: '21 Flowers', category: 'flowers' },
-      { id: 'gm4', name: 'Fresh Modakas or Laddus', quantity: '21 Nos', category: 'naivedyam' },
-      { id: 'gm5', name: 'Coconuts & Betel Leaves', quantity: '2 Coconuts, 5 Leaves', category: 'naivedyam' },
-      { id: 'gm6', name: 'Pure Cow Ghee & Deepam', quantity: '250g', category: 'essential' },
-      { id: 'gm7', name: 'Camphor & Agarbathis', quantity: '1 Packet', category: 'dravyas' },
-    ],
-    benefits: [
-      {
-        title: 'Complete Obstacle Dissolution',
-        description: 'Clears roadblocks in education, career, business ventures, and personal undertakings.',
-      },
-      {
-        title: 'Sharp Intellect & Memory',
-        description: 'Blesses students and seekers with deep concentration, wisdom, and speech eloquence.',
-      },
-      {
-        title: 'Auspicious Beginning (Shubharambha)',
-        description: 'Ensures any new work commenced proceeds smoothly to fruitful completion.',
-      },
-    ],
-    auspiciousDays: 'Vinayaka Chavithi, Sankashti Chaturthi, Shukla Chaturthi, and every Tuesday/Wednesday.',
-  },
-  'satyanarayana-vratham': {
-    id: 'satyanarayana-vratham',
-    deityId: 'venkateswara',
-    defaultTitle: 'Satyanarayana Vratham',
-    regionalTitles: {
-      en: 'Satyanarayana Vratham',
-      te: 'సత్యనారాయణ స్వామి వ్రతం',
-      ta: 'சத்யநாராயண விரதம்',
-      kn: 'ಸತ್ಯನಾರಾಯಣ ವ್ರತ',
-      hi: 'सत्यनारायण व्रत कथा',
-      ml: 'സത്യനാരായണ വ്രതം',
-    },
-    overview: {
-      heading: 'Satyanarayana Vratham',
-      description:
-        'A sacred Vaishnava ritual from the Skanda Purana performed on Full Moon (Pournami) for family prosperity, joy, and spiritual welfare.',
-      videoDuration: '60 mins • Complete Vratham & 5 Chapters Katha',
-    },
-    procedure: [
-      {
-        stepNumber: 1,
-        title: 'Mandapa Alankaranam & Kalasha Sthapana',
-        duration: '15 Mins',
-        description: 'Adorn the sacred peetam with navadhanyas, mango leaves, and consecrated Kalash.',
-      },
-      {
-        stepNumber: 2,
-        title: 'Ganapathi & Navagraha Pooja',
-        duration: '20 Mins',
-        description: 'Seek blessings of Lord Vigneshwara and the nine cosmic planetary deities.',
-      },
-      {
-        stepNumber: 3,
-        title: 'Sri Satyanarayana Swamy Archana',
-        duration: '25 Mins',
-        description: 'Perform panchamrita abhishekam and worship Lord Vishnu with tulasi and lotus flowers.',
-        mantra: 'ఓం నమో భగవతే వాసుదేవాయ | ఓం శ్రీ సత్యనారాయణ స్వామినే నమః ||',
-      },
-      {
-        stepNumber: 4,
-        title: 'Satyanarayana Swamy Katha Shravanam',
-        duration: '35 Mins',
-        description: 'Recite and listen to the 5 inspiring divine chapters illustrating devotion, truth, and grace.',
-      },
-      {
-        stepNumber: 5,
-        title: 'Sapada Prasada Naivedyam & Harathi',
-        duration: '15 Mins',
-        description: 'Offer sacred Sheera (rava, ghee, milk, bananas, sugar) and perform grand camphor harathi.',
-      },
-    ],
-    materials: [
-      { id: 'sm1', name: 'Sacred Kalasha Pot & Coconut', quantity: '1 Set', category: 'essential' },
-      { id: 'sm2', name: 'Fresh Mango Leaves & Banana Stems', quantity: '5 Leaves, 2 Stems', category: 'essential' },
-      { id: 'sm3', name: 'Semolina (Rava), Ghee & Sugar', quantity: '500g each', category: 'naivedyam' },
-      { id: 'sm4', name: 'Ripe Bananas (Amrutha Phala)', quantity: '1 Dozen', category: 'naivedyam' },
-      { id: 'sm5', name: 'Fresh Tulasi & Lotus Flowers', quantity: '2 Bunches', category: 'flowers' },
-      { id: 'sm6', name: 'Navadhanyas (9 Sacred Grains)', quantity: '1 Packet', category: 'dravyas' },
-      { id: 'sm7', name: 'Red Silk Cloth (Vastram)', quantity: '1 Metre', category: 'essential' },
-    ],
-    benefits: [
-      {
-        title: 'Domestic Harmony & Prosperity',
-        description: 'Blesses family with lasting unity, abundance, and freedom from domestic strife.',
-      },
-      {
-        title: 'Fulfillment of Righteous Desires',
-        description: 'Grants success in child-bearing, marriage, new home entering, and noble ambitions.',
-      },
-      {
-        title: 'Karmic Purification & Truthfulness',
-        description: 'Removes past sins and inspires living in adherence to truth (Satya).',
-      },
-    ],
-    auspiciousDays: 'Pournami (Full Moon), Ekadashi, Housewarming (Gruhapravesam), and Weddings.',
-  },
-  'lakshmi-pooja': {
-    id: 'lakshmi-pooja',
-    deityId: 'devi',
-    defaultTitle: 'Lakshmi Pooja',
-    regionalTitles: {
-      en: 'Lakshmi Pooja',
-      te: 'శ్రీ లక్ష్మీ పూజ',
-      ta: 'ஸ்ரீ லக்ஷ்மி பூஜை',
-      kn: 'ಶ್ರೀ ಲಕ್ಷ್ಮೀ ಪೂಜೆ',
-      hi: 'श्री लक्ष्मी पूजा',
-      ml: 'ശ്രീ ലക്ഷ്മി പൂജ',
-    },
-    overview: {
-      heading: 'Lakshmi Pooja',
-      description:
-        'The radiant worship of Goddess Mahalakshmi, the embodiment of wealth, auspiciousness, inner radiance, and joy.',
-      videoDuration: '40 mins • Sri Suktam & Ashta Lakshmi Archana',
-    },
-    procedure: [
-      {
-        stepNumber: 1,
-        title: 'Altar Decoration & Rangoli',
-        duration: '15 Mins',
-        description: 'Adorn doorstep with mango leaves and floor with sacred lotus rangoli.',
-      },
-      {
-        stepNumber: 2,
-        title: 'Varalakshmi Kalasha Sthapana',
-        duration: '15 Mins',
-        description: 'Consecrate Kalash with holy water, coins, gold ornaments, and silk vastram.',
-      },
-      {
-        stepNumber: 3,
-        title: 'Sri Suktam & Ashta Lakshmi Archana',
-        duration: '25 Mins',
-        description: 'Chant Sri Suktam while performing kumkum archana with red fragrant roses and lotus.',
-        mantra: 'ఓం శ్రీం హ్రీం క్లీం కమలే కమలాలయే ప్రసీద ప్రసీద శ్రీం హ్రీం శ్రీం ఓం మహాలక్ష్మ్యై నమః ||',
-      },
-      {
-        stepNumber: 4,
-        title: 'Toragranthi Pooja & Sumangali Tamboolam',
-        duration: '15 Mins',
-        description: 'Tie sacred yellow protective thread and offer fruits, tamboolam, and sweets to ladies.',
-      },
-    ],
-    materials: [
-      { id: 'lm1', name: 'Fresh Pink/White Lotus Flowers', quantity: '5 Flowers', category: 'flowers' },
-      { id: 'lm2', name: 'Pure Kumkuma for Archana', quantity: '250g', category: 'dravyas' },
-      { id: 'lm3', name: 'Gold/Silver Coins for Kalash', quantity: '5 Coins', category: 'essential' },
-      { id: 'lm4', name: 'Sweet Payasam & Fruits', quantity: '1 Bowl', category: 'naivedyam' },
-      { id: 'lm5', name: 'Turmeric Roots & Yellow Threads', quantity: '1 Set', category: 'dravyas' },
-      { id: 'lm6', name: 'Betel Leaves, Nuts & Bangles', quantity: '11 Sets', category: 'naivedyam' },
-    ],
-    benefits: [
-      {
-        title: 'Ashta Aishwarya & Financial Abundance',
-        description: 'Attracts sustainable wealth, eliminates debts, and stabilizes family finances.',
-      },
-      {
-        title: 'Auspicious Household Energy',
-        description: 'Cleanses negative domestic atmospheres and invites graceful auspicious vibrations.',
-      },
-      {
-        title: 'Longevity & Marital Harmony',
-        description: 'Strengthens bonds of mutual love, devotion, and protective family blessings.',
-      },
-    ],
-    auspiciousDays: 'Varalakshmi Vratham, Deepavali, Fridays of Shravana & Karthika months, and Dhanteras.',
-  },
-  'rudrabhishekam': {
-    id: 'rudrabhishekam',
-    deityId: 'shiva',
-    defaultTitle: 'Rudrabhishekam',
-    regionalTitles: {
-      en: 'Rudrabhishekam',
-      te: 'శ్రీ రుద్రాభిషేకం',
-      ta: 'ஸ்ரீ ருத்ராபிஷேகம்',
-      kn: 'ಶ್ರೀ ರುದ್ರಾಭಿಷೇಕ',
-      hi: 'श्री रुद्राभिषेक',
-      ml: 'രുദ്രാഭിഷേകം',
-    },
-    overview: {
-      heading: 'Rudrabhishekam',
-      description:
-        'A supremely potent Vedic ceremony bathing the sacred Shiva Linga with Panchamrita while chanting the holy Sri Rudram from Yajurveda.',
-      videoDuration: '50 mins • Namakam & Chamakam Chanting',
-    },
-    procedure: [
-      {
-        stepNumber: 1,
-        title: 'Sankalpam & Linga Shuddhi',
-        duration: '10 Mins',
-        description: 'Purify the sacred Shiva Lingam with pure Ganga water and chant Om Namah Shivaya.',
-      },
-      {
-        stepNumber: 2,
-        title: 'Panchamrita Abhishekam',
-        duration: '25 Mins',
-        description:
-          'Offer consecutive divine baths: Cow milk, Curd, Pure Ghee, Honey, Sugar, and Tender Coconut water.',
-        mantra: 'ఓం త్ర్యంబకం యజామహే సుగంధిం పుష్టివర్ధనమ్ | ఉర్వారుకమివ బంధనాన్మృత్యోర్ముక్షీయ మామృతాత్ ||',
-      },
-      {
-        stepNumber: 3,
-        title: 'Sri Rudra Namaka & Chamaka Parayanam',
-        duration: '30 Mins',
-        description: 'Chant 11 holy Anuvakas of Namakam followed by Chamakam, acknowledging Lord Shiva everywhere.',
-      },
-      {
-        stepNumber: 4,
-        title: 'Bhasma & Bilvapatra Archana',
-        duration: '15 Mins',
-        description: 'Adorn the Shiva Lingam with sacred Vibhuti, Chandanam, and fresh three-leaf Bilva patras.',
-        mantra: 'త్రిదళం త్రిగుణాకారం త్రినేత్రం చ త్రియాయుషమ్ | త్రిజన్మ పాపసంహారం ఏకబిల్వం శివార్పణమ్ ||',
-      },
-      {
-        stepNumber: 5,
-        title: 'Maha Harathi & Theertha Prasad',
-        duration: '10 Mins',
-        description: 'Wave triple camphor flame and sip the energized panchamrita theertham.',
-      },
-    ],
-    materials: [
-      { id: 'rm1', name: 'Fresh Cow Milk (Raw)', quantity: '1 Litre', category: 'essential' },
-      { id: 'rm2', name: 'Fresh Curd & Pure Honey', quantity: '250g each', category: 'essential' },
-      { id: 'rm3', name: 'Pure Cow Ghee & Sugar', quantity: '200g each', category: 'essential' },
-      { id: 'rm4', name: 'Tender Coconuts', quantity: '2 Nos', category: 'essential' },
-      { id: 'rm5', name: 'Fresh Bilva Leaves (Bilvapatra)', quantity: '108 Leaves', category: 'flowers' },
-      { id: 'rm6', name: 'Sacred Bhasma (Vibhuti)', quantity: '100g', category: 'dravyas' },
-      { id: 'rm7', name: 'Pure Sandalwood Paste & Rose Water', quantity: '1 Bottle', category: 'dravyas' },
-    ],
-    benefits: [
-      {
-        title: 'Eradication of Chronic Diseases & Fear',
-        description: 'Bestows rejuvenation, longevity (Ayushya), and destroys the fear of premature demise.',
-      },
-      {
-        title: 'Destruction of Past Karmic Sins',
-        description: 'The sublime chanting of Sri Rudram burns away accumulated negative karmas of many lifetimes.',
-      },
-      {
-        title: 'Mental Clarity & Liberation (Moksha)',
-        description: 'Drives out mental darkness, instilling supreme peace and spiritual detachment.',
-      },
-    ],
-    auspiciousDays: 'Maha Shivaratri, Masa Shivaratri, Mondays (Somavaram), and Pradosham.',
-  },
-  'hanuman-pooja': {
-    id: 'hanuman-pooja',
-    deityId: 'hanuman',
-    defaultTitle: 'Hanuman Pooja & Sindhooram',
-    regionalTitles: {
-      en: 'Hanuman Pooja & Sindhooram',
-      te: 'శ్రీ హనుమాన్ పూజ & సింధూరార్చన',
-      ta: 'ஸ்ரீ ஹனுமான் பூஜை',
-      kn: 'ಶ್ರೀ ಹನುಮಾನ್ ಪೂಜೆ',
-      hi: 'श्री हनुमान पूजा एवं सिंदूर अर्चन',
-      ml: 'ശ്രീ ഹനുമാൻ പൂജ',
-    },
-    overview: {
-      heading: 'Hanuman Pooja & Sindhooram',
-      description:
-        'Vigorous worship of Sri Hanuman with Sindhoora lepanam, Betel leaves mala, and Hanuman Chalisa recitation for total fearlessness and strength.',
-      videoDuration: '35 mins • Sundarakanda & Sindhoora Seva',
-    },
-    procedure: [
-      {
-        stepNumber: 1,
-        title: 'Deepa Prajvalana & Sankalpam',
-        duration: '5 Mins',
-        description: 'Light sesame oil lamp with red wicks facing east and take solemn sankalpam for protection.',
-      },
-      {
-        stepNumber: 2,
-        title: 'Sindhoora Lepanam & Jasmine Oil',
-        duration: '15 Mins',
-        description: 'Anoint the holy vigraha with pure Sindhoor blended with Chameli (Jasmine) oil chanting Moola Mantram.',
-        mantra: 'ఓం నమో భగవతే ఆంజనేయాయ మహాబలాయ స్వాహా ||',
-      },
-      {
-        stepNumber: 3,
-        title: 'Tamalapaku (Betel Leaf) Garland Offering',
-        duration: '10 Mins',
-        description: 'String 108 fresh betel leaves inscribed with Sri Rama nama and offer with fervent devotion.',
-      },
-      {
-        stepNumber: 4,
-        title: 'Hanuman Chalisa & Aarti',
-        duration: '15 Mins',
-        description: 'Sing 40 verses of Sri Hanuman Chalisa followed by camphor deeparadhana.',
-      },
-    ],
-    materials: [
-      { id: 'hp1', name: 'Pure Sindhooram & Chameli Oil', quantity: '100g', category: 'dravyas' },
-      { id: 'hp2', name: 'Fresh Betel Leaves (Tamalapaku)', quantity: '108 Leaves', category: 'flowers' },
-      { id: 'hp3', name: 'Vada Mala or Boondi Laddu', quantity: '1 Bowl', category: 'naivedyam' },
-      { id: 'hp4', name: 'Red Flowers & Red Vastram', quantity: '1 Set', category: 'essential' },
-      { id: 'hp5', name: 'Sesame (Til) Oil & Camphor', quantity: '250ml', category: 'essential' },
-    ],
-    benefits: [
-      {
-        title: 'Elimination of Fear, Evil Eyes & Graha Doshas',
-        description: 'Neutralizes Shani doshas, dispels evil influences, and eradicates phobias and anxieties.',
-      },
-      {
-        title: 'Supreme Physical & Mental Strength',
-        description: 'Infuses vitality, determination, speech eloquence, and unwavering self-confidence.',
-      },
-    ],
-    auspiciousDays: 'Tuesdays (Mangalavaram), Saturdays (Sanivaram), and Hanuman Jayanti.',
-  },
-  'subramanya-pooja': {
-    id: 'subramanya-pooja',
-    deityId: 'murugan',
-    defaultTitle: 'Subramanya Sashti Pooja',
-    regionalTitles: {
-      en: 'Subramanya Sashti Pooja',
-      te: 'శ్రీ సుబ్రహ్మణ్య షష్ఠి పూజ',
-      ta: 'ஸ்ரீ சுப்ரமண்ய சஷ்டி பூஜை',
-      kn: 'ಶ್ರೀ ಸುಬ್ರಹ್ಮಣ್ಯ ಷಷ್ಠಿ ಪೂಜೆ',
-      hi: 'श्री सुब्रह्मण्य षष्ठी पूजा',
-      ml: 'ശ്രീ സുബ്രഹ്മണ്യ ഷഷ്ഠി പൂജ',
-    },
-    overview: {
-      heading: 'Subramanya Sashti Pooja',
-      description:
-        'The sacred adoration of Lord Murugan (Kartikeya / Shanmukha) wielding the divine Vel for victory over impediments and health.',
-      videoDuration: '40 mins • Skanda Sashti Kavasam & Abhishekam',
-    },
-    procedure: [
-      {
-        stepNumber: 1,
-        title: 'Sankalpam & Vel Archana',
-        duration: '10 Mins',
-        description: 'Take sankalpam and offer fragrant red vibhuti and kumkum to the divine Vel (spear).',
-      },
-      {
-        stepNumber: 2,
-        title: 'Panchamrita & Rose Water Abhishekam',
-        duration: '20 Mins',
-        description: 'Perform cooling abhishekam with milk, honey, tender coconut, and rose water.',
-        mantra: 'ఓం శరవణభవాయ నమః ||',
-      },
-      {
-        stepNumber: 3,
-        title: 'Skanda Sashti Kavasam Recitation',
-        duration: '15 Mins',
-        description: 'Recite the sacred protective Kavacham invoking Lord Murugan to safeguard every organ and limb.',
-      },
-    ],
-    materials: [
-      { id: 'sp1', name: 'Fresh Red Oleander (Arali) Flowers', quantity: '2 Garlands', category: 'flowers' },
-      { id: 'sp2', name: 'Panchamritam & Rose Water', quantity: '1 Litre', category: 'essential' },
-      { id: 'sp3', name: 'Pure Vibhuti (Sacred Ash)', quantity: '100g', category: 'dravyas' },
-      { id: 'sp4', name: 'Sweet Pongal or Panchamirtham Prasadam', quantity: '1 Bowl', category: 'naivedyam' },
-    ],
-    benefits: [
-      {
-        title: 'Victory in Endeavours & Settle Debts',
-        description: 'Removes Kuja (Mars) doshas, legal hurdles, and blesses with courage and dynamism.',
-      },
-      {
-        title: 'Child Blessing (Santhana Bhagyam) & Radiance',
-        description: 'Bestows righteous offspring, vibrant intellect, and glowing health.',
-      },
-    ],
-    auspiciousDays: 'Skanda Sashti, Tuesdays, Krittika Nakshatram, and Thai Poosam.',
-  },
-};
+// Dynamic Pooja Detail loaded directly from DB via API (Strictly ZERO mock or fake data)
+const POOJA_DETAILS: Record<string, PoojaDetailContent> = {};
 
 const UI_TEXTS: Record<string, {
   overview: string;
@@ -918,8 +379,110 @@ export const PoojaDetailScreen: React.FC<Props> = ({
   const [refreshingSubList, setRefreshingSubList] = useState<boolean>(false);
   const [loadingDetail, setLoadingDetail] = useState<boolean>(false);
 
-  // Look up detail content or fallback to Ayyappa Padi Pooja
-  const poojaContent = POOJA_DETAILS[itemId] || POOJA_DETAILS['ayyappa-padi-pooja'];
+  const [livePooja, setLivePooja] = useState<any | null>(null);
+  const [loadingLivePooja, setLoadingLivePooja] = useState<boolean>(true);
+
+  // Fetch full pooja record dynamically from database via API
+  useEffect(() => {
+    let isMounted = true;
+    setLoadingLivePooja(true);
+    const idToFetch = rawId || itemId;
+    ApiService.getCategoryDetail(String(idToFetch), currentLanguage)
+      .then((res) => {
+        if (isMounted && res) {
+          setLivePooja(res);
+        }
+      })
+      .catch((e) => console.warn('Live pooja detail load notice:', e))
+      .finally(() => {
+        if (isMounted) setLoadingLivePooja(false);
+      });
+    return () => { isMounted = false; };
+  }, [itemId, rawId, currentLanguage]);
+
+  // Resolve detail content dynamically from database response (Strictly ZERO mock or fake data)
+  const poojaContent = React.useMemo<any>(() => {
+    const raw = livePooja || {};
+    const dId = (raw.deityId || (
+      raw.slug?.includes('shiva') ? 'shiva'
+      : raw.slug?.includes('ganesh') || raw.slug?.includes('vinayak') ? 'ganesha'
+      : raw.slug?.includes('devi') || raw.slug?.includes('durga') || raw.slug?.includes('lakshmi') ? 'devi'
+      : raw.slug?.includes('venkates') ? 'venkateswara'
+      : raw.slug?.includes('hanuman') ? 'hanuman'
+      : raw.slug?.includes('murugan') || raw.slug?.includes('subramanya') ? 'murugan'
+      : 'ayyappa'
+    )).toLowerCase();
+
+    const cleanTitle = raw.title || title || itemId.replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+
+    const mats = Array.isArray(raw.materials) && raw.materials.length > 0
+      ? raw.materials
+          .filter((m: any) => {
+            const name = (m?.name || m?.title || '').toLowerCase();
+            return !name.includes('cow ghee') && !name.includes('cotton wicks') && !name.includes('vibhuti') && !name.includes('camphor') && !name.includes('betel leaves');
+          })
+          .map((m: any, idx: number) => ({
+            id: String(idx + 1),
+            name: m.name || m.title || ('Item ' + (idx + 1)),
+            quantity: m.qty || m.quantity || '1',
+            category: 'essential',
+          }))
+      : [];
+
+    const procedureSteps = Array.isArray(raw.procedure) && raw.procedure.length > 0
+      ? raw.procedure.map((pr: any, idx: number) => ({
+          stepNumber: pr.step || idx + 1,
+          title: pr.title || `Step ${idx + 1}`,
+          duration: pr.duration || '',
+          description: pr.desc || pr.description || '',
+          mantra: pr.mantra || undefined,
+        }))
+      : [];
+
+    const mantrasList = Array.isArray(raw.mantras) && raw.mantras.length > 0
+      ? raw.mantras
+      : [];
+
+    const bens = Array.isArray(raw.benefits) && raw.benefits.length > 0
+      ? raw.benefits
+          .filter((b: any) => {
+            const str = (typeof b === 'string' ? b : (b.title || b.description || '')).toLowerCase();
+            return !str.includes('profound peace') && !str.includes('spiritual strength') && !str.includes('planetary doshams') && !str.includes('divine protection of the presiding deity');
+          })
+          .map((b: any, idx: number) => ({
+            title: typeof b === 'string' ? b : (b.title || ('Benefit ' + (idx + 1))),
+            description: typeof b === 'string' ? b : (b.description || ''),
+          }))
+      : [];
+
+    return {
+      id: raw.slug || itemId,
+      deityId: dId,
+      defaultTitle: raw.titleEnglish || cleanTitle,
+      regionalTitles: {
+        en: raw.titleEnglish || cleanTitle,
+        te: raw.titleTelugu || cleanTitle,
+        ta: raw.titleTamil || cleanTitle,
+        kn: raw.titleKannada || cleanTitle,
+        hi: raw.titleHindi || cleanTitle,
+        ml: raw.titleMalayalam || cleanTitle,
+      },
+      overview: {
+        heading: raw.title || cleanTitle,
+        description: raw.fullScriptureText || raw.description || raw.overview || '',
+        videoDuration: raw.duration || '',
+      },
+      instructionNote: raw.instructionNote || '',
+      fullScriptureText: raw.fullScriptureText || '',
+      mantras: mantrasList,
+      procedure: procedureSteps,
+      materials: mats,
+      benefits: bens,
+      auspiciousDays: raw.bestTime || raw.auspiciousDays || '',
+      contents: Array.isArray(raw.contents) ? raw.contents : (Array.isArray(raw.devotionalContents) ? raw.devotionalContents : []),
+    };
+  }, [livePooja, itemId, title]);
+
   const displayTitle =
     title ||
     poojaContent.regionalTitles[currentLanguage] ||
@@ -927,100 +490,24 @@ export const PoojaDetailScreen: React.FC<Props> = ({
   const deityImage = DEITY_IMAGES[poojaContent.deityId] || DEITY_IMAGES.ayyappa;
   const ui = UI_TEXTS[currentLanguage] || UI_TEXTS.en;
 
-  // Resolve parent ID for DB querying
-  const resolveParentQueryId = useCallback(() => {
-    const lowerItemId = String(itemId || '').toLowerCase();
-    const lowerTitle = String(title || '').toLowerCase();
-
-    // Lord Ayyappa / Padi Pooja
-    if (
-      itemId === 'ayyappa-padi-pooja' ||
-      rawId === '117' ||
-      itemId === '117' ||
-      rawId === '8' ||
-      itemId === '8' ||
-      rawId === '61' ||
-      itemId === '61' ||
-      lowerItemId.includes('padi') ||
-      lowerTitle.includes('పడి') ||
-      lowerTitle.includes('padi') ||
-      lowerTitle.includes('అయ్యప్ప పూజ') ||
-      lowerTitle.includes('ayyappa pooja')
-    ) {
-      return '8';
-    }
-
-    // Satyanarayana Vratham
-    if (
-      rawId === '25' ||
-      itemId === '25' ||
-      lowerItemId.includes('satyanarayana') ||
-      lowerTitle.includes('satyanarayana') ||
-      lowerTitle.includes('సత్యనారాయణ')
-    ) {
-      return '25';
-    }
-
-    // Ganapathi Pooja / Vinayaka
-    if (
-      rawId === '122' ||
-      rawId === '27' ||
-      rawId === '6' ||
-      lowerItemId.includes('ganapathi') ||
-      lowerItemId.includes('vinayaka') ||
-      lowerTitle.includes('గణపతి') ||
-      lowerTitle.includes('వినాయక')
-    ) {
-      return rawId === '27' ? '27' : (rawId === '6' ? '6' : '122');
-    }
-
-    // Rudrabhishekam / Shiva
-    if (
-      rawId === '130' ||
-      lowerItemId.includes('rudra') ||
-      lowerTitle.includes('రుద్ర') ||
-      lowerTitle.includes('rudra')
-    ) {
-      return '130';
-    }
-
-    // Varalakshmi Vratham
-    if (
-      rawId === '26' ||
-      lowerItemId.includes('varalakshmi') ||
-      lowerTitle.includes('వరలక్ష్మి')
-    ) {
-      return '26';
-    }
-
-    // Subramanya
-    if (
-      rawId === '137' ||
-      rawId === '7' ||
-      lowerItemId.includes('subramanya') ||
-      lowerTitle.includes('సుబ్రహ్మణ్య')
-    ) {
-      return rawId || '7';
-    }
-
-    return rawId || itemId;
-  }, [itemId, rawId, title]);
-
   // Dynamically load subcategories for ANY clicked pooja from DB in currentLanguage
   const loadSubItems = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshingSubList(true);
     else setLoadingSubItems(true);
     try {
-      const parentId = resolveParentQueryId();
-      let liveItems = await ApiService.getSubcategories(parentId, currentLanguage);
-
-      if ((!liveItems || liveItems.length === 0) && rawId && rawId !== parentId) {
-        liveItems = await ApiService.getSubcategories(rawId, currentLanguage);
+      // 1. If livePooja already has children or subcategories from DB, use them directly
+      if (livePooja?.children && Array.isArray(livePooja.children) && livePooja.children.length > 0) {
+        setSubItems(livePooja.children);
+        return;
+      }
+      if (livePooja?.subcategories && Array.isArray(livePooja.subcategories) && livePooja.subcategories.length > 0) {
+        setSubItems(livePooja.subcategories);
+        return;
       }
 
-      if ((!liveItems || liveItems.length === 0) && parentId === '8') {
-        liveItems = await ApiService.getSubcategories('sri-ayyappa-ashtottara', currentLanguage);
-      }
+      // 2. Query DB directly using the actual item id
+      const targetQueryId = rawId || itemId;
+      let liveItems = await ApiService.getSubcategories(String(targetQueryId), currentLanguage);
 
       if (Array.isArray(liveItems) && liveItems.length > 0) {
         const sorted = [...liveItems].sort(
@@ -1028,7 +515,6 @@ export const PoojaDetailScreen: React.FC<Props> = ({
         );
         setSubItems(sorted);
       } else {
-        // Strictly zero mock / fallback data: show authentic empty state if DB has 0 items
         setSubItems([]);
       }
     } catch (err) {
@@ -1038,19 +524,19 @@ export const PoojaDetailScreen: React.FC<Props> = ({
       setLoadingSubItems(false);
       setRefreshingSubList(false);
     }
-  }, [currentLanguage, isAyyappaPadiPooja, poojaContent, rawId, resolveParentQueryId]);
+  }, [currentLanguage, livePooja, rawId, itemId]);
 
   useEffect(() => {
     loadSubItems();
-  }, [loadSubItems]);
+  }, [loadSubItems, livePooja]);
 
   const handleSelectSubItem = async (subItem: any) => {
     setSelectedSubItem(subItem);
     setLoadingDetail(true);
     setSubItemDetail(null);
     try {
-      const detail = await ApiService.getCategoryDetail(String(subItem.id), currentLanguage);
-      if (detail && (detail.description || detail.content)) {
+      const detail = await ApiService.getCategoryDetail(String(subItem.id || subItem.slug || subItem.rawId), currentLanguage);
+      if (detail) {
         setSubItemDetail(detail);
       }
     } catch (e) {
@@ -1156,11 +642,29 @@ export const PoojaDetailScreen: React.FC<Props> = ({
   if (selectedSubItem) {
     const currentTitle = getSubItemTitle(selectedSubItem);
     const currentDesc =
+      subItemDetail?.fullScriptureText ||
       subItemDetail?.description ||
       subItemDetail?.content ||
+      subItemDetail?.overview ||
+      selectedSubItem.fullScriptureText ||
       selectedSubItem.description ||
       selectedSubItem.content ||
       '';
+    const currentInstruction = subItemDetail?.instructionNote || selectedSubItem?.instructionNote || '';
+    const mantrasList = Array.isArray(subItemDetail?.mantras) && subItemDetail.mantras.length > 0
+      ? subItemDetail.mantras
+      : (Array.isArray(selectedSubItem?.mantras) && selectedSubItem.mantras.length > 0
+        ? selectedSubItem.mantras
+        : (selectedSubItem?.mantra ? [{ title: currentTitle, script: selectedSubItem.mantra }] : []));
+    const procedureList = Array.isArray(subItemDetail?.procedure) && subItemDetail.procedure.length > 0
+      ? subItemDetail.procedure
+      : (Array.isArray(selectedSubItem?.procedure) ? selectedSubItem.procedure : []);
+    const contentsList = Array.isArray(subItemDetail?.contents) && subItemDetail.contents.length > 0
+      ? subItemDetail.contents
+      : (Array.isArray(subItemDetail?.devotionalContents) ? subItemDetail.devotionalContents : []);
+    const benefitsList = Array.isArray(subItemDetail?.benefits) && subItemDetail.benefits.length > 0
+      ? subItemDetail.benefits
+      : (Array.isArray(selectedSubItem?.benefits) ? selectedSubItem.benefits : []);
     const subItemMedallion = getSubItemMedallion(selectedSubItem, poojaContent.deityId);
 
     return (
@@ -1246,12 +750,134 @@ export const PoojaDetailScreen: React.FC<Props> = ({
               </View>
             ) : (
               <View>
-                {selectedSubItem.mantra ? (
-                  <View style={styles.mantraBox}>
-                    <Text style={styles.mantraText}>{selectedSubItem.mantra}</Text>
+                {/* Sacred Instruction Note from DB */}
+                {currentInstruction ? (
+                  <View style={styles.instructionBadge}>
+                    <Text style={styles.instructionText}>✦ {currentInstruction} ✦</Text>
                   </View>
                 ) : null}
-                <Text style={styles.readingBodyText}>{currentDesc}</Text>
+
+                {/* Formatted Paragraphs / Description */}
+                {currentDesc ? (
+                  currentDesc.split('\n\n').map((paragraph: string, pIdx: number) => {
+                    const trimmed = paragraph.trim();
+                    if (!trimmed) return null;
+                    if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+                      return (
+                        <View key={`heading-${pIdx}`} style={styles.sectionHeaderCard}>
+                          <Text style={styles.sectionHeaderText}>❖ {trimmed.slice(1, -1)} ❖</Text>
+                        </View>
+                      );
+                    }
+                    if (trimmed.startsWith('•') || trimmed.startsWith('*')) {
+                      return (
+                        <Text key={`bullet-${pIdx}`} style={styles.readingBodyText}>
+                          {trimmed}
+                        </Text>
+                      );
+                    }
+                    return (
+                      <Text key={`p-${pIdx}`} style={styles.readingBodyText}>
+                        {trimmed}
+                      </Text>
+                    );
+                  })
+                ) : null}
+
+                {/* Mantras from DB */}
+                {mantrasList && mantrasList.length > 0 ? (
+                  <View style={{ marginTop: 14 }}>
+                    <Text style={[styles.sectionHeaderText, { marginBottom: 10, color: '#173D32' }]}>
+                      ❖ {currentLanguage === 'te' ? 'దివ్య మంత్రములు & స్తోత్రములు' : 'Sacred Mantras & Invocations'}:
+                    </Text>
+                    {mantrasList.map((m: any, mIdx: number) => (
+                      <View key={m.id || mIdx} style={styles.mantraBox}>
+                        {m.title ? (
+                          <Text style={[styles.stepTitle, { color: '#8B4513', marginBottom: 6 }]}>
+                            ✦ {m.title} ✦
+                          </Text>
+                        ) : null}
+                        <Text style={styles.mantraText}>{m.script || m.mantra || m.text}</Text>
+                        {m.transliteration ? (
+                          <Text style={[styles.readingBodyText, { fontStyle: 'italic', marginTop: 4 }]}>
+                            {m.transliteration}
+                          </Text>
+                        ) : null}
+                        {m.meaning ? (
+                          <Text style={[styles.readingBodyText, { marginTop: 6, color: '#333' }]}>
+                            <Text style={{ fontWeight: '700', color: '#173D32' }}>
+                              {currentLanguage === 'te' ? 'భావము: ' : 'Meaning: '}
+                            </Text>
+                            {m.meaning}
+                          </Text>
+                        ) : null}
+                      </View>
+                    ))}
+                  </View>
+                ) : null}
+
+                {/* Child Procedures if attached to sub-item */}
+                {procedureList && procedureList.length > 0 ? (
+                  <View style={{ marginTop: 14 }}>
+                    <Text style={[styles.sectionHeaderText, { marginBottom: 8, color: '#173D32' }]}>
+                      ❖ {currentLanguage === 'te' ? 'పూజా క్రమము / విధానము (Procedure Steps)' : 'Worship Procedure Steps'}:
+                    </Text>
+                    {procedureList.map((step: any, sIdx: number) => (
+                      <View key={step.id || sIdx} style={styles.stepCardItem}>
+                        <View style={styles.stepBadge}>
+                          <Text style={styles.stepBadgeText}>{step.step || (sIdx + 1)}</Text>
+                        </View>
+                        <View style={{ flex: 1, marginLeft: 10 }}>
+                          <Text style={styles.stepTitle}>{step.title || (`Step ${sIdx + 1}`)}</Text>
+                          {step.mantra ? (
+                            <View style={[styles.mantraBox, { marginVertical: 6 }]}>
+                              <Text style={styles.mantraText}>{step.mantra}</Text>
+                            </View>
+                          ) : null}
+                          {step.desc || step.description ? (
+                            <Text style={styles.readingBodyText}>{step.desc || step.description}</Text>
+                          ) : null}
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                ) : null}
+
+                {/* Contents items if attached */}
+                {contentsList && contentsList.length > 0 ? (
+                  <View style={{ marginTop: 14 }}>
+                    {contentsList.map((c: any, cIdx: number) => (
+                      <View key={c.id || cIdx} style={{ marginTop: 8, paddingVertical: 4 }}>
+                        {c.title ? <Text style={styles.stepTitle}>✦ {c.title} ✦</Text> : null}
+                        {c.sacredText ? (
+                          <View style={[styles.mantraBox, { marginVertical: 6 }]}>
+                            <Text style={styles.mantraText}>{c.sacredText}</Text>
+                          </View>
+                        ) : null}
+                        <Text style={styles.readingBodyText}>{c.content || c.text || c.meaning || c.description}</Text>
+                      </View>
+                    ))}
+                  </View>
+                ) : null}
+
+                {/* Benefits if attached */}
+                {benefitsList && benefitsList.length > 0 ? (
+                  <View style={{ marginTop: 14 }}>
+                    <Text style={[styles.sectionHeaderText, { marginBottom: 8, color: '#173D32' }]}>
+                      ✨ {currentLanguage === 'te' ? 'పూజా ఫలము (Sacred Benefits)' : 'Divine Blessings & Benefits'}:
+                    </Text>
+                    {benefitsList.map((b: any, bIdx: number) => (
+                      <View key={bIdx} style={{ marginBottom: 6 }}>
+                        <Text style={[styles.stepTitle, { fontSize: 14 }]}>
+                          ❖ {typeof b === 'string' ? b : (b.title || `Benefit ${bIdx + 1}`)}
+                        </Text>
+                        {b.description && b.description !== b.title ? (
+                          <Text style={styles.readingBodyText}>{b.description}</Text>
+                        ) : null}
+                      </View>
+                    ))}
+                  </View>
+                ) : null}
               </View>
             )}
           </View>
@@ -1368,7 +994,7 @@ export const PoojaDetailScreen: React.FC<Props> = ({
               </TouchableOpacity>
             </View>
 
-            {poojaContent.materials.map((mat) => {
+            {poojaContent.materials.map((mat: any) => {
               const isChecked = !!checkedMaterials[mat.id];
               return (
                 <TouchableOpacity
@@ -1437,12 +1063,163 @@ export const PoojaDetailScreen: React.FC<Props> = ({
               </Text>
             </View>
           ) : subItems.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>
-                {currentLanguage === 'te'
-                  ? 'ఈ పూజకు సంబంధించిన వివరాలు సిద్ధమవుతున్నాయి.'
-                  : 'Items for this pooja will be available soon.'}
-              </Text>
+            /* Direct Single Pooja Reading Card when no subcategories exist */
+            <View style={styles.readingCard}>
+              <View style={styles.readingCardHeader}>
+                <View style={styles.readingMedallionWrapper}>
+                  <Image
+                    source={getSubItemMedallion({ title: displayTitle }, poojaContent.deityId)}
+                    style={styles.readingMedallionImage}
+                    resizeMode="cover"
+                  />
+                </View>
+                <View style={styles.readingTitleContainer}>
+                  <Text style={styles.readingTitle}>{displayTitle}</Text>
+                  <Text style={styles.readingSubtitle}>
+                    {poojaContent.deityId === 'ayyappa'
+                      ? 'ఓం స్వామియే శరణమయ్యప్ప 🙏'
+                      : '|| శుభం భూయాత్ ||'}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.readingDivider} />
+
+              <View style={{ marginTop: 6 }}>
+                {/* Sacred Instruction Note from DB */}
+                {(poojaContent.instructionNote || livePooja?.instructionNote) ? (
+                  <View style={styles.instructionBadge}>
+                    <Text style={styles.instructionText}>✦ {poojaContent.instructionNote || livePooja?.instructionNote} ✦</Text>
+                  </View>
+                ) : null}
+
+                {/* Overview / Description */}
+                {poojaContent.overview.description ? (
+                  <Text style={styles.readingBodyText}>{poojaContent.overview.description}</Text>
+                ) : null}
+
+                {/* Mantras from DB */}
+                {(() => {
+                  const mList = (poojaContent.mantras.length > 0 ? poojaContent.mantras : (livePooja?.mantras || []))
+                    .filter((m: any) => {
+                      const script = (m.script || m.mantra || m.text || '').trim();
+                      if (!script) return false;
+                      const desc = (poojaContent.overview.description || '').trim();
+                      if (desc && (desc.includes(script) || desc.includes(script.slice(0, 30)))) return false;
+                      return true;
+                    });
+                  if (mList.length === 0) return null;
+                  return (
+                    <View style={{ marginTop: 14 }}>
+                      <Text style={[styles.sectionHeaderText, { marginBottom: 10, color: '#173D32' }]}>
+                        ❖ {currentLanguage === 'te' ? 'దివ్య మంత్రములు & స్తోత్రములు' : 'Sacred Mantras & Invocations'}:
+                      </Text>
+                      {mList.map((m: any, mIdx: number) => (
+                        <View key={m.id || mIdx} style={styles.mantraBox}>
+                          {m.title ? (
+                            <Text style={[styles.stepTitle, { color: '#8B4513', marginBottom: 6 }]}>
+                              ✦ {m.title} ✦
+                            </Text>
+                          ) : null}
+                          <Text style={styles.mantraText}>{m.script || m.mantra || m.text}</Text>
+                          {m.transliteration ? (
+                            <Text style={[styles.readingBodyText, { fontStyle: 'italic', marginTop: 4 }]}>
+                              {m.transliteration}
+                            </Text>
+                          ) : null}
+                          {m.meaning ? (
+                            <Text style={[styles.readingBodyText, { marginTop: 6, color: '#333' }]}>
+                              <Text style={{ fontWeight: '700', color: '#173D32' }}>
+                                {currentLanguage === 'te' ? 'భావము: ' : 'Meaning: '}
+                              </Text>
+                              {m.meaning}
+                            </Text>
+                          ) : null}
+                        </View>
+                      ))}
+                    </View>
+                  );
+                })()}
+
+                {/* Procedure Steps from DB */}
+                {(() => {
+                  const pList = (poojaContent.procedure || []).filter((pr: any) => {
+                    const mantra = (pr.mantra || '').trim();
+                    const desc = (poojaContent.overview.description || '').trim();
+                    if (mantra && desc && (desc.includes(mantra) || desc.includes(mantra.slice(0, 30)))) return false;
+                    return true;
+                  });
+                  if (pList.length === 0) return null;
+                  return (
+                    <View style={{ marginTop: 14 }}>
+                      <Text style={[styles.sectionHeaderText, { marginBottom: 10, color: '#173D32' }]}>
+                        ❖ {currentLanguage === 'te' ? 'పూజా క్రమము / విధానము (Procedure Steps)' : (ui.procedure || 'Pooja Vidhanam Steps')}:
+                      </Text>
+                      {pList.map((pr: any, prIdx: number) => (
+                        <View key={pr.stepNumber || prIdx} style={styles.stepCardItem}>
+                          <View style={styles.stepBadge}>
+                            <Text style={styles.stepBadgeText}>{pr.stepNumber || (prIdx + 1)}</Text>
+                          </View>
+                          <View style={{ flex: 1, marginLeft: 10 }}>
+                            <Text style={styles.stepTitle}>{pr.title}</Text>
+                            {pr.mantra ? (
+                              <View style={[styles.mantraBox, { marginVertical: 6 }]}>
+                                <Text style={styles.mantraText}>{pr.mantra}</Text>
+                              </View>
+                            ) : null}
+                            {pr.description ? (
+                              <Text style={styles.readingBodyText}>{pr.description}</Text>
+                            ) : null}
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  );
+                })()}
+
+                {/* Devotional Contents from DB */}
+                {(() => {
+                  const cList = (poojaContent.contents || []).filter((c: any) => {
+                    const txt = (c.sacredText || c.content || c.text || '').trim();
+                    const desc = (poojaContent.overview.description || '').trim();
+                    if (txt && desc && (desc.includes(txt) || desc.includes(txt.slice(0, 30)))) return false;
+                    return true;
+                  });
+                  if (cList.length === 0) return null;
+                  return (
+                    <View style={{ marginTop: 14 }}>
+                      {cList.map((c: any, cIdx: number) => (
+                        <View key={c.id || cIdx} style={{ marginTop: 8, paddingVertical: 4 }}>
+                          {c.title ? <Text style={styles.stepTitle}>✦ {c.title} ✦</Text> : null}
+                          {c.sacredText ? (
+                            <View style={[styles.mantraBox, { marginVertical: 6 }]}>
+                              <Text style={styles.mantraText}>{c.sacredText}</Text>
+                            </View>
+                          ) : null}
+                          <Text style={styles.readingBodyText}>{c.content || c.text || c.meaning || c.description}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  );
+                })()}
+
+                {/* Benefits from DB */}
+                {poojaContent.benefits && poojaContent.benefits.length > 0 ? (
+                  <View style={{ marginTop: 14 }}>
+                    <Text style={[styles.sectionHeaderText, { marginBottom: 8, color: '#173D32' }]}>
+                      ✨ {currentLanguage === 'te' ? 'పూజా ఫలము (Sacred Benefits)' : 'Divine Blessings & Benefits'}:
+                    </Text>
+                    {poojaContent.benefits.map((b: any, bIdx: number) => (
+                      <View key={bIdx} style={{ marginBottom: 6 }}>
+                        <Text style={[styles.stepTitle, { fontSize: 14 }]}>❖ {b.title}</Text>
+                        {b.description && b.description !== b.title ? (
+                          <Text style={styles.readingBodyText}>{b.description}</Text>
+                        ) : null}
+                      </View>
+                    ))}
+                  </View>
+                ) : null}
+              </View>
             </View>
           ) : (
             <View style={styles.subListCardsContainer}>
@@ -1688,6 +1465,51 @@ const styles = StyleSheet.create({
     padding: 14,
     paddingBottom: 40,
   },
+  
+  stepCardItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: 'rgba(23, 61, 50, 0.03)',
+    borderRadius: 10,
+    padding: 10,
+    marginVertical: 6,
+    borderWidth: 1,
+    borderColor: '#E8D5B5',
+  },
+  stepBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#173D32',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+  stepBadgeText: {
+    color: '#FFD700',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  stepTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#173D32',
+    marginBottom: 2,
+  },
+  sectionHeaderText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#8B4513',
+  },
+  sectionHeaderCard: {
+    backgroundColor: '#FFF3E0',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: '#DFA62E',
+    marginVertical: 8,
+  },
   readingCard: {
     backgroundColor: '#FFFDF8',
     borderRadius: 16,
@@ -1758,6 +1580,21 @@ const styles = StyleSheet.create({
     color: '#2C1D11',
     fontWeight: '500',
     fontFamily: Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' }),
+  },
+  instructionBadge: {
+    backgroundColor: 'rgba(223, 166, 46, 0.15)',
+    borderWidth: 1,
+    borderColor: '#DFA62E',
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    marginBottom: 12,
+    alignSelf: 'flex-start',
+  },
+  instructionText: {
+    color: '#173D32',
+    fontSize: 13,
+    fontWeight: '700',
   },
   mantraBox: {
     backgroundColor: 'rgba(223, 166, 46, 0.12)',

@@ -36,6 +36,7 @@ interface Props {
   onOpenNotifications: () => void;
   onOpenTerms: () => void;
   onOpenPrivacyPolicy: () => void;
+  onOpenRefundPolicy?: () => void;
   onOpenAbout: () => void;
   onOpenAuth?: () => void;
   onLanguageChange?: (lang: SupportedLanguage) => void;
@@ -730,6 +731,7 @@ export const ProfileScreen: React.FC<Props> = ({
   onOpenNotifications,
   onOpenTerms,
   onOpenPrivacyPolicy,
+  onOpenRefundPolicy,
   onOpenAbout,
   onOpenAuth,
   onLanguageChange,
@@ -1811,6 +1813,7 @@ export const ProfileScreen: React.FC<Props> = ({
         onOpenNotifications={onOpenNotifications}
         onOpenTerms={onOpenTerms}
         onOpenPrivacyPolicy={onOpenPrivacyPolicy}
+        onOpenRefundPolicy={onOpenRefundPolicy}
         onOpenAbout={onOpenAbout}
         onLogout={onLogout}
         onSelectTempleDetail={(temple) => {
@@ -2526,6 +2529,22 @@ export const ProfileScreen: React.FC<Props> = ({
                 <View style={styles.legalTextCol}>
                   <Text style={styles.legalTitle}>Privacy Policy</Text>
                   <Text style={styles.legalSubtitle}>How devotee information and privacy are protected</Text>
+                </View>
+                <ChevronRightIcon />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.legalOptionRow}
+                activeOpacity={0.8}
+                onPress={() => {
+                  setLegalModalVisible(false);
+                  if (onOpenRefundPolicy) onOpenRefundPolicy();
+                  else onOpenTerms();
+                }}
+              >
+                <View style={styles.legalTextCol}>
+                  <Text style={styles.legalTitle}>Refund & Cancellation Policy</Text>
+                  <Text style={styles.legalSubtitle}>Official guidelines on temple donations & seva refunds</Text>
                 </View>
                 <ChevronRightIcon />
               </TouchableOpacity>

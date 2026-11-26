@@ -7,13 +7,13 @@ const monorepoRoot = path.resolve(projectRoot, '../..');
 
 const config = getDefaultConfig(projectRoot);
 
-// 1. Only watch the mobile app project directory
-// (Prevents Metro FallbackWatcher from crawling monorepo root, node_modules/.pnpm android builds, api, admin-panel, etc.)
-config.watchFolders = [projectRoot];
+// 1. Watch all files within the monorepo
+config.watchFolders = [monorepoRoot];
 
 // 2. Exclude native build outputs, android, ios, and gradle directories from resolver
 config.resolver.blockList = [
   /.*[/\\]android[/\\]app[/\\]build[/\\].*/,
+  /.*[/\\]android[/\\]build[/\\].*/,
   /.*[/\\]android[/\\]\.gradle[/\\].*/,
   /.*[/\\]ios[/\\]build[/\\].*/,
   /.*[/\\]\.expo[/\\].*/,

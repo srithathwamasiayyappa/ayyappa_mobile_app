@@ -15,8 +15,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Polygon } from 'react-native-svg';
 import { SupportedLanguage } from '../../../types';
-import { PRODUCTION_BASE_URL } from '../../../services/api';
-import { DEFAULT_CHILDREN } from '../../../data/defaultChildren';
+import { API_BASE_URL, PRODUCTION_BASE_URL } from '../../../services/api';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -115,8 +114,8 @@ export const SubcategoryTypesScreen: React.FC<Props> = ({
     deityId: string;
   }>({
     title: subcategoryTitle,
-    subtitle: 'Complete 16-step worship procedure for Lord Ganesha, remover of all obstacles.',
-    deityId: 'ganesha',
+    subtitle: '',
+    deityId: 'ayyappa',
   });
   const [loading, setLoading] = useState<boolean>(true);
 
@@ -126,17 +125,29 @@ export const SubcategoryTypesScreen: React.FC<Props> = ({
 
     const fetchTypes = async () => {
       try {
-        // Query DB via API for subcategory detail and attached types
-        const url = `${PRODUCTION_BASE_URL}/categories/subcategories/${encodeURIComponent(subcategoryId)}?lang=${currentLanguage}`;
-        const res = await fetch(url);
-        const json = await res.json().catch(() => null);
+        const bases = [API_BASE_URL, PRODUCTION_BASE_URL].filter((v, i, a) => v && a.indexOf(v) === i);
+        let json: any = null;
+
+        for (const base of bases) {
+          try {
+            const url = `${base}/categories/subcategories/${encodeURIComponent(subcategoryId)}?lang=${currentLanguage}`;
+            const res = await fetch(url);
+            if (res.ok) {
+              const parsed = await res.json().catch(() => null);
+              if (parsed && parsed.data) {
+                json = parsed;
+                break;
+              }
+            }
+          } catch (_) {}
+        }
 
         if (!isCancelled && json && json.data) {
           const d = json.data;
           setHeaderInfo({
             title: d.title || d.titleTelugu || subcategoryTitle,
-            subtitle: d.subtitle || d.overview || 'Complete 16-step worship procedure for Lord Ganesha, remover of all obstacles.',
-            deityId: d.deityId || 'ganesha',
+            subtitle: d.subtitle || d.overview || '',
+            deityId: d.deityId || 'ayyappa',
           });
 
           // Check for child types in response
@@ -147,9 +158,9 @@ export const SubcategoryTypesScreen: React.FC<Props> = ({
               id: String(ch.id || ch.slug || idx + 1),
               slug: ch.slug || String(ch.id),
               title: ch.title || `Type ${idx + 1}`,
-              description: ch.description || 'గణపతి షోడశోపచార పూజా విధానము, అంగపూజ, అష్టోత్తర శత నామావళి.',
+              description: ch.description || '',
               imageUrl: ch.imageUrl,
-              deityId: d.deityId || 'ganesha',
+              deityId: d.deityId || 'ayyappa',
               order: idx + 1,
             }));
           } else if (Array.isArray(d.contents) && d.contents.length > 0) {
@@ -157,44 +168,49 @@ export const SubcategoryTypesScreen: React.FC<Props> = ({
               id: String(dc.id || dc.slug || idx + 1),
               slug: dc.slug || String(dc.id),
               title: dc.title || `Type ${idx + 1}`,
-              description: dc.meaning || 'గణపతి షోడశోపచార పూజా విధానము, అంగపూజ, అష్టోత్తర శత నామావళి.',
+              description: dc.meaning || '',
               imageUrl: dc.audioUrl,
-              deityId: d.deityId || 'ganesha',
+              deityId: d.deityId || 'ayyappa',
               order: dc.displayOrder || idx + 1,
             }));
           }
 
           // If no types returned from detail, try child subcategories query
           if (resolvedList.length === 0) {
-            try {
-              const childRes = await fetch(`${PRODUCTION_BASE_URL}/admin/subcategories?parentId=${encodeURIComponent(d.rawId || subcategoryId)}&lang=${currentLanguage}`);
-              const childJson = await childRes.json().catch(() => null);
-              if (childJson && Array.isArray(childJson.data) && childJson.data.length > 0) {
-                resolvedList = childJson.data.map((c: any, idx: number) => ({
-                  id: String(c.id),
-                  slug: c.slug || String(c.id),
-                  title: c.title || c.slug,
-                  description: c.description || 'గణపతి షోడశోపచార పూజా విధానము, అంగపూజ, అష్టోత్తర శత నామావళి.',
-                  imageUrl: c.imageUrl,
-                  deityId: d.deityId || 'ganesha',
-                  order: idx + 1,
-                }));
-              }
-            } catch (_) {}
+            for (const base of bases) {
+              try {
+                const childRes = await fetch(`${base}/categories/subcategories?parent=${encodeURIComponent(d.rawId || subcategoryId)}&lang=${currentLanguage}`);
+                if (childRes.ok) {
+                  const childJson = await childRes.json().catch(() => null);
+                  if (childJson && Array.isArray(childJson.data) && childJson.data.length > 0) {
+                    resolvedList = childJson.data.map((c: any, idx: number) => ({
+                      id: String(c.id),
+                      slug: c.slug || String(c.id),
+                      title: c.title || c.slug,
+                      description: c.description || '',
+                      imageUrl: c.imageUrl,
+                      deityId: d.deityId || 'ayyappa',
+                      order: idx + 1,
+                    }));
+                    break;
+                  }
+                }
+              } catch (_) {}
+            }
           }
 
           if (resolvedList.length > 0) {
             setTypes(resolvedList);
           } else {
-            setTypes(resolveTypesFallback(subcategoryId, d.rawId, d.deityId || headerInfo.deityId));
+            setTypes([]);
           }
         } else if (!isCancelled) {
-          setTypes(resolveTypesFallback(subcategoryId, undefined, headerInfo.deityId));
+          setTypes([]);
         }
       } catch (err) {
         console.warn('Failed to load subcategory types:', err);
         if (!isCancelled) {
-          setTypes(resolveTypesFallback(subcategoryId, undefined, headerInfo.deityId));
+          setTypes([]);
         }
       } finally {
         if (!isCancelled) setLoading(false);
@@ -296,70 +312,7 @@ export const SubcategoryTypesScreen: React.FC<Props> = ({
   );
 };
 
-// Default 4 types for Sri Maha Ganapathi Pooja
-function getStandardGanapathiTypes(): TypeItem[] {
-  return [
-    {
-      id: '2291',
-      slug: 'sri-vighneshwara-pooja',
-      title: 'శ్రీ విఘ్నేశ్వర పూజ',
-      description: 'గణపతి షోడశోపచార పూజా విధానము, అంగపూజ, అష్టోత్తర శత నామావళి మరియు సంపూర్ణ మంగళ హారతి.',
-      deityId: 'ganesha',
-      order: 1,
-    },
-    {
-      id: '2292',
-      slug: 'sri-ganesha-pancharatnam',
-      title: 'శ్రీ గణేశ పంచరత్నము',
-      description: 'ఆది శంకరాచార్య విరచిత పరమ పవిత్రమైన శ్రీ గణేశ పంచరత్న స్తోత్రము మరియు దివ్య ఫలశ్రుతి.',
-      deityId: 'ganesha',
-      order: 2,
-    },
-    {
-      id: '2293',
-      slug: 'sri-ekadanta-stotram',
-      title: 'శ్రీ ఏకదంతస్తోత్రము',
-      description: 'సకల విఘ్న నివారణకు ఏకదంతుడైన గణేశుని స్తుతించే దివ్య ఏకదంత స్తోత్రము.',
-      deityId: 'ganesha',
-      order: 3,
-    },
-    {
-      id: '2294',
-      slug: 'sri-sankashtanashana-ganesha-stotram',
-      title: 'శ్రీ సంకష్టనాశన గణేశస్తోత్రము',
-      description: 'నారద పురాణోక్త శ్రీ సంకష్టనాశన గణేశ స్తోత్రము — సర్వ కార్యసిద్ధి, సంకష్ట నివారణ మంత్రములు.',
-      deityId: 'ganesha',
-      order: 4,
-    },
-  ];
-}
-
-function resolveTypesFallback(subcategoryId: string, rawId?: string | number, deityId: string = 'ganesha'): TypeItem[] {
-  const key = String(rawId || subcategoryId || '').toLowerCase().trim();
-  const rawKey = String(rawId || '').toLowerCase().trim();
-  const subKey = String(subcategoryId || '').toLowerCase().trim();
-
-  // 1. Check in DEFAULT_CHILDREN
-  const list = DEFAULT_CHILDREN[rawKey] || DEFAULT_CHILDREN[subKey] || DEFAULT_CHILDREN[key];
-  if (Array.isArray(list) && list.length > 0) {
-    return list.map((item, idx) => ({
-      id: String(item.id || item.slug || idx + 1),
-      slug: item.slug || String(item.id),
-      title: item.title,
-      description: item.description || 'సకల శుభములు కలిగించే పరమ పవిత్ర పూజా విధానము మరియు స్తోత్రములు.',
-      imageUrl: item.imageUrl,
-      deityId: deityId,
-      order: idx + 1,
-    }));
-  }
-
-  // 2. Check for Ganesha/Vighneshwara poojas
-  if (/ganapa|vignesh|vinayak|mahaganapati/.test(subKey) || /ganapa|vignesh|vinayak|mahaganapati/.test(rawKey)) {
-    return getStandardGanapathiTypes();
-  }
-
-  return [];
-}
+// Zero mock/fallback data: types strictly loaded from DB via API
 
 const styles = StyleSheet.create({
   root: {

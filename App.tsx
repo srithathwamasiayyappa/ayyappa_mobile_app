@@ -53,6 +53,7 @@ import { EditProfileScreen } from './src/features/profile/screens/EditProfileScr
 import { CompleteProfileScreen } from './src/features/profile/screens/CompleteProfileScreen';
 import { TermsScreen } from './src/features/profile/screens/TermsScreen';
 import { PrivacyPolicyScreen } from './src/features/profile/screens/PrivacyPolicyScreen';
+import { RefundPolicyScreen } from './src/features/profile/screens/RefundPolicyScreen';
 import { NotificationsScreen } from './src/features/profile/screens/NotificationsScreen';
 import { AboutScreen } from './src/features/home/screens/AboutScreen';
 import { ContactScreen } from './src/features/contact/screens/ContactScreen';
@@ -60,6 +61,7 @@ import { PanchangamScreen } from './src/features/panchangam/screens/PanchangamSc
 import { FestivalsScreen } from './src/features/festivals/screens/FestivalsScreen';
 import { DetailScreen } from './src/features/devotional-content/screens/DetailScreen';
 import { CategoryListingScreen } from './src/features/services/screens/CategoryListingScreen';
+import { SubcategoryTypesScreen } from './src/features/services/screens/SubcategoryTypesScreen';
 import { PoojaDetailScreen } from './src/features/services/screens/PoojaDetailScreen';
 import { SlokaDetailScreen } from './src/features/services/screens/SlokaDetailScreen';
 import { BhajansSongsScreen } from './src/features/services/screens/BhajansSongsScreen';
@@ -87,6 +89,7 @@ interface DetailState {
   title: string;
   deity?: string;
   rawId?: string;
+  parentTitle?: string;
 }
 
 interface NavHistoryEntry {
@@ -234,7 +237,7 @@ export default function App() {
       return true;
     }
 
-    if (['terms', 'privacy_policy', 'edit_profile'].includes(currentScreen)) {
+    if (['terms', 'privacy_policy', 'refund_policy', 'edit_profile'].includes(currentScreen)) {
       setCurrentScreen('profile');
       StorageService.saveNavigationState('profile', null);
       return true;
@@ -368,13 +371,8 @@ export default function App() {
     StorageService.getStoredUser()
       .then((user) => {
         if (user) {
-          if (!user?.profileOnboardingStatus || user.profileOnboardingStatus === 'PENDING') {
-            setCurrentScreen('complete_profile');
-            StorageService.saveNavigationState('complete_profile', null);
-          } else {
-            setCurrentScreen('home');
-            StorageService.saveNavigationState('home', null);
-          }
+          setCurrentScreen('home');
+          StorageService.saveNavigationState('home', null);
         } else {
           // Devotee starts with the 2 onboarding screens
           setCurrentScreen('onboarding');
@@ -417,27 +415,29 @@ export default function App() {
     StorageService.saveNavigationState('onboarding', null);
   };
 
-  // When devotee chooses Deity and taps Continue -> Proceed to Home or to selected Service
+  // When devotee chooses Deity and taps Continue -> Directly filter services/subcategories by the selected god
   const handleDeityContinue = (selectedDeity: any) => {
     setCurrentDeity(selectedDeity);
     StorageService.setStoredDeity(selectedDeity);
 
+    const deitySlug = (selectedDeity?.slug || selectedDeity?.id || 'all').toLowerCase();
+
     if (pendingServiceTarget) {
       const target = pendingServiceTarget;
       setPendingServiceTarget(null);
-      const deitySlug = selectedDeity.slug || selectedDeity.id || 'all';
       handleOpenDetail(target.id, target.title, deitySlug, true);
       return;
     }
 
     if (navHistory.length > 0 && navHistory[navHistory.length - 1].screen === 'profile') {
       handleGoBack();
-    } else if (currentUser && (!currentUser.profileOnboardingStatus || currentUser.profileOnboardingStatus === 'PENDING')) {
-      setCurrentScreen('complete_profile');
-      StorageService.saveNavigationState('complete_profile', null);
     } else {
-      setCurrentScreen('home');
-      StorageService.saveNavigationState('home', null);
+      // Directly filter subcategories/services and show based upon the god (Never navigate to complete_profile!)
+      navigateTo('category_listing', {
+        id: 'pooja-vidhanam',
+        title: 'Pooja Vidhanam',
+        deity: deitySlug,
+      });
     }
   };
 
@@ -585,7 +585,25 @@ export default function App() {
       navigateTo('festivals', { id, title: title || 'Festivals & Sacred Days', deity: activeDeity });
     } else {
       const listingCategories = ['pooja-vidhanam', 'astothrams', 'slokas', 'bhajans', 'harathis'];
-      if (listingCategories.includes(id) || !id.includes('-')) {
+      const lowerId = (id || '').toLowerCase();
+      const isListingCategory =
+        listingCategories.includes(lowerId) ||
+        lowerId === 'pooja' ||
+        lowerId === 'pooja-vidhanam' ||
+        lowerId === 'poojalu-vrathaalu' ||
+        lowerId === 'stotras' ||
+        lowerId === 'divine-stotras' ||
+        lowerId === 'slokas' ||
+        lowerId === 'daily-slokas' ||
+        lowerId === 'astothrams' ||
+        lowerId === 'ashtottara' ||
+        lowerId === 'bhajans' ||
+        lowerId === 'songs' ||
+        lowerId === 'harathis' ||
+        lowerId === 'bhajans-songs' ||
+        !lowerId.includes('-');
+
+      if (isListingCategory) {
         navigateTo('category_listing', { id, title, deity: activeDeity });
       } else if (id.includes('pooja') || id.includes('vratham') || id.includes('abhishekam')) {
         navigateTo('pooja_detail', { id, title, deity: activeDeity });
@@ -665,6 +683,7 @@ export default function App() {
     currentScreen === 'notifications' ||
     currentScreen === 'terms' ||
     currentScreen === 'privacy_policy' ||
+    currentScreen === 'refund_policy' ||
     currentScreen === 'about' ||
     currentScreen === 'contact';
 
@@ -690,6 +709,7 @@ export default function App() {
     currentScreen === 'contact' ||
     currentScreen === 'terms' ||
     currentScreen === 'privacy_policy' ||
+    currentScreen === 'refund_policy' ||
     currentScreen === 'food_donation' ||
     currentScreen === 'donations' ||
     currentScreen === 'notifications';
@@ -717,6 +737,7 @@ export default function App() {
     currentScreen === 'notifications' ||
     currentScreen === 'terms' ||
     currentScreen === 'privacy_policy' ||
+    currentScreen === 'refund_policy' ||
     currentScreen === 'about' ||
     currentScreen === 'contact'
   ) {
@@ -862,6 +883,7 @@ export default function App() {
             onOpenNotifications={() => navigateTo('notifications')}
             onOpenTerms={() => navigateTo('terms')}
             onOpenPrivacyPolicy={() => navigateTo('privacy_policy')}
+            onOpenRefundPolicy={() => navigateTo('refund_policy')}
             onOpenAbout={() => navigateTo('about')}
             onOpenAuth={() => navigateTo('auth')}
             onLanguageChange={(lang) => setSelectedLanguage(lang)}
@@ -908,6 +930,13 @@ export default function App() {
           />
         )}
 
+        {currentScreen === 'refund_policy' && (
+          <RefundPolicyScreen
+            currentLanguage={selectedLanguage}
+            onBack={handleGoBack}
+          />
+        )}
+
         {currentScreen === 'about' && (
           <AboutScreen
             currentLanguage={selectedLanguage}
@@ -947,8 +976,35 @@ export default function App() {
             categoryTitle={activeDetail.title}
             currentLanguage={selectedLanguage}
             initialDeity={activeDetail.deity || 'all'}
-            onSelectItem={(id, title, rawId) => {
+            onSelectItem={(id, title, rawId, isCategoryWithTypes) => {
               if (
+                isCategoryWithTypes ||
+                id === 'sri-vigneshwara-ashtottara' ||
+                id === 'sri-maha-ganapathi-pooja' ||
+                id === 'sri-subramanya-ashtottara' ||
+                id === 'sri-subrahmanya' ||
+                id === 'sri-subrahmanyeshwara' ||
+                id === 'sri-ayyappa-ashtottara' ||
+                id === 'sri-dharma-sastha-pooja' ||
+                id === 'sri-dharma-sastha' ||
+                rawId === '6' ||
+                rawId === '7' ||
+                rawId === '8' ||
+                rawId === '229' ||
+                (title && (
+                  title.includes('మహాగణపతి') ||
+                  title.toLowerCase().includes('mahaganapathi') ||
+                  title.includes('సుబ్రహ్మణ్య') ||
+                  title.toLowerCase().includes('subrahmanya') ||
+                  title.toLowerCase().includes('subramanya') ||
+                  title.includes('ధర్మ శాస్త') ||
+                  title.includes('ధర్మశాస్త') ||
+                  title.toLowerCase().includes('dharma sastha') ||
+                  title.toLowerCase().includes('dharmasastha')
+                ))
+              ) {
+                navigateTo('subcategory_types', { id, title, rawId, parentTitle: activeDetail.title });
+              } else if (
                 activeDetail.id === 'pooja-vidhanam' ||
                 id.includes('pooja') ||
                 id.includes('vratham') ||
@@ -967,6 +1023,8 @@ export default function App() {
               } else if (
                 activeDetail.id === 'slokas' ||
                 activeDetail.id === 'astothrams' ||
+                activeDetail.id === 'stotras' ||
+                activeDetail.id === 'divine-stotras' ||
                 id.includes('sloka') ||
                 id.includes('stotram') ||
                 id.includes('astothram') ||
@@ -979,9 +1037,31 @@ export default function App() {
                 id.includes('chalisa') ||
                 id.includes('kavasam')
               ) {
-                navigateTo('sloka_detail', { id, title });
+                navigateTo('sloka_detail', { id, title, rawId });
               } else {
-                navigateTo('detail', { id, title });
+                navigateTo('detail', { id, title, rawId });
+              }
+            }}
+            onBack={handleGoBack}
+          />
+        )}
+
+        {currentScreen === 'subcategory_types' && activeDetail && (
+          <SubcategoryTypesScreen
+            subcategoryId={activeDetail.id}
+            subcategoryTitle={activeDetail.title}
+            parentCategoryTitle={activeDetail.parentTitle || 'Pooja Vidhanam'}
+            currentLanguage={selectedLanguage}
+            onSelectType={(type) => {
+              const lowerSlug = (type.slug || type.id || '').toLowerCase();
+              if (
+                lowerSlug.includes('pooja') ||
+                lowerSlug.includes('vratham') ||
+                lowerSlug.includes('abhishekam')
+              ) {
+                navigateTo('pooja_detail', { id: type.slug || type.id, title: type.title, rawId: type.id });
+              } else {
+                navigateTo('sloka_detail', { id: type.slug || type.id, title: type.title, rawId: type.id });
               }
             }}
             onBack={handleGoBack}
@@ -1071,6 +1151,7 @@ export default function App() {
           activeDetail && (
             <SlokaDetailScreen
               itemId={activeDetail.id}
+              rawId={activeDetail.rawId}
               title={activeDetail.title}
               currentLanguage={selectedLanguage}
               onBack={handleGoBack}
@@ -1095,6 +1176,7 @@ export default function App() {
             <DetailScreen
               title={activeDetail.title}
               itemId={activeDetail.id}
+              rawId={activeDetail.rawId}
               currentLanguage={selectedLanguage}
               onBack={handleGoBack}
             />
