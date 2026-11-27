@@ -140,23 +140,7 @@ export class CategoriesController {
     }
 
     // 2. Standard multi-lingual devotional keywords mapping to DB deity records
-    if (/ayyap|sastha|harivarasanam|shabarimala|uthara|sannidhanam|padi|maaladharan|sharanu|harathi|irumudi|kettu|kattu|poorvaang|పూర్వాంగ|మాలాధారణ|అయ్యప్ప|శాస్తా|శాస్త|శబరిమల|మాలాధారణ|హరివరాసనం|శరణం|హారతి|ఇరుముడి|పడి/.test(text)) {
-      const ayyappa = dbDeities.find((d) => d.id === 'ayyappa');
-      return {
-        deityId: 'ayyappa',
-        deityName: ayyappa?.name || 'Lord Ayyappa',
-        deityTelugu: ayyappa?.nameTe || 'శ్రీ అయ్యప్ప స్వామి',
-      };
-    }
-    if (/shiva|linga|bilva|rudra|natara|mrityunjaya|kedar|vishwanath|shankara|renuka|శివ|లింగ|బిల్వ|రుద్ర|మృత్యుంజయ|ఈశ్వర|కేదారేశ్వర|నటరాజ|విశ్వనాథ|శంకర|శఙ్కర|రేణుక/.test(text)) {
-      const shiva = dbDeities.find((d) => d.id === 'shiva');
-      return {
-        deityId: 'shiva',
-        deityName: shiva?.name || 'Lord Shiva',
-        deityTelugu: shiva?.nameTe || 'పరమశివుడు',
-      };
-    }
-    if (/ganesh|vignesh|vinayak|ganapath|modak|గణపతి|వినాయక|విఘ్నేశ్వర|గణేశ|గణప|మోదక/.test(text)) {
+    if (/ganesh|vignesh|vighnesh|vinayak|ganapath|modak|గణపతి|వినాయక|విఘ్నేశ్వర|విఘ్నేశ|గణేశ|గణప|మోదక/.test(text)) {
       const ganesha = dbDeities.find((d) => d.id === 'ganesha');
       return {
         deityId: 'ganesha',
@@ -164,12 +148,12 @@ export class CategoriesController {
         deityTelugu: ganesha?.nameTe || 'శ్రీ మహాగణపతి',
       };
     }
-    if (/devi|durga|lakshmi|lalitha|kanakadhara|mahalakshmi|meenakshi|kamakshi|saraswathi|gomatha|kamadhenu|vasavi|akhiland|kanyaka|దేవి|లక్ష్మి|దుర్గ|లలిత|సరస్వతి|గోమాత|కామధేను|వరలక్ష్మి|మాళికాపురత్తమ్మ|వాసవి|వాసవీ|అఖిలాండ|కన్యక/.test(text)) {
-      const devi = dbDeities.find((d) => d.id === 'devi');
+    if (/subrahmanya|subramanya|murugan|kartikeya|saravana|shanmukha|vel|skanda|kanda|sashti|kavasam|pazhani|palani|సుబ్రహ్మణ్య|మురుగన్|కార్తికేయ|షణ్ముఖ|స్కంద|షష్ఠి|కవచం|పళని/.test(text)) {
+      const murugan = dbDeities.find((d) => d.id === 'murugan');
       return {
-        deityId: 'devi',
-        deityName: devi?.name || 'Goddess Lakshmi / Durga',
-        deityTelugu: devi?.nameTe || 'శ్రీ లక్ష్మీ దుర్గా దేవి',
+        deityId: 'murugan',
+        deityName: murugan?.name || 'Lord Murugan',
+        deityTelugu: murugan?.nameTe || 'శ్రీ సుబ్రహ్మణ్యేశ్వర స్వామి',
       };
     }
     if (/venkates|vishnu|koodalmanikya|achyuta|govinda|narayana|perumal|satyanarayana|guruvayoor|ramanuja|వేంకట|వెంకట|విష్ణు|సత్యనారాయణ|గోవింద|నారాయణ|శ్రీనివాస|గురువాయూరప్ప|రామానుజ/.test(text)) {
@@ -180,6 +164,14 @@ export class CategoriesController {
         deityTelugu: venk?.nameTe || 'శ్రీ వేంకటేశ్వర స్వామి',
       };
     }
+    if (/devi|durga|lakshmi|lalitha|kanakadhara|mahalakshmi|meenakshi|kamakshi|saraswathi|gomatha|kamadhenu|vasavi|akhiland|kanyaka|varalakshmi|దేవి|లక్ష్మి|దుర్గ|లలిత|సరస్వతి|గోమాత|కామధేను|వరలక్ష్మి|మాళికాపురత్తమ్మ|వాసవి|వాసవీ|అఖిలాండ|కన్యక/.test(text)) {
+      const devi = dbDeities.find((d) => d.id === 'devi');
+      return {
+        deityId: 'devi',
+        deityName: devi?.name || 'Goddess Lakshmi / Durga',
+        deityTelugu: devi?.nameTe || 'శ్రీ లక్ష్మీ దుర్గా దేవి',
+      };
+    }
     if (/hanuman|anjaneya|maruti|bajrang|sundarakanda|హనుమాన్|ఆంజనేయ|మారుతి|రామదూత/.test(text)) {
       const hanuman = dbDeities.find((d) => d.id === 'hanuman');
       return {
@@ -188,12 +180,20 @@ export class CategoriesController {
         deityTelugu: hanuman?.nameTe || 'శ్రీ హనుమాన్',
       };
     }
-    if (/subrahmanya|murugan|kartikeya|saravana|shanmukha|vel|skanda|kanda|sashti|kavasam|pazhani|సుబ్రహ్మణ్య|మురుగన్|కార్తికేయ|షణ్ముఖ|స్కంద|షష్ఠి|కవచం|పళని/.test(text)) {
-      const murugan = dbDeities.find((d) => d.id === 'murugan');
+    if (/shiva|linga|bilva|rudra|natara|mrityunjaya|kedar|vishwanath|shankara|renuka|someshwara|mallikarjuna|శివ|లింగ|బిల్వ|రుద్ర|మృత్యుంజయ|పరమశివ|కేదార|నటరాజ|విశ్వనాథ|శంకర|శఙ్కర|రేణుక/.test(text)) {
+      const shiva = dbDeities.find((d) => d.id === 'shiva');
       return {
-        deityId: 'murugan',
-        deityName: murugan?.name || 'Lord Murugan',
-        deityTelugu: murugan?.nameTe || 'శ్రీ సుబ్రహ్మణ్యేశ్వర స్వామి',
+        deityId: 'shiva',
+        deityName: shiva?.name || 'Lord Shiva',
+        deityTelugu: shiva?.nameTe || 'పరమశివుడు',
+      };
+    }
+    if (/ayyap|sastha|harivarasanam|shabarimala|uthara|sannidhanam|padi|maaladharan|sharanu|harathi|irumudi|kettu|kattu|poorvaang|poorvang|dharmasastha|dharma sastha|మాలాధారణ|పూర్వాంగ|శబరి|అయ్యప్ప|శాస్తా|శాస్త|శబరిమల|హరివరాసనం|శరణం|హారతి|ఇరుముడి|పడి|మణికంఠ|manikanta/.test(text)) {
+      const ayyappa = dbDeities.find((d) => d.id === 'ayyappa');
+      return {
+        deityId: 'ayyappa',
+        deityName: ayyappa?.name || 'Lord Ayyappa',
+        deityTelugu: ayyappa?.nameTe || 'శ్రీ అయ్యప్ప స్వామి',
       };
     }
 
@@ -760,33 +760,76 @@ export class CategoriesController {
             const itemD = (item.deityId || '').toLowerCase().replace(/^(lord-|goddess-)/, '');
             const itemSlug = (item.slug || '').toLowerCase();
             const itemTitle = (item.title || '').toLowerCase();
+            const text = `${itemSlug} ${itemTitle}`;
             const pSlug = (item.parentSlug || '').toLowerCase();
-            const pTitle = (item.parentTitle || '').toLowerCase();
 
-            // Universal all-deity daily slokas (like Morning, Meal, Night Prayers, Nithya Paarayana)
-            const isUniversal =
-              itemSlug.includes('nithya-paarayana') ||
-              itemSlug.includes('morning-prayers') ||
-              itemSlug.includes('meal-prayers') ||
-              itemSlug.includes('night-prayers') ||
-              itemD === 'all' ||
-              itemSlug === 'nithya-paarayana-shlokamulu';
+            // Universal all-deity daily slokas (ONLY applies under slokas category)
+            const isSlokaCategory = pSlug.includes('sloka');
+            const isUniversalSloka =
+              isSlokaCategory &&
+              (itemSlug.includes('nithya-paarayana') ||
+                itemSlug.includes('morning-prayers') ||
+                itemSlug.includes('meal-prayers') ||
+                itemSlug.includes('night-prayers'));
 
-            return (
-              isUniversal ||
-              itemD === normDeity ||
-              itemSlug.includes(normDeity) ||
-              itemTitle.includes(normDeity) ||
-              pSlug.includes(normDeity) ||
-              pTitle.includes(normDeity) ||
-              (normDeity === 'ayyappa' && (itemSlug.includes('poorvaang') || itemTitle.includes('పూర్వాంగ') || itemSlug.includes('maaladharan') || itemTitle.includes('మాలాధారణ') || itemSlug.includes('ayyap') || itemTitle.includes('అయ్యప్ప') || itemSlug.includes('harivarasanam') || itemTitle.includes('హరివరాసనం') || itemSlug.includes('padi') || itemTitle.includes('పడి') || itemSlug.includes('sastha') || itemTitle.includes('శాస్త') || itemSlug.includes('suprabatham') || itemTitle.includes('సుప్రభాతం') || itemD === 'ayyappa')) ||
-              ((normDeity === 'vishnu' || normDeity === 'venkateswara') && (itemD === 'venkateswara' || itemSlug.includes('satyanarayana') || itemTitle.includes('సత్యనారాయణ') || itemSlug.includes('venkat') || itemTitle.includes('వేంకట') || itemSlug.includes('suprabhat') || itemSlug.includes('guruvayoor') || itemTitle.includes('గురువాయూరప్ప') || itemSlug.includes('tulasi') || itemTitle.includes('తులసి'))) ||
-              (normDeity === 'ganesha' && (itemD === 'ganesha' || itemSlug.includes('vinayak') || itemTitle.includes('వినాయక') || itemSlug.includes('ganapathi') || itemTitle.includes('గణపతి') || itemSlug.includes('pancharatnam') || itemSlug.includes('vignesh') || itemSlug.includes('vighnesh') || itemTitle.includes('విఘ్నేశ్వర') || itemTitle.includes('మహాగణపతి') || itemSlug.includes('mahaganapathi'))) ||
-              (normDeity === 'devi' && (itemD === 'devi' || itemSlug.includes('varalakshmi') || itemTitle.includes('వరలక్ష్మి') || itemSlug.includes('lakshmi') || itemTitle.includes('లక్ష్మి') || itemSlug.includes('devi') || itemTitle.includes('దేవి') || itemSlug.includes('karagre') || itemSlug.includes('dandaal') || itemTitle.includes('దండాల') || itemSlug.includes('akhiland') || itemTitle.includes('అఖిలాండ') || itemSlug.includes('amba') || itemTitle.includes('అంబ'))) ||
-              (normDeity === 'shiva' && (itemD === 'shiva' || itemSlug.includes('kedar') || itemTitle.includes('కేదార') || itemSlug.includes('rudra') || itemTitle.includes('రుద్ర') || itemSlug.includes('shiva') || itemTitle.includes('శివ') || itemSlug.includes('linga') || itemSlug.includes('tandava') || itemSlug.includes('umamaheshwara') || itemTitle.includes('ఉమామహేశ్వర'))) ||
-              (normDeity === 'hanuman' && (itemD === 'hanuman' || itemSlug.includes('hanuman') || itemTitle.includes('హనుమాన్') || itemSlug.includes('chalisa') || itemSlug.includes('anjaneya') || itemTitle.includes('ఆంజనేయ'))) ||
-              (normDeity === 'murugan' && (itemD === 'murugan' || itemSlug.includes('murugan') || itemSlug.includes('subrahmanya') || itemSlug.includes('subramanya') || itemTitle.includes('సుబ్రహ్మణ్య') || itemSlug.includes('kanda') || itemSlug.includes('sashti') || itemTitle.includes('స్కంద') || itemTitle.includes('షష్ఠి') || itemSlug.includes('kartikeya') || itemTitle.includes('కార్తికేయ') || itemSlug.includes('pazhani') || itemSlug.includes('palani') || itemTitle.includes('పళని') || itemSlug.includes('udipi') || itemTitle.includes('ఉడిపి')))
-            );
+            if (isUniversalSloka) return true;
+
+            const isGanesha =
+              itemD === 'ganesha' ||
+              /ganesh|vinayak|vignesh|vighnesh|ganapath|modak|గణపతి|వినాయక|విఘ్నేశ్వర|విఘ్నేశ|గణేశ|మోదక/.test(text);
+
+            const isMurugan =
+              itemD === 'murugan' ||
+              /subrahmanya|subramanya|murugan|kartikeya|saravana|shanmukha|vel|skanda|kanda|sashti|kavasam|pazhani|palani|సుబ్రహ్మణ్య|మురుగన్|కార్తికేయ|షణ్ముఖ|స్కంద|షష్ఠి|కవచం|పళని/.test(text);
+
+            const isVenkateswara =
+              itemD === 'venkateswara' ||
+              /venkates|vishnu|koodalmanikya|achyuta|govinda|narayana|perumal|satyanarayana|guruvayoor|ramanuja|వేంకట|వెంకట|విష్ణు|సత్యనారాయణ|గోవింద|నారాయణ|శ్రీనివాస|గురువాయూరప్ప|రామానుజ/.test(text);
+
+            const isDevi =
+              itemD === 'devi' ||
+              /devi|durga|lakshmi|lalitha|kanakadhara|mahalakshmi|meenakshi|kamakshi|saraswathi|gomatha|kamadhenu|vasavi|akhiland|kanyaka|varalakshmi|దేవి|లక్ష్మి|దుర్గ|లలిత|సరస్వతి|గోమాత|కామధేను|వరలక్ష్మి|మాళికాపురత్తమ్మ|వాసవి|వాసవీ|అఖిలాండ|కన్యక/.test(text);
+
+            const isHanuman =
+              itemD === 'hanuman' ||
+              /hanuman|anjaneya|maruti|bajrang|sundarakanda|హనుమాన్|ఆంజనేయ|మారుతి|రామదూత/.test(text);
+
+            const isShiva =
+              itemD === 'shiva' ||
+              /shiva|linga|bilva|rudra|natara|mrityunjaya|kedar|vishwanath|shankara|renuka|someshwara|mallikarjuna|శివ|లింగ|బిల్వ|రుద్ర|మృత్యుంజయ|పరమశివ|కేదార|నటరాజ|విశ్వనాథ|శంకర/.test(text);
+
+            const isAyyappa =
+              itemD === 'ayyappa' ||
+              /ayyap|sastha|harivarasanam|shabarimala|uthara|sannidhanam|padi|maaladharan|sharanu|harathi|irumudi|kettu|kattu|poorvaang|poorvang|dharmasastha|dharma sastha|మాలాధారణ|పూర్వాంగ|శబరి|అయ్యప్ప|శాస్తా|శాస్త|శబరిమల|హరివరాసనం|శరణం|హారతి|ఇరుముడి|పడి|మణికంఠ|manikanta/.test(text);
+
+            if (normDeity === 'ganesha') {
+              return isGanesha;
+            }
+            if (normDeity === 'murugan') {
+              return isMurugan;
+            }
+            if (normDeity === 'venkateswara' || normDeity === 'vishnu') {
+              return isVenkateswara;
+            }
+            if (normDeity === 'devi') {
+              return isDevi;
+            }
+            if (normDeity === 'hanuman') {
+              return isHanuman;
+            }
+            if (normDeity === 'shiva') {
+              // Shiva must not match Ganesha (Vighneshwara), Murugan (Subrahmanya), or Ayyappa
+              return isShiva && !isGanesha && !isMurugan && !isAyyappa;
+            }
+            if (normDeity === 'ayyappa') {
+              // Strictly Ayyappa: MUST NOT match Vinayaka, Kedareswara, Varalakshmi, Hanuman, or Murugan
+              if (isGanesha || isMurugan || isDevi || isHanuman || (isShiva && !/poorvaang|పూర్వాంగ|sastha|శాస్త|ayyap|అయ్యప్ప/.test(text))) {
+                return false;
+              }
+              return isAyyappa;
+            }
+
+            return itemD === normDeity;
           });
         }
 

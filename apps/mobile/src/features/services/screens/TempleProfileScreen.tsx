@@ -431,7 +431,7 @@ export const TempleProfileScreen: React.FC<Props> = ({
       Alert.alert(
         activeTemple.name,
         UI_TRANSLATIONS.phoneUnavailable[langKey] ||
-          'Official temple phone number is currently not listed.'
+        'Official temple phone number is currently not listed.'
       );
       return;
     }

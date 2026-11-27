@@ -278,23 +278,24 @@ export const CategoryListingScreen: React.FC<Props> = ({
         categoryId,
         currentLanguage,
         undefined,
-        undefined
+        deityToFetch !== 'all' ? deityToFetch : undefined
       );
 
       if (Array.isArray(items) && items.length > 0) {
         const mapped: ListingItem[] = items.map((item: any) => {
-          const isAyyappa = /ayyap|sastha|padi|irumudi|kettu|kattu|maaladharan|poorvaang|harivarasanam|nauka|మాలాధారణ|పూర్వాంగ|శబరి|అయ్యప్ప|ఇరుముడి|హరివరాసనం|నౌక/.test((item.slug + ' ' + (item.title || '')).toLowerCase());
+          const txt = ((item.slug || '') + ' ' + (item.title || '')).toLowerCase();
           let detectedDeity = item.deityId ? item.deityId.toLowerCase() : '';
+
           if (!detectedDeity || detectedDeity === 'all') {
-            const txt = (item.slug + ' ' + (item.title || '')).toLowerCase();
-            if (/shiva|linga|rudra|vishwanath|shankara|renuka|umamaheshwara|శివ|లింగ|రుద్ర|విశ్వనాథ|శంకర|శఙ్కర|రేణుక|ఉమామహేశ్వర/.test(txt)) detectedDeity = 'shiva';
-            else if (/devi|durga|lakshmi|vasavi|akhiland|kanyaka|dandaal|amba|దేవి|లక్ష్మి|దుర్గ|వాసవి|వాసవీ|అఖిలాండ|కన్యక|దండాల|అంబ/.test(txt)) detectedDeity = 'devi';
-            else if (/venkates|vishnu|ramanuja|guruvayoor|tulasi|వేంకట|వెంకట|విష్ణు|రామానుజ|గురువాయూరప్ప|తులసి/.test(txt)) detectedDeity = 'venkateswara';
-            else if (/ganesh|vignesh|vinayak|ganapathi|గణపతి|వినాయక|విఘ్నేశ్వర/.test(txt)) detectedDeity = 'ganesha';
-            else if (/hanuman|anjaneya|హనుమాన్|ఆంజనేయ/.test(txt)) detectedDeity = 'hanuman';
-            else if (/subrahmanya|murugan|kanda|sashti|pazhani|palani|udipi|సుబ్రహ్మణ్య|మురుగన్|స్కంద|షష్ఠి|పళని|ఉడిపి/.test(txt)) detectedDeity = 'murugan';
+            if (/ganesh|vinayak|vignesh|vighnesh|ganapath|modak|గణపతి|వినాయక|విఘ్నేశ్వర|విఘ్నేశ|గణేశ|మోదక/.test(txt)) detectedDeity = 'ganesha';
+            else if (/subrahmanya|subramanya|murugan|kartikeya|saravana|shanmukha|vel|skanda|kanda|sashti|kavasam|pazhani|palani|సుబ్రహ్మణ్య|మురుగన్|కార్తికేయ|షణ్ముఖ|స్కంద|షష్ఠి|కవచం|పళని/.test(txt)) detectedDeity = 'murugan';
+            else if (/venkates|vishnu|koodalmanikya|achyuta|govinda|narayana|perumal|satyanarayana|guruvayoor|ramanuja|వేంకట|వెంకట|విష్ణు|సత్యనారాయణ|గోవింద|నారాయణ|శ్రీనివాస|గురువాయూరప్ప|రామానుజ/.test(txt)) detectedDeity = 'venkateswara';
+            else if (/devi|durga|lakshmi|lalitha|kanakadhara|mahalakshmi|meenakshi|kamakshi|saraswathi|gomatha|kamadhenu|vasavi|akhiland|kanyaka|varalakshmi|దేవి|లక్ష్మి|దుర్గ|లలిత|సరస్వతి|గోమాత|కామధేను|వరలక్ష్మి|మాళికాపురత్తమ్మ|వాసవి|వాసవీ|అఖిలాండ|కన్యక/.test(txt)) detectedDeity = 'devi';
+            else if (/hanuman|anjaneya|maruti|bajrang|sundarakanda|హనుమాన్|ఆంజనేయ|మారుతి|రామదూత/.test(txt)) detectedDeity = 'hanuman';
+            else if (/shiva|linga|bilva|rudra|natara|mrityunjaya|kedar|vishwanath|shankara|renuka|someshwara|mallikarjuna|శివ|లింగ|బిల్వ|రుద్ర|మృత్యుంజయ|పరమశివ|కేదార|నటరాజ|విశ్వనాథ|శంకర/.test(txt)) detectedDeity = 'shiva';
+            else if (/ayyap|sastha|harivarasanam|shabarimala|uthara|sannidhanam|padi|maaladharan|sharanu|harathi|irumudi|kettu|kattu|poorvaang|poorvang|dharmasastha|dharma sastha|మాలాధారణ|పూర్వాంగ|శబరి|అయ్యప్ప|శాస్తా|శాస్త|శబరిమల|హరివరాసనం|శరణం|హారతి|ఇరుముడి|పడి|మణికంఠ|manikanta/.test(txt)) detectedDeity = 'ayyappa';
             else if (/morning|meal|night|bedtime|ప్రాతః|భోజన|రాత్రి|శయన/.test(txt)) detectedDeity = 'all';
-            else detectedDeity = isAyyappa ? 'ayyappa' : (deityToFetch !== 'all' ? deityToFetch : 'ayyappa');
+            else detectedDeity = deityToFetch !== 'all' ? deityToFetch : 'ayyappa';
           }
           const itemDeity = detectedDeity.toLowerCase();
           let imageSource = DEITY_IMAGES[itemDeity] || DEITY_IMAGES.ayyappa;
@@ -356,47 +357,75 @@ export const CategoryListingScreen: React.FC<Props> = ({
 
     const normCat = (categoryId || '').toLowerCase();
 
-    // 1. POOJA VIDHANAM: Show ONLY Poojas, Vrathams, Abhishekam, Tarpanam, Vidhanam (Exclude Stotras, Slokas, Songs)
+    // Helper: Strict Deity Isolation across all subcategories
+    const matchesStrictDeity = (item: ListingItem, filter: string) => {
+      if (!filter || filter === 'all') return true;
+      const targetD = filter.toLowerCase().replace(/^(lord-|goddess-)/, '');
+      const itemD = (item.deityId || '').toLowerCase().replace(/^(lord-|goddess-)/, '');
+      const t = `${item.title || ''} ${item.id || ''}`.toLowerCase();
+
+      const isGanesha =
+        itemD === 'ganesha' ||
+        /ganesh|vinayak|vignesh|vighnesh|ganapath|modak|గణపతి|వినాయక|విఘ్నేశ్వర|విఘ్నేశ|గణేశ|మోదక/.test(t);
+
+      const isMurugan =
+        itemD === 'murugan' ||
+        /subrahmanya|subramanya|murugan|kartikeya|saravana|shanmukha|vel|skanda|kanda|sashti|kavasam|pazhani|palani|సుబ్రహ్మణ్య|మురుగన్|కార్తికేయ|షణ్ముఖ|స్కంద|షష్ఠి|కవచం|పళని/.test(t);
+
+      const isVenkateswara =
+        itemD === 'venkateswara' ||
+        /venkates|vishnu|koodalmanikya|achyuta|govinda|narayana|perumal|satyanarayana|guruvayoor|ramanuja|వేంకట|వెంకట|విష్ణు|సత్యనారాయణ|గోవింద|నారాయణ|శ్రీనివాస|గురువాయూరప్ప|రామానుజ/.test(t);
+
+      const isDevi =
+        itemD === 'devi' ||
+        /devi|durga|lakshmi|lalitha|kanakadhara|mahalakshmi|meenakshi|kamakshi|saraswathi|gomatha|kamadhenu|vasavi|akhiland|kanyaka|varalakshmi|దేవి|లక్ష్మి|దుర్గ|లలిత|సరస్వతి|గోమాత|కామధేను|వరలక్ష్మి|మాళికాపురత్తమ్మ|వాసవి|వాసవీ|అఖిలాండ|కన్యక/.test(t);
+
+      const isHanuman =
+        itemD === 'hanuman' ||
+        /hanuman|anjaneya|maruti|bajrang|sundarakanda|హనుమాన్|ఆంజనేయ|మారుతి|రామదూత/.test(t);
+
+      const isShiva =
+        itemD === 'shiva' ||
+        /shiva|linga|bilva|rudra|natara|mrityunjaya|kedar|vishwanath|shankara|renuka|someshwara|mallikarjuna|శివ|లింగ|బిల్వ|రుద్ర|మృత్యుంజయ|పరమశివ|కేదార|నటరాజ|విశ్వనాథ|శంకర/.test(t);
+
+      const isAyyappa =
+        itemD === 'ayyappa' ||
+        /ayyap|sastha|harivarasanam|shabarimala|uthara|sannidhanam|padi|maaladharan|sharanu|harathi|irumudi|kettu|kattu|poorvaang|poorvang|dharmasastha|dharma sastha|మాలాధారణ|పూర్వాంగ|శబరి|అయ్యప్ప|శాస్తా|శాస్త|శబరిమల|హరివరాసనం|శరణం|హారతి|ఇరుముడి|పడి|మణికంఠ|manikanta/.test(t);
+
+      if (targetD === 'ganesha') {
+        return isGanesha;
+      }
+      if (targetD === 'murugan') {
+        return isMurugan;
+      }
+      if (targetD === 'venkateswara' || targetD === 'vishnu') {
+        return isVenkateswara;
+      }
+      if (targetD === 'devi') {
+        return isDevi;
+      }
+      if (targetD === 'hanuman') {
+        return isHanuman;
+      }
+      if (targetD === 'shiva') {
+        return isShiva && !isGanesha && !isMurugan && !isAyyappa;
+      }
+      if (targetD === 'ayyappa') {
+        // Strictly Ayyappa: MUST NOT match Ganesha, Shiva, Devi, Hanuman, or Murugan
+        if (isGanesha || isMurugan || isDevi || isHanuman || (isShiva && !/poorvaang|పూర్వాంగ|sastha|శాస్త|ayyap|అయ్యప్ప/.test(t))) {
+          return false;
+        }
+        return isAyyappa;
+      }
+      return itemD === targetD;
+    };
+
+    // 1. POOJA VIDHANAM: Show ONLY Poojas filtered strictly by selected deity
     if (normCat === 'pooja-vidhanam' || normCat === 'pooja' || normCat.includes('pooja') || normCat.includes('vrath')) {
-      return allCategoryItems.filter((item) => {
+      const poojaOnly = allCategoryItems.filter((item) => {
         const titleLower = (item.title || '').toLowerCase();
         const slugLower = (item.id || '').toLowerCase();
         const text = `${titleLower} ${slugLower}`;
-
-        // Explicitly include Sri Mahaganapathi, Sri Subrahmanyeshwara, and Sri Dharma Sastha parent cards
-        if (
-          text.includes('మహాగణపతి') ||
-          text.includes('mahaganapathi') ||
-          text.includes('మహా గణపతి') ||
-          text.includes('సుబ్రహ్మణ్య') ||
-          text.includes('subrahmanya') ||
-          text.includes('subramanya') ||
-          text.includes('ధర్మ శాస్త') ||
-          text.includes('ధర్మశాస్త') ||
-          text.includes('dharma sastha') ||
-          text.includes('dharmasastha') ||
-          slugLower === 'sri-vigneshwara-ashtottara' ||
-          slugLower === 'sri-maha-ganapathi-pooja' ||
-          slugLower === 'sri-subramanya-ashtottara' ||
-          slugLower === 'sri-subrahmanya' ||
-          slugLower === 'sri-ayyappa-ashtottara' ||
-          slugLower === 'sri-dharma-sastha-pooja' ||
-          slugLower === 'sri-dharma-sastha' ||
-          item.rawId === '3' ||
-          item.rawId === '11' ||
-          item.rawId === '6' ||
-          item.rawId === '7' ||
-          item.rawId === '8' ||
-          item.rawId === '25' ||
-          item.rawId === '26' ||
-          item.rawId === '27' ||
-          item.rawId === '28' ||
-          item.rawId === '120' ||
-          item.rawId === '130' ||
-          item.rawId === '229'
-        ) {
-          return true;
-        }
 
         const isStotra =
           text.includes('stotram') ||
@@ -447,11 +476,16 @@ export const CategoryListingScreen: React.FC<Props> = ({
 
         return true;
       });
+
+      if (selectedFilter && selectedFilter !== 'all') {
+        return poojaOnly.filter((item) => matchesStrictDeity(item, selectedFilter));
+      }
+      return poojaOnly;
     }
 
-    // 2. DIVINE STOTRAS: Show ONLY Stotras, Ashtothrams, Kavachams, Pancharatnams (Exclude standalone Poojas and Songs)
+    // 2. DIVINE STOTRAS: Show ONLY Stotras filtered strictly by selected deity
     if (normCat === 'stotras' || normCat === 'divine-stotras' || normCat.includes('stotra') || normCat === 'astothrams') {
-      return allCategoryItems.filter((item) => {
+      const stotrasOnly = allCategoryItems.filter((item) => {
         const titleLower = (item.title || '').toLowerCase();
         const slugLower = (item.id || '').toLowerCase();
         const text = `${titleLower} ${slugLower}`;
@@ -468,9 +502,14 @@ export const CategoryListingScreen: React.FC<Props> = ({
 
         return !isPurePooja && !isSong;
       });
+
+      if (selectedFilter && selectedFilter !== 'all') {
+        return stotrasOnly.filter((item) => matchesStrictDeity(item, selectedFilter));
+      }
+      return stotrasOnly;
     }
 
-    // 3. DAILY SLOKAS: Show Slokas & Verses filtered strictly by selected God / Goddess
+    // 3. DAILY SLOKAS: Show Slokas filtered strictly by selected deity (plus universal morning/meal/night slokas)
     if (normCat === 'slokas' || normCat === 'daily-slokas' || normCat.includes('sloka') || normCat === '115') {
       const slokasOnly = allCategoryItems.filter((item) => {
         const titleLower = (item.title || '').toLowerCase();
@@ -481,11 +520,8 @@ export const CategoryListingScreen: React.FC<Props> = ({
 
       if (selectedFilter && selectedFilter !== 'all') {
         return slokasOnly.filter((item) => {
-          const d = (item.deityId || '').toLowerCase();
           const t = `${item.title || ''} ${item.id || ''}`.toLowerCase();
           const isUniversal =
-            item.deityId === 'all' ||
-            t.includes('nithya-paarayana') ||
             t.includes('morning-prayers') ||
             t.includes('meal-prayers') ||
             t.includes('night-prayers') ||
@@ -494,32 +530,22 @@ export const CategoryListingScreen: React.FC<Props> = ({
             t.includes('రాత్రి') ||
             t.includes('శయన');
 
-          return (
-            isUniversal ||
-            d === selectedFilter ||
-            (selectedFilter === 'ganesha' && (d === 'ganesha' || t.includes('ganesh') || t.includes('pancharatnam') || t.includes('గణపతి') || t.includes('వినాయక'))) ||
-            (selectedFilter === 'hanuman' && (d === 'hanuman' || t.includes('hanuman') || t.includes('chalisa') || t.includes('హనుమాన్') || t.includes('ఆంజనేయ'))) ||
-            (selectedFilter === 'venkateswara' && (d === 'venkateswara' || t.includes('venkat') || t.includes('suprabhat') || t.includes('వేంకట') || t.includes('సుప్రభాత'))) ||
-            (selectedFilter === 'murugan' && (d === 'murugan' || t.includes('murugan') || t.includes('subramanya') || t.includes('kanda') || t.includes('sashti') || t.includes('స్కంద') || t.includes('షష్ఠి'))) ||
-            (selectedFilter === 'ayyappa' && (d === 'ayyappa' || t.includes('ayyap') || t.includes('sastha') || t.includes('శాస్త') || t.includes('సుప్రభాతం') || t.includes('suprabatham'))) ||
-            (selectedFilter === 'shiva' && (d === 'shiva' || t.includes('shiva') || t.includes('శివ') || t.includes('linga') || t.includes('రుద్ర'))) ||
-            (selectedFilter === 'devi' && (d === 'devi' || t.includes('devi') || t.includes('durga') || t.includes('దేవి') || t.includes('దుర్గ') || t.includes('లక్ష్మి')))
-          );
+          return isUniversal || matchesStrictDeity(item, selectedFilter);
         });
       }
       return slokasOnly;
     }
 
-    // 4. BHAJANS & SONGS: Show ALL Songs, Bhajans, Harathis filtered by selected deity
+    // 4. BHAJANS & SONGS: Show ALL Songs & Bhajans filtered strictly by selected deity
     if (normCat === 'bhajans' || normCat === 'songs' || normCat === 'harathis' || normCat.includes('bhajan') || normCat.includes('song') || normCat === '116') {
       if (selectedFilter && selectedFilter !== 'all') {
-        return allCategoryItems.filter((item) => item.deityId === selectedFilter || item.deityId === 'all');
+        return allCategoryItems.filter((item) => matchesStrictDeity(item, selectedFilter));
       }
       return allCategoryItems;
     }
 
     if (selectedFilter && selectedFilter !== 'all') {
-      return allCategoryItems.filter((item) => item.deityId === selectedFilter || item.deityId === 'all');
+      return allCategoryItems.filter((item) => matchesStrictDeity(item, selectedFilter));
     }
 
     return allCategoryItems;
