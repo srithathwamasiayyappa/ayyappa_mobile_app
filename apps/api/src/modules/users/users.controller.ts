@@ -18,10 +18,12 @@ export class UsersController {
     headers: Record<string, any>,
     query: { userId?: string },
     body?: { userId?: number | string },
+    allowGuest = false,
   ): number {
     const rawId = headers['x-user-id'] || query?.userId || body?.userId;
     const parsed = Number(rawId);
     if (!parsed || isNaN(parsed) || parsed <= 0) {
+      if (allowGuest) return 0;
       throw new BadRequestException('User identification is missing or invalid.');
     }
     return parsed;
@@ -103,12 +105,46 @@ export class UsersController {
     @Headers() headers: Record<string, any>,
     @Query() query: { userId?: string },
   ) {
-    const userId = this.extractUserId(headers, query);
+    const userId = this.extractUserId(headers, query, undefined, true);
+    if (!userId) {
+      return {
+        success: true,
+        data: [],
+      };
+    }
     const bookmarks = await this.usersService.getBookmarks(userId);
     return {
       success: true,
       data: bookmarks,
     };
+  }
+
+  /**
+   * POST /api/v1/users/me/bookmarks/toggle
+   */
+  @Post('me/bookmarks/toggle')
+  async toggleBookmark(
+    @Headers() headers: Record<string, any>,
+    @Query() query: { userId?: string },
+    @Body() body: { itemId: string; itemType: string; title: string; subtitle?: string; thumbnailUrl?: string; userId?: string | number },
+  ) {
+    const userId = this.extractUserId(headers, query, body as any);
+    return this.usersService.toggleBookmark(userId, body);
+  }
+
+  /**
+   * GET /api/v1/users/me/bookmarks/check
+   */
+  @Get('me/bookmarks/check')
+  async checkBookmark(
+    @Headers() headers: Record<string, any>,
+    @Query() query: { userId?: string; itemId: string },
+  ) {
+    const userId = this.extractUserId(headers, query, undefined, true);
+    if (!userId || !query.itemId) {
+      return { success: true, isBookmarked: false };
+    }
+    return this.usersService.checkBookmark(userId, query.itemId);
   }
 
   /**
@@ -118,7 +154,7 @@ export class UsersController {
   async addBookmark(
     @Headers() headers: Record<string, any>,
     @Query() query: { userId?: string },
-    @Body() body: { itemId: string; itemType: string; title: string; subtitle?: string; thumbnailUrl?: string },
+    @Body() body: { itemId: string; itemType: string; title: string; subtitle?: string; thumbnailUrl?: string; userId?: string | number },
   ) {
     const userId = this.extractUserId(headers, query, body as any);
     return this.usersService.addBookmark(userId, body);

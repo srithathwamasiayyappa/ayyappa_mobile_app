@@ -63,11 +63,34 @@ export class MasterController {
   }
 
   @Get('deities')
-  async getDeities(@Query('lang') lang?: string) {
-    const deities = await this.masterService.getDeities(lang || 'te');
+  async getDeities(
+    @Query('lang') lang?: string,
+    @Query('featured') featured?: string,
+    @Query('category') category?: string,
+    @Query('search') search?: string,
+  ) {
+    const targetLang = (lang || 'en').toLowerCase().trim();
+    let deities = await this.masterService.getDeities(targetLang);
+    if (featured === 'true') {
+      const featList = deities.filter((d: any) => d.isFeatured);
+      if (featList.length > 0) deities = featList;
+    }
+    if (category && category !== 'all') {
+      deities = deities.filter((d: any) => d.category === category);
+    }
+    if (search && search.trim()) {
+      const q = search.trim().toLowerCase();
+      deities = deities.filter((d: any) =>
+        (d.name && d.name.toLowerCase().includes(q)) ||
+        (d.englishName && d.englishName.toLowerCase().includes(q)) ||
+        (d.teluguName && d.teluguName.toLowerCase().includes(q)) ||
+        (d.slug && d.slug.toLowerCase().includes(q))
+      );
+    }
     return {
       success: true,
       data: deities,
+      total: deities.length,
     };
   }
 

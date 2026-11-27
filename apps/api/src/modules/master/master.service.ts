@@ -72,18 +72,8 @@ const STATE_DISTRICTS: Record<string, string[]> = {
   ]
 };
 
-const DEFAULT_DEITIES = [
-  { id: 'ayyappa', name: 'Lord Ayyappa (అయ్యప్ప స్వామి)', code: 'AYYAPPA', image: '/images/ayyappa-icon.jpg' },
-  { id: 'shiva', name: 'Lord Shiva (శివుడు)', code: 'SHIVA', image: '/images/god-shiva.jpg' },
-  { id: 'durga', name: 'Goddess Durga / Devi (దుర్గా దేవి)', code: 'DURGA', image: '/images/god-durga.jpg' },
-  { id: 'ganesha', name: 'Lord Ganesha (వినాయకుడు)', code: 'GANESHA', image: '/images/god-ganesha.jpg' },
-  { id: 'venkateswara', name: 'Lord Venkateswara (శ్రీ వెంకటేశ్వర స్వామి)', code: 'VENKATESWARA', image: '/images/god-venkateswara.jpg' },
-  { id: 'subrahmanya', name: 'Lord Murugan / Subrahmanya (సుబ్రహ్మణ్య స్వామి)', code: 'SUBRAHMANYA', image: '/images/ayyappa-icon.jpg' },
-  { id: 'rama', name: 'Lord Rama (శ్రీ రాముడు)', code: 'RAMA', image: '/images/hero-deity.jpg' },
-  { id: 'hanuman', name: 'Lord Hanuman (శ్రీ ఆంజనేయ స్వామి)', code: 'HANUMAN', image: '/images/deity.jpg' },
-  { id: 'krishna', name: 'Lord Krishna (శ్రీ కృష్ణుడు)', code: 'KRISHNA', image: '/images/god-krishna.jpg' },
-  { id: 'lakshmi', name: 'Goddess Lakshmi (లక్ష్మీ దేవి)', code: 'LAKSHMI', image: '/images/lakshmi.jpg' },
-];
+// Deities are fetched strictly from MySQL database (deities table / app_settings key deities)
+// Strictly ZERO hardcoded / mock / fallback deities.
 
 const PRESET_LOGOS = [
   { id: 'ayyappa-icon', name: 'Lord Ayyappa Classic', url: '/images/ayyappa-icon.jpg' },
@@ -303,46 +293,82 @@ export class MasterService {
   }
 
   /**
-   * Fetch deities from DB Temples and Hindu Devotional Pantheon
+   * Fetch deities strictly from DB (deities table or app_settings)
+   * Strictly NO mock, fake, or fallback data.
    */
-  async getDeities(lang = 'te') {
+  async getDeities(lang = 'en') {
+    const targetLang = (lang || 'en').toLowerCase().trim();
+
+    // 1. Direct query from dedicated MySQL `deities` table
+    try {
+      const dbRows: any[] = await this.prisma.$queryRawUnsafe(
+        'SELECT * FROM `deities` WHERE `is_active` = 1 ORDER BY `order_index` ASC, `id` ASC'
+      );
+      if (Array.isArray(dbRows) && dbRows.length > 0) {
+        return dbRows.map((d: any) => {
+          let localizedName = d.name; // English by default
+          if (targetLang === 'te' && d.telugu_name) localizedName = d.telugu_name;
+          else if (targetLang === 'ta' && d.tamil_name) localizedName = d.tamil_name;
+          else if (targetLang === 'kn' && d.kannada_name) localizedName = d.kannada_name;
+          else if (targetLang === 'hi' && d.hindi_name) localizedName = d.hindi_name;
+          else if (targetLang === 'ml' && d.malayalam_name) localizedName = d.malayalam_name;
+          else if (targetLang === 'en' && d.name) localizedName = d.name;
+
+          return {
+            id: d.slug || String(d.id),
+            slug: d.slug || String(d.id),
+            name: localizedName,
+            englishName: d.name,
+            teluguName: d.telugu_name || '',
+            tamilName: d.tamil_name || '',
+            kannadaName: d.kannada_name || '',
+            hindiName: d.hindi_name || '',
+            description: d.description || '',
+            category: d.category || 'popular',
+            image: d.image_url || '',
+            imageUrl: d.image_url || '',
+            isFeatured: Boolean(d.is_featured),
+            orderIndex: d.order_index ?? 0,
+            isActive: Boolean(d.is_active),
+          };
+        });
+      }
+    } catch (err) {
+      console.warn('[MasterService] Direct deities table query notice:', err);
+    }
+
+    // 2. Query MySQL app_settings table (key: 'deities')
     try {
       const setting = await this.prisma.appSetting.findUnique({
         where: { key: 'deities' }
       });
-      let deities: any[] = [];
       if (setting && setting.value) {
-        try { deities = JSON.parse(setting.value); } catch {}
+        const parsed = JSON.parse(setting.value);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map((d: any) => {
+            const trans = d.translations || {};
+            const loc = trans[targetLang] || trans['te'] || trans['en'] || {};
+            return {
+              id: d.id,
+              slug: d.id,
+              name: loc.name || d.name,
+              englishName: d.name,
+              description: loc.description || d.description || '',
+              category: d.category || 'popular',
+              image: d.imageUrl || d.image || '',
+              imageUrl: d.imageUrl || d.image || '',
+              isFeatured: Boolean(d.isFeatured || d.is_featured),
+              orderIndex: d.displayOrder || d.orderIndex || 0,
+              isActive: d.isActive !== false,
+            };
+          });
+        }
       }
-      if (!deities || deities.length === 0) {
-        try {
-          deities = require('../admin/deities-five-languages.json');
-        } catch {}
-      }
-      if (Array.isArray(deities) && deities.length > 0) {
-        const targetLang = (lang || 'te').toLowerCase().trim();
-        return deities.map((d: any) => {
-          const trans = d.translations || {};
-          const loc = trans[targetLang] || trans['te'] || trans['en'] || {};
-          return {
-            id: d.id,
-            name: loc.name || d.name,
-            alternateName: loc.alternateName !== undefined ? loc.alternateName : d.alternateName,
-            category: d.category,
-            image: d.imageUrl,
-            imageUrl: d.imageUrl,
-            vahana: loc.vahana !== undefined ? loc.vahana : d.vahana,
-            moolaMantra: loc.moolaMantra !== undefined ? loc.moolaMantra : d.moolaMantra,
-            primaryTemple: loc.primaryTemple !== undefined ? loc.primaryTemple : d.primaryTemple,
-            description: loc.description !== undefined ? loc.description : d.description,
-            displayOrder: d.displayOrder,
-            isActive: d.isActive !== false,
-            translations: trans
-          };
-        });
-      }
-    } catch {}
+    } catch (settingErr) {
+      console.warn('[MasterService] app_settings deities query notice:', settingErr);
+    }
 
+    // 3. Query distinct primaryDeity from Temples in DB if any
     try {
       const dbDeities = await this.prisma.temple.findMany({
         select: { primaryDeity: true },
@@ -350,20 +376,25 @@ export class MasterService {
         where: { primaryDeity: { not: '' } },
       });
       const fromDb = dbDeities.map((d) => d.primaryDeity).filter(Boolean);
-      const dbMapped = fromDb.map((deity, idx) => ({
-        id: `db_${idx + 1}`,
-        name: deity,
-        code: deity.toUpperCase().replace(/[^A-Z]/g, '_'),
-        image: '/images/ayyappa-icon.jpg',
-      }));
+      if (fromDb.length > 0) {
+        return fromDb.map((deity, idx) => ({
+          id: `db_${idx + 1}`,
+          slug: `db_${idx + 1}`,
+          name: deity,
+          englishName: deity,
+          description: '',
+          category: 'popular',
+          image: '',
+          imageUrl: '',
+          isFeatured: true,
+          orderIndex: idx + 1,
+          isActive: true,
+        }));
+      }
+    } catch {}
 
-      // Combine with default deities
-      const existingNames = new Set(DEFAULT_DEITIES.map((d) => d.name.toLowerCase()));
-      const filteredDb = dbMapped.filter((d) => !existingNames.has(d.name.toLowerCase()));
-      return [...DEFAULT_DEITIES, ...filteredDb];
-    } catch {
-      return DEFAULT_DEITIES;
-    }
+    // Strictly return empty list if not in DB - ZERO fake or mock fallback data
+    return [];
   }
 
   /**

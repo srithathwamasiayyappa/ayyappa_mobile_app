@@ -1,10 +1,3 @@
-const BANNER_TITLES: Record<SupportedLanguage, { title: string; subtitle: string }> = {
-  te: { title: 'స్వామియే శరణం అయ్యప్ప', subtitle: 'శ్రీ అయ్యప్ప స్వామి నిత్య పూజా విధానం' },
-  kn: { title: 'ಸ್ವಾಮಿಯೇ ಶರಣಂ ಅಯ್ಯಪ್ಪ', subtitle: 'ಶ್ರೀ ಅಯ್ಯಪ್ಪ ಸ್ವಾಮಿ ನಿತ್ಯ ಪೂಜಾ ವಿಧಾನ' },
-  en: { title: 'Swamiye Saranam Ayyappa', subtitle: 'Sri Ayyappa Swami Daily Pooja & Stotras' },
-  ta: { title: 'சுவாமியே சரணம் ஐயப்பா', subtitle: 'ஸ்ரீ ஐயப்ப சுவாமி நித்ய பூஜை முறைகள்' },
-  hi: { title: 'स्वामीये शरणम् अय्यप्पा', subtitle: 'श्री अय्यप्पा स्वामी नित्य पूजा विधान' },
-};
 import React, { useEffect, useState } from 'react';
 import {
   View,
@@ -17,30 +10,173 @@ import {
   Platform,
   ActivityIndicator,
   BackHandler,
+  Image,
+  Dimensions,
+  Alert,
 } from 'react-native';
-import { AyyappaMedallion } from '../../../components/common/AyyappaMedallion';
+import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Path, Circle, Polygon } from 'react-native-svg';
 import { SupportedLanguage } from '../../../types';
-import { ApiService } from '../../../services/api';
+import { ApiService, resolveMediaUrl } from '../../../services/api';
+import { StorageService } from '../../../services/storageService';
+
+const { width: WINDOW_WIDTH, height: WINDOW_HEIGHT } = Dimensions.get('window');
+const { width: SCREEN_WIDTH_FULL, height: SCREEN_HEIGHT_FULL } = Dimensions.get('screen');
+const SCREEN_WIDTH = Math.min(WINDOW_WIDTH, SCREEN_WIDTH_FULL);
+const SCREEN_HEIGHT = Math.max(WINDOW_HEIGHT, SCREEN_HEIGHT_FULL);
+const isLargeOrTallScreen = SCREEN_HEIGHT >= 800 || (SCREEN_HEIGHT / SCREEN_WIDTH) >= 1.95;
+
+// Dynamic status bar height for Android
+const ANDROID_STATUS_BAR_HEIGHT = Platform.OS === 'android'
+  ? Math.max(StatusBar.currentHeight || 0, isLargeOrTallScreen ? 44 : 36)
+  : 0;
+
+// Pre-bundled deity artworks matching sacred card medallions
+const DEITY_IMAGES: Record<string, any> = {
+  ayyappa: require('../../../../assets/deities/ayyappa.jpg'),
+  ganesha: require('../../../../assets/deities/ganesha.jpg'),
+  venkateswara: require('../../../../assets/deities/venkateswara.jpg'),
+  devi: require('../../../../assets/deities/durga.jpg'),
+  durga: require('../../../../assets/deities/durga.jpg'),
+  shiva: require('../../../../assets/deities/shiva.jpg'),
+  hanuman: require('../../../../assets/deities/hanuman.jpg'),
+  murugan: require('../../../../assets/deities/card_murugan.jpg'),
+  krishna: require('../../../../assets/deities/krishna.jpg'),
+  rama: require('../../../../assets/deities/rama.jpg'),
+};
 
 interface Props {
   title: string;
   itemId: string;
+  rawId?: string;
   currentLanguage: SupportedLanguage;
   onBack: () => void;
 }
 
+// Golden Corner Filigree Motif for Header
+const HeaderCornerFiligree = ({ flipped = false }: { flipped?: boolean }) => (
+  <View style={flipped ? { transform: [{ scaleX: -1 }] } : undefined}>
+    <Svg width={38} height={38} viewBox="0 0 36 36" fill="none">
+      <Path
+        d="M2 2 C12 2 22 8 28 16 C24 18 18 16 12 22 C8 16 6 8 2 2 Z"
+        fill="#DFA62E"
+        fillOpacity={0.75}
+      />
+      <Circle cx="8" cy="8" r="2" fill="#FFD700" />
+      <Circle cx="16" cy="5" r="1.5" fill="#FFD700" />
+      <Circle cx="5" cy="16" r="1.5" fill="#FFD700" />
+    </Svg>
+  </View>
+);
+
+// Solid Maroon Play Triangle Icon
+const CardPlayTriangleIcon = () => (
+  <Svg width={14} height={16} viewBox="0 0 14 16" fill="none">
+    <Polygon points="2,1 13,8 2,15" fill="#173D32" />
+  </Svg>
+);
+
+// Heart Icon for Save / Favorite
+const HeartFavoriteIcon = ({ isSaved }: { isSaved: boolean }) => (
+  <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+      stroke="#173D32"
+      strokeWidth={2.2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      fill={isSaved ? '#173D32' : 'none'}
+    />
+  </Svg>
+);
+
+// Helper to resolve deity medallion avatar from item id, deity id, or title
+const resolveMedallion = (item: any, defaultDeity: string = 'ayyappa') => {
+  if (item?.imageUrl || item?.image) {
+    const uri = resolveMediaUrl(item.imageUrl || item.image);
+    if (uri) return { uri };
+  }
+  const key = String(item?.deityId || defaultDeity || '').toLowerCase();
+  if (DEITY_IMAGES[key]) return DEITY_IMAGES[key];
+
+  const t = String(item?.title || item?.id || '').toLowerCase();
+  if (t.includes('ganesha') || t.includes('ganapathi') || t.includes('vinayaka') || t.includes('గణపతి') || t.includes('వినాయక')) return DEITY_IMAGES.ganesha;
+  if (t.includes('shiva') || t.includes('rudra') || t.includes('శివ') || t.includes('రుద్ర')) return DEITY_IMAGES.shiva;
+  if (t.includes('venkateswara') || t.includes('balaji') || t.includes('శ్రీనివాస') || t.includes('వెంకటేశ్వర')) return DEITY_IMAGES.venkateswara;
+  if (t.includes('devi') || t.includes('durga') || t.includes('లక్ష్మి') || t.includes('దుర్గ') || t.includes('అమ్మవారు')) return DEITY_IMAGES.durga;
+  if (t.includes('murugan') || t.includes('subramanya') || t.includes('సుబ్రహ్మణ్య')) return DEITY_IMAGES.murugan;
+  if (t.includes('hanuman') || t.includes('ఆంజనేయ') || t.includes('హనుమాన్')) return DEITY_IMAGES.hanuman;
+  if (t.includes('krishna') || t.includes('కృష్ణ')) return DEITY_IMAGES.krishna;
+  if (t.includes('rama') || t.includes('రామ')) return DEITY_IMAGES.rama;
+
+  return DEITY_IMAGES.ayyappa;
+};
+
 export const DetailScreen: React.FC<Props> = ({
   title,
   itemId,
+  rawId,
   currentLanguage,
   onBack,
 }) => {
   const [detailData, setDetailData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [history, setHistory] = useState<Array<{ id: string; title: string }>>([]);
+  const [isSaved, setIsSaved] = useState<boolean>(false);
 
-  const currentItemId = history.length > 0 ? history[history.length - 1].id : itemId;
+  const currentItemId = history.length > 0 ? history[history.length - 1].id : (rawId || itemId);
   const currentTitle = history.length > 0 ? history[history.length - 1].title : title;
+
+  // Check saved bookmark state dynamically from MariaDB via API & Storage
+  useEffect(() => {
+    let isMounted = true;
+    async function checkSaved() {
+      try {
+        const targetId = String(currentItemId);
+        const user = await StorageService.getStoredUser();
+        const userId = user?.id ? Number(user.id) : undefined;
+        const saved = await StorageService.isBookmarked(targetId, userId);
+        if (isMounted) setIsSaved(saved);
+      } catch (_) {}
+    }
+    checkSaved();
+    return () => { isMounted = false; };
+  }, [currentItemId]);
+
+  const handleToggleSave = async () => {
+    const targetId = String(currentItemId);
+    const user = await StorageService.getStoredUser();
+    const userId = user?.id ? Number(user.id) : 1;
+
+    const idLower = targetId.toLowerCase();
+    const titleLower = (displayTitle || '').toLowerCase();
+    const isBhajan = idLower.includes('bhajan') || idLower.includes('song') || titleLower.includes('భజన') || titleLower.includes('కీర్తన') || titleLower.includes('పాట') || titleLower.includes('bhajan') || titleLower.includes('song');
+    const isPooja = idLower.includes('pooja') || idLower.includes('vratham') || idLower.includes('abhishekam') || titleLower.includes('పూజ');
+    const isSloka = idLower.includes('sloka') || titleLower.includes('శ్లోక');
+    const detectedCategory = isBhajan ? 'bhajan' : (isPooja ? 'pooja' : (isSloka ? 'sloka' : 'stotra'));
+
+    const itemToBookmark = {
+      id: targetId,
+      rawId: rawId ? String(rawId) : undefined,
+      title: displayTitle || 'Divine Stotram',
+      category: detectedCategory,
+      subtitle: typeof description === 'string' ? description.slice(0, 80) : undefined,
+      savedAt: new Date().toISOString(),
+    };
+    const nextSaved = await StorageService.toggleBookmark(itemToBookmark, userId);
+    setIsSaved(nextSaved);
+
+    const isTe = currentLanguage === 'te';
+    const msg = nextSaved
+      ? (isTe ? 'మీ భక్తి సేవ్ జాబితాలో చేర్చబడింది.' : 'Saved to your devotional favorites.')
+      : (isTe ? 'జాబితా నుండి తొలగించబడింది.' : 'Removed from favorites.');
+
+    Alert.alert(
+      nextSaved ? '🙏 Swamiye Saranam Ayyappa' : 'Information',
+      msg,
+      [{ text: 'OK' }]
+    );
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -48,7 +184,19 @@ export const DetailScreen: React.FC<Props> = ({
       setLoading(true);
       try {
         const data = await ApiService.getCategoryDetail(currentItemId, currentLanguage);
-        if (isMounted) setDetailData(data);
+        if (isMounted && data) {
+          if (currentLanguage !== 'te' && (!data.description || data.description.length < 150) && !data.lyrics) {
+            try {
+              const teData = await ApiService.getCategoryDetail(currentItemId, 'te');
+              if (isMounted && teData && (teData.description || teData.fullScriptureText)) {
+                data.lyrics = teData.fullScriptureText || teData.description;
+                data.descriptionTelugu = teData.fullScriptureText || teData.description;
+                if (!data.titleTelugu) data.titleTelugu = teData.title;
+              }
+            } catch (_) {}
+          }
+          setDetailData(data);
+        }
       } catch (err) {
         console.log('Error loading record detail from DB API:', err);
       } finally {
@@ -73,7 +221,7 @@ export const DetailScreen: React.FC<Props> = ({
   useEffect(() => {
     const onHardwareBack = () => {
       handleBack();
-      return true; // Intercept: go back cleanly
+      return true;
     };
     const backSub = BackHandler.addEventListener('hardwareBackPress', onHardwareBack);
     return () => backSub.remove();
@@ -84,15 +232,48 @@ export const DetailScreen: React.FC<Props> = ({
   };
 
   const displayTitle = detailData?.title || currentTitle;
-  const description = detailData?.description || '';
-  const contents = detailData?.contents || [];
-  const subcategories = detailData?.subcategories || [];
+  let description = detailData?.lyrics || detailData?.descriptionTelugu || detailData?.fullScriptureText || detailData?.description || detailData?.overview || detailData?.content || '';
+  if ((!description || description.length < 150) && (detailData?.lyrics || detailData?.descriptionTelugu)) {
+    description = detailData.lyrics || detailData.descriptionTelugu;
+  }
+  const instructionNote = detailData?.instructionNote || '';
+  const contents = Array.isArray(detailData?.contents) && detailData.contents.length > 0
+    ? detailData.contents
+    : (Array.isArray(detailData?.devotionalContents) ? detailData.devotionalContents : []);
+  const subcategories = detailData?.subcategories || detailData?.children || [];
+  // Only render mantras if they are NOT already present in the description
+  const mantras = (Array.isArray(detailData?.mantras) ? detailData.mantras : []).filter((m: any) => {
+    const txt = (m.script || m.mantra || m.text || '').trim();
+    if (!txt) return false;
+    if (description && description.includes(txt.slice(0, 25))) return false;
+    return true;
+  });
+  const procedure = (Array.isArray(detailData?.procedure) ? detailData.procedure : []).filter((p: any) => {
+    const txt = (p.mantra || p.desc || '').trim();
+    if (!txt) return false;
+    if (description && description.includes(txt.slice(0, 25))) return false;
+    return true;
+  });
+  const materials = (Array.isArray(detailData?.materials) ? detailData.materials : []).filter((m: any) => {
+    const name = (m?.name || m?.title || '').toLowerCase();
+    return !name.includes('cow ghee') && !name.includes('cotton wicks') && !name.includes('vibhuti') && !name.includes('camphor') && !name.includes('betel leaves');
+  });
+  const benefits = (Array.isArray(detailData?.benefits) ? detailData.benefits : []).filter((b: any) => {
+    const str = (typeof b === 'string' ? b : (b.title || b.description || '')).toLowerCase();
+    return !str.includes('profound peace') && !str.includes('spiritual strength') && !str.includes('planetary doshams') && !str.includes('divine protection of the presiding deity');
+  });
+
+  const isAyyappa =
+    String(currentItemId).toLowerCase().includes('ayyappa') ||
+    String(displayTitle).toLowerCase().includes('ayyappa') ||
+    String(displayTitle).includes('అయ్యప్ప');
+
+  const medallionSource = resolveMedallion(detailData || { title: displayTitle, id: currentItemId }, isAyyappa ? 'ayyappa' : 'ganesha');
 
   const renderFormattedDescription = (text: string) => {
     if (!text) return null;
     const lines = text.split('\n');
 
-    // Check for Markdown table blocks and group them together
     const elements: React.ReactNode[] = [];
     let tableRows: string[][] = [];
     let inTable = false;
@@ -106,7 +287,6 @@ export const DetailScreen: React.FC<Props> = ({
         <View key={tableKey} style={styles.tableCardContainer}>
           <ScrollView horizontal showsHorizontalScrollIndicator={true} style={styles.tableScroll}>
             <View style={styles.tableCard}>
-              {/* Table Header */}
               <View style={styles.tableHeaderRow}>
                 {headers.map((col, colIdx) => (
                   <View
@@ -125,7 +305,6 @@ export const DetailScreen: React.FC<Props> = ({
                 ))}
               </View>
 
-              {/* Table Data Rows */}
               {dataRows.map((row, rIdx) => (
                 <View
                   key={`tr-${rIdx}`}
@@ -170,10 +349,8 @@ export const DetailScreen: React.FC<Props> = ({
     lines.forEach((line, idx) => {
       const trimmed = line.trim();
 
-      // Check if line is a table row (| col1 | col2 | ...)
       if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
         const rawCols = trimmed.slice(1, -1).split('|').map((c) => c.trim());
-        // Skip markdown delimiter line like |--|--|
         const isDelimiter = rawCols.every((c) => /^[-:]+$/.test(c));
         if (!isDelimiter) {
           tableRows.push(rawCols);
@@ -184,13 +361,12 @@ export const DetailScreen: React.FC<Props> = ({
         flushTable(`table-${idx}`);
       }
 
-      // Empty separator lines
       if (!trimmed) {
-        elements.push(<View key={`space-${idx}`} style={{ height: 8 }} />);
+        elements.push(<View key={`space-${idx}`} style={{ height: 10 }} />);
         return;
       }
 
-      // Section Headers like [ శ్రీ మహాగణపతి ] or [ Sri mahaganapathi ]
+      // Section Headers [ శ్రీ మహాగణపతి ]
       if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
         const headerText = trimmed.slice(1, -1).trim();
         elements.push(
@@ -203,7 +379,7 @@ export const DetailScreen: React.FC<Props> = ({
         return;
       }
 
-      // Bullet points (Ayyappa Deeksha Swamy titles)
+      // Bullet points
       if (trimmed.startsWith('•') || trimmed.startsWith('*')) {
         const bulletText = trimmed.replace(/^[•*]\s*/, '');
         const colonIdx = bulletText.indexOf(':');
@@ -227,7 +403,7 @@ export const DetailScreen: React.FC<Props> = ({
         return;
       }
 
-      // Call-and-response slogans with "–" or "-"
+      // Slogans
       if (trimmed.includes(' – ') || trimmed.includes(' - ')) {
         const parts = trimmed.includes(' – ') ? trimmed.split(' – ') : trimmed.split(' - ');
         elements.push(
@@ -244,7 +420,7 @@ export const DetailScreen: React.FC<Props> = ({
         return;
       }
 
-      // Ritual instructions in parentheses, e.g. (Water - 3 times), (Akshatas), (Flowers)
+      // Instructions in parentheses
       if (trimmed.startsWith('(') && trimmed.endsWith(')')) {
         elements.push(
           <View key={`instruction-${idx}`} style={styles.instructionBadge}>
@@ -254,7 +430,7 @@ export const DetailScreen: React.FC<Props> = ({
         return;
       }
 
-      // Namas starting with Om / ōṁ / ఓం / ಓಂ
+      // Chants starting with Om / శ్రీ
       const isOmChant =
         trimmed.startsWith('ఓం') ||
         trimmed.startsWith('ಓಂ') ||
@@ -274,9 +450,8 @@ export const DetailScreen: React.FC<Props> = ({
         return;
       }
 
-      // Default sacred sloka stanza
       elements.push(
-        <Text key={`line-${idx}`} style={styles.slokaText}>
+        <Text key={`line-${idx}`} style={styles.readingBodyText}>
           {trimmed}
         </Text>
       );
@@ -290,215 +465,437 @@ export const DetailScreen: React.FC<Props> = ({
   };
 
   return (
-    <View style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor="#D84315" />
+    <SafeAreaView style={styles.screenContainer}>
+      <StatusBar barStyle="light-content" backgroundColor="#173D32" translucent />
 
-      {/* Saffron Devotional Header Bar */}
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={handleBack} style={styles.backBtn} activeOpacity={0.7}>
-            <Text style={styles.backText}>&lt; Back</Text>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle} numberOfLines={1}>
-            {displayTitle}
-          </Text>
-          <View style={{ width: 40 }} />
+      {/* ── 1. SACRED DARK GREEN HEADER WITH BACK ARROW & CORNER FILIGREE ── */}
+      <LinearGradient
+        colors={['#173D32', '#173D32', '#0C251E']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.headerBar}
+      >
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={handleBack}
+          activeOpacity={0.7}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+        >
+          <Text style={styles.backArrowText}>←</Text>
+        </TouchableOpacity>
+
+        <Text style={styles.headerTitle} numberOfLines={1}>
+          {displayTitle}
+        </Text>
+
+        <View style={styles.headerFiligreeWrapper}>
+          <HeaderCornerFiligree flipped />
         </View>
-      </SafeAreaView>
+      </LinearGradient>
 
-      <View style={styles.bodyWrapper}>
-        <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-          {/* Detailed Content / Subcategory Container fetched from DB */}
-          {subcategories && subcategories.length > 0 ? (
-            <View style={styles.subCategoryListWrapper}>
-              {subcategories.map((sub: any, idx: number) => (
+      {/* ── 2. SERENE DEITY WATERMARK BACKGROUND ── */}
+      <Image
+        source={require('../../../../assets/ayyappa_watermark.png')}
+        style={styles.watermarkImage}
+        resizeMode="contain"
+      />
+
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {subcategories && subcategories.length > 0 ? (
+          /* Subcategory / Child Items Listing */
+          <View style={styles.subListCardsContainer}>
+            {subcategories.map((sub: any, idx: number) => {
+              const subMedallion = resolveMedallion(sub, isAyyappa ? 'ayyappa' : 'ganesha');
+              return (
                 <TouchableOpacity
                   key={sub.id || idx}
-                  style={styles.subCategoryRow}
-                  activeOpacity={0.7}
+                  style={styles.subItemCard}
+                  activeOpacity={0.82}
                   onPress={() => handleSelectSubcategory(sub.id, sub.title)}
+                  accessibilityRole="button"
+                  accessibilityLabel={sub.title}
                 >
-                  <View style={styles.subCategoryLeft}>
-                    <AyyappaMedallion size={44} />
-                    <Text style={styles.subCategoryTitle}>{sub.title}</Text>
+                  <View style={styles.subItemMedallionWrapper}>
+                    <Image source={subMedallion} style={styles.subItemMedallionImage} resizeMode="cover" />
                   </View>
-                </TouchableOpacity>
-              ))}
-            </View>
-          ) : (
-            <>
-              {/* Top Devotional Banner Dynamic per selected language */}
-              <View style={styles.cardHeader}>
-                <AyyappaMedallion size={54} />
-                <Text style={styles.bannerTitle}>{BANNER_TITLES[currentLanguage]?.title || BANNER_TITLES.te.title}</Text>
-                <Text style={styles.bannerSubtitle}>
-                  {BANNER_TITLES[currentLanguage]?.subtitle || BANNER_TITLES.te.subtitle}
-                </Text>
-              </View>
-
-              <View style={styles.contentCard}>
-                <View style={styles.titleContainer}>
-                  <View style={styles.cornerDecorLeft} />
-                  <Text style={styles.cardTitle}>{displayTitle}</Text>
-                  <View style={styles.cornerDecorRight} />
-                </View>
-                <View style={styles.divider} />
-
-                {loading ? (
-                  <View style={styles.centerBox}>
-                    <ActivityIndicator size="small" color="#D84315" />
-                    <Text style={styles.loadingText}>Loading record from DB...</Text>
-                  </View>
-                ) : (
-                  <>
-                    {description ? renderFormattedDescription(description) : null}
-
-                    {contents && contents.length > 0 ? (
-                      contents.map((item: any, idx: number) => (
-                        <View key={item.id || idx} style={styles.itemBlock}>
-                          {item.title ? (
-                            <Text style={styles.itemTitle}>{item.title}</Text>
-                          ) : null}
-                          <Text style={styles.itemText}>{item.content || item.text || item.description}</Text>
-                        </View>
-                      ))
-                    ) : !description ? (
-                      <Text style={styles.bodyText}>
-                        Devotional content will be displayed here directly from the database.
+                  <View style={styles.subItemTextContainer}>
+                    <Text style={styles.subItemTitle} numberOfLines={1}>
+                      {sub.title}
+                    </Text>
+                    {sub.description ? (
+                      <Text style={styles.subItemSubtitle} numberOfLines={2}>
+                        {sub.description}
                       </Text>
                     ) : null}
-                  </>
-                )}
+                  </View>
+                  <View style={styles.playIconContainer}>
+                    <CardPlayTriangleIcon />
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        ) : (
+          /* ── 3. SACRED WHITE READING CARD (EXACT STYLE MATCHING REFERENCE) ── */
+          <View style={styles.readingCard}>
+            {/* Card Header with Circular Medallion */}
+            <View style={styles.readingCardHeader}>
+              <View style={styles.readingMedallionWrapper}>
+                <Image
+                  source={medallionSource}
+                  style={styles.readingMedallionImage}
+                  resizeMode="cover"
+                />
               </View>
-            </>
-          )}
-        </ScrollView>
-      </View>
-    </View>
+              <View style={styles.readingTitleContainer}>
+                <Text style={styles.readingTitle}>{displayTitle}</Text>
+                <Text style={styles.readingSubtitle}>
+                  {isAyyappa ? 'ఓం స్వామియే శరణమయ్యప్ప 🙏' : '|| శుభం భూయాత్ ||'}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.cardHeaderSaveBtn}
+                onPress={handleToggleSave}
+                activeOpacity={0.7}
+              >
+                <HeartFavoriteIcon isSaved={isSaved} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Subtle Golden Divider */}
+            <View style={styles.readingDivider} />
+
+            {/* Devotional Content Body */}
+            {loading ? (
+              <View style={styles.readingLoadingBox}>
+                <ActivityIndicator size="large" color="#173D32" />
+                <Text style={styles.readingLoadingText}>
+                  {currentLanguage === 'te' ? 'భక్తిపూర్వక వివరములు లోడ్ అవుతున్నాయి...' : 'Loading sacred details...'}
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.cardBody}>
+                {/* Sacred Instruction Note from DB */}
+                {instructionNote ? (
+                  <View style={styles.instructionBadge}>
+                    <Text style={styles.instructionText}>✦ {instructionNote} ✦</Text>
+                  </View>
+                ) : null}
+
+                {/* Formatted Description / Overview */}
+                {description ? renderFormattedDescription(description) : null}
+
+                {/* Sacred Mantras from DB */}
+                {mantras && mantras.length > 0 ? (
+                  <View style={{ marginTop: 14 }}>
+                    <Text style={[styles.sectionTitle, { color: '#173D32' }]}>
+                      ❖ {currentLanguage === 'te' ? 'దివ్య మంత్రములు & స్తోత్రములు' : 'Sacred Mantras & Invocations'}:
+                    </Text>
+                    {mantras.map((m: any, mIdx: number) => (
+                      <View key={m.id || mIdx} style={styles.mantraBox}>
+                        {m.title ? (
+                          <Text style={[styles.stepTitle, { color: '#8B4513', marginBottom: 6 }]}>
+                            ✦ {m.title} ✦
+                          </Text>
+                        ) : null}
+                        <Text style={styles.mantraText}>{m.script || m.mantra || m.text}</Text>
+                        {m.transliteration ? (
+                          <Text style={[styles.readingBodyText, { fontStyle: 'italic', marginTop: 4 }]}>
+                            {m.transliteration}
+                          </Text>
+                        ) : null}
+                        {m.meaning ? (
+                          <Text style={[styles.readingBodyText, { marginTop: 6, color: '#333' }]}>
+                            <Text style={{ fontWeight: '700', color: '#173D32' }}>
+                              {currentLanguage === 'te' ? 'భావము: ' : 'Meaning: '}
+                            </Text>
+                            {m.meaning}
+                          </Text>
+                        ) : null}
+                      </View>
+                    ))}
+                  </View>
+                ) : null}
+
+                {/* Procedure Steps from DB */}
+                {procedure && procedure.length > 0 ? (
+                  <View style={{ marginTop: 14 }}>
+                    <Text style={[styles.sectionTitle, { color: '#173D32' }]}>
+                      ❖ {currentLanguage === 'te' ? 'పూజా క్రమము / విధానము (Procedure Steps)' : 'Procedure Steps'}:
+                    </Text>
+                    {procedure.map((pr: any, prIdx: number) => (
+                      <View key={pr.step || prIdx} style={styles.stepCardItem}>
+                        <View style={styles.stepBadge}>
+                          <Text style={styles.stepBadgeText}>{pr.step || (prIdx + 1)}</Text>
+                        </View>
+                        <View style={{ flex: 1, marginLeft: 10 }}>
+                          <Text style={styles.stepTitle}>{pr.title || (`Step ${prIdx + 1}`)}</Text>
+                          {pr.mantra ? (
+                            <View style={[styles.mantraBox, { marginVertical: 6 }]}>
+                              <Text style={styles.mantraText}>{pr.mantra}</Text>
+                            </View>
+                          ) : null}
+                          {pr.desc || pr.description ? (
+                            <Text style={styles.readingBodyText}>{pr.desc || pr.description}</Text>
+                          ) : null}
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                ) : null}
+
+                {/* Devotional Contents from DB */}
+                {contents && contents.length > 0 ? (
+                  <View style={{ marginTop: 14 }}>
+                    {contents.map((item: any, idx: number) => (
+                      <View key={item.id || idx} style={styles.itemBlock}>
+                        {item.title ? <Text style={styles.itemTitle}>✦ {item.title} ✦</Text> : null}
+                        {item.sacredText ? (
+                          <View style={[styles.mantraBox, { marginVertical: 6 }]}>
+                            <Text style={styles.mantraText}>{item.sacredText}</Text>
+                          </View>
+                        ) : null}
+                        <Text style={styles.readingBodyText}>
+                          {item.content || item.text || item.meaning || item.description}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                ) : null}
+
+                {/* Benefits from DB */}
+                {benefits && benefits.length > 0 ? (
+                  <View style={{ marginTop: 14 }}>
+                    <Text style={[styles.sectionTitle, { color: '#173D32' }]}>
+                      ✨ {currentLanguage === 'te' ? 'పూజా ఫలము (Sacred Benefits)' : 'Divine Blessings & Benefits'}:
+                    </Text>
+                    {benefits.map((b: any, bIdx: number) => (
+                      <View key={bIdx} style={{ marginBottom: 6 }}>
+                        <Text style={[styles.stepTitle, { fontSize: 14 }]}>
+                          ❖ {typeof b === 'string' ? b : (b.title || `Benefit ${bIdx + 1}`)}
+                        </Text>
+                        {b.description && b.description !== b.title ? (
+                          <Text style={styles.readingBodyText}>{b.description}</Text>
+                        ) : null}
+                      </View>
+                    ))}
+                  </View>
+                ) : null}
+
+                {/* Empty State when zero content */}
+                {!description && mantras.length === 0 && procedure.length === 0 && contents.length === 0 ? (
+                  <Text style={styles.emptyText}>
+                    {currentLanguage === 'te'
+                      ? 'ఈ వివరాలు త్వరలో అందుబాటులోకి వస్తాయి.'
+                      : 'Sacred devotional content will be displayed here directly from the database.'}
+                  </Text>
+                ) : null}
+              </View>
+            )}
+          </View>
+        )}
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  root: {
+  screenContainer: {
     flex: 1,
     backgroundColor: '#FAF5EB',
-    width: '100%',
-    height: '100%',
   },
-  safeArea: {
-    backgroundColor: '#D84315',
-  },
-  header: {
+  headerBar: {
+    minHeight: 56 + ANDROID_STATUS_BAR_HEIGHT,
+    paddingTop: ANDROID_STATUS_BAR_HEIGHT + 6,
+    paddingBottom: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#D84315',
+    borderBottomWidth: 1.5,
+    borderBottomColor: 'rgba(223, 166, 46, 0.4)',
     elevation: 4,
-    shadowColor: '#000000',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.18,
     shadowRadius: 3,
   },
   backBtn: {
+    paddingRight: 12,
     paddingVertical: 4,
-    paddingHorizontal: 8,
   },
-  backText: {
-    color: '#FFFFFF',
-    fontSize: 16,
+  backArrowText: {
+    color: '#FFFDF8',
+    fontSize: 22,
     fontWeight: '700',
   },
   headerTitle: {
-    color: '#FFFFFF',
+    flex: 1,
+    color: '#E6B800',
     fontSize: 18,
     fontWeight: '700',
-    flex: 1,
-    textAlign: 'center',
-    fontFamily: Platform.select({ ios: 'Poppins-Bold', android: 'Poppins_700Bold', web: 'Poppins, sans-serif', default: 'Poppins_700Bold' }),
+    letterSpacing: 0.3,
+    fontFamily: Platform.select({ ios: 'Poppins-Bold', android: 'Poppins_700Bold', default: 'serif' }),
   },
-  bodyWrapper: {
-    flex: 1,
-    backgroundColor: '#FAF5EB',
+  headerFiligreeWrapper: {
+    marginLeft: 8,
   },
-  container: {
+  watermarkImage: {
+    position: 'absolute',
+    top: '18%',
+    alignSelf: 'center',
+    width: '85%',
+    height: '65%',
+    opacity: 0.08,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
     paddingHorizontal: 14,
     paddingTop: 16,
     paddingBottom: 40,
-    alignItems: 'center',
   },
-  cardHeader: {
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  bannerTitle: {
-    color: '#0C251E',
-    fontSize: 18,
-    fontWeight: '700',
-    marginTop: 8,
-    fontFamily: Platform.select({ ios: 'Poppins-Bold', android: 'Poppins_700Bold', web: 'Poppins, sans-serif', default: 'Poppins_700Bold' }),
-  },
-  bannerSubtitle: {
-    color: '#215344',
-    fontSize: 13,
-    marginTop: 2,
-    fontWeight: '600',
-  },
-  contentCard: {
-    width: '100%',
-    backgroundColor: '#FFFFFF',
+
+  // ── READING CARD (EXACT USER SPECIFICATION) ──
+  readingCard: {
+    backgroundColor: '#FFFDF8',
     borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 18,
+    padding: 18,
     borderWidth: 1.2,
-    borderColor: '#E6D9C8',
-    elevation: 2,
-    shadowColor: '#0C251E',
-    shadowOffset: { width: 0, height: 1.5 },
-    shadowOpacity: 0.06,
+    borderColor: '#E6C898',
+    elevation: 3,
+    shadowColor: '#071914',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
     shadowRadius: 4,
+    width: '100%',
   },
-  titleContainer: {
+  readingCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 10,
+  },
+  cardHeaderSaveBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#F7F3E9',
+    borderWidth: 1,
+    borderColor: '#E6C898',
+    alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 6,
-  },
-  cornerDecorLeft: {
-    width: 18,
-    height: 2,
-    backgroundColor: '#D84315',
-    marginRight: 8,
-  },
-  cornerDecorRight: {
-    width: 18,
-    height: 2,
-    backgroundColor: '#D84315',
     marginLeft: 8,
   },
-  cardTitle: {
-    color: '#0C251E',
-    fontSize: 18,
+  readingMedallionWrapper: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    borderWidth: 2,
+    borderColor: '#DFA62E',
+    overflow: 'hidden',
+    backgroundColor: '#173D32',
+    elevation: 2,
+  },
+  readingMedallionImage: {
+    width: '100%',
+    height: '100%',
+  },
+  readingTitleContainer: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  readingTitle: {
+    fontSize: 17,
     fontWeight: '700',
-    textAlign: 'center',
-    fontFamily: Platform.select({ ios: 'Poppins-Bold', android: 'Poppins_700Bold', web: 'Poppins, sans-serif', default: 'Poppins_700Bold' }),
+    color: '#173D32',
+    marginBottom: 3,
+    fontFamily: Platform.select({ ios: 'Poppins-Bold', android: 'Poppins_700Bold', default: 'serif' }),
   },
-  divider: {
-    height: 1,
-    backgroundColor: '#F0E5D8',
-    marginVertical: 12,
-  },
-  centerBox: {
-    paddingVertical: 24,
-    alignItems: 'center',
-  },
-  loadingText: {
-    color: '#215344',
-    fontSize: 13,
-    marginTop: 8,
+  readingSubtitle: {
+    fontSize: 12.5,
+    color: '#8A5A0A',
     fontWeight: '600',
   },
+  readingDivider: {
+    height: 1.2,
+    backgroundColor: '#E6C898',
+    marginVertical: 12,
+  },
+  readingLoadingBox: {
+    padding: 30,
+    alignItems: 'center',
+  },
+  readingLoadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#173D32',
+    fontWeight: '600',
+  },
+  cardBody: {
+    marginTop: 4,
+  },
+  readingBodyText: {
+    fontSize: 15,
+    lineHeight: 25,
+    color: '#2C1D11',
+    fontWeight: '500',
+    marginBottom: 8,
+    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' }),
+  },
+
+  // Sub-items List Styles
+  subListCardsContainer: {
+    width: '100%',
+    gap: 12,
+  },
+  subItemCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFDF8',
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E6C898',
+    elevation: 2,
+  },
+  subItemMedallionWrapper: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1.5,
+    borderColor: '#DFA62E',
+    overflow: 'hidden',
+  },
+  subItemMedallionImage: {
+    width: '100%',
+    height: '100%',
+  },
+  subItemTextContainer: {
+    flex: 1,
+    marginLeft: 12,
+    marginRight: 8,
+  },
+  subItemTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#173D32',
+    marginBottom: 2,
+  },
+  subItemSubtitle: {
+    fontSize: 12,
+    color: '#6B4B3D',
+  },
+  playIconContainer: {
+    padding: 6,
+  },
+
+  // Formatted elements
   sectionHeaderCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -508,9 +905,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 8,
     borderLeftWidth: 3,
-    borderLeftColor: '#D84315',
+    borderLeftColor: '#DFA62E',
     borderRightWidth: 3,
-    borderRightColor: '#D84315',
+    borderRightColor: '#DFA62E',
     marginVertical: 12,
   },
   goldLine: {
@@ -520,267 +917,228 @@ const styles = StyleSheet.create({
     marginHorizontal: 8,
   },
   sectionHeaderText: {
-    color: '#BF360C',
     fontSize: 14.5,
     fontWeight: '700',
-    textAlign: 'center',
+    color: '#8B4513',
   },
   bulletRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-    marginVertical: 3,
-    borderWidth: 1,
-    borderColor: '#F0E5D8',
-    borderLeftWidth: 3,
-    borderLeftColor: '#D84315',
+    alignItems: 'flex-start',
+    marginVertical: 4,
   },
   omCircle: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#D84315',
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#FFE8CC',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 10,
+    marginRight: 8,
+    marginTop: 2,
   },
   omCircleText: {
-    color: '#FFFFFF',
     fontSize: 12,
-    fontWeight: 'bold',
+    color: '#8B4513',
+    fontWeight: '700',
   },
   bulletTextContainer: {
     flex: 1,
   },
   bulletBody: {
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 14.5,
+    lineHeight: 22,
+    color: '#2C1D11',
   },
   bulletTitleBold: {
     fontWeight: '700',
-    color: '#BF360C',
+    color: '#173D32',
   },
   bulletTitleValue: {
-    color: '#0C251E',
-    fontWeight: '600',
+    color: '#2C1D11',
   },
   sloganRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginVertical: 3,
-    backgroundColor: '#FAF5EB',
-    paddingVertical: 7,
-    paddingHorizontal: 10,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#E6D9C8',
+    backgroundColor: 'rgba(223, 166, 46, 0.1)',
+    borderRadius: 8,
+    padding: 8,
+    marginVertical: 4,
   },
   sloganCallBadge: {
     flex: 1,
-    paddingRight: 4,
   },
   sloganCallText: {
-    color: '#BF360C',
+    fontSize: 13.5,
     fontWeight: '700',
-    fontSize: 13,
+    color: '#173D32',
   },
   sloganArrow: {
-    color: '#D84315',
-    fontSize: 14,
-    fontWeight: 'bold',
     paddingHorizontal: 6,
+    color: '#DFA62E',
+    fontWeight: '700',
   },
   sloganResponseBadge: {
     flex: 1,
-    paddingLeft: 4,
     alignItems: 'flex-end',
   },
   sloganResponseText: {
-    color: '#2E7D32',
-    fontWeight: '700',
-    fontSize: 13,
-    textAlign: 'right',
+    fontSize: 13.5,
+    fontWeight: '600',
+    color: '#8A5A0A',
   },
   instructionBadge: {
     alignSelf: 'center',
-    backgroundColor: '#FFF3E0',
-    paddingVertical: 4,
+    backgroundColor: '#F3E5F5',
     paddingHorizontal: 12,
-    borderRadius: 14,
+    paddingVertical: 4,
+    borderRadius: 12,
     marginVertical: 6,
-    borderWidth: 1,
-    borderColor: '#FFE0B2',
   },
   instructionText: {
-    color: '#E65100',
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 12.5,
+    color: '#6A1B9A',
+    fontWeight: '600',
   },
   chantRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    paddingVertical: 5,
-    paddingHorizontal: 4,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0E5D8',
+    alignItems: 'center',
+    backgroundColor: 'rgba(23, 61, 50, 0.05)',
+    padding: 8,
+    borderRadius: 6,
+    marginVertical: 4,
   },
   chantOmSymbol: {
-    color: '#D84315',
-    fontSize: 13,
-    fontWeight: 'bold',
+    fontSize: 15,
+    color: '#DFA62E',
+    fontWeight: '700',
     marginRight: 8,
-    marginTop: 2,
   },
   chantText: {
-    color: '#0C251E',
-    fontSize: 14,
-    lineHeight: 22,
     flex: 1,
-    fontWeight: '500',
-  },
-  slokaText: {
-    color: '#0C251E',
     fontSize: 14.5,
-    lineHeight: 23,
-    textAlign: 'center',
-    paddingVertical: 3,
-  },
-  bodyText: {
-    color: '#0C251E',
-    fontSize: 14.5,
-    lineHeight: 23,
-    textAlign: 'left',
+    color: '#173D32',
+    fontWeight: '600',
   },
   itemBlock: {
     marginTop: 12,
     paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: '#F0E5D8',
+    borderTopColor: '#F0E6D8',
   },
   itemTitle: {
-    color: '#BF360C',
     fontSize: 15,
     fontWeight: '700',
+    color: '#173D32',
     marginBottom: 4,
   },
-  itemText: {
-    color: '#0C251E',
+  emptyText: {
     fontSize: 14,
-    lineHeight: 22,
+    color: '#666',
+    textAlign: 'center',
+    marginVertical: 20,
   },
+
+  // Table styling
   tableCardContainer: {
-    width: '100%',
-    marginVertical: 14,
+    marginVertical: 12,
   },
   tableScroll: {
-    width: '100%',
+    borderRadius: 8,
   },
   tableCard: {
-    minWidth: '100%',
-    borderWidth: 1.2,
-    borderColor: '#E6D9C8',
-    borderRadius: 10,
     backgroundColor: '#FFFFFF',
-    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#E6C898',
+    borderRadius: 8,
   },
   tableHeaderRow: {
     flexDirection: 'row',
-    backgroundColor: '#FFF3E0',
-    borderBottomWidth: 1.2,
-    borderBottomColor: '#FFE0B2',
+    backgroundColor: '#173D32',
+  },
+  tableCell: {
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  tableHeaderCell: {
+    alignItems: 'center',
+  },
+  tableHeaderText: {
+    color: '#FFD700',
+    fontSize: 12.5,
+    fontWeight: '700',
   },
   tableDataRow: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    borderBottomColor: '#F0E5D8',
-    minHeight: 38,
-    alignItems: 'center',
+    borderBottomColor: '#F0E6D8',
   },
   tableRowAlt: {
-    backgroundColor: '#FAF5EB',
-  },
-  tableCell: {
-    paddingVertical: 8,
-    paddingHorizontal: 8,
-    borderRightWidth: 1,
-    borderRightColor: '#F0E5D8',
-    justifyContent: 'center',
-  },
-  tableHeaderCell: {
-    borderRightColor: '#FFE0B2',
-    paddingVertical: 10,
-  },
-  colNo: {
-    width: 75,
-    minWidth: 70,
-  },
-  colDate: {
-    width: 105,
-    minWidth: 100,
-  },
-  colDay: {
-    width: 115,
-    minWidth: 110,
-  },
-  colNakshatram: {
-    width: 110,
-    minWidth: 105,
-    borderRightWidth: 0,
-  },
-  tableHeaderText: {
-    color: '#BF360C',
-    fontSize: 13,
-    fontWeight: '700',
-    textAlign: 'center',
+    backgroundColor: '#FFFDF8',
   },
   tableCellText: {
-    color: '#0C251E',
-    fontSize: 13.5,
-    textAlign: 'center',
+    fontSize: 12.5,
+    color: '#2C1D11',
   },
   tableCellCenter: {
     textAlign: 'center',
-    fontWeight: '600',
   },
   tableCellBold: {
     fontWeight: '700',
-    color: '#BF360C',
-    textAlign: 'center',
   },
   tableCellNakshatram: {
+    color: '#8B4513',
+  },
+  colNo: { width: 50 },
+  colDate: { width: 110 },
+  colDay: { width: 90 },
+  colNakshatram: { width: 130 },
+  mantraBox: {
+    backgroundColor: 'rgba(223, 166, 46, 0.12)',
+    borderLeftWidth: 4,
+    borderLeftColor: '#DFA62E',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 14,
+  },
+  mantraText: {
+    fontSize: 15,
+    lineHeight: 24,
+    color: '#8B4513',
     fontWeight: '700',
-    color: '#2E7D32',
-    textAlign: 'center',
   },
-  subCategoryListWrapper: {
-    width: '100%',
-    paddingTop: 6,
-  },
-  subCategoryRow: {
+  stepCardItem: {
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(70, 30, 0, 0.15)',
-    backgroundColor: 'transparent',
+    alignItems: 'flex-start',
+    backgroundColor: '#FFFDF8',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#E6C898',
   },
-  subCategoryLeft: {
-    flexDirection: 'row',
+  stepBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#173D32',
+    justifyContent: 'center',
     alignItems: 'center',
-    flex: 1,
   },
-  subCategoryTitle: {
-    fontSize: 16.5,
+  stepBadgeText: {
+    color: '#FFD700',
+    fontSize: 13,
     fontWeight: '700',
-    color: '#0C251E',
-    marginLeft: 14,
-    flex: 1,
-    lineHeight: 23,
+  },
+  stepTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#173D32',
+    marginBottom: 4,
+  },
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 10,
   },
 });
-

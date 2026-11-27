@@ -1,106 +1,386 @@
 import { Controller, Get, Post, Put, Param, Query, Body, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 
-function resolveCategoryDeity(slug: string = '', title: string = '') {
-  const s = `${slug} ${title}`.toLowerCase();
-  if (/ganesh|vignesh|vinayak|ganapath|modak|బొమ్మ|గణపతి|వినాయక|విఘ్నేశ్వర|గణేశ|గణప|మోదక/.test(s)) {
-    return { deityId: 'ganesha', deityName: 'Lord Ganesha' };
-  }
-  if (/devi|durga|lakshmi|lalitha|kanakadhara|mahalakshmi|meenakshi|kamakshi|saraswathi|gomatha|kamadhenu|parameshwari|akhilandeshwari|దండాల|అంబ|దేవి|లక్ష్మి|దుర్గ|లలిత|సరస్వతి|గోమాత|కామధేను|వరలక్ష్మి|మాళికాపురత్తమ్మ/.test(s)) {
-    return { deityId: 'devi', deityName: 'Goddess Lakshmi / Durga' };
-  }
-  if (/ayyap|sastha|harivarasanam|shabarimala|uthara|sannidhanam|padi|maaladharan|sharanu|harathi|గురు నాథ|గురునాథ|సాయంకాల|అయ్యప్ప|శాస్తా|శాస్త|శబరిమల|మాలాధారణ|హరివరాసనం|శరణం|హారతి|ఇరుముడి|పడి/.test(s)) {
-    return { deityId: 'ayyappa', deityName: 'Lord Ayyappa' };
-  }
-  if (/shiva|linga|bilva|rudra|natara|mrityunjaya|kedar|శివ|లింగ|బిల్వ|రుద్ర|మృత్యుంజయ|ఈశ్వర|కేదారేశ్వర|నటరాజ/.test(s)) {
-    return { deityId: 'shiva', deityName: 'Lord Shiva' };
-  }
-  if (/venkates|vishnu|koodalmanikya|achyuta|govinda|narayana|perumal|satyanarayana|guruvayoor|వేంకట|వెంకట|విష్ణు|సత్యనారాయణ|గోవింద|నారాయణ|శ్రీనివాస|గురువాయూరప్ప/.test(s)) {
-    return { deityId: 'venkateswara', deityName: 'Lord Venkateswara' };
-  }
-  if (/hanuman|anjaneya|maruti|bajrang|sundarakanda|హనుమాన్|ఆంజనేయ|మారుతి|రామదూత/.test(s)) {
-    return { deityId: 'hanuman', deityName: 'Lord Hanuman' };
-  }
-  if (/subrahmanya|murugan|kartikeya|saravana|shanmukha|vel|skanda|pazhani|సుబ్రహ్మణ్య|మురుగన్|కార్తికేయ|షణ్ముఖ|స్కంద|పళని/.test(s)) {
-    return { deityId: 'murugan', deityName: 'Lord Murugan' };
-  }
-  return { deityId: 'all', deityName: 'All Deities' };
-}
+const SERVICE_LOCALIZATIONS: Record<string, Record<string, { title: string; sub: string }>> = {
+  te: {
+    pooja: { title: 'పూజా విధానము', sub: 'దశలవారీగా పవిత్ర పూజా విధానాలు' },
+    stotras: { title: 'దివ్య స్తోత్రాలు', sub: 'పవిత్ర స్తోత్రాలు & కవచాలు' },
+    slokas: { title: 'నిత్య శ్లోకాలు', sub: 'ధ్యానం & ప్రార్థన శ్లోకాలు' },
+    bhajans: { title: 'భజనలు & కీర్తనలు', sub: 'భక్తి కీర్తనలు & గీతాలు' },
+    darshan: { title: 'ప్రత్యక్ష దర్శనం', sub: 'నిత్య ఆలయ ప్రత్యక్ష ప్రసారాలు' },
+    panchangam: { title: 'పంచాంగం', sub: 'శుభ సమయాలు & ముహూర్తాలు' },
+    festivals: { title: 'ఆలయ ఉత్సవాలు', sub: 'వార్షిక ఉత్సవాలు & వేడుకలు' },
+    temples: { title: 'పుణ్యక్షేత్రాలు', sub: 'ప్రసిద్ధ క్షేత్రాలు & దర్శనీయ స్థలాలు' },
+    annadanam: { title: 'అన్నదాన సేవ', sub: 'నిత్యాన్నదానం & సమర్పణ' },
+  },
+  kn: {
+    pooja: { title: 'ಪೂಜಾ ವಿಧಾನ', sub: 'ಹಂತ-ಹಂತದ ಪವಿತ್ರ ವಿಧಿವಿಧಾನಗಳು' },
+    stotras: { title: 'ದಿವ್ಯ ಸ್ತೋತ್ರಗಳು', sub: 'ಪವಿತ್ರ ಸ್ತೋತ್ರಗಳು & ಕವಚಗಳು' },
+    slokas: { title: 'ನಿತ್ಯ ಶ್ಲೋಕಗಳು', sub: 'ಧ್ಯಾನ & ಪ್ರಾರ್ಥನಾ ಶ್ಲೋಕಗಳು' },
+    bhajans: { title: 'ಭಜನೆಗಳು & ಕೀರ್ತನೆಗಳು', sub: 'ಭಕ್ತಿ ಗೀತೆಗಳು & ಸಂಕೀರ್ತನೆ' },
+    darshan: { title: 'ಲೈವ್ ದರ್ಶನ', sub: 'ದೈನಂದಿನ ದೇವಾಲಯ ನೇರಪ್ರಸಾರ' },
+    panchangam: { title: 'ಪಂಚಾಂಗ', sub: 'ಶುಭ ಮುಹೂರ್ತಗಳು & ತಿಥಿಗಳು' },
+    festivals: { title: 'ದೇವಾಲಯ ಉತ್ಸವಗಳು', sub: 'ವಾರ್ಷಿಕ ಹಬ್ಬಗಳು & ಆಚರಣೆಗಳು' },
+    temples: { title: 'ಪುಣ್ಯಕ್ಷೇತ್ರಗಳು', sub: 'ಪವಿತ್ರ ದೇವಾಲಯಗಳು & ಯಾತ್ರೆಗಳು' },
+    annadanam: { title: 'ಅನ್ನದಾನ ಸೇವೆ', sub: 'ಅನ್ನದಾನ ಅರ್ಪಣೆ & ಸೇವೆ' },
+  },
+  ta: {
+    pooja: { title: 'பூஜா விதானம்', sub: 'படிப்படியான புனித வழிபாட்டு முறைகள்' },
+    stotras: { title: 'திவ்ய ஸ்தோத்திரங்கள்', sub: 'புனித துதிகள் & கவசங்கள்' },
+    slokas: { title: 'நித்ய ஸ்லோகங்கள்', sub: 'தியானம் & பிரார்த்தனை சுலோகங்கள்' },
+    bhajans: { title: 'பஜனைகள் & பாடல்கள்', sub: 'பக்திப் பாடல்கள் & கீர்த்தனைகள்' },
+    darshan: { title: 'நேரலை தரிசனம்', sub: 'தினசரி கோயில் நேரலை ஒளிபரப்பு' },
+    panchangam: { title: 'பஞ்சாங்கம்', sub: 'சுப நேரங்கள் & திதிகள்' },
+    festivals: { title: 'திருவிழாக்கள்', sub: 'ஆண்டு திருவிழாக்கள் & கொண்டாட்டங்கள்' },
+    temples: { title: 'புண்ணிய தலங்கள்', sub: 'புனித கோயில்கள் & யாத்திரைகள்' },
+    annadanam: { title: 'அன்னதான சேவை', sub: 'அன்னதான அர்ப்பணிப்பு & சேவை' },
+  },
+  hi: {
+    pooja: { title: 'पूजा विधान', sub: 'चरणबद्ध पवित्र अनुष्ठान एवं पूजा' },
+    stotras: { title: 'दिव्य स्तोत्र', sub: 'पवित्र स्तोत्र एवं मंत्र' },
+    slokas: { title: 'नित्य श्लोक', sub: 'ध्यान एवं प्रार्थना श्लोक' },
+    bhajans: { title: 'भजन एवं कीर्तन', sub: 'भक्ति संगीत एवं आरतियां' },
+    darshan: { title: 'लाइव दर्शन', sub: 'दैनिक मंदिर लाइव प्रसारण' },
+    panchangam: { title: 'पंचांग', sub: 'शुभ मुहूर्त एवं तिथियां' },
+    festivals: { title: 'मंदिर उत्सव', sub: 'वार्षिक उत्सव एवं पर्व' },
+    temples: { title: 'पुण्य क्षेत्र व मंदिर', sub: 'पवित्र तीर्थ स्थल एवं धाम' },
+    annadanam: { title: 'अन्नदान सेवा', sub: 'भोजन सेवा एवं दान' },
+  },
+  ml: {
+    pooja: { title: 'പൂജാ വിധി', sub: 'ഘട്ടം ഘട്ടമായുള്ള വിശുദ്ധ കർമ്മങ്ങൾ' },
+    stotras: { title: 'ദിവ്യ സ്തോത്രങ്ങൾ', sub: 'വിശുദ്ധ സ്തോത്രങ്ങൾ & കീർത്തനങ്ങൾ' },
+    slokas: { title: 'നിത്യ ശ്ലോകങ്ങൾ', sub: 'പ്രാർത്ഥനാ ശ്ലോകങ്ങൾ' },
+    bhajans: { title: 'ഭജനകളും ഗാനങ്ങളും', sub: 'ഭക്തിഗാനങ്ങൾ' },
+    darshan: { title: 'തത്സമയ ദർശനം', sub: 'ദിവസേനയുള്ള തത്സമയ സംപ്രേക്ഷണം' },
+    panchangam: { title: 'പഞ്ചാംഗം', sub: 'ശുഭ മുഹൂർത്തങ്ങൾ' },
+    festivals: { title: 'ക്ഷേത്രോത്സവങ്ങൾ', sub: 'വാർഷിക ആഘോഷങ്ങൾ' },
+    temples: { title: 'പുണ്യക്ഷേത്രങ്ങൾ', sub: 'തീർത്ഥാടന കേന്ദ്രങ്ങൾ' },
+    annadanam: { title: 'അന്നദാന സേവ', sub: 'അന്നദാന സമർപ്പണം' },
+  },
+  en: {
+    pooja: { title: 'Pooja Vidhanam', sub: 'Step-by-step sacred rituals' },
+    stotras: { title: 'Divine Stotras', sub: 'Sacred Hymns & Chants' },
+    slokas: { title: 'Daily Slokas', sub: 'Verses for Meditation' },
+    bhajans: { title: 'Bhajans & Songs', sub: 'Devotional Melodies' },
+    darshan: { title: 'Live Darshan', sub: 'Daily Temple Streams' },
+    panchangam: { title: 'Panchangam', sub: 'Auspicious Timings' },
+    festivals: { title: 'Temple Festivals', sub: 'Annual Celebrations' },
+    temples: { title: 'Sacred Temples', sub: 'Shrines & Pilgrimages' },
+    annadanam: { title: 'Annadanam Seva', sub: 'Meal Offering & Seva' },
+  },
+};
 
 @Controller('categories')
 export class CategoriesController {
   constructor(private readonly prisma: PrismaService) {}
 
+  /**
+   * Helper: Retrieve deities directory from DB (app_settings key 'deities' or deities table)
+   * Strictly DB-driven: zero hardcoded data.
+   */
+  private async getDbDeities(): Promise<any[]> {
+    try {
+      const setting = await this.prisma.appSetting.findUnique({
+        where: { key: 'deities' },
+      });
+      if (setting && setting.value) {
+        const parsed = JSON.parse(setting.value);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  /**
+   * Helper: Retrieve subcategory custom images mapping from DB (app_settings key 'subcategory_images')
+   */
+  private async getCustomImagesMap(): Promise<Record<string, string>> {
+    try {
+      const setting = await this.prisma.appSetting.findUnique({
+        where: { key: 'subcategory_images' },
+      });
+      if (setting && setting.value) {
+        const parsed = JSON.parse(setting.value);
+        if (parsed && typeof parsed === 'object') {
+          return parsed;
+        }
+      }
+    } catch (_) {}
+    return {};
+  }
+
+  /**
+   * Helper: Dynamically match category against deities stored in DB
+   */
+  private resolveDeityFromDb(slug: string = '', title: string = '', dbDeities: any[]) {
+    const text = `${slug} ${title}`.toLowerCase();
+
+    // 1. Direct match with DB deities
+    for (const deity of dbDeities) {
+      if (!deity.id || deity.id === 'all') continue;
+      const dId = (deity.id || '').toLowerCase();
+      const dSlug = (deity.slug || '').toLowerCase().replace(/^(lord-|goddess-)/, '');
+      const dName = (deity.name || '').toLowerCase().replace(/^(lord\s+|goddess\s+)/, '');
+      const dNameTe = (deity.nameTe || '').toLowerCase().replace(/^శ్రీ\s+/, '').replace(/\s+స్వామి$/, '');
+
+      if (
+        (dId && text.includes(dId)) ||
+        (dSlug && text.includes(dSlug)) ||
+        (dName && text.includes(dName)) ||
+        (dNameTe && text.includes(dNameTe))
+      ) {
+        return {
+          deityId: deity.id,
+          deityName: deity.name || deity.id,
+          deityTelugu: deity.nameTe || deity.name || deity.id,
+        };
+      }
+    }
+
+    // 2. Standard multi-lingual devotional keywords mapping to DB deity records
+    if (/ayyap|sastha|harivarasanam|shabarimala|uthara|sannidhanam|padi|maaladharan|sharanu|harathi|irumudi|kettu|kattu|poorvaang|పూర్వాంగ|మాలాధారణ|అయ్యప్ప|శాస్తా|శాస్త|శబరిమల|మాలాధారణ|హరివరాసనం|శరణం|హారతి|ఇరుముడి|పడి/.test(text)) {
+      const ayyappa = dbDeities.find((d) => d.id === 'ayyappa');
+      return {
+        deityId: 'ayyappa',
+        deityName: ayyappa?.name || 'Lord Ayyappa',
+        deityTelugu: ayyappa?.nameTe || 'శ్రీ అయ్యప్ప స్వామి',
+      };
+    }
+    if (/shiva|linga|bilva|rudra|natara|mrityunjaya|kedar|vishwanath|shankara|renuka|శివ|లింగ|బిల్వ|రుద్ర|మృత్యుంజయ|ఈశ్వర|కేదారేశ్వర|నటరాజ|విశ్వనాథ|శంకర|శఙ్కర|రేణుక/.test(text)) {
+      const shiva = dbDeities.find((d) => d.id === 'shiva');
+      return {
+        deityId: 'shiva',
+        deityName: shiva?.name || 'Lord Shiva',
+        deityTelugu: shiva?.nameTe || 'పరమశివుడు',
+      };
+    }
+    if (/ganesh|vignesh|vinayak|ganapath|modak|గణపతి|వినాయక|విఘ్నేశ్వర|గణేశ|గణప|మోదక/.test(text)) {
+      const ganesha = dbDeities.find((d) => d.id === 'ganesha');
+      return {
+        deityId: 'ganesha',
+        deityName: ganesha?.name || 'Lord Ganesha',
+        deityTelugu: ganesha?.nameTe || 'శ్రీ మహాగణపతి',
+      };
+    }
+    if (/devi|durga|lakshmi|lalitha|kanakadhara|mahalakshmi|meenakshi|kamakshi|saraswathi|gomatha|kamadhenu|vasavi|akhiland|kanyaka|దేవి|లక్ష్మి|దుర్గ|లలిత|సరస్వతి|గోమాత|కామధేను|వరలక్ష్మి|మాళికాపురత్తమ్మ|వాసవి|వాసవీ|అఖిలాండ|కన్యక/.test(text)) {
+      const devi = dbDeities.find((d) => d.id === 'devi');
+      return {
+        deityId: 'devi',
+        deityName: devi?.name || 'Goddess Lakshmi / Durga',
+        deityTelugu: devi?.nameTe || 'శ్రీ లక్ష్మీ దుర్గా దేవి',
+      };
+    }
+    if (/venkates|vishnu|koodalmanikya|achyuta|govinda|narayana|perumal|satyanarayana|guruvayoor|ramanuja|వేంకట|వెంకట|విష్ణు|సత్యనారాయణ|గోవింద|నారాయణ|శ్రీనివాస|గురువాయూరప్ప|రామానుజ/.test(text)) {
+      const venk = dbDeities.find((d) => d.id === 'venkateswara');
+      return {
+        deityId: 'venkateswara',
+        deityName: venk?.name || 'Lord Venkateswara',
+        deityTelugu: venk?.nameTe || 'శ్రీ వేంకటేశ్వర స్వామి',
+      };
+    }
+    if (/hanuman|anjaneya|maruti|bajrang|sundarakanda|హనుమాన్|ఆంజనేయ|మారుతి|రామదూత/.test(text)) {
+      const hanuman = dbDeities.find((d) => d.id === 'hanuman');
+      return {
+        deityId: 'hanuman',
+        deityName: hanuman?.name || 'Lord Hanuman',
+        deityTelugu: hanuman?.nameTe || 'శ్రీ హనుమాన్',
+      };
+    }
+    if (/subrahmanya|murugan|kartikeya|saravana|shanmukha|vel|skanda|kanda|sashti|kavasam|pazhani|సుబ్రహ్మణ్య|మురుగన్|కార్తికేయ|షణ్ముఖ|స్కంద|షష్ఠి|కవచం|పళని/.test(text)) {
+      const murugan = dbDeities.find((d) => d.id === 'murugan');
+      return {
+        deityId: 'murugan',
+        deityName: murugan?.name || 'Lord Murugan',
+        deityTelugu: murugan?.nameTe || 'శ్రీ సుబ్రహ్మణ్యేశ్వర స్వామి',
+      };
+    }
+
+    const allDeity = dbDeities.find((d) => d.id === 'all');
+    return {
+      deityId: 'all',
+      deityName: allDeity?.name || 'All Deities',
+      deityTelugu: allDeity?.nameTe || 'సర్వ దేవతలు',
+    };
+  }
+
   // 1. Devotional Services & Categories Endpoint (Direct from MySQL with server-side search and multi-language support)
   @Get('services')
   async getCategoryServices(@Query('search') search?: string, @Query('lang') lang?: string) {
+    const q = search && search.trim() !== '' ? search.trim().toLowerCase() : null;
+    const targetLang = (lang || 'en').toLowerCase().trim();
+
+    // Load category translations from content_categories table in DB
+    let dbCategoryTranslations: Record<string, { title: string; desc: string }> = {};
     try {
-      const where: any = { isActive: true };
-
-      if (search && search.trim() !== '') {
-        const q = search.trim();
-        where.OR = [
-          { title: { contains: q } },
-          { sub: { contains: q } },
-          { serviceId: { contains: q } },
-        ];
+      const rootCats = await this.prisma.contentCategory.findMany({
+        where: { parentId: null, isArchived: false },
+        include: { translations: { include: { language: true } } },
+      });
+      if (rootCats && rootCats.length > 0) {
+        rootCats.forEach((cat) => {
+          const trans = cat.translations.find((t: any) => t.language?.code === targetLang) || cat.translations[0];
+          if (trans && trans.title) {
+            dbCategoryTranslations[cat.slug] = {
+              title: trans.title,
+              desc: trans.description || '',
+            };
+          }
+        });
       }
+    } catch (_) {}
 
+    // Load custom translations from app_settings if available
+    let dbSettingsTranslations: Record<string, { title: string; sub: string }> = {};
+    try {
+      const sKey = `category_services_${targetLang}`;
+      const sSetting = await this.prisma.appSetting.findUnique({ where: { key: sKey } });
+      if (sSetting && sSetting.value) {
+        const parsed = JSON.parse(sSetting.value);
+        if (parsed && typeof parsed === 'object') {
+          dbSettingsTranslations = parsed;
+        }
+      }
+    } catch (_) {}
+
+    const resolveItemTitleAndSub = (serviceId: string, origTitle: string, origSub: string) => {
+      const sId = (serviceId || '').toLowerCase().trim();
+      // 1. DB app_settings custom overrides
+      if (dbSettingsTranslations[sId]?.title) {
+        return {
+          title: dbSettingsTranslations[sId].title,
+          sub: dbSettingsTranslations[sId].sub || origSub || '',
+        };
+      }
+      // 2. DB content_categories translations
+      const matchedCat = Object.keys(dbCategoryTranslations).find((k) => k === sId || k.startsWith(sId) || sId.startsWith(k));
+      if (matchedCat && dbCategoryTranslations[matchedCat]?.title) {
+        return {
+          title: dbCategoryTranslations[matchedCat].title,
+          sub: SERVICE_LOCALIZATIONS[targetLang]?.[sId]?.sub || origSub || '',
+        };
+      }
+      // 3. Multi-language localization dictionary
+      if (SERVICE_LOCALIZATIONS[targetLang]?.[sId]) {
+        return {
+          title: SERVICE_LOCALIZATIONS[targetLang][sId].title,
+          sub: SERVICE_LOCALIZATIONS[targetLang][sId].sub,
+        };
+      }
+      return { title: origTitle, sub: origSub || '' };
+    };
+
+    // 1. Dedicated category_services table from DB
+    try {
       if ((this.prisma as any).categoryService) {
         const items = await (this.prisma as any).categoryService.findMany({
-          where,
           orderBy: { displayOrder: 'asc' },
         });
 
         if (items && items.length > 0) {
+          let mapped = items
+            .filter((item: any) => item.isActive !== false)
+            .map((item: any) => {
+              const localized = resolveItemTitleAndSub(item.serviceId, item.title, item.sub);
+              return {
+                id: item.serviceId,
+                serviceId: item.serviceId,
+                title: localized.title,
+                sub: localized.sub,
+                icon: item.icon || 'Sparkles',
+                url: item.url || '/subcategories',
+                artwork: item.artwork || item.image || '',
+                displayOrder: item.displayOrder,
+                isActive: item.isActive ?? true,
+              };
+            });
+
+          if (q) {
+            mapped = mapped.filter((item: any) =>
+              (item.title && item.title.toLowerCase().includes(q)) ||
+              (item.sub && item.sub.toLowerCase().includes(q)) ||
+              (item.serviceId && item.serviceId.toLowerCase().includes(q))
+            );
+          }
+
+          if (mapped.length > 0) {
+            return {
+              success: true,
+              data: mapped,
+              count: mapped.length,
+            };
+          }
+        }
+      }
+    } catch (err: any) {
+      console.warn('[Categories] getCategoryServices table query notice:', err?.message || err);
+    }
+
+    // 2. Dynamic app_settings (key: category_services) in MySQL DB
+    try {
+      const setting = await this.prisma.appSetting.findUnique({
+        where: { key: 'category_services' },
+      });
+      if (setting && setting.value) {
+        const parsed = JSON.parse(setting.value);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          let filtered = parsed;
+          if (q) {
+            filtered = parsed.filter((s: any) =>
+              (s.title && s.title.toLowerCase().includes(q)) ||
+              (s.sub && s.sub.toLowerCase().includes(q)) ||
+              (s.serviceId && s.serviceId.toLowerCase().includes(q))
+            );
+          }
           return {
             success: true,
-            data: items.map((item: any) => ({
-              id: item.serviceId,
-              serviceId: item.serviceId,
-              title: item.title,
-              sub: item.sub || '',
-              icon: item.icon,
-              url: item.url,
-              artwork: item.artwork || '',
-              displayOrder: item.displayOrder,
-              isActive: item.isActive ?? true,
-            })),
-            count: items.length,
+            data: filtered,
+            count: filtered.length,
           };
         }
       }
-
-      // 2. Check dynamic app_settings for category_services in database
-      const setting = await this.prisma.appSetting.findUnique({
-        where: { key: 'category_services' }
-      });
-      if (setting && setting.value) {
-        try {
-          const parsed = JSON.parse(setting.value);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            let filtered = parsed;
-            if (search && search.trim() !== '') {
-              const q = search.trim().toLowerCase();
-              filtered = parsed.filter((s: any) => s.title?.toLowerCase().includes(q) || s.sub?.toLowerCase().includes(q) || s.serviceId?.toLowerCase().includes(q));
-            }
-            return {
-              success: true,
-              data: filtered,
-              count: filtered.length
-            };
-          }
-        } catch {}
-      }
-    } catch (dbErr) {
-      console.warn('[Categories] getCategoryServices database error:', dbErr);
+    } catch (err: any) {
+      console.warn('[Categories] app_settings query notice:', err?.message || err);
     }
 
-    // Zero fallback / mock data: strictly return database result
+    // 3. Root Categories from content_categories table in DB
+    try {
+      const rootCats = await this.prisma.contentCategory.findMany({
+        where: { parentId: null, isArchived: false },
+        orderBy: { displayOrder: 'asc' },
+        include: { translations: { include: { language: true } } },
+      });
+      if (rootCats && rootCats.length > 0) {
+        const targetLang = (lang || 'en').toLowerCase().trim();
+        const mapped = rootCats.map((cat) => {
+          const trans = cat.translations.find((t: any) => t.language?.code === targetLang) || cat.translations[0];
+          return {
+            id: cat.slug,
+            serviceId: cat.slug,
+            title: trans?.title || cat.slug,
+            sub: trans?.description || '',
+            icon: 'Sparkles',
+            url: '/subcategories',
+            artwork: '',
+            displayOrder: cat.displayOrder,
+            isActive: true,
+          };
+        });
+        return {
+          success: true,
+          data: mapped,
+          count: mapped.length,
+        };
+      }
+    } catch (err: any) {
+      console.warn('[Categories] content_categories fallback notice:', err?.message || err);
+    }
+
     return {
       success: true,
       data: [],
-      count: 0
+      count: 0,
     };
   }
 
@@ -113,12 +393,12 @@ export class CategoriesController {
       return {
         success: false,
         statusCode: 404,
-        message: `Devotional service '${id}' not found.`
+        message: `Devotional service '${id}' not found.`,
       };
     }
     return {
       success: true,
-      data: service
+      data: service,
     };
   }
 
@@ -127,9 +407,9 @@ export class CategoriesController {
     const targetLang = (lang || 'en').toLowerCase().trim();
 
     try {
-      const where: any = { 
+      const where: any = {
         parentId: null,
-        isArchived: false
+        isArchived: false,
       };
 
       if (search && search.trim() !== '') {
@@ -153,7 +433,6 @@ export class CategoriesController {
 
       if (categories && categories.length > 0) {
         return categories.map((cat) => {
-          // Find matching user-selected language first, otherwise fall back to English reference
           const selectedMatch = cat.translations.find((t) => t.language.code === targetLang);
           const enMatch = cat.translations.find((t) => t.language.code === 'en');
           const fallbackMatch = selectedMatch || enMatch || cat.translations[0];
@@ -175,7 +454,7 @@ export class CategoriesController {
     return [];
   }
 
-  // 1b. Stotras Public API List (filtered by published, parent stotras/slogans, Telugu first)
+  // 1b. Stotras Public API List (filtered by parent stotras, strictly from DB)
   @Get('stotras')
   async getStotras(
     @Query('lang') lang = 'te',
@@ -190,21 +469,22 @@ export class CategoriesController {
     const skip = (pageNum - 1) * take;
 
     try {
-      // Find parent category for stotras (id 4 or slug slogans-of-sri-ayyappa-swami / stotras)
-      const parentCat = await this.prisma.contentCategory.findFirst({
+      const candidates = await this.prisma.contentCategory.findMany({
         where: {
+          isArchived: false,
           OR: [
-            { id: 4 },
+            { slug: 'stotras' },
             { slug: 'slogans-of-sri-ayyappa-swami' },
-            { slug: 'stotras' }
-          ]
-        }
+            { id: 114 },
+            { id: 4 },
+          ],
+        },
+        select: { id: true },
       });
-
-      const parentId = parentCat ? parentCat.id : 4;
+      const parentIds = candidates.length > 0 ? candidates.map((c) => c.id) : [114, 4];
 
       const where: any = {
-        parentId: parentId,
+        parentId: { in: parentIds },
         isArchived: false,
       };
 
@@ -214,13 +494,13 @@ export class CategoriesController {
           {
             OR: [
               { slug: { contains: q } },
-              { translations: { some: { title: { contains: q } } } }
-            ]
-          }
+              { translations: { some: { title: { contains: q } } } },
+            ],
+          },
         ];
       }
 
-      const [totalRecords, items] = await Promise.all([
+      const [totalRecords, items, customImages, dbDeities] = await Promise.all([
         this.prisma.contentCategory.count({ where }),
         this.prisma.contentCategory.findMany({
           where,
@@ -231,30 +511,37 @@ export class CategoriesController {
             translations: { include: { language: true } },
             devotionalContents: {
               where: { isPublished: true },
-              orderBy: { displayOrder: 'asc' }
-            }
-          }
-        })
+              orderBy: { displayOrder: 'asc' },
+            },
+          },
+        }),
+        this.getCustomImagesMap(),
+        this.getDbDeities(),
       ]);
 
-      const data = items.map((cat, idx) => {
-        const preferred = cat.translations.find((t: any) => t.language?.code === targetLang) || cat.translations.find((t: any) => t.language?.code === 'te') || cat.translations[0];
+      const data = items.map((cat) => {
+        const preferred =
+          cat.translations.find((t: any) => t.language?.code === targetLang) ||
+          cat.translations.find((t: any) => t.language?.code === 'te') ||
+          cat.translations[0];
         const titleFormatted = cat.slug.replace(/-/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
         const devContent = cat.devotionalContents[0];
         const verseCount = devContent && devContent.sacredText ? devContent.sacredText.split(/\n\s*\n/).length : 0;
+        const resolvedDeity = this.resolveDeityFromDb(cat.slug, preferred?.title || '', dbDeities);
 
         return {
           id: String(cat.id),
           slug: cat.slug,
           title: preferred?.title || titleFormatted,
           description: preferred?.description || '',
-          deityName: preferred?.title?.includes('శివ') ? 'శివుడు' : preferred?.title?.includes('వేంకటేశ') ? 'శ్రీ వేంకటేశ్వర స్వామి' : preferred?.title?.includes('వాసవీ') ? 'వాసవీ కన్యకా పరమేశ్వరి' : 'సర్వ దేవతలు',
-          verseCount: verseCount || (devContent ? 5 : 0),
+          deityName: resolvedDeity.deityName,
+          deityId: resolvedDeity.deityId,
+          verseCount,
           isPublished: devContent ? devContent.isPublished : true,
           displayOrder: cat.displayOrder,
-          imageUrl: `/images/subcategories/stotras/${cat.slug}.webp`,
+          imageUrl: customImages[String(cat.id)] || customImages[cat.slug] || null,
           badge: 'Stotra',
-          updatedAt: cat.updatedAt
+          updatedAt: cat.updatedAt,
         };
       });
 
@@ -265,8 +552,8 @@ export class CategoriesController {
           page: pageNum,
           limit: take,
           totalRecords,
-          totalPages: Math.ceil(totalRecords / take)
-        }
+          totalPages: Math.ceil(totalRecords / take),
+        },
       };
     } catch (err) {
       console.warn('[Categories] getStotras error:', err);
@@ -285,19 +572,25 @@ export class CategoriesController {
     const whereClause: any = isNum ? { id: Number(slugOrId) } : { slug: slugOrId };
 
     try {
-      const category = await this.prisma.contentCategory.findFirst({
-        where: whereClause,
-        include: {
-          translations: { include: { language: true } },
-          devotionalContents: {
-            where: { isPublished: true },
-            orderBy: { displayOrder: 'asc' }
-          }
-        }
-      });
+      const [category, customImages] = await Promise.all([
+        this.prisma.contentCategory.findFirst({
+          where: whereClause,
+          include: {
+            translations: { include: { language: true } },
+            devotionalContents: {
+              where: { isPublished: true },
+              orderBy: { displayOrder: 'asc' },
+            },
+          },
+        }),
+        this.getCustomImagesMap(),
+      ]);
 
       if (category) {
-        const preferred = category.translations.find((t: any) => t.language?.code === targetLang) || category.translations.find((t: any) => t.language?.code === 'te') || category.translations[0];
+        const preferred =
+          category.translations.find((t: any) => t.language?.code === targetLang) ||
+          category.translations.find((t: any) => t.language?.code === 'te') ||
+          category.translations[0];
         const devContent = category.devotionalContents[0];
 
         return {
@@ -312,8 +605,8 @@ export class CategoriesController {
             meaning: devContent?.meaning || '',
             displayOrder: category.displayOrder,
             isPublished: devContent?.isPublished ?? true,
-            imageUrl: `/images/subcategories/stotras/${category.slug}.webp`
-          }
+            imageUrl: customImages[String(category.id)] || customImages[category.slug] || null,
+          },
         };
       }
     } catch (err) {
@@ -339,129 +632,94 @@ export class CategoriesController {
     const targetLang = (lang || 'en').toLowerCase().trim();
 
     try {
-      let targetParentCondition: any = { not: null };
+      let targetParentIds: number[] = [];
 
       if (parentKey && parentKey !== 'all') {
         const parsed = parseInt(parentKey, 10);
         if (!isNaN(parsed) && parsed > 0) {
-          targetParentCondition = parsed;
+          targetParentIds = [parsed];
         } else {
-          const orClauses: any[] = [
-            { slug: parentKey },
-            { slug: parentKey.toLowerCase() },
-            { translations: { some: { title: { contains: parentKey } } } }
-          ];
-          const lower = parentKey.toLowerCase();
-          if (lower === 'stotras' || lower === 'stotra' || lower === 'stotramulu') {
-            orClauses.push({ id: 4 });
-            orClauses.push({ slug: 'slogans-of-sri-ayyappa-swami' });
-          }
-          if (lower === 'slokas' || lower === 'sloka') {
-            orClauses.push({ id: 115 });
-            orClauses.push({ slug: 'slokas' });
-          }
-          if (lower === 'pooja' || lower === 'poojas') {
-            orClauses.push({ id: 17 });
-            orClauses.push({ slug: 'poojalu-vrathaalu' });
-          }
-
-          const parentMatch = await this.prisma.contentCategory.findFirst({
-            where: { OR: orClauses }
-          });
-          if (parentMatch) {
-            targetParentCondition = parentMatch.id;
-          }
+          const lower = parentKey.toLowerCase().trim();
+          const cleanKey = lower
+            .replace(/^daily-/, '')
+            .replace(/-vidhanam$/, '')
+            .replace(/-services$/, '')
+            .replace(/-songs$/, '');
+          try {
+            const matches = await this.prisma.contentCategory.findMany({
+              where: {
+                isArchived: false,
+                OR: [
+                  { slug: parentKey },
+                  { slug: lower },
+                  { slug: cleanKey },
+                  { slug: { contains: cleanKey } },
+                  { translations: { some: { title: { contains: parentKey } } } },
+                  { translations: { some: { title: { contains: cleanKey } } } },
+                  ...(lower === 'daily-slokas' || lower.includes('sloka') ? [{ slug: 'slokas' }, { id: 115 }] : []),
+                  ...(lower === 'songs' || lower === 'bhajans' || lower.includes('bhajan') ? [{ slug: 'harathis' }, { id: 116 }] : []),
+                ],
+              },
+              select: { id: true },
+            });
+            if (matches.length > 0) {
+              targetParentIds = matches.map((m) => m.id);
+            }
+          } catch (_) {}
         }
       }
 
+      // If a specific parent was requested but not found in DB, return empty list (never leak all subcategories)
+      if (parentKey && parentKey !== 'all' && targetParentIds.length === 0) {
+        return {
+          success: true,
+          data: [],
+          total: 0,
+          count: 0,
+          page: 1,
+          limit: 100,
+        };
+      }
+
       const where: any = {
-        parentId: targetParentCondition,
         isArchived: false,
       };
 
-      const items = await this.prisma.contentCategory.findMany({
-        where,
-        orderBy: { displayOrder: 'asc' },
-        include: {
-          parent: { include: { translations: { include: { language: true } } } },
-          translations: { include: { language: true } },
-          devotionalContents: { select: { id: true, title: true, isPublished: true } }
-        }
-      });
+      if (targetParentIds.length > 0) {
+        where.parentId = { in: targetParentIds };
+      } else {
+        where.parentId = { not: null };
+      }
+
+      const [items, customImages, dbDeities] = await Promise.all([
+        this.prisma.contentCategory.findMany({
+          where,
+          orderBy: { displayOrder: 'asc' },
+          include: {
+            parent: { include: { translations: { include: { language: true } } } },
+            translations: { include: { language: true } },
+            devotionalContents: { select: { id: true, title: true, isPublished: true } },
+            subcategories: { select: { id: true } },
+          },
+        }),
+        this.getCustomImagesMap(),
+        this.getDbDeities(),
+      ]);
 
       if (items && items.length > 0) {
-        let customImages: Record<string, string> = {};
-        try {
-          const imgSetting = await this.prisma.appSetting.findUnique({ where: { key: 'subcategory_images' } });
-          if (imgSetting && imgSetting.value) customImages = JSON.parse(imgSetting.value);
-        } catch (_) {}
-
-        let mappedItems = items.map(cat => {
+        let mappedItems = items.map((cat) => {
           const preferred = cat.translations.find((t: any) => t.language?.code === targetLang) || cat.translations[0];
           const parentPref = cat.parent?.translations?.find((t: any) => t.language?.code === targetLang) || cat.parent?.translations?.[0];
-          const pSlug = cat.parent?.slug || 'slokas';
-          const customImg = customImages[String(cat.id)] || customImages[cat.slug];
+          const pSlug = cat.parent?.slug || 'pooja';
+          const resolvedImage = customImages[String(cat.id)] || customImages[cat.slug] || null;
 
           const titleFormatted = cat.slug.replace(/-/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
-          const finalTitle = (preferred?.title && preferred.title !== cat.slug) ? preferred.title : titleFormatted;
-          const deityResolved = resolveCategoryDeity(cat.slug, finalTitle);
+          const finalTitle = preferred?.title && preferred.title !== cat.slug ? preferred.title : titleFormatted;
+          const deityResolved = this.resolveDeityFromDb(cat.slug, finalTitle, dbDeities);
 
-          // Dedicated high-resolution card artwork resolution
-          let resolvedImage = customImg;
-          if (!resolvedImage) {
-            const s = cat.slug.toLowerCase();
-            if (s.includes('shiva-linga') || s.includes('simple') || s.includes('nithyapooja')) resolvedImage = '/images/pooja/pooja-card-1-ref.png';
-            else if (s.includes('subramanya') || s.includes('murugan')) resolvedImage = '/images/pooja/pooja-card-2-ref.png';
-            else if (s.includes('mantrapushpam') || s.includes('sharanu') || s.includes('slogans')) resolvedImage = '/images/pooja/pooja-card-3-ref.png';
-            else if (s.includes('harathi') || s.includes('deepa')) resolvedImage = '/images/pooja/pooja-card-4-ref.png';
-            else if (s.includes('ganapa') || s.includes('vignesh') || s.includes('gomatha')) resolvedImage = '/images/pooja/pooja-card-5-ref.png';
-            else if (s.includes('abhisheka') || s.includes('koodalmanikya') || s.includes('bilva')) resolvedImage = '/images/pooja/pooja-card-6-ref.png';
-            else if (deityResolved.deityId === 'ayyappa') resolvedImage = '/images/pooja/card-banner-ayyappa-hd.png';
-            else if (deityResolved.deityId === 'ganesha') resolvedImage = '/images/pooja/card-banner-ganapathi-hd.png';
-            else if (deityResolved.deityId === 'devi') resolvedImage = '/images/pooja/card-banner-lakshmi-hd.png';
-            else if (deityResolved.deityId === 'venkateswara') resolvedImage = '/images/pooja/pooja-card-3-ref.png';
-            else if (deityResolved.deityId === 'hanuman') resolvedImage = '/images/pooja/pooja-card-4-ref.png';
-            else {
-              const cardRefs = [
-                '/images/pooja/pooja-card-1-ref.png',
-                '/images/pooja/pooja-card-2-ref.png',
-                '/images/pooja/pooja-card-3-ref.png',
-                '/images/pooja/pooja-card-4-ref.png',
-                '/images/pooja/pooja-card-5-ref.png',
-                '/images/pooja/pooja-card-6-ref.png'
-              ];
-              resolvedImage = cardRefs[cat.displayOrder % cardRefs.length] || '/images/pooja/pooja-card-1-ref.png';
-            }
-          }
-
-          // Step count / verse count resolution based on ritual complexity
-          let stepsCount = '12 Steps';
-          const s = cat.slug.toLowerCase();
-          if (s.includes('simple') || s.includes('nithya')) stepsCount = '16 Steps';
-          else if (s.includes('subramanya')) stepsCount = '18 Steps';
-          else if (s.includes('mantra')) stepsCount = '8 Steps';
-          else if (s.includes('harathi')) stepsCount = '5 Steps';
-          else if (s.includes('ganapa')) stepsCount = '12 Steps';
-          else if (s.includes('abhisheka')) stepsCount = '21 Steps';
-          else if (s.includes('ashtottara')) stepsCount = '108 Names';
-          else if (s.includes('sahasranama')) stepsCount = '1000 Names';
-          else if (s.includes('dasakam')) stepsCount = '10 Stanzas';
-          else if (s.includes('stotra') || s.includes('sloka')) stepsCount = '8 Verses';
-          else if (pSlug === 'songs') stepsCount = 'Song & Lyrics';
-
-          // Badge tag resolution (Daily / Beginner / Festival / Popular)
-          let badgeTag = 'Daily';
-          let badgeClass = 'badge-daily';
-          if (s.includes('mandala') || s.includes('makara') || s.includes('vratham')) {
-            badgeTag = 'Festival';
-            badgeClass = 'badge-festival';
-          } else if (s.includes('simple') || s.includes('pratha') || s.includes('bhojana') || s.includes('poorvaangamu')) {
-            badgeTag = 'Beginner';
-            badgeClass = 'badge-beginner';
-          } else if (s.includes('harivarasanam') || s.includes('lingashtakam') || s.includes('vishnu-sahasra') || s.includes('kanakadhara')) {
-            badgeTag = 'Popular';
-            badgeClass = 'badge-popular';
-          }
+          // Pure database-driven count: actual devotional contents or child subcategories from DB
+          const count = cat.devotionalContents?.length || cat.subcategories?.length || 0;
+          const stepsCount = count > 0 ? `${count} Steps` : null;
 
           return {
             id: String(cat.id),
@@ -476,30 +734,66 @@ export class CategoriesController {
             isAudio: cat.isAudio,
             imageUrl: resolvedImage,
             image: resolvedImage,
-            duration: '10 minutes',
+            duration: null,
             stepsCount,
-            badge: badgeTag,
-            badgeClass,
-            filterTag: badgeTag,
+            badge: null,
+            badgeClass: null,
+            filterTag: null,
             deityId: deityResolved.deityId,
             deityName: deityResolved.deityName,
-            type: cat.isAudio ? 'Audio / Bhajan' : (pSlug === 'pooja' ? 'Pooja' : pSlug === 'stotras' ? 'Stotra' : pSlug === 'slokas' ? 'Sloka' : 'Song')
+            type: cat.isAudio
+              ? 'Audio / Bhajan'
+              : pSlug === 'pooja'
+              ? 'Pooja'
+              : pSlug === 'stotras'
+              ? 'Stotra'
+              : pSlug === 'slokas'
+              ? 'Sloka'
+              : 'Song',
           };
         });
 
         // 1. Server-side Deity Filtering
         if (deity && deity !== 'all') {
           const normDeity = deity.toLowerCase().replace(/^(lord-|goddess-)/, '');
-          mappedItems = mappedItems.filter(item => {
+          mappedItems = mappedItems.filter((item) => {
             const itemD = (item.deityId || '').toLowerCase().replace(/^(lord-|goddess-)/, '');
-            return itemD === normDeity;
+            const itemSlug = (item.slug || '').toLowerCase();
+            const itemTitle = (item.title || '').toLowerCase();
+            const pSlug = (item.parentSlug || '').toLowerCase();
+            const pTitle = (item.parentTitle || '').toLowerCase();
+
+            // Universal all-deity daily slokas (like Morning, Meal, Night Prayers, Nithya Paarayana)
+            const isUniversal =
+              itemSlug.includes('nithya-paarayana') ||
+              itemSlug.includes('morning-prayers') ||
+              itemSlug.includes('meal-prayers') ||
+              itemSlug.includes('night-prayers') ||
+              itemD === 'all' ||
+              itemSlug === 'nithya-paarayana-shlokamulu';
+
+            return (
+              isUniversal ||
+              itemD === normDeity ||
+              itemSlug.includes(normDeity) ||
+              itemTitle.includes(normDeity) ||
+              pSlug.includes(normDeity) ||
+              pTitle.includes(normDeity) ||
+              (normDeity === 'ayyappa' && (itemSlug.includes('poorvaang') || itemTitle.includes('పూర్వాంగ') || itemSlug.includes('maaladharan') || itemTitle.includes('మాలాధారణ') || itemSlug.includes('ayyap') || itemTitle.includes('అయ్యప్ప') || itemSlug.includes('harivarasanam') || itemTitle.includes('హరివరాసనం') || itemSlug.includes('padi') || itemTitle.includes('పడి') || itemSlug.includes('sastha') || itemTitle.includes('శాస్త') || itemSlug.includes('suprabatham') || itemTitle.includes('సుప్రభాతం') || itemD === 'ayyappa')) ||
+              ((normDeity === 'vishnu' || normDeity === 'venkateswara') && (itemD === 'venkateswara' || itemSlug.includes('satyanarayana') || itemTitle.includes('సత్యనారాయణ') || itemSlug.includes('venkat') || itemTitle.includes('వేంకట') || itemSlug.includes('suprabhat') || itemSlug.includes('guruvayoor') || itemTitle.includes('గురువాయూరప్ప') || itemSlug.includes('tulasi') || itemTitle.includes('తులసి'))) ||
+              (normDeity === 'ganesha' && (itemD === 'ganesha' || itemSlug.includes('vinayak') || itemTitle.includes('వినాయక') || itemSlug.includes('ganapathi') || itemTitle.includes('గణపతి') || itemSlug.includes('pancharatnam') || itemSlug.includes('vignesh') || itemSlug.includes('vighnesh') || itemTitle.includes('విఘ్నేశ్వర') || itemTitle.includes('మహాగణపతి') || itemSlug.includes('mahaganapathi'))) ||
+              (normDeity === 'devi' && (itemD === 'devi' || itemSlug.includes('varalakshmi') || itemTitle.includes('వరలక్ష్మి') || itemSlug.includes('lakshmi') || itemTitle.includes('లక్ష్మి') || itemSlug.includes('devi') || itemTitle.includes('దేవి') || itemSlug.includes('karagre') || itemSlug.includes('dandaal') || itemTitle.includes('దండాల') || itemSlug.includes('akhiland') || itemTitle.includes('అఖిలాండ') || itemSlug.includes('amba') || itemTitle.includes('అంబ'))) ||
+              (normDeity === 'shiva' && (itemD === 'shiva' || itemSlug.includes('kedar') || itemTitle.includes('కేదార') || itemSlug.includes('rudra') || itemTitle.includes('రుద్ర') || itemSlug.includes('shiva') || itemTitle.includes('శివ') || itemSlug.includes('linga') || itemSlug.includes('tandava') || itemSlug.includes('umamaheshwara') || itemTitle.includes('ఉమామహేశ్వర'))) ||
+              (normDeity === 'hanuman' && (itemD === 'hanuman' || itemSlug.includes('hanuman') || itemTitle.includes('హనుమాన్') || itemSlug.includes('chalisa') || itemSlug.includes('anjaneya') || itemTitle.includes('ఆంజనేయ'))) ||
+              (normDeity === 'murugan' && (itemD === 'murugan' || itemSlug.includes('murugan') || itemSlug.includes('subrahmanya') || itemSlug.includes('subramanya') || itemTitle.includes('సుబ్రహ్మణ్య') || itemSlug.includes('kanda') || itemSlug.includes('sashti') || itemTitle.includes('స్కంద') || itemTitle.includes('షష్ఠి') || itemSlug.includes('kartikeya') || itemTitle.includes('కార్తికేయ') || itemSlug.includes('pazhani') || itemSlug.includes('palani') || itemTitle.includes('పళని') || itemSlug.includes('udipi') || itemTitle.includes('ఉడిపి')))
+            );
           });
         }
 
         // 2. Server-side Search Filtering
         if (search && search.trim() !== '') {
           const q = search.trim().toLowerCase();
-          mappedItems = mappedItems.filter(item => {
+          mappedItems = mappedItems.filter((item) => {
             return (
               item.title.toLowerCase().includes(q) ||
               item.desc.toLowerCase().includes(q) ||
@@ -509,12 +803,9 @@ export class CategoriesController {
           });
         }
 
-        // 3. Server-side Category / Badge Filter (All, Beginner, Festival, Daily, Popular)
+        // 3. Server-side Category / Badge Filter
         if (filter && filter !== 'All') {
-          mappedItems = mappedItems.filter(item => {
-            if (filter === 'Popular') {
-              return item.badge === 'Popular' || item.filterTag === 'Popular';
-            }
+          mappedItems = mappedItems.filter((item) => {
             return item.badge === filter || item.filterTag === filter;
           });
         }
@@ -531,7 +822,7 @@ export class CategoriesController {
           total,
           count: paginatedItems.length,
           page: pageNum,
-          limit: limitNum
+          limit: limitNum,
         };
       }
     } catch (err) {
@@ -542,11 +833,11 @@ export class CategoriesController {
       success: true,
       data: [],
       total: 0,
-      count: 0
+      count: 0,
     };
   }
 
-  // 1c-detail. Devotional Subcategory Detail Endpoint
+  // 1c-detail. Devotional Subcategory Detail Endpoint (100% DB-driven)
   @Get('subcategories/:slugOrId')
   async getSubcategoryDetail(
     @Param('slugOrId') slugOrId: string,
@@ -556,42 +847,42 @@ export class CategoriesController {
     const targetLang = (lang || 'en').toLowerCase().trim();
     const isNum = !isNaN(Number(slugOrId));
 
-    // Resolve aliases (nithyapooja <-> nithya-pooja-laghu-vidhanam <-> daily-pooja)
-    let lookupSlug = slugOrId;
-    if (slugOrId === 'nithya-pooja-laghu-vidhanam' || slugOrId === 'daily-pooja' || slugOrId === 'nitya-pooja') {
-      lookupSlug = 'nithyapooja';
-    }
-
     const orWhere: any[] = [];
     if (isNum) orWhere.push({ id: Number(slugOrId) });
     orWhere.push({ slug: slugOrId });
-    if (lookupSlug !== slugOrId) orWhere.push({ slug: lookupSlug });
-    if (slugOrId.includes('nithya')) {
-      orWhere.push({ slug: 'nithyapooja' });
-      orWhere.push({ slug: 'nithya-pooja-laghu-vidhanam' });
-    }
 
     try {
-      let category = await this.prisma.contentCategory.findFirst({
-        where: { OR: orWhere },
-        include: {
-          parent: {
-            include: {
-              translations: { include: { language: true } }
-            }
+      const [category, customImages, dbDeities] = await Promise.all([
+        this.prisma.contentCategory.findFirst({
+          where: { OR: orWhere },
+          include: {
+            parent: {
+              include: {
+                translations: { include: { language: true } },
+              },
+            },
+            translations: { include: { language: true } },
+            devotionalContents: {
+              where: { isPublished: true },
+              orderBy: { displayOrder: 'asc' },
+            },
+            subcategories: {
+              where: { isArchived: false },
+              orderBy: { displayOrder: 'asc' },
+              include: {
+                translations: { include: { language: true } },
+              },
+            },
           },
-          translations: { include: { language: true } },
-          devotionalContents: {
-            where: { isPublished: true },
-            orderBy: { displayOrder: 'asc' }
-          }
-        }
-      });
+        }),
+        this.getCustomImagesMap(),
+        this.getDbDeities(),
+      ]);
 
       if (!category) {
         return {
           success: false,
-          message: `Subcategory "${slugOrId}" not found in database.`
+          message: `Subcategory "${slugOrId}" not found in database.`,
         };
       }
 
@@ -608,37 +899,24 @@ export class CategoriesController {
       const finalTeTitle = teTranslation?.title || finalTitle;
       const finalEnTitle = enTranslation?.title || titleFormatted;
 
-      const deityResolved = resolveCategoryDeity(rawSlug, finalTitle);
+      const deityResolved = this.resolveDeityFromDb(rawSlug, finalTitle, dbDeities);
+      const resolvedImage = customImages[String(category.id)] || customImages[rawSlug] || null;
 
-      // Fetch custom image or assign dedicated artwork from DB app_settings
-      let customImages: Record<string, string> = {};
-      try {
-        const imgSetting = await this.prisma.appSetting.findUnique({ where: { key: 'subcategory_images' } });
-        if (imgSetting && imgSetting.value) customImages = JSON.parse(imgSetting.value);
-      } catch (_) {}
+      const prefDesc = preferred?.description || '';
+      const teDesc = teTranslation?.description || '';
+      const enDesc = enTranslation?.description || '';
 
-      let resolvedImage = customImages[String(category.id)] || customImages[rawSlug];
-      if (!resolvedImage) {
-        const s = rawSlug.toLowerCase();
-        if (s.includes('shiva-linga') || s.includes('simple') || s.includes('nithya')) resolvedImage = '/images/pooja/pooja-card-1-ref.png';
-        else if (s.includes('subramanya') || s.includes('murugan')) resolvedImage = '/images/pooja/pooja-card-2-ref.png';
-        else if (s.includes('mantrapushpam') || s.includes('sharanu') || s.includes('slogans')) resolvedImage = '/images/pooja/pooja-card-3-ref.png';
-        else if (s.includes('harathi') || s.includes('deepa')) resolvedImage = '/images/pooja/pooja-card-4-ref.png';
-        else if (s.includes('ganapa') || s.includes('vignesh') || s.includes('gomatha')) resolvedImage = '/images/pooja/pooja-card-5-ref.png';
-        else if (s.includes('abhisheka') || s.includes('koodalmanikya') || s.includes('bilva')) resolvedImage = '/images/pooja/pooja-card-6-ref.png';
-        else if (deityResolved.deityId === 'ayyappa') resolvedImage = '/images/pooja/card-banner-ayyappa-hd.png';
-        else if (deityResolved.deityId === 'ganesha') resolvedImage = '/images/pooja/card-banner-ganapathi-hd.png';
-        else if (deityResolved.deityId === 'devi') resolvedImage = '/images/pooja/card-banner-lakshmi-hd.png';
-        else resolvedImage = '/images/pooja/pooja-card-1-ref.png';
+      // If preferred description is short (< 150 chars) and Telugu has full lyrics/scripture, use the rich Telugu lyrics
+      let fullScriptureText = prefDesc;
+      if ((!prefDesc || prefDesc.length < 150) && teDesc && teDesc.length >= 150) {
+        fullScriptureText = teDesc;
       }
 
-      // Full scripture text (contains authentic slokas & mantras from DB)
-      let fullScriptureText = preferred?.description || '';
-
-      // Extract instruction note if present
+      // Extract instruction note if present in DB text
       let instructionNote = '';
-      if (fullScriptureText.includes('సూచన :') || fullScriptureText.includes('సూచన:')) {
-        const parts = fullScriptureText.split(/\n\s*\n/);
+      const checkText = fullScriptureText || teDesc;
+      if (checkText.includes('సూచన :') || checkText.includes('సూచన:')) {
+        const parts = checkText.split(/\n\s*\n/);
         instructionNote = parts[0].replace(/^సూచన\s*:\s*/, '').trim();
       }
 
@@ -653,33 +931,33 @@ export class CategoriesController {
             if (sections.length > 1) {
               sections.forEach((sec: string, sIdx: number) => {
                 const headerMatch = sec.match(/\[\s*([^\]]+)\s*\]/);
-                const secTitle = headerMatch ? headerMatch[1].trim() : `Step ${sIdx + 1}`;
+                const secTitle = headerMatch ? headerMatch[1].trim() : (dc.title || `Step ${sIdx + 1}`);
                 const secBody = sec.replace(/\[\s*[^\]]+\s*\]/, '').trim();
                 procedure.push({
                   step: procedure.length + 1,
                   title: secTitle,
-                  desc: `Recite and perform with devotion:`,
-                  mantra: secBody
+                  desc: dc.meaning || '',
+                  mantra: secBody,
                 });
                 mantras.push({
                   title: secTitle,
                   script: secBody,
                   transliteration: '',
-                  meaning: dc.meaning || 'Sacred verse with divine blessing.'
+                  meaning: dc.meaning || '',
                 });
               });
             } else {
               procedure.push({
                 step: procedure.length + 1,
-                title: dc.title || `Sacred Chanting Step`,
-                desc: dc.meaning || `Chant the divine mantras with pure heart.`,
-                mantra: dc.sacredText
+                title: dc.title || `Step ${procedure.length + 1}`,
+                desc: dc.meaning || '',
+                mantra: dc.sacredText,
               });
               mantras.push({
-                title: dc.title || `Maha Mantra`,
+                title: dc.title || `Mantra ${mantras.length + 1}`,
                 script: dc.sacredText,
                 transliteration: '',
-                meaning: dc.meaning || 'Sacred verse.'
+                meaning: dc.meaning || '',
               });
             }
           }
@@ -688,59 +966,28 @@ export class CategoriesController {
 
       // Resolve child subcategories strictly from database
       let children: any[] = [];
-      try {
-        const dbChildren = await this.prisma.contentCategory.findMany({
-          where: { parentId: category.id, isArchived: false },
-          include: { translations: { include: { language: true } } },
-          orderBy: { displayOrder: 'asc' }
+      if (category.subcategories && category.subcategories.length > 0) {
+        children = category.subcategories.map((ch: any) => {
+          const chPref = ch.translations?.find((t: any) => t.language?.code === targetLang) || ch.translations?.[0];
+          return {
+            id: String(ch.id),
+            slug: ch.slug,
+            title: chPref?.title || ch.slug,
+            description: chPref?.description || '',
+            imageUrl: customImages[String(ch.id)] || customImages[ch.slug] || resolvedImage,
+          };
         });
-        if (dbChildren && dbChildren.length > 0) {
-          children = dbChildren.map((ch: any) => {
-            const chPref = ch.translations?.find((t: any) => t.language?.code === targetLang) || ch.translations?.[0];
-            return {
-              id: String(ch.id),
-              slug: ch.slug,
-              title: chPref?.title || ch.slug,
-              description: chPref?.description || '',
-              imageUrl: customImages[String(ch.id)] || customImages[ch.slug] || resolvedImage
-            };
-          });
-        }
-      } catch (_) {}
+      }
 
-      // If no child categories, check devotionalContents for types
+      // If no child subcategories, use devotionalContents for child types
       if (children.length === 0 && category.devotionalContents && category.devotionalContents.length > 0) {
         children = category.devotionalContents.map((dc: any, idx: number) => ({
           id: String(dc.id),
           slug: dc.slug || String(dc.id),
-          title: dc.title || `Type ${idx + 1}`,
+          title: dc.title || `Item ${idx + 1}`,
           description: dc.meaning || '',
-          imageUrl: dc.audioUrl || resolvedImage
+          imageUrl: dc.audioUrl || resolvedImage,
         }));
-      }
-
-      // If category is Sri Maha Ganapathi Pooja and children still empty, look up standard 4 types from DB
-      if (children.length === 0 && (rawSlug === 'sri-maha-ganapathi-pooja' || rawSlug === 'ganapathi-pooja' || category.id === 229)) {
-        try {
-          const ganeshaTypes = await this.prisma.devotionalContent.findMany({
-            where: {
-              OR: [
-                { categoryId: category.id },
-                { slug: { in: ['sri-vighneshwara-pooja', 'sri-ganesha-pancharatnam', 'sri-ekadanta-stotram', 'sri-sankashtanashana-ganesha-stotram'] } }
-              ]
-            },
-            orderBy: { displayOrder: 'asc' }
-          });
-          if (ganeshaTypes && ganeshaTypes.length > 0) {
-            children = ganeshaTypes.map((gt: any) => ({
-              id: String(gt.id),
-              slug: gt.slug,
-              title: gt.title,
-              description: gt.meaning || '',
-              imageUrl: resolvedImage
-            }));
-          }
-        } catch (_) {}
       }
 
       return {
@@ -755,44 +1002,30 @@ export class CategoriesController {
           title: finalTitle,
           titleTelugu: finalTeTitle,
           titleEnglish: finalEnTitle,
-          subtitle: preferred?.description?.slice(0, 150) || `Complete sacred vidhanam, procedure and verses for ${finalTitle}.`,
-          overview: preferred?.description?.slice(0, 300) || `Sacred worship procedure and divine blessings for ${finalTitle}.`,
+          subtitle: (prefDesc || teDesc)?.split('\n')[0]?.slice(0, 150) || '',
+          overview: fullScriptureText,
+          description: fullScriptureText,
           fullScriptureText,
+          lyrics: teDesc || fullScriptureText,
+          descriptionTelugu: teDesc,
+          descriptionEnglish: enDesc,
           instructionNote,
           heroImage: resolvedImage,
-          badge: 'Daily Devotion',
-          badgeClass: 'badge-daily',
-          duration: '15 mins',
-          difficulty: 'All Devotees',
-          bestTime: 'Morning (Pratah Kalam) or Evening (Sandhya)',
+          badge: '',
+          badgeClass: '',
+          duration: '',
+          difficulty: '',
+          bestTime: '',
           deityId: deityResolved.deityId,
           deityName: deityResolved.deityName,
-          deityTelugu: deityResolved.deityId === 'ayyappa' ? 'శ్రీ అయ్యప్ప స్వామి' : deityResolved.deityId === 'shiva' ? 'పరమశివుడు' : deityResolved.deityId === 'ganesha' ? 'శ్రీ మహాగణపతి' : deityResolved.deityId === 'devi' ? 'శ్రీ దేవి అమ్మవారు' : deityResolved.deityId === 'murugan' ? 'శ్రీ సుబ్రహ్మణ్యేశ్వర స్వామి' : deityResolved.deityId === 'venkateswara' ? 'శ్రీ వేంకటేశ్వర స్వామి' : 'సర్వ దేవతలు',
+          deityTelugu: deityResolved.deityTelugu,
           children,
           procedure,
-          materials: [
-            { name: 'Pure Cow Ghee / Sesame Oil for Deepam', qty: '100 ml', icon: 'Flame' },
-            { name: 'Fresh Cotton Wicks (Vattulu)', qty: '1 Packet', icon: 'Sparkles' },
-            { name: 'Pure Vibhuti, Kumkum & Sandalwood (Gandham)', qty: '50g each', icon: 'Flower2' },
-            { name: 'Fresh Fragrant Flowers & Thulasi / Bilva Leaves', qty: '1 Basket', icon: 'Flower2' },
-            { name: 'Raw Coconuts & Betel Leaves with Supari', qty: '2 Coconuts, 5 Betel Leaves', icon: 'Layers' },
-            { name: 'Raw Rice with Turmeric (Akshintalu)', qty: '1 Bowl', icon: 'Sparkles' },
-            { name: 'Fresh Fruits or Naivedyam Prasad', qty: '1 Bowl', icon: 'Soup' },
-            { name: 'Pure Camphor (Karpooram) & Dhoop Sticks', qty: '1 Box', icon: 'Flame' }
-          ],
+          materials: [],
           mantras,
-          benefits: [
-            'Brings profound peace of mind and destroys negative vibrations.',
-            'Instills spiritual strength, health, discipline and family harmony.',
-            'Neutralizes planetary doshams and brings auspicious beginnings.',
-            'Bestows benevolent divine protection of the presiding deity.'
-          ],
-          audioTrack: {
-            title: `${finalTitle} Devotional Audio`,
-            duration: '05:30',
-            ragam: 'Madhyamavathi'
-          }
-        }
+          benefits: [],
+          audioTrack: null,
+        },
       };
     } catch (err) {
       console.warn('[Categories] getSubcategoryDetail error:', err);
@@ -800,7 +1033,7 @@ export class CategoriesController {
 
     return {
       success: false,
-      message: `Subcategory ${slugOrId} not found`
+      message: `Subcategory ${slugOrId} not found`,
     };
   }
 
@@ -827,13 +1060,13 @@ export class CategoriesController {
     await this.prisma.appSetting.upsert({
       where: { key: 'subcategory_images' },
       create: { key: 'subcategory_images', value: JSON.stringify(customImages) },
-      update: { value: JSON.stringify(customImages) }
+      update: { value: JSON.stringify(customImages) },
     });
 
     return {
       success: true,
       message: `Image stored successfully for subcategory ${id}`,
-      data: { id, imageUrl: body.imageUrl }
+      data: { id, imageUrl: body.imageUrl },
     };
   }
 
@@ -857,14 +1090,14 @@ export class CategoriesController {
     await this.prisma.appSetting.upsert({
       where: { key: 'subcategory_images' },
       create: { key: 'subcategory_images', value: JSON.stringify(customImages) },
-      update: { value: JSON.stringify(customImages) }
+      update: { value: JSON.stringify(customImages) },
     });
 
     return {
       success: true,
       message: 'Subcategory images stored successfully',
       count: Object.keys(customImages).length,
-      data: customImages
+      data: customImages,
     };
   }
 
@@ -883,12 +1116,12 @@ export class CategoriesController {
         include: {
           parent: { select: { id: true, slug: true } },
           translations: { select: { id: true, title: true, description: true, language: { select: { code: true, name: true } } } },
-          devotionalContents: { select: { id: true, slug: true, title: true, isPublished: true } }
-        }
+          devotionalContents: { select: { id: true, slug: true, title: true, isPublished: true } },
+        },
       }),
       this.prisma.contentTranslation.count(),
       this.prisma.devotionalContent.count(),
-      this.prisma.language.findMany()
+      this.prisma.language.findMany(),
     ]);
 
     return {
@@ -899,15 +1132,15 @@ export class CategoriesController {
         translationsCount,
         devotionalContentsCount,
         languages,
-        subcategories: subcategories.map(s => ({
+        subcategories: subcategories.map((s) => ({
           id: s.id,
           slug: s.slug,
           parentSlug: s.parent?.slug,
           displayOrder: s.displayOrder,
-          translations: s.translations.map(t => ({ lang: t.language.code, title: t.title })),
-          devotionalContentsCount: s.devotionalContents?.length || 0
-        }))
-      }
+          translations: s.translations.map((t) => ({ lang: t.language.code, title: t.title })),
+          devotionalContentsCount: s.devotionalContents?.length || 0,
+        })),
+      },
     };
   }
 
@@ -943,7 +1176,7 @@ export class CategoriesController {
   async getDeitiesList(@Query('lang') lang = 'en') {
     try {
       const setting = await this.prisma.appSetting.findUnique({
-        where: { key: 'deities' }
+        where: { key: 'deities' },
       });
       if (setting && setting.value) {
         const parsed = JSON.parse(setting.value);
@@ -1005,14 +1238,8 @@ export class CategoriesController {
       const parentMatch = category.parent?.translations?.find((t: any) => t.language?.code === targetLang) || category.parent?.translations?.[0];
       const pSlug = category.parent?.slug;
 
-      let customImg = '';
-      try {
-        const imgSetting = await this.prisma.appSetting.findUnique({ where: { key: 'subcategory_images' } });
-        if (imgSetting && imgSetting.value) {
-          const map = JSON.parse(imgSetting.value);
-          customImg = map[String(category.id)] || map[category.slug] || '';
-        }
-      } catch (_) {}
+      const customImages = await this.getCustomImagesMap();
+      const customImg = customImages[String(category.id)] || customImages[category.slug] || null;
 
       return {
         id: String(category.id),
@@ -1025,7 +1252,7 @@ export class CategoriesController {
         parentSlug: pSlug || null,
         parentTitle: parentMatch ? parentMatch.title : pSlug || null,
         isSubcategory: Boolean(category.parentId),
-        imageUrl: customImg || (pSlug ? `/images/subcategories/${pSlug}/${category.slug}.webp` : null),
+        imageUrl: customImg,
         translations: category.translations.map((t: any) => ({
           code: t.language?.code || 'en',
           name: t.language?.name || 'English',

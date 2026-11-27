@@ -469,4 +469,64 @@ const CMS_DEFAULTS: Record<string, Record<string, { title: string; content: stri
       content: 'शरणम् अय्यप्पा भक्त सहायता केंद्र। मंदिर संबंधी प्रश्नों और सहायता के लिए हमें ईमेल करें: support@saranamayyappa.org.',
     },
   },
+  refund_policy: {
+    en: {
+      title: 'Refund & Cancellation Policy',
+      content: `<h2>1. VOLUNTARY DEVOTIONAL OFFERINGS AND E-HUNDI CONTRIBUTIONS</h2>
+<p>All voluntary offerings, e-hundi kanikkai, and donations made towards Lord Ayyappa temples, sanctum maintenance, and nitya poojas are treated as irrevocable sacred contributions. Once successfully remitted, voluntary donations cannot be refunded or transferred under standard circumstances, as funds are allocated directly to temple trusts and religious observances.</p>
+
+<h2>2. TEMPLE SEVA & SPECIAL POOJA BOOKINGS</h2>
+<p>Seva bookings, special archana tokens, and abhishekam registrations are scheduled in accordance with sanctum timings and priests' availability. If an e-seva cannot be performed due to sanctum closures, official temple restrictions, or force majeure events, the temple administration will reschedule the seva to an alternate auspicious date or perform the sankalpam in absentia with sacred prasad dispatched where applicable.</p>
+
+<h2>3. DUPLICATE TRANSACTIONS & PAYMENT FAILURES</h2>
+<p>In the event of technical network disruptions, server timeouts, or banking gateway drops where a devotee account is debited multiple times for a single seva booking, the excess duplicate amount will be verified and refunded back to the original payment source within 5 to 7 working banking days.</p>
+
+<h2>4. ANNADANAM & CHARITABLE INITIATIVES</h2>
+<p>Contributions made specifically for free devotee feeding (Annadanam), pilgrim water distribution, and medical seva are dispatched in real time to feed pilgrims. Hence, Annadanam contributions cannot be cancelled once processed.</p>
+
+<h2>5. GRIEVANCE & SUPPORT CONTACT</h2>
+<p>For any billing queries, duplicate transaction reconciliations, or seva scheduling assistance, devotees may contact our dedicated finance and seva desk at support@saranamayyappa.in or support@saranamayyappa.org with the Transaction ID and Devotee Mobile Number.</p>`,
+    },
+    te: {
+      title: 'రీఫండ్ మరియు రద్దు విధానం',
+      content: `<h2>1. స్వచ్ఛంద ఆలయ కానుకలు మరియు ఈ-హుండీ సమర్పణలు</h2>
+<p>శ్రీ అయ్యప్ప స్వామి దేవాలయాల నిర్వహణ, నిత్య ధూపదీప నైవేద్యాలు మరియు పవిత్ర సేవల కోసం భక్తులు భక్తిశ్రద్ధలతో సమర్పించే స్వచ్ఛంద కానుకలు మరియు ఈ-హుండీ సమర్పణలు రద్దు లేదా రీఫండ్‌కు అర్హత కలిగి ఉండవు.</p>
+
+<h2>2. ఆలయ విశేష పూజలు మరియు సేవా బుకింగ్‌లు</h2>
+<p>ప్రత్యేక పూజలు, అభిషేకాలు మరియు అర్చనలు ఆలయ సంప్రదాయాల ప్రకారం నిర్వహించబడతాయి. ఆలయ నియమాలు లేదా అనుకోని కారణాల వల్ల సేవ జరగకపోతే, పూజను మరొక పవిత్ర దినమునకు మార్చబడును లేదా పరోక్ష సంకల్పం చేయబడును.</p>
+
+<h2>3. సాంకేతిక లోపాలు & రెట్టింపు చెల్లింపులు</h2>
+<p>బ్యాంకింగ్ సర్వర్ లేదా నెట్‌వర్క్ సమస్యల కారణంగా ఒకే సేవకు ఒకటికి మించి ఎక్కువసార్లు డబ్బులు డెబిట్ అయినట్లయితే, అదనపు మొత్తం 5-7 పనిదినములలో మీ మూల బ్యాంకు ఖాతాకు రీఫండ్ చేయబడును.</p>
+
+<h2>4. అన్నదాన కానుకలు</h2>
+<p>స్వామివారి భక్తులకు నిత్యాన్నదానం కోసం సమర్పించే విరాళాలు వెంటనే వినియోగించబడుతాయి కావున అన్నదాన సమర్పణలకు రద్దు వర్తించదు.</p>
+
+<h2>5. భక్త సహాయ కేంద్రం</h2>
+<p>చెల్లింపు సమస్యలు లేదా విచారణల కొరకు ట్రాన్సాక్షన్ ఐడీతో support@saranamayyappa.in లేదా support@saranamayyappa.org లో సంప్రదించండి.</p>`,
+    },
+    kn: {
+      title: 'ಮರುಪಾವತಿ ಮತ್ತು ರದ್ದತಿ ನೀತಿ',
+      content: `<h2>1. ಸ್ವಯಂಪ್ರೇರಿತ ಕಾಣಿಕೆಗಳು ಮತ್ತು ದೇಣಿಗೆಗಳು</h2>
+<p>ಶ್ರೀ ಅಯ್ಯಪ್ಪ ಸ್ವಾಮಿ ದೇವಾಲಯದ ಪೂಜೆಗಳು ಮತ್ತು ಈ-ಹುಂಡಿ ಕಾಣಿಕೆಗಳು ರದ್ದು ಅಥವಾ ಮರುಪಾವತಿಗೆ ಒಳಪಡುವುದಿಲ್ಲ.</p>
+
+<h2>2. ತಾಂತ್ರಿಕ ಸಮಸ್ಯೆಗಳು ಮತ್ತು ಮರುಪಾವತಿ</h2>
+<p>ಸರ್ವರ್ ದೋಷದಿಂದ ಒಂದಕ್ಕಿಂತ ಹೆಚ್ಚು ಬಾರಿ ಹಣ ಕಡಿತಗೊಂಡರೆ, ಪರಿಶೀಲನೆಯ ನಂತರ 5-7 ದಿನಗಳಲ್ಲಿ ಮರುಪಾವತಿ ಮಾಡಲಾಗುವುದು.</p>`,
+    },
+    ta: {
+      title: 'ரீஃபண்ட் மற்றும் ரத்து கொள்கை',
+      content: `<h2>1. ஆன்மீகக் காணிக்கைகள் மற்றும் நன்கொடைகள்</h2>
+<p>ஸ்ரீ ஐயப்பன் கோவில் வழிபாட்டிற்காக பக்தர்கள் செலுத்தும் காணிக்கைகள் மற்றும் உண்டியல் நன்கொடைகள் திரும்பப் பெறப்பட மாட்டாது.</p>
+
+<h2>2. இரட்டிப்புக் கழித்தல்கள் மற்றும் தீர்வு</h2>
+<p>தொழில்நுட்பக் கோளாறுகளால் ஒன்றுக்கு மேற்பட்ட முறை பணம் பிடிக்கப்பட்டால், 5-7 வேலை நாட்களில் அத்தொகை திருப்பிச் செலுத்தப்படும்.</p>`,
+    },
+    hi: {
+      title: 'वापसी एवं रद्दीकरण नीति',
+      content: `<h2>1. स्वैच्छिक दान एवं ई-हुंडी अर्पण</h2>
+<p>भगवान अय्यप्पा स्वामी मंदिरों के लिए दिए गए सभी स्वैच्छिक दान और ई-हुंडी अर्पण अहस्तांतरणीय और अप्रतिदेय हैं।</p>
+
+<h2>2. तकनीकी विफलता एवं दोहरे भुगतान</h2>
+<p>यदि तकनीकी त्रुटि के कारण एक ही सेवा के लिए दो बार राशि कट जाती है, तो अतिरिक्त राशि 5 से 7 कार्य दिवसों में वापस कर दी जाएगी।</p>`,
+    },
+  },
 };

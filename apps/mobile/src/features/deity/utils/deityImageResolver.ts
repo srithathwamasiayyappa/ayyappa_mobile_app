@@ -32,23 +32,31 @@ export const resolveDeityImage = (item: DeityItem | null | undefined): any => {
     return LOCAL_DEITY_ASSETS[item.imageName];
   }
 
-  // 2. Check remote/uploaded URL
+  // 2. Extract filename from DB URL/path (e.g. "venkateswara.jpg", "krishna.jpg", "rama.jpg", "hanuman.jpg")
+  const urlCandidate = item.imageUrl || (item as any).image || '';
+  if (urlCandidate) {
+    const rawFilename = urlCandidate.split('?')[0].split('/').pop();
+    if (rawFilename && LOCAL_DEITY_ASSETS[rawFilename]) {
+      return LOCAL_DEITY_ASSETS[rawFilename];
+    }
+  }
+
+  // 3. Match by deity ID / slug in local assets
+  const id = item.id || (item as any).slug || '';
+  if (id) {
+    const pngKey = `lord_${id}.png`;
+    if (LOCAL_DEITY_ASSETS[pngKey]) return LOCAL_DEITY_ASSETS[pngKey];
+
+    const jpgKey = `${id}.jpg`;
+    if (LOCAL_DEITY_ASSETS[jpgKey]) return LOCAL_DEITY_ASSETS[jpgKey];
+  }
+
+  // 4. Remote uploaded custom URL if valid
   if (item.imageUrl && (item.imageUrl.startsWith('http://') || item.imageUrl.startsWith('https://'))) {
     return { uri: item.imageUrl };
   }
 
-  // 3. Fallback by slug/id matching local assets
-  const pngKey = `lord_${item.id}.png`;
-  if (LOCAL_DEITY_ASSETS[pngKey]) {
-    return LOCAL_DEITY_ASSETS[pngKey];
-  }
-
-  const jpgKey = `${item.id}.jpg`;
-  if (LOCAL_DEITY_ASSETS[jpgKey]) {
-    return LOCAL_DEITY_ASSETS[jpgKey];
-  }
-
-  // 4. Category-based fallback
+  // 5. Category-based fallback
   if (item.category === 'shiva') return LOCAL_DEITY_ASSETS['lord_shiva.png'];
   if (item.category === 'vishnu') return LOCAL_DEITY_ASSETS['lord_vishnu.png'];
   if (item.category === 'devi') return LOCAL_DEITY_ASSETS['goddess_devi.png'];

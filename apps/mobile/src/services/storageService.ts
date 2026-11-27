@@ -1,6 +1,7 @@
 // Devotional Storage Service: Handles language selection, navigation state, and dynamic splash caching
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SupportedLanguage, DeityItem, NotificationPreferences, BookmarkItem } from '../types';
+import { ApiService } from './api';
 
 const STORAGE_KEYS = {
   LANGUAGE: '@ayyappa_user_language',
@@ -20,7 +21,7 @@ const STORAGE_KEYS = {
   PENDING_SELECTED_ROLE: '@ayyappa_pending_selected_role',
 };
 
-export type MobileScreen = 'splash' | 'welcome' | 'onboarding' | 'role_selection' | 'choose_deity' | 'auth' | 'language' | 'complete_profile' | 'home' | 'categories' | 'services' | 'category_listing' | 'pooja_detail' | 'sloka_detail' | 'bhajans_songs' | 'live_streams' | 'temples' | 'temple_detail' | 'food_donation' | 'donations' | 'notifications' | 'bookmarks' | 'profile' | 'edit_profile' | 'terms' | 'privacy_policy' | 'about' | 'contact' | 'detail' | 'panchangam' | 'festivals';
+export type MobileScreen = 'splash' | 'welcome' | 'onboarding' | 'role_selection' | 'choose_deity' | 'auth' | 'language' | 'complete_profile' | 'home' | 'categories' | 'services' | 'category_listing' | 'subcategory_types' | 'pooja_detail' | 'sloka_detail' | 'bhajans_songs' | 'live_streams' | 'temples' | 'temple_detail' | 'food_donation' | 'donations' | 'notifications' | 'bookmarks' | 'profile' | 'edit_profile' | 'terms' | 'privacy_policy' | 'refund_policy' | 'about' | 'contact' | 'detail' | 'panchangam' | 'festivals';
 
 export interface AppPersistentState {
   currentScreen: MobileScreen;
@@ -377,9 +378,16 @@ export const StorageService = {
     }
   },
 
-  // Bookmarks Persistence
-  async getBookmarks(): Promise<BookmarkItem[]> {
+  // Bookmarks Persistence (Synchronized with MariaDB API & Offline Storage)
+  async getBookmarks(userId?: number): Promise<BookmarkItem[]> {
     try {
+      if (userId) {
+        const fromApi = await ApiService.getUserBookmarks(userId);
+        if (Array.isArray(fromApi) && fromApi.length > 0) {
+          await AsyncStorage.setItem(STORAGE_KEYS.BOOKMARKS, JSON.stringify(fromApi));
+          return fromApi;
+        }
+      }
       const data = await AsyncStorage.getItem(STORAGE_KEYS.BOOKMARKS);
       return data ? JSON.parse(data) : [];
     } catch {
@@ -387,27 +395,58 @@ export const StorageService = {
     }
   },
 
-  async toggleBookmark(item: BookmarkItem): Promise<boolean> {
+  async toggleBookmark(item: BookmarkItem, userId?: number): Promise<boolean> {
     try {
+      let isSaved = false;
       const list = await this.getBookmarks();
       const existsIndex = list.findIndex((b) => b.id === item.id);
-      if (existsIndex >= 0) {
-        list.splice(existsIndex, 1);
-        await AsyncStorage.setItem(STORAGE_KEYS.BOOKMARKS, JSON.stringify(list));
-        return false; // Removed
-      } else {
-        list.unshift(item);
-        await AsyncStorage.setItem(STORAGE_KEYS.BOOKMARKS, JSON.stringify(list));
-        return true; // Added
+
+      const effectiveUserId = userId || 1;
+      try {
+        const apiRes = await ApiService.toggleUserBookmark(effectiveUserId, {
+          itemId: item.id,
+          itemType: item.category,
+          title: item.title,
+          subtitle: item.subtitle,
+          thumbnailUrl: item.thumbnailUrl,
+        });
+        if (apiRes && typeof apiRes.isBookmarked === 'boolean') {
+          isSaved = apiRes.isBookmarked;
+        } else {
+          isSaved = existsIndex < 0;
+        }
+      } catch {
+        isSaved = existsIndex < 0;
       }
+
+      if (isSaved) {
+        if (existsIndex >= 0) {
+          list[existsIndex] = item;
+        } else {
+          list.unshift(item);
+        }
+      } else {
+        if (existsIndex >= 0) {
+          list.splice(existsIndex, 1);
+        }
+      }
+      await AsyncStorage.setItem(STORAGE_KEYS.BOOKMARKS, JSON.stringify(list));
+      return isSaved;
     } catch (e) {
       console.warn('Failed to toggle bookmark', e);
       return false;
     }
   },
 
-  async isBookmarked(id: string): Promise<boolean> {
+  async isBookmarked(id: string, userId?: number): Promise<boolean> {
     try {
+      const effectiveUserId = userId || 1;
+      try {
+        const fromApi = await ApiService.checkUserBookmark(effectiveUserId, id);
+        if (typeof fromApi === 'boolean') {
+          return fromApi;
+        }
+      } catch {}
       const list = await this.getBookmarks();
       return list.some((b) => b.id === id);
     } catch {

@@ -35,6 +35,281 @@ import { StorageService } from '../../../services/storageService';
 import { SupportedLanguage, RashiItem, NakshatraItem, DevoteeProfile, DeityItem } from '../../../types';
 import { Toast } from '../../../components/common/Toast';
 
+const EDIT_PROFILE_TEXTS: Record<string, {
+  editProfile: string;
+  updateDetailsDesc: string;
+  devoteeSince: string;
+  personalInfo: string;
+  fullName: string;
+  fullNamePlaceholder: string;
+  dob: string;
+  selectDob: string;
+  gender: string;
+  selectGender: string;
+  rashi: string;
+  selectRashi: string;
+  nakshatram: string;
+  selectNakshatram: string;
+  contactInfo: string;
+  email: string;
+  emailPlaceholder: string;
+  address: string;
+  addressPlaceholder: string;
+  state: string;
+  selectState: string;
+  district: string;
+  selectDistrict: string;
+  city: string;
+  cityPlaceholder: string;
+  pincode: string;
+  pincodePlaceholder: string;
+  devotionalPrefs: string;
+  preferredLanguage: string;
+  favoriteDeity: string;
+  receiveUpdates: string;
+  receiveUpdatesSub: string;
+  saveChanges: string;
+  savingChanges: string;
+  backToProfile: string;
+  optional: string;
+  verified: string;
+}> = {
+  te: {
+    editProfile: 'ప్రొఫైల్ సవరించండి',
+    updateDetailsDesc: 'మీ వ్యక్తిగత మరియు ఆధ్యాత్మిక వివరాలను నవీకరించండి.',
+    devoteeSince: 'భక్తునిగా చేరినది:',
+    personalInfo: 'వ్యక్తిగత సమాచారం',
+    fullName: 'పూర్తి పేరు',
+    fullNamePlaceholder: 'పూర్తి పేరును నమోదు చేయండి',
+    dob: 'పుట్టిన తేదీ',
+    selectDob: 'పుట్టిన తేదీని ఎంచుకోండి',
+    gender: 'లింగం',
+    selectGender: 'లింగాన్ని ఎంచుకోండి',
+    rashi: 'రాశి (జన్మ రాశి)',
+    selectRashi: 'రాశిని ఎంచుకోండి',
+    nakshatram: 'నక్షత్రం (జన్మ నక్షత్రం)',
+    selectNakshatram: 'నక్షత్రాన్ని ఎంచుకోండి',
+    contactInfo: 'చిరునామా & సంప్రదింపు సమాచారం',
+    email: 'ఈమెయిల్',
+    emailPlaceholder: 'ఈమెయిల్ చిరునామా',
+    address: 'చిరునామా',
+    addressPlaceholder: 'ఇంటి నంబరు, వీధి వివరాలు',
+    state: 'రాష్ట్రం',
+    selectState: 'రాష్ట్రాన్ని ఎంచుకోండి',
+    district: 'జిల్లా',
+    selectDistrict: 'జిల్లాను ఎంచుకోండి',
+    city: 'నగరం / పట్టణం',
+    cityPlaceholder: 'నగరం / పట్టణం',
+    pincode: 'పిన్‌కోడ్',
+    pincodePlaceholder: '6 అంకెల పిన్‌కోడ్',
+    devotionalPrefs: 'ఆధ్యాత్మిక ప్రాధాన్యతలు',
+    preferredLanguage: 'ప్రాధాన్య భాష',
+    favoriteDeity: 'ఇష్ట దైవం',
+    receiveUpdates: 'ఆలయ సమాచారం & అప్‌డేట్స్ పొందండి',
+    receiveUpdatesSub: 'పంచాంగం, పండుగలు, సేవలు మరియు మరిన్ని',
+    saveChanges: 'మార్పులను భద్రపరచండి',
+    savingChanges: 'భద్రపరుస్తోంది...',
+    backToProfile: 'ప్రొఫైల్‌కు తిరిగి వెళ్లండి',
+    optional: '(ఐచ్ఛికం)',
+    verified: 'ధృవీకరించబడింది',
+  },
+  kn: {
+    editProfile: 'ಪ್ರೊಫೈಲ್ ಸಂಪಾದಿಸಿ',
+    updateDetailsDesc: 'ನಿಮ್ಮ ವೈಯಕ್ತಿಕ ಮತ್ತು ಆಧ್ಯಾತ್ಮಿಕ ವಿವರಗಳನ್ನು ನವೀಕರಿಸಿ.',
+    devoteeSince: 'ಭಕ್ತರಾಗಿ ಸೇರಿದ ದಿನ:',
+    personalInfo: 'ವೈಯಕ್ತಿಕ ಮಾಹಿತಿ',
+    fullName: 'ಪೂರ್ಣ ಹೆಸರು',
+    fullNamePlaceholder: 'ಪೂರ್ಣ ಹೆಸರನ್ನು ನಮೂದಿಸಿ',
+    dob: 'ಹುಟ್ಟಿದ ದಿನಾಂಕ',
+    selectDob: 'ಹುಟ್ಟಿದ ದಿನಾಂಕವನ್ನು ಆಯ್ಕೆಮಾಡಿ',
+    gender: 'ಲಿಂಗ',
+    selectGender: 'ಲಿಂಗವನ್ನು ಆಯ್ಕೆಮಾಡಿ',
+    rashi: 'ರಾಶಿ',
+    selectRashi: 'ರಾಶಿಯನ್ನು ಆಯ್ಕೆಮಾಡಿ',
+    nakshatram: 'ನಕ್ಷತ್ರ',
+    selectNakshatram: 'ನಕ್ಷತ್ರವನ್ನು ಆಯ್ಕೆಮಾಡಿ',
+    contactInfo: 'ವಿಳಾಸ & ಸಂಪರ್ಕ ಮಾಹಿತಿ',
+    email: 'ಇಮೇಲ್',
+    emailPlaceholder: 'ಇಮೇಲ್ ವಿಳಾಸ',
+    address: 'ವಿಳಾಸ',
+    addressPlaceholder: 'ಮನೆ ನಂ, ರಸ್ತೆ ಹೆಸರು',
+    state: 'ರಾಜ್ಯ',
+    selectState: 'ರಾಜ್ಯವನ್ನು ಆಯ್ಕೆಮಾಡಿ',
+    district: 'ಜಿಲ್ಲೆ',
+    selectDistrict: 'ಜಿಲ್ಲೆಯನ್ನು ಆಯ್ಕೆಮಾಡಿ',
+    city: 'ನಗರ / ಪಟ್ಟಣ',
+    cityPlaceholder: 'ನಗರ / ಪಟ್ಟಣ',
+    pincode: 'ಪಿನ್‌ಕೋಡ್',
+    pincodePlaceholder: '6 ಅಂಕಿಗಳ ಪಿನ್‌ಕೋಡ್',
+    devotionalPrefs: 'ಆಧ್ಯಾತ್ಮಿಕ ಆದ್ಯತೆಗಳು',
+    preferredLanguage: 'ಆದ್ಯತೆಯ ಭಾಷೆ',
+    favoriteDeity: 'ಇಷ್ಟ ದೇವರು',
+    receiveUpdates: 'ದೇವಾಲಯದ ಅಪ್‌ಡೇಟ್‌ಗಳನ್ನು ಪಡೆಯಿರಿ',
+    receiveUpdatesSub: 'ಪಂಚಾಂಗ, ಹಬ್ಬಗಳು, ಸೇವೆಗಳು ಮತ್ತು ಇನ್ನಷ್ಟು',
+    saveChanges: 'ಬದಲಾವಣೆಗಳನ್ನು ಉಳಿಸಿ',
+    savingChanges: 'ಉಳಿಸಲಾಗುತ್ತಿದೆ...',
+    backToProfile: 'ಪ್ರೊಫೈಲ್‌ಗೆ ಹಿಂತಿರುಗಿ',
+    optional: '(ಐಚ್ಛಿಕ)',
+    verified: 'ದೃಢೀಕರಿಸಲಾಗಿದೆ',
+  },
+  ta: {
+    editProfile: 'சுயவிவரத்தைத் திருத்தவும்',
+    updateDetailsDesc: 'உங்கள் தனிப்பட்ட மற்றும் பக்தி விவரங்களைப் புதுப்பிக்கவும்.',
+    devoteeSince: 'பக்தராக இணைந்தது:',
+    personalInfo: 'தனிப்பட்ட தகவல்',
+    fullName: 'முழு பெயர்',
+    fullNamePlaceholder: 'முழு பெயரை உள்ளிடவும்',
+    dob: 'பிறந்த தேதி',
+    selectDob: 'பிறந்த தேதியைத் தேர்ந்தெடுக்கவும்',
+    gender: 'பாலினம்',
+    selectGender: 'பாலினத்தைத் தேர்ந்தெடுக்கவும்',
+    rashi: 'ராசி',
+    selectRashi: 'ராசியைத் தேர்ந்தெடுக்கவும்',
+    nakshatram: 'நட்சத்திரம்',
+    selectNakshatram: 'நட்சத்திரத்தைத் தேர்ந்தெடுக்கவும்',
+    contactInfo: 'முகவரி & தொடர்பு விவரங்கள்',
+    email: 'மின்னஞ்சல்',
+    emailPlaceholder: 'மின்னஞ்சல் முகவரி',
+    address: 'முகவரி',
+    addressPlaceholder: 'கதவு எண், தெரு பெயர்',
+    state: 'மாநிலம்',
+    selectState: 'மாநிலத்தைத் தேர்ந்தெடுக்கவும்',
+    district: 'மாவட்டம்',
+    selectDistrict: 'மாவட்டத்தைத் தேர்ந்தெடுக்கவும்',
+    city: 'நகரம் / ஊர்',
+    cityPlaceholder: 'நகரம் / ஊர்',
+    pincode: 'அஞ்சல் குறியீடு',
+    pincodePlaceholder: '6 இலக்க அஞ்சல் குறியீடு',
+    devotionalPrefs: 'பக்தி விருப்பங்கள்',
+    preferredLanguage: 'விருப்ப மொழி',
+    favoriteDeity: 'இஷ்ட தெய்வம்',
+    receiveUpdates: 'கோயில் அறிவிப்புகளைப் பெறவும்',
+    receiveUpdatesSub: 'பஞ்சாங்கம், திருவிழாக்கள், சேவைகள் & மேலும்',
+    saveChanges: 'மாற்றங்களைச் சேமிக்கவும்',
+    savingChanges: 'சேமிக்கிறது...',
+    backToProfile: 'சுயவிவரத்திற்குத் திரும்பு',
+    optional: '(விருப்பத்தேர்வு)',
+    verified: 'சரிபார்க்கப்பட்டது',
+  },
+  hi: {
+    editProfile: 'प्रोफ़ाइल संपादित करें',
+    updateDetailsDesc: 'अपने व्यक्तिगत एवं आध्यात्मिक विवरण अपडेट करें।',
+    devoteeSince: 'भक्त जुड़े:',
+    personalInfo: 'व्यक्तिगत जानकारी',
+    fullName: 'पूरा नाम',
+    fullNamePlaceholder: 'पूरा नाम दर्ज करें',
+    dob: 'जन्म तिथि',
+    selectDob: 'जन्म तिथि चुनें',
+    gender: 'लिंग',
+    selectGender: 'लिंग चुनें',
+    rashi: 'राशि',
+    selectRashi: 'राशि चुनें',
+    nakshatram: 'नक्षत्र',
+    selectNakshatram: 'नक्षत्र चुनें',
+    contactInfo: 'पता एवं संपर्क जानकारी',
+    email: 'ईमेल',
+    emailPlaceholder: 'ईमेल पता',
+    address: 'पता',
+    addressPlaceholder: 'मकान नं, गली का नाम',
+    state: 'राज्य',
+    selectState: 'राज्य चुनें',
+    district: 'ज़िला',
+    selectDistrict: 'ज़िला चुनें',
+    city: 'शहर / कस्बा',
+    cityPlaceholder: 'शहर / कस्बा',
+    pincode: 'पिनकोड',
+    pincodePlaceholder: '6 अंकों का पिनकोड',
+    devotionalPrefs: 'आध्यात्मिक प्राथमिकताएं',
+    preferredLanguage: 'पसंदीदा भाषा',
+    favoriteDeity: 'इष्ट देवता',
+    receiveUpdates: 'मंदिर अपडेट प्राप्त करें',
+    receiveUpdatesSub: 'पंचांग, त्यौहार, सेवाएं एवं अन्य',
+    saveChanges: 'परिवर्तन सहेजें',
+    savingChanges: 'सहेजा जा रहा है...',
+    backToProfile: 'प्रोफ़ाइल पर वापस जाएं',
+    optional: '(वैकल्पिक)',
+    verified: 'सत्यापित',
+  },
+  ml: {
+    editProfile: 'പ്രൊഫൈൽ എഡിറ്റ് ചെയ്യുക',
+    updateDetailsDesc: 'നിങ്ങളുടെ വ്യക്തിഗത, ഭക്തി വിവരങ്ങൾ പുതുക്കുക.',
+    devoteeSince: 'ഭക്തനായി ചേർന്നത്:',
+    personalInfo: 'വ്യക്തിഗത വിവരങ്ങൾ',
+    fullName: 'പൂർണ്ണ നാമം',
+    fullNamePlaceholder: 'പൂർണ്ണ നാമം നൽകുക',
+    dob: 'ജനന തീയതി',
+    selectDob: 'ജനന തീയതി തിരഞ്ഞെടുക്കുക',
+    gender: 'ലിംഗം',
+    selectGender: 'ലിംഗം തിരഞ്ഞെടുക്കുക',
+    rashi: 'രാശി',
+    selectRashi: 'രാശി തിരഞ്ഞെടുക്കുക',
+    nakshatram: 'നക്ഷത്രം',
+    selectNakshatram: 'നക്ഷത്രം തിരഞ്ഞെടുക്കുക',
+    contactInfo: 'വിലാസവും ബന്ധപ്പെടേണ്ട വിവരങ്ങളും',
+    email: 'ഇമെയിൽ',
+    emailPlaceholder: 'ഇമെയിൽ വിലാസം',
+    address: 'വിലാസം',
+    addressPlaceholder: 'വീട്ടു നമ്പർ, തെരുവ് പേര്',
+    state: 'സംസ്ഥാനം',
+    selectState: 'സംസ്ഥാനം തിരഞ്ഞെടുക്കുക',
+    district: 'ജില്ല',
+    selectDistrict: 'ജില്ല തിരഞ്ഞെടുക്കുക',
+    city: 'നഗരം / ഗ്രാമം',
+    cityPlaceholder: 'നഗരം / ഗ്രാമം',
+    pincode: 'പിൻകോഡ്',
+    pincodePlaceholder: '6 അക്ക പിൻകോഡ്',
+    devotionalPrefs: 'ആത്മീയ മുൻഗണനകൾ',
+    preferredLanguage: 'മുൻഗണനാ ഭാഷ',
+    favoriteDeity: 'ഇഷ്ട ദൈവം',
+    receiveUpdates: 'ക്ഷേത്ര വിവരങ്ങൾ സ്വീകരിക്കുക',
+    receiveUpdatesSub: 'പഞ്ചാംഗം, ഉത്സവങ്ങൾ, സേവകൾ തുടങ്ങിയവ',
+    saveChanges: 'മാറ്റങ്ങൾ സൂക്ഷിക്കുക',
+    savingChanges: 'സൂക്ഷിക്കുന്നു...',
+    backToProfile: 'പ്രൊഫൈലിലേക്ക് മടങ്ങുക',
+    optional: '(ഓപ്ഷണൽ)',
+    verified: 'സ്ഥിരീകരിച്ചു',
+  },
+  en: {
+    editProfile: 'Edit Profile',
+    updateDetailsDesc: 'Update your personal and devotional details.',
+    devoteeSince: 'Devotee Since:',
+    personalInfo: 'Personal Information',
+    fullName: 'Full Name',
+    fullNamePlaceholder: 'Full Name',
+    dob: 'Date of Birth',
+    selectDob: 'Select Date of Birth',
+    gender: 'Gender',
+    selectGender: 'Select Gender',
+    rashi: 'Rashi',
+    selectRashi: 'Select Rashi',
+    nakshatram: 'Nakshatram',
+    selectNakshatram: 'Select Nakshatram',
+    contactInfo: 'Contact Information',
+    email: 'Email',
+    emailPlaceholder: 'Email Address',
+    address: 'Address',
+    addressPlaceholder: 'Door No, Street name',
+    state: 'State',
+    selectState: 'Select State',
+    district: 'District',
+    selectDistrict: 'Select District',
+    city: 'City / Town',
+    cityPlaceholder: 'City / Town',
+    pincode: 'Pincode',
+    pincodePlaceholder: 'Pincode',
+    devotionalPrefs: 'Devotional Preferences',
+    preferredLanguage: 'Preferred Language',
+    favoriteDeity: 'Favorite Deity',
+    receiveUpdates: 'Receive Temple Updates',
+    receiveUpdatesSub: 'Panchangam, Festivals, Sevas & More',
+    saveChanges: 'Save Changes',
+    savingChanges: 'Saving Changes...',
+    backToProfile: 'Back to Profile',
+    optional: '(Optional)',
+    verified: 'Verified',
+  },
+};
+
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -420,6 +695,7 @@ export const EditProfileScreen: React.FC<Props> = ({
   onNavigateTab,
 }) => {
   const activeLang = currentLanguage || 'te';
+  const uiTexts = (EDIT_PROFILE_TEXTS as any)[activeLang] || EDIT_PROFILE_TEXTS.en;
 
   // --- Dynamic State (Strictly bound to authenticated currentUser) ---
   const formatInitialDob = (dateVal?: any): string => {
@@ -901,7 +1177,7 @@ export const EditProfileScreen: React.FC<Props> = ({
               </View>
 
               <Text style={styles.brandSubtitle}>— Saranam Ayyappa —</Text>
-              <Text style={styles.mainTitle}>Edit Profile</Text>
+              <Text style={styles.mainTitle}>{uiTexts.editProfile}</Text>
 
               <View style={styles.titleDividerContainer}>
                 <HeaderSubtitleFiligree />
@@ -947,18 +1223,18 @@ export const EditProfileScreen: React.FC<Props> = ({
                   {isVerified && (
                     <View style={styles.verifiedBadge}>
                       <VerifiedCheckIcon />
-                      <Text style={styles.verifiedText}>Verified</Text>
+                      <Text style={styles.verifiedText}>{uiTexts.verified}</Text>
                     </View>
                   )}
                 </View>
 
                 <View style={styles.devoteeSinceRow}>
                   <Text style={styles.calendarMiniIcon}>📅</Text>
-                  <Text style={styles.devoteeSinceText}>Devotee Since: {devoteeSince}</Text>
+                  <Text style={styles.devoteeSinceText}>{uiTexts.devoteeSince} {devoteeSince}</Text>
                 </View>
 
                 <Text style={styles.summaryHintText}>
-                  Update your personal and devotional details.
+                  {uiTexts.updateDetailsDesc}
                 </Text>
               </View>
             </View>
@@ -971,7 +1247,7 @@ export const EditProfileScreen: React.FC<Props> = ({
             <View style={styles.sectionHeaderRow}>
               <View style={styles.sectionBadgePill}>
                 <PersonFieldIcon />
-                <Text style={styles.sectionBadgeText}>Personal Information</Text>
+                <Text style={styles.sectionBadgeText}>{uiTexts.personalInfo}</Text>
               </View>
               <FloralFiligree />
             </View>
@@ -980,7 +1256,7 @@ export const EditProfileScreen: React.FC<Props> = ({
             <View style={styles.fieldRowWrap}>
               <View style={[styles.fieldColumn, { flex: 1 }]}>
                 <Text style={styles.fieldLabel}>
-                  Full Name <Text style={styles.asterisk}>*</Text>
+                  {uiTexts.fullName} <Text style={styles.asterisk}>*</Text>
                 </Text>
                 <View style={[styles.inputBox, errors.fullName && styles.inputError]}>
                   <PersonFieldIcon />
@@ -991,7 +1267,7 @@ export const EditProfileScreen: React.FC<Props> = ({
                       setFullName(val);
                       if (errors.fullName) setErrors({ ...errors, fullName: '' });
                     }}
-                    placeholder="Full Name"
+                    placeholder={uiTexts.fullNamePlaceholder}
                     placeholderTextColor="#A89485"
                   />
                 </View>
@@ -1003,7 +1279,7 @@ export const EditProfileScreen: React.FC<Props> = ({
               {/* Date of Birth */}
               <View style={[styles.fieldColumn, { flex: 1 }]}>
                 <Text style={styles.fieldLabel}>
-                  Date of Birth <Text style={styles.asterisk}>*</Text>
+                  {uiTexts.dob} <Text style={styles.asterisk}>*</Text>
                 </Text>
                 <TouchableOpacity
                   style={[styles.inputBox, errors.dob && styles.inputError]}
@@ -1012,7 +1288,7 @@ export const EditProfileScreen: React.FC<Props> = ({
                 >
                   <CalendarFieldIcon />
                   <Text style={[styles.dropdownValueText, !dobDisplay && { color: '#8C7A6B' }]} numberOfLines={1}>
-                    {dobDisplay || 'Select Date of Birth'}
+                    {dobDisplay || uiTexts.selectDob}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -1020,7 +1296,7 @@ export const EditProfileScreen: React.FC<Props> = ({
               {/* Gender (Dropdown) */}
               <View style={[styles.fieldColumn, { flex: 1 }]}>
                 <Text style={styles.fieldLabel}>
-                  Gender <Text style={styles.asterisk}>*</Text>
+                  {uiTexts.gender} <Text style={styles.asterisk}>*</Text>
                 </Text>
                 <TouchableOpacity
                   style={[styles.inputBox, errors.gender && styles.inputError]}
@@ -1029,7 +1305,7 @@ export const EditProfileScreen: React.FC<Props> = ({
                 >
                   <GenderFieldIcon />
                   <Text style={[styles.dropdownValueText, !gender && { color: '#8C7A6B' }]} numberOfLines={1}>
-                    {gender || 'Select Gender'}
+                    {gender || uiTexts.selectGender}
                   </Text>
                   <ChevronDownIcon />
                 </TouchableOpacity>
@@ -1041,7 +1317,7 @@ export const EditProfileScreen: React.FC<Props> = ({
               {/* Rashi */}
               <View style={[styles.fieldColumn, { flex: 1 }]}>
                 <Text style={styles.fieldLabel}>
-                  Rashi <Text style={styles.optionalSubLabel}>(Optional)</Text>
+                  {uiTexts.rashi} <Text style={styles.optionalSubLabel}>{uiTexts.optional}</Text>
                 </Text>
                 <TouchableOpacity
                   style={[styles.inputBox, errors.rashi && styles.inputError]}
@@ -1050,7 +1326,7 @@ export const EditProfileScreen: React.FC<Props> = ({
                 >
                   <ZodiacFieldIcon />
                   <Text style={styles.dropdownValueText} numberOfLines={1}>
-                    {selectedRashiName || 'Select Rashi'}
+                    {selectedRashiName || uiTexts.selectRashi}
                   </Text>
                   <ChevronDownIcon />
                 </TouchableOpacity>
@@ -1059,7 +1335,7 @@ export const EditProfileScreen: React.FC<Props> = ({
               {/* Nakshatram */}
               <View style={[styles.fieldColumn, { flex: 1 }]}>
                 <Text style={styles.fieldLabel}>
-                  Nakshatram <Text style={styles.optionalSubLabel}>(Optional)</Text>
+                  {uiTexts.nakshatram} <Text style={styles.optionalSubLabel}>{uiTexts.optional}</Text>
                 </Text>
                 <TouchableOpacity
                   style={[styles.inputBox, errors.nakshatra && styles.inputError]}
@@ -1068,7 +1344,7 @@ export const EditProfileScreen: React.FC<Props> = ({
                 >
                   <StarFieldIcon />
                   <Text style={styles.dropdownValueText} numberOfLines={1}>
-                    {selectedNakshatraName || 'Select Nakshatram'}
+                    {selectedNakshatraName || uiTexts.selectNakshatram}
                   </Text>
                   <ChevronDownIcon />
                 </TouchableOpacity>
@@ -1083,7 +1359,7 @@ export const EditProfileScreen: React.FC<Props> = ({
             <View style={styles.sectionHeaderRow}>
               <View style={styles.sectionBadgePill}>
                 <PinFieldIcon />
-                <Text style={styles.sectionBadgeText}>Contact Information</Text>
+                <Text style={styles.sectionBadgeText}>{uiTexts.contactInfo}</Text>
               </View>
               <FloralFiligree />
             </View>
@@ -1092,7 +1368,7 @@ export const EditProfileScreen: React.FC<Props> = ({
             <View style={styles.fieldRowWrap}>
               <View style={[styles.fieldColumn, { flex: 1 }]}>
                 <Text style={styles.fieldLabel}>
-                  Email <Text style={styles.asterisk}>*</Text>
+                  {uiTexts.email} <Text style={styles.asterisk}>*</Text>
                 </Text>
                 <View style={[styles.inputBox, errors.email && styles.inputError]}>
                   <MailFieldIcon />
@@ -1103,7 +1379,7 @@ export const EditProfileScreen: React.FC<Props> = ({
                       setEmail(val);
                       if (errors.email) setErrors({ ...errors, email: '' });
                     }}
-                    placeholder="Email Address"
+                    placeholder={uiTexts.emailPlaceholder}
                     placeholderTextColor="#A89485"
                     keyboardType="email-address"
                     autoCapitalize="none"
@@ -1116,7 +1392,7 @@ export const EditProfileScreen: React.FC<Props> = ({
             <View style={styles.fieldRowWrap}>
               <View style={[styles.fieldColumn, { flex: 1 }]}>
                 <Text style={styles.fieldLabel}>
-                  Address <Text style={styles.asterisk}>*</Text>
+                  {uiTexts.address} <Text style={styles.asterisk}>*</Text>
                 </Text>
                 <View style={[styles.inputBox, errors.addressLine && styles.inputError]}>
                   <HomeFieldIcon />
@@ -1127,7 +1403,7 @@ export const EditProfileScreen: React.FC<Props> = ({
                       setAddressLine(val);
                       if (errors.addressLine) setErrors({ ...errors, addressLine: '' });
                     }}
-                    placeholder="Door No, Street name"
+                    placeholder={uiTexts.addressPlaceholder}
                     placeholderTextColor="#A89485"
                   />
                 </View>
@@ -1139,7 +1415,7 @@ export const EditProfileScreen: React.FC<Props> = ({
               {/* State */}
               <View style={[styles.fieldColumn, { flex: 1 }]}>
                 <Text style={styles.fieldLabel}>
-                  State <Text style={styles.asterisk}>*</Text>
+                  {uiTexts.state} <Text style={styles.asterisk}>*</Text>
                 </Text>
                 <TouchableOpacity
                   style={styles.inputBox}
@@ -1156,7 +1432,7 @@ export const EditProfileScreen: React.FC<Props> = ({
               {/* District */}
               <View style={[styles.fieldColumn, { flex: 1 }]}>
                 <Text style={styles.fieldLabel}>
-                  District <Text style={styles.asterisk}>*</Text>
+                  {uiTexts.district} <Text style={styles.asterisk}>*</Text>
                 </Text>
                 <TouchableOpacity
                   style={styles.inputBox}
@@ -1176,14 +1452,14 @@ export const EditProfileScreen: React.FC<Props> = ({
               {/* City / Town */}
               <View style={[styles.fieldColumn, { flex: 1 }]}>
                 <Text style={styles.fieldLabel}>
-                  City / Town <Text style={styles.asterisk}>*</Text>
+                  {uiTexts.city} <Text style={styles.asterisk}>*</Text>
                 </Text>
                 <View style={styles.inputBox}>
                   <TextInput
                     style={styles.textInput}
                     value={city}
                     onChangeText={setCity}
-                    placeholder="City / Town"
+                    placeholder={uiTexts.cityPlaceholder}
                     placeholderTextColor="#A89485"
                   />
                 </View>
@@ -1192,7 +1468,7 @@ export const EditProfileScreen: React.FC<Props> = ({
               {/* Pincode */}
               <View style={[styles.fieldColumn, { flex: 1 }]}>
                 <Text style={styles.fieldLabel}>
-                  Pincode <Text style={styles.asterisk}>*</Text>
+                  {uiTexts.pincode} <Text style={styles.asterisk}>*</Text>
                 </Text>
                 <View style={[styles.inputBox, errors.pincode && styles.inputError]}>
                   <TextInput
@@ -1202,7 +1478,7 @@ export const EditProfileScreen: React.FC<Props> = ({
                       setPincode(val.replace(/\D/g, '').slice(0, 6));
                       if (errors.pincode) setErrors({ ...errors, pincode: '' });
                     }}
-                    placeholder="Pincode"
+                    placeholder={uiTexts.pincodePlaceholder}
                     placeholderTextColor="#A89485"
                     keyboardType="numeric"
                     maxLength={6}
@@ -1219,7 +1495,7 @@ export const EditProfileScreen: React.FC<Props> = ({
             <View style={styles.sectionHeaderRow}>
               <View style={styles.sectionBadgePill}>
                 <Text style={styles.sectionBadgeIcon}>🙏</Text>
-                <Text style={styles.sectionBadgeText}>Devotional Preferences</Text>
+                <Text style={styles.sectionBadgeText}>{uiTexts.devotionalPrefs}</Text>
               </View>
               <FloralFiligree />
             </View>
@@ -1229,7 +1505,7 @@ export const EditProfileScreen: React.FC<Props> = ({
               {/* Preferred Language */}
               <View style={[styles.fieldColumn, { flex: 1 }]}>
                 <Text style={styles.fieldLabel}>
-                  Preferred Language <Text style={styles.asterisk}>*</Text>
+                  {uiTexts.preferredLanguage} <Text style={styles.asterisk}>*</Text>
                 </Text>
                 <TouchableOpacity
                   style={styles.inputBox}
@@ -1247,7 +1523,7 @@ export const EditProfileScreen: React.FC<Props> = ({
               {/* Favorite Deity */}
               <View style={[styles.fieldColumn, { flex: 1 }]}>
                 <Text style={styles.fieldLabel}>
-                  Favorite Deity <Text style={styles.asterisk}>*</Text>
+                  {uiTexts.favoriteDeity} <Text style={styles.asterisk}>*</Text>
                 </Text>
                 <TouchableOpacity
                   style={styles.inputBox}
@@ -1270,10 +1546,10 @@ export const EditProfileScreen: React.FC<Props> = ({
                   <View style={styles.toggleTextCol}>
                     <View style={styles.toggleHeaderRow}>
                       <BellFieldIcon />
-                      <Text style={styles.toggleTitleText}>Receive Temple Updates</Text>
+                      <Text style={styles.toggleTitleText}>{uiTexts.receiveUpdates}</Text>
                     </View>
                     <Text style={styles.toggleSubtitleText}>
-                      Panchangam, Festivals, Sevas & More
+                      {uiTexts.receiveUpdatesSub}
                     </Text>
                   </View>
                   <Switch
@@ -1308,7 +1584,7 @@ export const EditProfileScreen: React.FC<Props> = ({
               {saving ? (
                 <View style={styles.savingRow}>
                   <ActivityIndicator size="small" color="#FFFFFF" />
-                  <Text style={styles.primaryCtaText}>Saving Changes...</Text>
+                  <Text style={styles.primaryCtaText}>{uiTexts.savingChanges}</Text>
                 </View>
               ) : (
                 <View style={styles.ctaContentRow}>
@@ -1323,7 +1599,7 @@ export const EditProfileScreen: React.FC<Props> = ({
                       />
                     </Svg>
                   </View>
-                  <Text style={styles.primaryCtaText}>Save Changes</Text>
+                  <Text style={styles.primaryCtaText}>{uiTexts.saveChanges}</Text>
                 </View>
               )}
             </LinearGradient>
@@ -1339,7 +1615,7 @@ export const EditProfileScreen: React.FC<Props> = ({
             accessibilityRole="button"
             accessibilityLabel="Back to Profile"
           >
-            <Text style={styles.secondaryCtaText}>Back to Profile</Text>
+            <Text style={styles.secondaryCtaText}>{uiTexts.backToProfile}</Text>
           </TouchableOpacity>
 
           {/* =========================================================================

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,22 +10,34 @@ import {
   Image,
   Platform,
   Dimensions,
-  Modal,
   Alert,
-  Share,
   BackHandler,
+  RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import Svg, { Path, Circle, Rect, Polygon, Line } from 'react-native-svg';
+import Svg, { Path, Circle, Polygon, Line, Rect } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SupportedLanguage } from '../../../types';
+import { ApiService, resolveMediaUrl } from '../../../services/api';
 import { StorageService } from '../../../services/storageService';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: WINDOW_WIDTH, height: WINDOW_HEIGHT } = Dimensions.get('window');
+const { width: SCREEN_WIDTH_FULL, height: SCREEN_HEIGHT_FULL } = Dimensions.get('screen');
+const SCREEN_WIDTH = Math.min(WINDOW_WIDTH, SCREEN_WIDTH_FULL);
+const SCREEN_HEIGHT = Math.max(WINDOW_HEIGHT, SCREEN_HEIGHT_FULL);
+const isLargeOrTallScreen = SCREEN_HEIGHT >= 800 || (SCREEN_HEIGHT / SCREEN_WIDTH) >= 1.95;
+
+// Dynamic status bar height for Android
+const ANDROID_STATUS_BAR_HEIGHT = Platform.OS === 'android'
+  ? Math.max(StatusBar.currentHeight || 0, isLargeOrTallScreen ? 44 : 36)
+  : 0;
 
 interface Props {
   itemId: string;
+  rawId?: string;
   title?: string;
+  category?: string;
   currentLanguage: SupportedLanguage;
   onBack: () => void;
 }
@@ -33,11 +45,11 @@ interface Props {
 // Corner Filigree Ornaments for Header
 const HeaderCornerFiligree = ({ flipped = false }: { flipped?: boolean }) => (
   <View style={flipped ? { transform: [{ scaleX: -1 }] } : undefined}>
-    <Svg width={36} height={36} viewBox="0 0 36 36" fill="none">
+    <Svg width={40} height={40} viewBox="0 0 36 36" fill="none">
       <Path
         d="M2 2 C12 2 22 8 28 16 C24 18 18 16 12 22 C8 16 6 8 2 2 Z"
         fill="#DFA62E"
-        fillOpacity={0.75}
+        fillOpacity={0.7}
       />
       <Circle cx="8" cy="8" r="2" fill="#FFD700" />
       <Circle cx="16" cy="5" r="1.5" fill="#FFD700" />
@@ -46,12 +58,19 @@ const HeaderCornerFiligree = ({ flipped = false }: { flipped?: boolean }) => (
   </View>
 );
 
-// Back Arrow inside Header
+// Solid Maroon Play Triangle Icon for cards
+const CardPlayTriangleIcon = () => (
+  <Svg width={14} height={16} viewBox="0 0 14 16" fill="none">
+    <Polygon points="2,1 13,8 2,15" fill="#173D32" />
+  </Svg>
+);
+
+// Back Arrow
 const BackArrowIcon = () => (
-  <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+  <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
     <Path
       d="M19 12H5M12 19l-7-7 7-7"
-      stroke="#FFFDF8"
+      stroke="#173D32"
       strokeWidth={2.5}
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -59,55 +78,43 @@ const BackArrowIcon = () => (
   </Svg>
 );
 
-// Play Triangle Icon inside circular maroon button
-const PlayTriangleIcon = () => (
-  <Svg width={18} height={20} viewBox="0 0 18 20" fill="none">
-    <Polygon points="3,1 17,10 3,19" fill="#FFFFFF" />
-  </Svg>
-);
-
-// Pause Icon inside circular maroon button
-const PauseIcon = () => (
+// Play / Pause Icons for optional audio bar
+const PlayAudioIcon = () => (
   <Svg width={16} height={18} viewBox="0 0 16 18" fill="none">
-    <Rect x="2" y="1" width="4" height="16" rx="1" fill="#FFFFFF" />
-    <Rect x="10" y="1" width="4" height="16" rx="1" fill="#FFFFFF" />
+    <Polygon points="2,1 15,9 2,17" fill="#FFD700" />
   </Svg>
 );
 
-// Share Icon
-const ShareIcon = () => (
-  <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-    <Circle cx="18" cy="5" r="3" stroke="#173D32" strokeWidth={2} />
-    <Circle cx="6" cy="12" r="3" stroke="#173D32" strokeWidth={2} />
-    <Circle cx="18" cy="19" r="3" stroke="#173D32" strokeWidth={2} />
-    <Line x1="8.59" y1="13.51" x2="15.42" y2="17.49" stroke="#173D32" strokeWidth={2} />
-    <Line x1="15.41" y1="6.51" x2="8.59" y2="10.49" stroke="#173D32" strokeWidth={2} />
-  </Svg>
-);
-
-// Bookmark / Save Icon
-const BookmarkIcon = ({ isSaved }: { isSaved: boolean }) => (
-  <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-    <Path
-      d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"
-      stroke="#173D32"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      fill={isSaved ? '#173D32' : 'none'}
-    />
+const PauseAudioIcon = () => (
+  <Svg width={16} height={18} viewBox="0 0 16 18" fill="none">
+    <Rect x="2" y="1" width="4" height="16" rx="1" fill="#FFD700" />
+    <Rect x="10" y="1" width="4" height="16" rx="1" fill="#FFD700" />
   </Svg>
 );
 
 // Download Tray & Arrow Icon
-const DownloadIcon = () => (
-  <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+const DownloadTrayIcon = () => (
+  <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
     <Path
       d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"
       stroke="#173D32"
-      strokeWidth={2}
+      strokeWidth={2.2}
       strokeLinecap="round"
       strokeLinejoin="round"
+    />
+  </Svg>
+);
+
+// Heart Icon for Save / Favorite
+const HeartFavoriteIcon = ({ isSaved }: { isSaved: boolean }) => (
+  <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+      stroke="#173D32"
+      strokeWidth={2.2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      fill={isSaved ? '#173D32' : 'none'}
     />
   </Svg>
 );
@@ -118,6 +125,7 @@ const DEITY_IMAGES: Record<string, any> = {
   ganesha: require('../../../../assets/deities/ganesha.jpg'),
   venkateswara: require('../../../../assets/deities/venkateswara.jpg'),
   devi: require('../../../../assets/deities/durga.jpg'),
+  durga: require('../../../../assets/deities/durga.jpg'),
   shiva: require('../../../../assets/deities/shiva.jpg'),
   hanuman: require('../../../../assets/deities/hanuman.jpg'),
   krishna: require('../../../../assets/deities/krishna.jpg'),
@@ -125,1251 +133,1365 @@ const DEITY_IMAGES: Record<string, any> = {
   murugan: require('../../../../assets/deities/card_murugan.jpg'),
 };
 
-type SlokaTab = 'sanskrit' | 'telugu' | 'english' | 'meaning';
-
-interface SlokaStanza {
-  stanzaNumber: number;
-  sanskrit: string;
-  telugu: string;
-  englishTransliteration: string;
-  kannada?: string;
-  tamil?: string;
-  hindi?: string;
-  malayalam?: string;
+const UI_TEXTS: Record<SupportedLanguage, {
+  verses: string;
   meaning: string;
-}
+  save: string;
+  saved: string;
+  downloadPdf: string;
+  downloadStarted: string;
+  bookmarkAdded: string;
+  bookmarkRemoved: string;
+  loadingText: string;
+  benefits: string;
+}> = {
+  en: {
+    verses: 'Sacred Verses & Mantras',
+    meaning: 'Meaning',
+    save: 'Save',
+    saved: 'Saved',
+    downloadPdf: 'Download PDF',
+    downloadStarted: 'Sacred Scripture PDF downloaded successfully to device.',
+    bookmarkAdded: 'Saved to your devotional favorites.',
+    bookmarkRemoved: 'Removed from favorites.',
+    loadingText: 'Loading sacred verses & prayers...',
+    benefits: 'Divine Blessings & Phalasruti',
+  },
+  te: {
+    verses: 'దివ్య శ్లోకములు & మంత్రములు',
+    meaning: 'భావము',
+    save: 'సేవ్',
+    saved: 'సేవ్ అయింది',
+    downloadPdf: 'డౌన్‌లోడ్ PDF',
+    downloadStarted: 'భక్తి స్తోత్రము PDF విజయవంతంగా డౌన్‌లోడ్ చేయబడింది.',
+    bookmarkAdded: 'మీ భక్తి సేవ్ జాబితాలో చేర్చబడింది.',
+    bookmarkRemoved: 'జాబితా నుండి తొలగించబడింది.',
+    loadingText: 'భక్తిపూర్వక వివరములు లోడ్ అవుతున్నాయి...',
+    benefits: 'పారాయణ ఫలము & దివ్య ఆశీస్సులు',
+  },
+  ta: {
+    verses: 'புனித ஸ்லோகங்கள் & மந்திரங்கள்',
+    meaning: 'பொருள்',
+    save: 'சேமிக்க',
+    saved: 'சேமிக்கப்பட்டது',
+    downloadPdf: 'PDF பதிவிறக்கு',
+    downloadStarted: 'ஸ்லோகம் PDF வெற்றிகரமாக பதிவிறக்கப்பட்டது.',
+    bookmarkAdded: 'உங்கள் விருப்பப்பட்டியலில் சேமிக்கப்பட்டது.',
+    bookmarkRemoved: 'பட்டியலிலிருந்து நீக்கப்பட்டது.',
+    loadingText: 'விவரங்கள் ஏற்றப்படுகின்றன...',
+    benefits: 'புனித பலன்கள்',
+  },
+  kn: {
+    verses: 'ಪವಿತ್ರ ಶ್ಲೋಕಗಳು & ಮಂತ್ರಗಳು',
+    meaning: 'ಭಾವಾರ್ಥ',
+    save: 'ಉಳಿಸಿ',
+    saved: 'ಉಳಿಸಲಾಗಿದೆ',
+    downloadPdf: 'PDF ಡೌನ್‌ಲೋಡ್',
+    downloadStarted: 'ಶ್ಲೋಕ PDF ಯಶಸ್ವಿಯಾಗಿ ಡೌನ್‌ಲೋಡ್ ಆಗಿದೆ.',
+    bookmarkAdded: 'ನಿಮ್ಮ ಭಕ್ತಿ ಸಂಗ್ರಹದಲ್ಲಿ ಉಳಿಸಲಾಗಿದೆ.',
+    bookmarkRemoved: 'ಸಂಗ್ರಹದಿಂದ ತೆಗೆದುಹಾಕಲಾಗಿದೆ.',
+    loadingText: 'ವಿವರಗಳು ಲೋಡ್ ಆಗುತ್ತಿವೆ...',
+    benefits: 'ಪಾರಾಯಣ ಫಲ',
+  },
+  hi: {
+    verses: 'पवित्र श्लोक एवं मंत्र',
+    meaning: 'भावार्थ',
+    save: 'सुरक्षित करें',
+    saved: 'सुरक्षित',
+    downloadPdf: 'डाउनलोड PDF',
+    downloadStarted: 'श्लोक PDF सफलतापूर्वक डाउनलोड हो गया।',
+    bookmarkAdded: 'आपकी भक्ति सूची में सुरक्षित किया गया।',
+    bookmarkRemoved: 'सूची से हटाया गया।',
+    loadingText: 'विवरण लोड हो रहा है...',
+    benefits: 'पाठ फल एवं आशीर्वाद',
+  },
+};
 
-interface SlokaRecord {
-  id: string;
-  deityId: string;
-  primaryTitleTelugu: string;
-  englishTitle: string;
-  sanskritTitle: string;
-  audioDurationSeconds: number;
-  audioFormattedDuration: string;
-  stanzas: SlokaStanza[];
-}
+// Helper to resolve deity medallion avatar
+const getMedallion = (item: any, defaultDeity: string = 'ayyappa') => {
+  if (item?.imageUrl || item?.image) {
+    const uri = resolveMediaUrl(item.imageUrl || item.image);
+    if (uri) return { uri };
+  }
+  const key = String(item?.deityId || defaultDeity || '').toLowerCase();
+  if (DEITY_IMAGES[key]) return DEITY_IMAGES[key];
 
-// Master Devotional Sloka Content
-const MASTER_SLOKAS: Record<string, SlokaRecord> = {
-  'shiva-tandava': {
-    id: 'shiva-tandava',
-    deityId: 'shiva',
-    primaryTitleTelugu: 'శివ తాండవ స్తోత్రం',
-    englishTitle: 'Shiva Tandava Stotram',
-    sanskritTitle: 'शिव ताण्डव स्तोत्रम्',
-    audioDurationSeconds: 332,
-    audioFormattedDuration: '05:32',
-    stanzas: [
-      {
-        stanzaNumber: 1,
-        sanskrit:
-          'जटाटवी गलज्जल प्रवाह पावितस्थले\nगलेऽवलम्ब्य लम्बितां भुजङ्ग तुङ्गमालिकाम् ।\nडमड्डमड्डमड्डमन्निनाद वड्डमर्वयं\nचकार चण्डताण्डवं तनोतु नः शिवः शिवम् ॥ १ ॥',
-        telugu:
-          'జటాటవీగలజ్జలప్రవాహపావితస్థలే\nగలేऽవలంబ్య లంబితాం భుజంగతుంగమాలికామ్ ।\nడమడ్డమడ్డమడ్డమన్నినాదవడ్డమర్వయం\nచకార చండతాండవం తనోతు నః శివః శివమ్ ॥ 1 ॥',
-        englishTransliteration:
-          'Jataatavee gala-jjala pravaaha-paavita-sthale\nGale-valambya lambitaam bhujanga-tunga-maalikaam |\nDamad-damad-damad-daman-ninaada-vaddamar-vayam\nChakaara chanda-taandavam tanotu nah shivah shivam || 1 ||',
-        kannada:
-          'ಜಟಾಟವೀ ಗಲಜ್ಜಲ ಪ್ರವಾಹ ಪಾವಿತಸ್ಥಲೇ\nಗಲೇऽವಲಂಬ್ಯ ಲಂಬಿತಾಂ ಭುಜಂಗ ತುಂಗಮಾಲಿಕಾಮ್ ।\nಡಮಡ್ಡಮಡ್ಡಮಡ್ಡಮನ್ನಿನಾದ ವಡ್ಡಮರ್ವಯಂ\nಚಕಾರ ಚಂಡತಾಂಡವಂ ತನೋತು ನಃ ಶಿವಃ ಶಿವಮ್ ॥ 1 ॥',
-        tamil:
-          'ஜடாடவீ கலஜ்ஜல ப்ரவாஹ பாவிதஸ்தலே\nகலேऽவலம்ப்ய லம்பிதாம் புஜங்க துங்கமாலிகாம் |\nடமட்டமட்டமட்டமந்நிநாத வட்டமர்வயம்\nசகார சண்டதாண்டவம் தநோது ந: சிவ: சிவम् || 1 ||',
-        hindi:
-          'जटाटवी गलज्जल प्रवाह पावितस्थले\nगलेऽवलम्ब्य लम्बितां भुजङ्ग तुङ्गमालिकाम् ।\nडमड्डमड्डमड्डमन्निनाद वड्डमर्वयं\nचकार चण्डताण्डवं तनोतु नः शिवः शिवम् ॥ १ ॥',
-        malayalam:
-          'ജടാടവീ ഗലജ്ജല പ്രവാഹ പാവിതസ്ഥലേ\nഗലേऽവലംബ്യ ലംബിതാം ഭുജംഗ തുംഗമാലികാം |\nഡമഡ്ഡമഡ്ഡമഡ്ഡമന്നിനാദ വഡ്ഡമർവയം\nചകാര ചണ്ഡതാണ്ഡവം തനോതു ന: ശിവ: ശിവम् || 1 ||',
-        meaning:
-          'With His holy neck consecrated by the divine flow of the celestial Ganga dripping from the dense thicket of His matted locks, adorning the lofty serpent like an auspicious garland around His neck, Lord Shiva performs His cosmic, passionate dance (Tandava) to the reverberating rhythm of Damaru: Damad-Damad-Damad-Damad! May that auspicious Lord Shiva shower boundless spiritual grace and peace upon us.',
-      },
-      {
-        stanzaNumber: 2,
-        sanskrit:
-          'जटाकटाहसंभ्रम भ्रमन्निलिम्पनिर्झरी\nविलोलवीचिवल्लरी विराजमानमूर्धनि ।\nधगद्धगद्धगज्ज्वल ल्ललाटपट्टपावके\nकिशोरचन्द्रशेखरे रतिः प्रतिक्षणं मम ॥ २ ॥',
-        telugu:
-          'జటాకటాహసంభ్రమభ్రమన్నిలింపనిర్ఝరీ\nవిలోలవీచివల్లరీవిరాజమానమూర్ధని ।\nధగద్ధగద్ధగజ్జ్వలల్లలాటపట్టపావకే\nకిశోరచంద్రశేఖరే రతిః ప్రతిక్షణం మమ ॥ 2 ॥',
-        englishTransliteration:
-          'Jata-kataaha-sambhrama bhraman-nilimpa-nirjharee\nVilola-veechi-vallaree viraajamaana-moordhani |\nDhagadh-dhagadh-dhagaj-jvalal lalaata-patta-paavake\nKishora-chandra-shekhare ratih pratikshanam mama || 2 ||',
-        meaning:
-          'May my devotion deepen at every moment for Lord Shiva, upon whose head the celestial heavenly river swirls gracefully across the basin of His matted locks, whose wide forehead blazes with the sacred fire of destruction (Dhagad-Dhagad), and who is adorned by the gentle, radiant crescent moon.',
-      },
-      {
-        stanzaNumber: 3,
-        sanskrit:
-          'धराधरेन्द्रनन्दिनी विलासबन्धुबन्धुर\nस्फुरद्दिगन्तसन्तति प्रमोदमानमानसे ।\nकृपाकटाक्षधोरणी निरुद्धदुर्धरापदि\nक्वचिद्दिगम्बरे मनो विनोदमेतु वस्तुनि ॥ ३ ॥',
-        telugu:
-          'ధరాధరేంద్రనందినీవిలాసబంధుబంధుర\nస్ఫురద్దిగంతసంతతిప్రమోదమానమానసే ।\nకృపాకటాక్షధోరణీనిరుద్ధదుర్ధరాపది\nక్వచిద్దిగంబరే మనో వినోదమేతు వస్తుని ॥ 3 ॥',
-        englishTransliteration:
-          'Dharaa-dharendra-nandinee vilaasa-bandhu-bandhura\nSphurad-diganta-santati pramoda-maana-maanase |\nKripaa-kataaksha-dhoranee niruddha-durdharaapadi\nKvachid-digambare mano vinodam-etu vastuni || 3 ||',
-        meaning:
-          'May my mind find bliss in the Supreme Cosmic Being, the beloved companion of Parvati (Daughter of the King of Mountains), whose divine mind rejoices in the living cosmos, and whose compassionate glance instantly dissolves all insurmountable adversities!',
-      },
-    ],
-  },
-  'ayyappa-gayatri': {
-    id: 'ayyappa-gayatri',
-    deityId: 'ayyappa',
-    primaryTitleTelugu: 'అయ్యప్ప గాయత్రి & మూల మంత్రం',
-    englishTitle: 'Ayyappa Gayatri & Moola Mantram',
-    sanskritTitle: 'अय्यप्पा गायत्री एवं मूल मन्त्रम्',
-    audioDurationSeconds: 255,
-    audioFormattedDuration: '04:15',
-    stanzas: [
-      {
-        stanzaNumber: 1,
-        sanskrit:
-          'ॐ भूतनाथाय विद्महे भवपुत्राय धीमहि ।\nतन्नः शास्ता प्रचोदयात् ॥ १ ॥\n\nॐ ह्रीं श्रीं क्लीं पराशक्तिपुत्राय स्वाहा ॥',
-        telugu:
-          'ఓం భూతనాథాయ విద్మహే భవపుత్రాయ ధీమహి ।\nతన్నః శాస్తా ప్రచోదయాత్ ॥ 1 ॥\n\nఓం హ్రీం శ్రీం క్లీం పరాశక్తిపుత్రాయ స్వాహా ॥',
-        englishTransliteration:
-          'Om Bhoothanaathaaya Vidmahe Bhava-putraaya Dheemahi |\nTannah Shaastaa Prachodayaat || 1 ||\n\nOm Hreem Shreem Kleem Paraashakti-putraaya Swaahaa ||',
-        meaning:
-          'We meditate upon Lord Sastha, the protector of all living beings (Bhoothanatha) and the sacred son of Lord Shiva. May that Lord Dharma Sastha inspire our intellect, purify our mind, and illuminate our spiritual journey. Om, salutations to the supreme child of divine energy!',
-      },
-      {
-        stanzaNumber: 2,
-        sanskrit:
-          'लोकाध्यक्षाय विद्महे महादेवाय धीमहि ।\nतन्नः हरिहरपुत्रः प्रचोदयात् ॥ २ ॥\n\nॐ श्री धर्माशास्त्रे नमः ॥',
-        telugu:
-          'లోకాధ్యక్షాయ విద్మహే మహాదేవాయ ధీమహి ।\nతన్నః హరిహరపుత్రః ప్రచోదయాత్ ॥ 2 ॥\n\nఓం శ్రీ ధర్మశాస్త్రే నమః ॥',
-        englishTransliteration:
-          'Lokaadhyakshaaya Vidmahe Mahaadevaaya Dheemahi |\nTannah Hariharaputrah Prachodayaat || 2 ||\n\nOm Shree Dharmashaastre Namah ||',
-        meaning:
-          'We meditate upon the sovereign ruler of all realms (Lokaadhyaksha), the great divine deity. May that sacred son of Hari (Vishnu) and Hara (Shiva) illuminate our thoughts and shower righteous wisdom upon us.',
-      },
-    ],
-  },
-  'ganesha-pancharatnam': {
-    id: 'ganesha-pancharatnam',
-    deityId: 'ganesha',
-    primaryTitleTelugu: 'శ్రీ గణేశ పంచరత్నం',
-    englishTitle: 'Ganesha Pancharatnam',
-    sanskritTitle: 'श्री गणेश पञ्चरत्नम्',
-    audioDurationSeconds: 370,
-    audioFormattedDuration: '06:10',
-    stanzas: [
-      {
-        stanzaNumber: 1,
-        sanskrit:
-          'मुदाकरात्तमोदकं सदा विमुक्तिसाधकं\nकलाधरावतंसकं विलासलोकक्षकम् ।\nअनाशितैकनायकं विनाशितेभदैत्यकं\nनताशुभाशूनाशकं नमामि तं विनायकम् ॥ १ ॥',
-        telugu:
-          'ముదాకరాత్తమోదకం సదా విముక్తిసాధకం\nకలాధరావతంసకం విలాసలోకరక్షకమ్ ।\nఅనాశితైకనాయకం వినాశితేభదైత్యకం\nనతాశుభాశునాశకం నమామి తం వినాయకమ్ ॥ 1 ॥',
-        englishTransliteration:
-          'Mudaa-karaatta modakam sadaa vimukti saadhakam\nKalaadharaavatamsakam vilaasa loka rakshakam |\nAnaashitaika naayakam vinaashitebha daityakam\nNataashubhaashu naashakam namaami tam vinaayakam || 1 ||',
-        meaning:
-          'I bow to that Lord Vinayaka, who lovingly holds the sweet modaka in His hand, who ever bestows liberation, who wears the crescent moon as a crest ornament, who joyfully protects the worlds, and who swiftly dissolves all obstacles for those who surrender unto Him.',
-      },
-    ],
-  },
-  'lingashtakam': {
-    id: 'lingashtakam',
-    deityId: 'shiva',
-    primaryTitleTelugu: 'శ్రీ లింగాష్టకం',
-    englishTitle: 'Lingashtakam',
-    sanskritTitle: 'श्री लिङ्गाष्टकम्',
-    audioDurationSeconds: 345,
-    audioFormattedDuration: '05:45',
-    stanzas: [
-      {
-        stanzaNumber: 1,
-        sanskrit:
-          'ब्रह्ममुरारिसुरार्चितलिङ्गं निर्मलभासितशोभितलिङ्गम् ।\nजन्मजदुःखविनाशकलिङ्गं तत् प्रणमामि सदाशिवलिङ्गम् ॥ १ ॥',
-        telugu:
-          'బ్రహ్మమురారిసురార్చితలింగం నిర్మలభాసితశోభితలింగమ్ ।\nజన్మజదుఃఖవినాశకలింగం తత్ ప్రణమామి సదాశివలింగమ్ ॥ 1 ॥',
-        englishTransliteration:
-          'Brahma-muraari-suraarchita-lingam nirmala-bhaasita-shobhita-lingam |\nJanmaja-duhkha-vinaashaka-lingam tat pranamaami sadaashiva-lingam || 1 ||',
-        meaning:
-          'I bow to that sacred Sadashiva Lingam, worshipped reverently by Brahma, Vishnu and all celestial devas, which radiates flawless purity and dissolves the sorrows of the worldly birth cycle.',
-      },
-    ],
-  },
-  'mahishasura-mardini': {
-    id: 'mahishasura-mardini',
-    deityId: 'devi',
-    primaryTitleTelugu: 'మహిషాసుర మర్దిని స్తోత్రం',
-    englishTitle: 'Mahishasura Mardini Stotram',
-    sanskritTitle: 'महिषासुरमर्दिनीस्तोत्रम्',
-    audioDurationSeconds: 500,
-    audioFormattedDuration: '08:20',
-    stanzas: [
-      {
-        stanzaNumber: 1,
-        sanskrit:
-          'अयि गिरिनन्दिनि नन्दितमेदिनि विश्वविनोदिनि नन्दसुते\nगिरिवरविन्ध्यशिरोऽधिनिवासिनि विष्णुविलासिनि जिष्णुनुते ।\nभगवति हे शितिकण्ठकुटुम्बिनि भूरिकुटुम्बिनि भूरिकृते\nजय जय हे महिषासुरमर्दिनि रम्यकपर्दिनि शैलसुते ॥ १ ॥',
-        telugu:
-          'అయి గిరినందిని నందితమేదిని విశ్వవినోదిని నందసుతే\nగిరివరవింధ్యశిరోऽధినివాసిని విష్ణువిలాసిని జిష్ణునుతే ।\nభగవతి హే శితికంఠకుటుంబిని భూరికుటుంబిని భూరికృతే\nజయ జయ హే మహిషాసురమర్దిని రమ్యకపర్దిని శైలసుతే ॥ 1 ॥',
-        englishTransliteration:
-          'Ayi giri nandini nandita medini vishva vinodini nanda sute\nGiri vara vindhya shirodhini vaasini vishnu vilaasini jishnu nute |\nBhagavati he shiti kantha kutumbini bhoori kutumbini bhoori krite\nJaya jaya he mahishaasura mardini ramya kapardini shaila sute || 1 ||',
-        meaning:
-          'Victory to You, O Goddess Mahishasura Mardini! Daughter of the holy mountain, who delights the earth, who dwells on the heights of the Vindhyas, worshipped by Indra and companion of Lord Shiva. Shower Your victorious grace upon us!',
-      },
-    ],
-  },
-  'venkateswara-suprabhatam': {
-    id: 'venkateswara-suprabhatam',
-    deityId: 'venkateswara',
-    primaryTitleTelugu: 'శ్రీ వేంకటేశ్వర సుప్రభాతం',
-    englishTitle: 'Venkateswara Suprabhatam',
-    sanskritTitle: 'श्री वेङ्कटेश्वर सुप्रभातम्',
-    audioDurationSeconds: 435,
-    audioFormattedDuration: '07:15',
-    stanzas: [
-      {
-        stanzaNumber: 1,
-        sanskrit:
-          'कौसल्या सुप्रजा राम पूर्वा संध्या प्रवर्तते ।\nउत्तिष्ठ नरशार्दूल कर्तव्यं दैवनिह्निकम् ॥ १ ॥\n\nउत्तिष्ठोत्तिष्ठ गोविन्द उत्तिष्ठ गरुडध्वज ।\nउत्तिष्ठ कमलाकान्त त्रैलोक्यं मङ्गलं कुरु ॥ २ ॥',
-        telugu:
-          'కౌసల్యా సుప్రజా రామ పూర్వా సంధ్యా ప్రవర్తతే ।\nఉత్తిష్ఠ నరశార్దూల కర్తవ్యం దైవమాహ్నికమ్ ॥ 1 ॥\n\nఉత్తిష్ఠోత్తిష్ఠ గోవింద ఉత్తిష్ఠ గరుడధ్వజ ।\nఉత్తిష్ఠ కమలాకాంత త్రైలోక్యం మంగళం కురు ॥ 2 ॥',
-        englishTransliteration:
-          'Kausalya suprajaa Rama poorvaa sandhyaa pravartate |\nUttishtha narashaardoola kartavyam daivam aahnikam || 1 ||\n\nUttishthottishtha Govinda uttishtha garudadhwaja |\nUttishtha kamalaakaanta trailokyam mangalam kuru || 2 ||',
-        meaning:
-          'O Rama, noble son of Kausalya! The auspicious dawn has broken in the east. Awake, O greatest among men, for the morning divine duties are to be performed. Awake, O Govinda! Awake, O Lord with Garuda banner! Awake, beloved of Lakshmi (Kamala), and bestow auspicious blessings upon all three worlds!',
-      },
-    ],
-  },
-  'hanuman-chalisa': {
-    id: 'hanuman-chalisa',
-    deityId: 'hanuman',
-    primaryTitleTelugu: 'శ్రీ హనుమాన్ చాలీసా',
-    englishTitle: 'Hanuman Chalisa',
-    sanskritTitle: 'श्री हनुमान चालीसा',
-    audioDurationSeconds: 580,
-    audioFormattedDuration: '09:40',
-    stanzas: [
-      {
-        stanzaNumber: 1,
-        sanskrit: 'श्रीगुरु चरन सरोज रज निज मनु मुकुरु सुधारि ।\nबरनउँ रघुबर बिमल जसु जो दायकु फल चारि ॥\nबुद्धिहीन तनु जानिके सुमिरौ पवन-कुमार ।\nबल बुधि बिद्या देहु मोहिं हरहु कलेस बिकार ॥',
-        telugu: 'శ్రీగురు చరణ సరోజ రజ నిజ మను ముకురు సుధారి |\nబరనఉ రఘుబర బిమల జసు జో దాయకు ఫల చారి ||\nబుద్ధిహీన తను జానికై సుమిరౌ పవనకుమార |\nబల బుధి బిద్యా దేహు మోహిం హరహు కలేస బికార ||',
-        englishTransliteration: 'Shri Guru Charan Saroj Raj Nij Manu Mukuru Sudhari |\nBaranau Raghubar Bimal Jasu Jo Dayaku Phal Chari ||\nBuddhiheen Tanu Janike Sumirau Pavan-Kumar |\nBal Budhi Vidya Dehu Mohin Harahu Kalesh Bikaar ||',
-        meaning: 'Cleansing the mirror of my mind with the dust of the holy lotus feet of Sri Guru, I recite the pure glory of Sri Raghuvara, which bestows the four fruits of life (Dharma, Artha, Kama, Moksha). Knowing myself to be devoid of wisdom, I invoke Sri Pavana Kumara (Hanuman). Bestow upon me strength, wisdom, and knowledge, and take away all my afflictions and impurities.',
-      },
-      {
-        stanzaNumber: 2,
-        sanskrit: 'जय हनुमान ज्ञान गुन सागर ।\nजय कपीस तिहुँ लोक उजागर ॥\nराम दूत अतुलित बल धामा ।\nअंजनि-पुत्र पवनसुत नामा ॥',
-        telugu: 'జయ హనుమాన జ్ఞాన గుణ సాగర |\nజయ కపీస తిహుం లోక ఉజాగర ||\nరామ దూత అతులిత బల ధామా |\nఅంజని పుత్ర పవనసుత నామా ||',
-        englishTransliteration: 'Jai Hanuman Gyan Gun Sagar |\nJai Kapis Tihun Lok Ujagar ||\nRam Doot Atulit Bal Dhama |\nAnjani-Putra Pavansut Nama ||',
-        meaning: 'Victory to Lord Hanuman, the ocean of divine knowledge and virtue! Victory to the Lord of Vanaras, who illuminates all the three worlds! You are the messenger of Lord Rama, the abode of immeasurable strength, known as the son of Anjana and son of the Wind God.',
-      },
-    ],
-  },
-  'kanda-sashti-kavasam': {
-    id: 'kanda-sashti-kavasam',
-    deityId: 'murugan',
-    primaryTitleTelugu: 'కంద షష్ఠి కవచం',
-    englishTitle: 'Kanda Sashti Kavasam',
-    sanskritTitle: 'स्कन्द षष्ठी कवचम्',
-    audioDurationSeconds: 720,
-    audioFormattedDuration: '12:00',
-    stanzas: [
-      {
-        stanzaNumber: 1,
-        sanskrit: 'षडाननं चन्दनलेपिताङ्गं महोरसं दिव्यमयूरवाहनम् ।\nरुद्रस्य सूनुं सुरसैन्यनाथं गुहं सदाहं शरणं प्रपद्ये ॥',
-        telugu: 'షడాననం చందనలేపితాంగం మహోరసం దివ్యమయూరవాహనమ్ |\nరుద్రస్య సూనుం సురసైన్యనాథం గుహం సదాహం శరణం ప్రపద్యే ||',
-        englishTransliteration: 'Shadaananam chandana-lepitaangam mahorasam divya-mayoora-vaahanam |\nRudrasya soonum surasainya-naatham guham sadaaham sharanam prapadye ||',
-        meaning: 'I surrender eternally unto Lord Guha (Murugan), who has six divine faces, whose holy chest is anointed with fragrant sandal paste, who rides the majestic peacock, the blessed son of Lord Rudra, and supreme commander of the celestial armies.',
-      },
-    ],
-  },
-  'ayyappa-astothram': {
-    id: 'ayyappa-astothram',
-    deityId: 'ayyappa',
-    primaryTitleTelugu: 'శ్రీ ధర్మశాస్తా అష్టోత్తర శతనామావళి',
-    englishTitle: 'Ayyappa Ashtottaram',
-    sanskritTitle: 'श्री धर्मशास्ता अष्टोत्तर शतनामावलिः',
-    audioDurationSeconds: 480,
-    audioFormattedDuration: '08:00',
-    stanzas: [
-      {
-        stanzaNumber: 1,
-        sanskrit: 'ॐ महाशास्त्रे नमः । ॐ विश्वशास्त्रे नमः । ॐ लोकनाथाय नमः । ॐ महाबलाय नमः ॥',
-        telugu: 'ఓం మహాశాస్త్రే నమః । ఓం విశ్వశాస్త్రే నమః । ఓం లోకనాథాయ నమః । ఓం మహాబలాయ నమః ॥',
-        englishTransliteration: 'Om Maha-shastre Namah | Om Vishwa-shastre Namah | Om Lokanaathaaya Namah | Om Maha-balaaya Namah ||',
-        meaning: 'Salutations to the Supreme Ruler (Maha Sastha), the Ruler of the Universe, the Lord of the worlds, and the Possessor of immeasurable strength.',
-      },
-    ],
-  },
-  'ganesha-astothram': {
-    id: 'ganesha-astothram',
-    deityId: 'ganesha',
-    primaryTitleTelugu: 'శ్రీ వినాయక అష్టోత్తర శతనామావళి',
-    englishTitle: 'Ganesha Ashtottaram',
-    sanskritTitle: 'श्री विनायक अष्टोत्तर शतनामावलिः',
-    audioDurationSeconds: 450,
-    audioFormattedDuration: '07:30',
-    stanzas: [
-      {
-        stanzaNumber: 1,
-        sanskrit: 'ॐ विनायकाय नमः । ॐ विघ्नराजाय नमः । ॐ गौरीपुत्राय नमः । ॐ गणेश्वराय नमः ॥',
-        telugu: 'ఓం వినాయకాయ నమః । ఓం విఘ్నరాజాయ నమః । ఓం గౌరీపుత్రాయ నమః । ఓం గణేశ్వరాయ నమః ॥',
-        englishTransliteration: 'Om Vinaayakaaya Namah | Om Vighnaraajaaya Namah | Om Gowreeputraaya Namah | Om Ganeshwaraaya Namah ||',
-        meaning: 'Salutations to Lord Vinayaka, the Remover of all obstacles, the beloved son of Mother Gauri, and the Supreme Master of all Ganas.',
-      },
-    ],
-  },
-  'shiva-astothram': {
-    id: 'shiva-astothram',
-    deityId: 'shiva',
-    primaryTitleTelugu: 'శ్రీ శివ అష్టోత్తర శతనామావళి',
-    englishTitle: 'Shiva Ashtottaram',
-    sanskritTitle: 'श्री शिव अष्टोत्तर शतनामावलिः',
-    audioDurationSeconds: 460,
-    audioFormattedDuration: '07:40',
-    stanzas: [
-      {
-        stanzaNumber: 1,
-        sanskrit: 'ॐ शिवाय नमः । ॐ महेश्वराय नमः । ॐ शम्भवे नमः । ॐ पिनाकिने नमः ॥',
-        telugu: 'ఓం శివాయ నమః । ఓం మహేశ్వరాయ నమః । ఓం శంభవే నమః । ఓం పినాకినే నమః ॥',
-        englishTransliteration: 'Om Shivaaya Namah | Om Maheshwaraaya Namah | Om Shambhave Namah | Om Pinaakine Namah ||',
-        meaning: 'Salutations to the Auspicious One (Shiva), the Supreme Lord (Maheshwara), the Giver of auspicious peace (Shambhu), and the Wielder of the Pinaka bow.',
-      },
-    ],
-  },
-  'lakshmi-astothram': {
-    id: 'lakshmi-astothram',
-    deityId: 'devi',
-    primaryTitleTelugu: 'శ్రీ లక్ష్మీ అష్టోత్తర శతనామావళి',
-    englishTitle: 'Lakshmi Ashtottaram',
-    sanskritTitle: 'श्री लक्ष्मी अष्टोत्तर शतनामावलिः',
-    audioDurationSeconds: 470,
-    audioFormattedDuration: '07:50',
-    stanzas: [
-      {
-        stanzaNumber: 1,
-        sanskrit: 'ॐ प्रकृत्यै नमः । ॐ विकृत्यै नमः । ॐ विद्यायै नमः । ॐ सर्वभूतहितप्रदायै नमः ॥',
-        telugu: 'ఓం ప్రకృత్యై నమః । ఓం వికృత్యై నమః । ఓం విద్యాయై నమః । ఓం సర్వభూతహితప్రదాయై నమః ॥',
-        englishTransliteration: 'Om Prakrityai Namah | Om Vikrityai Namah | Om Vidyaayai Namah | Om Sarva-bhoota-hita-pradaayai Namah ||',
-        meaning: 'Salutations to the Primal Nature (Prakriti), the Manifested Creation, the Embodiment of divine knowledge, and the Benevolent Mother who confers well-being on all living entities.',
-      },
-    ],
-  },
-  'venkateswara-astothram': {
-    id: 'venkateswara-astothram',
-    deityId: 'venkateswara',
-    primaryTitleTelugu: 'శ్రీ వేంకటేశ్వర అష్టోత్తర శతనామావళి',
-    englishTitle: 'Venkateswara Ashtottaram',
-    sanskritTitle: 'श्री वेङ्कटेश्वर अष्टोत्तर शतनामावलिः',
-    audioDurationSeconds: 490,
-    audioFormattedDuration: '08:10',
-    stanzas: [
-      {
-        stanzaNumber: 1,
-        sanskrit: 'ॐ वेङ्कटेशाय नमः । ॐ शेषस्तुत्याय नमः । ॐ नीलमेघश्याममूर्तये नमः । ॐ श्रीनिवासाय नमः ॥',
-        telugu: 'ఓం వేంకటేశాయ నమః । ఓం శేషస్తుత్యాయ నమః । ఓం నీలమేఘశ్యామమూర్తయే నమః । ఓం శ్రీనివాసాయ నమః ॥',
-        englishTransliteration: 'Om Venkateshaaya Namah | Om Shesha-stutyaaya Namah | Om Neela-megha-shyaama-moortaye Namah | Om Sreenivaasaaya Namah ||',
-        meaning: 'Salutations to Lord Venkateswara, praised by Adisesha, having the radiant complexion of a rain-bearing blue cloud, and the sacred abode of Sri Mahalakshmi (Srinivasa).',
-      },
-    ],
-  },
-  'hanuman-astothram': {
-    id: 'hanuman-astothram',
-    deityId: 'hanuman',
-    primaryTitleTelugu: 'శ్రీ ఆంజనేయ అష్టోత్తర శతనామావళి',
-    englishTitle: 'Hanuman Ashtottaram',
-    sanskritTitle: 'श्री आञ्जनेय अष्टोत्तर शतनामावलिः',
-    audioDurationSeconds: 440,
-    audioFormattedDuration: '07:20',
-    stanzas: [
-      {
-        stanzaNumber: 1,
-        sanskrit: 'ॐ आञ्जनेयाय नमः । ॐ महावीराय नमः । ॐ हनूमते नमः । ॐ मारुतात्मजाय नमः ॥',
-        telugu: 'ఓం ఆంజనేయాయ నమః । ఓం మహావీరాయ నమః । ఓం హనూమతే నమః । ఓం మారుతాత్మజాయ నమః ॥',
-        englishTransliteration: 'Om Anjaneyaaya Namah | Om Maha-veeraaya Namah | Om Hanoomate Namah | Om Maarutaatmajaaya Namah ||',
-        meaning: 'Salutations to the son of Anjana, the great valiant hero, Lord Hanuman, and the divine offspring of Maruta (Wind God).',
-      },
-    ],
-  },
-  'subramanya-astothram': {
-    id: 'subramanya-astothram',
-    deityId: 'murugan',
-    primaryTitleTelugu: 'శ్రీ సుబ్రహ్మణ్య అష్టోత్తర శతనామావళి',
-    englishTitle: 'Subramanya Ashtottaram',
-    sanskritTitle: 'श्री सुब्रह्मण्य अष्टोत्तर शतनामावलिः',
-    audioDurationSeconds: 460,
-    audioFormattedDuration: '07:40',
-    stanzas: [
-      {
-        stanzaNumber: 1,
-        sanskrit: 'ॐ स्कन्दाय नमः । ॐ गुहाय नमः । ॐ षडाननाय नमः । ॐ शक्तिधराय नमः ॥',
-        telugu: 'ఓం స్కందాయ నమః । ఓం గుహాయ నమః । ఓం షడాననాయ నమః । ఓం శక్తిధరాయ నమః ॥',
-        englishTransliteration: 'Om Skandaaya Namah | Om Guhaaya Namah | Om Shadaananaaya Namah | Om Shaktidharaaya Namah ||',
-        meaning: 'Salutations to Lord Skanda, the dweller in the spiritual cave of hearts (Guha), the six-faced Lord (Shadanana), and the wielder of the divine spear of wisdom (Shaktidhara).',
-      },
-    ],
-  },
+  const t = String(item?.title || item?.id || '').toLowerCase();
+  if (t.includes('ganesha') || t.includes('ganapathi') || t.includes('vinayaka') || t.includes('గణపతి') || t.includes('వినాయక')) return DEITY_IMAGES.ganesha;
+  if (t.includes('shiva') || t.includes('rudra') || t.includes('శివ') || t.includes('రుద్ర')) return DEITY_IMAGES.shiva;
+  if (t.includes('venkateswara') || t.includes('balaji') || t.includes('శ్రీనివాస') || t.includes('వెంకటేశ్వర')) return DEITY_IMAGES.venkateswara;
+  if (t.includes('devi') || t.includes('durga') || t.includes('లక్ష్మి') || t.includes('దుర్గ') || t.includes('అమ్మవారు')) return DEITY_IMAGES.durga;
+  if (t.includes('murugan') || t.includes('subramanya') || t.includes('సుబ్రహ్మణ్య')) return DEITY_IMAGES.murugan;
+  if (t.includes('hanuman') || t.includes('ఆంజనేయ') || t.includes('హనుమాన్')) return DEITY_IMAGES.hanuman;
+  if (t.includes('krishna') || t.includes('కృష్ణ')) return DEITY_IMAGES.krishna;
+  if (t.includes('rama') || t.includes('రామ')) return DEITY_IMAGES.rama;
+
+  return DEITY_IMAGES.ayyappa;
 };
 
 export const SlokaDetailScreen: React.FC<Props> = ({
   itemId,
+  rawId,
   title,
+  category,
   currentLanguage,
   onBack,
 }) => {
-  const [activeTab, setActiveTab] = useState<SlokaTab>('sanskrit');
-  const [isPlaying, setIsPlaying] = useState<boolean>(false);
-  const [currentProgressSeconds, setCurrentProgressSeconds] = useState<number>(0);
+  const [subItems, setSubItems] = useState<any[]>([]);
+  const [selectedSubItem, setSelectedSubItem] = useState<any | null>(null);
+  const [subItemDetail, setSubItemDetail] = useState<any | null>(null);
+  const [loadingSubItems, setLoadingSubItems] = useState<boolean>(true);
+  const [refreshingSubList, setRefreshingSubList] = useState<boolean>(false);
+  const [loadingDetail, setLoadingDetail] = useState<boolean>(false);
+
+  const [liveRecord, setLiveRecord] = useState<any | null>(null);
+  const [loadingLiveRecord, setLoadingLiveRecord] = useState<boolean>(true);
   const [isSaved, setIsSaved] = useState<boolean>(false);
-  const [isDownloadModalOpen, setIsDownloadModalOpen] = useState<boolean>(false);
-  const [fontSizeOffset, setFontSizeOffset] = useState<number>(0); // 0 = standard, 2 = larger, 4 = extra large
 
-  // Timer reference for authentic audio playback simulation
-  const playbackTimerRef = useRef<NodeJS.Timeout | null>(null);
+  // Audio Playback State (for records with audio)
+  const [isPlaying, setIsPlaying] = useState<boolean>(false);
+  const [audioProgress, setAudioProgress] = useState<number>(0);
+  const audioTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Look up Sloka or fallback to Shiva Tandava Stotram (approved reference)
-  const sloka =
-    MASTER_SLOKAS[itemId] ||
-    MASTER_SLOKAS['shiva-tandava'];
+  const ui = UI_TEXTS[currentLanguage] || UI_TEXTS.en;
 
-  const isShiva = sloka.deityId === 'shiva';
-  const deityImage = DEITY_IMAGES[sloka.deityId] || DEITY_IMAGES.shiva;
-
-  // Header Title
-  const headerTitle = 'Sloka';
-
-  // Load Saved Bookmark State & Audio Progress from StorageService on mount
+  // 1. Fetch full record dynamically from database via API
   useEffect(() => {
-    async function initStorage() {
-      try {
-        const saved = await AsyncStorage.getItem(`@ayyappa_sloka_saved_${sloka.id}`);
-        if (saved === 'true') {
-          setIsSaved(true);
-        }
-        const prog = await StorageService.getAudioProgress(sloka.id);
-        if (prog && prog.elapsed) {
-          setCurrentProgressSeconds(Math.min(prog.elapsed, sloka.audioDurationSeconds));
-        }
-      } catch (e) {
-        // ignore
-      }
-    }
-    initStorage();
-  }, [sloka.id, sloka.audioDurationSeconds]);
+    let isMounted = true;
+    setLoadingLiveRecord(true);
+    const idToFetch = rawId || itemId;
 
-  // Handle Hardware Back Button
+    ApiService.getCategoryDetail(String(idToFetch), currentLanguage)
+      .then(async (res) => {
+        if (!isMounted) return;
+        if (res) {
+          // If the returned description is short (< 150 chars) and not in Telugu, also fetch Telugu record to retrieve authentic sacred lyrics
+          if (currentLanguage !== 'te' && (!res.description || res.description.length < 150) && !res.lyrics) {
+            try {
+              const teRes = await ApiService.getCategoryDetail(String(idToFetch), 'te');
+              if (isMounted && teRes && (teRes.description || teRes.fullScriptureText)) {
+                res.lyrics = teRes.fullScriptureText || teRes.description;
+                res.descriptionTelugu = teRes.fullScriptureText || teRes.description;
+                if (!res.titleTelugu) res.titleTelugu = teRes.title;
+              }
+            } catch (_) {}
+          }
+          if (isMounted) setLiveRecord(res);
+        }
+      })
+      .catch((e) => console.warn('Sloka/Stotra detail load notice:', e))
+      .finally(() => {
+        if (isMounted) setLoadingLiveRecord(false);
+      });
+
+    return () => { isMounted = false; };
+  }, [itemId, rawId, currentLanguage]);
+
+  // 2. Resolve content dynamically from DB response
+  const resolvedContent = React.useMemo(() => {
+    const raw = liveRecord || {};
+    const dId = (raw.deityId || (
+      raw.slug?.includes('shiva') ? 'shiva'
+      : raw.slug?.includes('ganesh') || raw.slug?.includes('vinayak') ? 'ganesha'
+      : raw.slug?.includes('devi') || raw.slug?.includes('durga') || raw.slug?.includes('lakshmi') ? 'devi'
+      : raw.slug?.includes('venkates') ? 'venkateswara'
+      : raw.slug?.includes('hanuman') ? 'hanuman'
+      : raw.slug?.includes('murugan') || raw.slug?.includes('subramanya') ? 'murugan'
+      : 'ayyappa'
+    )).toLowerCase();
+
+    const cleanTitle = raw.title || title || itemId.replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+
+    const mantrasList = Array.isArray(raw.mantras) && raw.mantras.length > 0
+      ? raw.mantras
+      : [];
+
+    const procedureSteps = Array.isArray(raw.procedure) && raw.procedure.length > 0
+      ? raw.procedure
+      : [];
+
+    const contentsList = Array.isArray(raw.contents) && raw.contents.length > 0
+      ? raw.contents
+      : (Array.isArray(raw.devotionalContents) ? raw.devotionalContents : []);
+
+    const benefitsList = (Array.isArray(raw.benefits) ? raw.benefits : []).filter((b: any) => {
+      const str = String(typeof b === 'string' ? b : (b.title || b.description || '')).toLowerCase();
+      return !str.includes('profound peace') && !str.includes('spiritual strength') && !str.includes('planetary doshams') && !str.includes('negative vibrations') && !str.includes('divine protection of the presiding deity');
+    });
+
+    // Prefer full lyrics / scripture text from DB
+    let fullText = raw.lyrics || raw.descriptionTelugu || raw.fullScriptureText || raw.description || raw.overview || '';
+    if ((!fullText || fullText.length < 150) && (raw.lyrics || raw.descriptionTelugu)) {
+      fullText = raw.lyrics || raw.descriptionTelugu;
+    }
+
+    return {
+      id: raw.slug || itemId,
+      deityId: dId,
+      title: cleanTitle,
+      subtitle: raw.subtitle || '',
+      description: fullText,
+      instructionNote: raw.instructionNote || '',
+      mantras: mantrasList,
+      procedure: procedureSteps,
+      contents: contentsList,
+      benefits: benefitsList,
+      audioTrack: raw.audioTrack || (raw.isAudio ? { title: cleanTitle, duration: '05:00' } : null),
+    };
+  }, [liveRecord, itemId, title]);
+
+  const isBhajanOrSong = React.useMemo(() => {
+    const cat = String(category || '').toLowerCase();
+    const id = String(itemId || '').toLowerCase();
+    const pSlug = String(liveRecord?.parentSlug || liveRecord?.category || '').toLowerCase();
+    const rId = String(rawId || liveRecord?.parentId || '');
+    const t = String(title || resolvedContent.title || '').toLowerCase();
+
+    return (
+      cat.includes('bhajan') ||
+      cat.includes('song') ||
+      cat.includes('harathi') ||
+      cat.includes('keerthana') ||
+      (category && (category.includes('భజన') || category.includes('పాట') || category.includes('కీర్తన'))) ||
+      id.includes('bhajan') ||
+      id.includes('song') ||
+      id.includes('harathi') ||
+      id.includes('keerthana') ||
+      id.includes('paata') ||
+      pSlug.includes('bhajan') ||
+      pSlug.includes('song') ||
+      rId === '116' ||
+      rId === '11' ||
+      rId === '93' ||
+      t.includes('భజన') ||
+      t.includes('హారతి') ||
+      t.includes('కీర్తన') ||
+      t.includes('పాట') ||
+      t.includes('bhajan') ||
+      t.includes('song') ||
+      t.includes('harathi')
+    );
+  }, [category, itemId, rawId, liveRecord, title, resolvedContent.title]);
+
+  // 3. Load subcategories/children dynamically if present
+  const loadSubItems = useCallback(async (isRefresh = false) => {
+    if (isRefresh) setRefreshingSubList(true);
+    else setLoadingSubItems(true);
+
+    try {
+      if (liveRecord?.children && Array.isArray(liveRecord.children) && liveRecord.children.length > 0) {
+        setSubItems(liveRecord.children);
+        return;
+      }
+      if (liveRecord?.subcategories && Array.isArray(liveRecord.subcategories) && liveRecord.subcategories.length > 0) {
+        setSubItems(liveRecord.subcategories);
+        return;
+      }
+      if (liveRecord && Array.isArray(liveRecord.subcategories) && liveRecord.subcategories.length === 0) {
+        setSubItems([]);
+        return;
+      }
+      if (liveRecord?.fullScriptureText || (liveRecord?.description && liveRecord.description.length > 60)) {
+        setSubItems([]);
+        return;
+      }
+
+      const targetQueryId = rawId || itemId;
+      const liveItems = await ApiService.getSubcategories(String(targetQueryId), currentLanguage);
+      if (Array.isArray(liveItems) && liveItems.length > 0) {
+        const sorted = [...liveItems].sort(
+          (a, b) => Number(a.displayOrder || 0) - Number(b.displayOrder || 0)
+        );
+        setSubItems(sorted);
+      } else {
+        setSubItems([]);
+      }
+    } catch (err) {
+      console.warn('Subcategories fetch error in SlokaDetailScreen:', err);
+      setSubItems([]);
+    } finally {
+      setLoadingSubItems(false);
+      setRefreshingSubList(false);
+    }
+  }, [currentLanguage, liveRecord, rawId, itemId]);
+
+  useEffect(() => {
+    loadSubItems();
+  }, [loadSubItems, liveRecord]);
+
+  // 4. Handle sub-item selection
+  const handleSelectSubItem = async (subItem: any) => {
+    setSelectedSubItem(subItem);
+    setLoadingDetail(true);
+    setSubItemDetail(null);
+    try {
+      const detail = await ApiService.getCategoryDetail(
+        String(subItem.id || subItem.slug || subItem.rawId),
+        currentLanguage
+      );
+      if (detail) {
+        if (currentLanguage !== 'te' && (!detail.description || detail.description.length < 150) && !detail.lyrics) {
+          try {
+            const teDetail = await ApiService.getCategoryDetail(
+              String(subItem.id || subItem.slug || subItem.rawId),
+              'te'
+            );
+            if (teDetail && (teDetail.description || teDetail.fullScriptureText)) {
+              detail.lyrics = teDetail.fullScriptureText || teDetail.description;
+              detail.descriptionTelugu = teDetail.fullScriptureText || teDetail.description;
+              if (!detail.titleTelugu) detail.titleTelugu = teDetail.title;
+            }
+          } catch (_) {}
+        }
+        setSubItemDetail(detail);
+      }
+    } catch (e) {
+      console.warn('Sub-item detail load notice:', e);
+    } finally {
+      setLoadingDetail(false);
+    }
+  };
+
+  // 5. Hardware back button handling
   useEffect(() => {
     const onHardwareBack = () => {
+      if (selectedSubItem) {
+        setSelectedSubItem(null);
+        return true;
+      }
       onBack();
       return true;
     };
     const sub = BackHandler.addEventListener('hardwareBackPress', onHardwareBack);
     return () => sub.remove();
-  }, [onBack]);
+  }, [selectedSubItem, onBack]);
 
-  // Audio Playback Timer Management
+  const resolvedCategory = React.useMemo<'sloka' | 'stotra' | 'bhajan'>(() => {
+    if (isBhajanOrSong) return 'bhajan';
+    const combined = `${category || ''} ${title || ''} ${itemId || ''}`.toLowerCase();
+    if (combined.includes('song') || combined.includes('bhajan') || combined.includes('keerthana') || combined.includes('harathi') || combined.includes('భజన') || combined.includes('హారతి') || combined.includes('పాట')) {
+      return 'bhajan';
+    }
+    if (combined.includes('stotra') || combined.includes('stotram') || combined.includes('astothram') || combined.includes('ashtakam') || combined.includes('స్తోత్ర') || combined.includes('అష్టోత్తర') || combined.includes('అష్టక')) {
+      return 'stotra';
+    }
+    return 'sloka';
+  }, [category, title, itemId, isBhajanOrSong]);
+
+  // 6. Saved bookmark state synchronized dynamically with MariaDB via API & Storage
   useEffect(() => {
-    if (isPlaying) {
-      playbackTimerRef.current = setInterval(() => {
-        setCurrentProgressSeconds((prev) => {
-          if (prev >= sloka.audioDurationSeconds) {
-            setIsPlaying(false);
-            StorageService.clearAudioProgress(sloka.id);
-            return 0;
-          }
-          const next = prev + 1;
-          StorageService.saveAudioProgress(
-            sloka.id,
-            next,
-            next / sloka.audioDurationSeconds
-          );
-          return next;
-        });
-      }, 1000);
-    } else {
-      if (playbackTimerRef.current) {
-        clearInterval(playbackTimerRef.current);
-        playbackTimerRef.current = null;
-      }
+    let isMounted = true;
+    async function checkSaved() {
+      try {
+        const targetId = String(rawId || itemId || resolvedContent.id);
+        const user = await StorageService.getStoredUser();
+        const userId = user?.id ? Number(user.id) : undefined;
+        const saved = await StorageService.isBookmarked(targetId, userId);
+        if (isMounted) setIsSaved(saved);
+      } catch (_) {}
     }
-
-    return () => {
-      if (playbackTimerRef.current) {
-        clearInterval(playbackTimerRef.current);
-        playbackTimerRef.current = null;
-      }
-    };
-  }, [isPlaying, sloka.id, sloka.audioDurationSeconds]);
-
-  // Format MM:SS
-  const formatTime = (totalSec: number) => {
-    const mins = Math.floor(totalSec / 60);
-    const secs = totalSec % 60;
-    const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`);
-    return `${pad(mins)}:${pad(secs)}`;
-  };
-
-  const handleTogglePlay = () => {
-    setIsPlaying((prev) => !prev);
-  };
-
-  const handleSeek = (evt: any) => {
-    const { locationX } = evt.nativeEvent;
-    const seekWidth = Math.max(120, SCREEN_WIDTH * 0.45);
-    const ratio = Math.max(0, Math.min(1, locationX / seekWidth));
-    const targetSeconds = Math.floor(ratio * sloka.audioDurationSeconds);
-    setCurrentProgressSeconds(targetSeconds);
-    StorageService.saveAudioProgress(sloka.id, targetSeconds, ratio);
-  };
-
-  const handleShare = async () => {
-    try {
-      const firstStanza = sloka.stanzas[0];
-      const message = `${sloka.primaryTitleTelugu} (${sloka.englishTitle})\n\n${firstStanza.sanskrit}\n\nMeaning:\n${firstStanza.meaning}\n\n🙏 Swamiye Saranam Ayyappa! Download Saranam Ayyappa Mobile App for full slokas, panchangam, and daily audio.`;
-      await Share.share({
-        title: sloka.englishTitle,
-        message,
-      });
-    } catch (e) {
-      // ignore
-    }
-  };
+    checkSaved();
+    return () => { isMounted = false; };
+  }, [resolvedContent.id, itemId, rawId]);
 
   const handleToggleSave = async () => {
-    const nextSaved = !isSaved;
+    const targetId = String(rawId || itemId || resolvedContent.id);
+    const user = await StorageService.getStoredUser();
+    const userId = user?.id ? Number(user.id) : 1;
+    const itemToBookmark = {
+      id: targetId,
+      rawId: rawId ? String(rawId) : undefined,
+      title: title || resolvedContent.title || 'Devotional Verse',
+      category: resolvedCategory,
+      subtitle: resolvedContent.description ? resolvedContent.description.slice(0, 80) : (resolvedContent.subtitle ? resolvedContent.subtitle.slice(0, 80) : undefined),
+      savedAt: new Date().toISOString(),
+    };
+    const nextSaved = await StorageService.toggleBookmark(itemToBookmark, userId);
     setIsSaved(nextSaved);
-    try {
-      await AsyncStorage.setItem(
-        `@ayyappa_sloka_saved_${sloka.id}`,
-        nextSaved ? 'true' : 'false'
-      );
-      Alert.alert(
-        nextSaved ? '🙏 Swamiye Saranam Ayyappa' : 'Information',
-        nextSaved
-          ? `${sloka.englishTitle} has been saved to your devotional favorites.`
-          : `${sloka.englishTitle} removed from favorites.`,
-        [{ text: 'OK' }]
-      );
-    } catch (e) {
-      // ignore
-    }
-  };
-
-  const handleOpenDownload = () => {
-    setIsDownloadModalOpen(true);
-  };
-
-  const handlePerformDownload = (type: 'audio' | 'pdf' | 'text') => {
-    setIsDownloadModalOpen(false);
-    StorageService.markAudioDownloaded(sloka.id);
-    const typeLabel =
-      type === 'audio'
-        ? 'High Quality Audio Chanting (MP3)'
-        : type === 'pdf'
-        ? 'Complete Sacred Text & Meaning (PDF)'
-        : 'Offline Devotional Text';
-
     Alert.alert(
-      '📥 Download Successful',
-      `"${sloka.englishTitle}" ${typeLabel} has been saved to your device for offline reading and listening.`,
+      nextSaved ? '🙏 Swamiye Saranam Ayyappa' : 'Information',
+      nextSaved ? ui.bookmarkAdded : ui.bookmarkRemoved,
       [{ text: 'OK' }]
     );
   };
 
-  const progressRatio =
-    sloka.audioDurationSeconds > 0
-      ? currentProgressSeconds / sloka.audioDurationSeconds
-      : 0;
+  const handleDownloadPdf = () => {
+    Alert.alert('📥 Download Sacred Scripture', ui.downloadStarted, [{ text: 'OK' }]);
+  };
 
-  return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor="#173D32" />
+  // Helper to format scripture text into beautiful cards & paragraphs
+  const renderFormattedScripture = (text: string) => {
+    if (!text) return null;
+    const lines = text.split('\n');
+    const elements: React.ReactNode[] = [];
+    let tableRows: string[][] = [];
+    let inTable = false;
 
-      {/* =========================================================================
-          HEADER: Deep Maroon Gradient + Golden Corners + Back Arrow + "Sloka" Title
-         ========================================================================= */}
-      <LinearGradient
-        colors={['#0C251E', '#173D32', '#173D32']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={styles.header}
-      >
-        {/* Back Button */}
-        <TouchableOpacity
-          style={styles.headerBackButton}
-          onPress={onBack}
-          activeOpacity={0.8}
-          accessibilityLabel="Back to Slokas"
-        >
-          <BackArrowIcon />
-        </TouchableOpacity>
+    const flushTable = (key: string) => {
+      if (tableRows.length === 0) return;
+      const headers = tableRows[0];
+      const dataRows = tableRows.slice(1);
 
-        {/* Center Title */}
-        <Text style={styles.headerTitle}>{headerTitle}</Text>
-
-        {/* Top-Right Decorative Corner / Spacer */}
-        <View style={styles.headerRightOrnament}>
-          <HeaderCornerFiligree flipped />
-        </View>
-
-        {/* Top-Left Filigree */}
-        <View style={styles.filigreeTopLeft}>
-          <HeaderCornerFiligree />
-        </View>
-      </LinearGradient>
-
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* =========================================================================
-            DEITY HERO IMAGE: Centered with Atmospheric Light & Trishul
-           ========================================================================= */}
-        <View style={styles.heroContainer}>
-          <Image
-            source={isShiva ? require('../../../../assets/sloka_detail_ref.png') : deityImage}
-            style={isShiva ? styles.heroImageShiva : styles.heroImageOther}
-            resizeMode="cover"
-          />
-
-          {/* Soft Bottom Gradient Fade into Ivory Card */}
-          <LinearGradient
-            colors={['transparent', 'rgba(255, 248, 235, 0.35)', '#FFF8EB']}
-            style={styles.heroGradientOverlay}
-          />
-        </View>
-
-        {/* =========================================================================
-            MAIN CARD: Rounded Cream Container with Golden Outline
-           ========================================================================= */}
-        <View style={styles.mainCard}>
-          {/* 4 Content / Language Tabs: Sanskrit | Telugu | English | Meaning */}
-          <View style={styles.tabBar}>
-            <TouchableOpacity
-              style={[styles.tabPill, activeTab === 'sanskrit' && styles.tabPillActive]}
-              onPress={() => setActiveTab('sanskrit')}
-              activeOpacity={0.8}
-            >
-              <Text
-                style={[styles.tabPillText, activeTab === 'sanskrit' && styles.tabPillTextActive]}
-              >
-                Sanskrit
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.tabPill, activeTab === 'telugu' && styles.tabPillActive]}
-              onPress={() => setActiveTab('telugu')}
-              activeOpacity={0.8}
-            >
-              <Text
-                style={[styles.tabPillText, activeTab === 'telugu' && styles.tabPillTextActive]}
-              >
-                Telugu
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.tabPill, activeTab === 'english' && styles.tabPillActive]}
-              onPress={() => setActiveTab('english')}
-              activeOpacity={0.8}
-            >
-              <Text
-                style={[styles.tabPillText, activeTab === 'english' && styles.tabPillTextActive]}
-              >
-                English
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.tabPill, activeTab === 'meaning' && styles.tabPillActive]}
-              onPress={() => setActiveTab('meaning')}
-              activeOpacity={0.8}
-            >
-              <Text
-                style={[styles.tabPillText, activeTab === 'meaning' && styles.tabPillTextActive]}
-              >
-                Meaning
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Sloka Titles */}
-          <View style={styles.titleSection}>
-            <Text style={styles.slokaPrimaryTitle}>
-              {activeTab === 'sanskrit'
-                ? sloka.sanskritTitle
-                : sloka.primaryTitleTelugu}
-            </Text>
-            <Text style={styles.slokaEnglishTitle}>{sloka.englishTitle}</Text>
-          </View>
-
-          {/* =========================================================================
-              SACRED VERSES / CONTENT DISPLAY
-             ========================================================================= */}
-          <View style={styles.versesSection}>
-            {sloka.stanzas.map((stanza) => {
-              let displayText = stanza.sanskrit;
-              if (activeTab === 'telugu') {
-                displayText = stanza.telugu;
-              } else if (activeTab === 'english') {
-                displayText = stanza.englishTransliteration;
-              } else if (activeTab === 'meaning') {
-                displayText = stanza.meaning;
-              }
-
-              return (
-                <View key={stanza.stanzaNumber} style={styles.stanzaContainer}>
-                  {activeTab === 'meaning' && (
-                    <Text style={styles.verseNumberBadge}>
-                      Verse {stanza.stanzaNumber} Explanation:
-                    </Text>
-                  )}
-                  <Text
-                    style={[
-                      styles.verseText,
-                      activeTab === 'meaning' && styles.meaningText,
-                      { fontSize: 16.5 + fontSizeOffset },
-                    ]}
-                  >
-                    {displayText}
-                  </Text>
+      elements.push(
+        <View key={key} style={styles.tableCardContainer}>
+          <ScrollView horizontal showsHorizontalScrollIndicator style={styles.tableScroll}>
+            <View style={styles.tableCard}>
+              <View style={styles.tableHeaderRow}>
+                {headers.map((col, colIdx) => (
+                  <View key={`th-${colIdx}`} style={[styles.tableCell, styles.tableHeaderCell]}>
+                    <Text style={styles.tableHeaderText}>{col}</Text>
+                  </View>
+                ))}
+              </View>
+              {dataRows.map((row, rIdx) => (
+                <View key={`tr-${rIdx}`} style={[styles.tableDataRow, rIdx % 2 === 1 && styles.tableRowAlt]}>
+                  {row.map((val, cIdx) => (
+                    <View key={`td-${rIdx}-${cIdx}`} style={styles.tableCell}>
+                      <Text style={styles.tableCellText}>{val}</Text>
+                    </View>
+                  ))}
                 </View>
-              );
-            })}
+              ))}
+            </View>
+          </ScrollView>
+        </View>
+      );
+      tableRows = [];
+      inTable = false;
+    };
+
+    lines.forEach((line, idx) => {
+      const trimmed = line.trim();
+
+      if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
+        const rawCols = trimmed.slice(1, -1).split('|').map((c) => c.trim());
+        const isDelimiter = rawCols.every((c) => /^[-:]+$/.test(c));
+        if (!isDelimiter) {
+          tableRows.push(rawCols);
+          inTable = true;
+        }
+        return;
+      } else if (inTable) {
+        flushTable(`table-${idx}`);
+      }
+
+      if (!trimmed) {
+        elements.push(<View key={`space-${idx}`} style={{ height: 10 }} />);
+        return;
+      }
+
+      // Section Headers [ Heading ]
+      if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+        const headerText = trimmed.slice(1, -1).trim();
+        elements.push(
+          <View key={`sec-${idx}`} style={styles.sectionHeaderCard}>
+            <Text style={styles.sectionHeaderText}>❖ {headerText} ❖</Text>
           </View>
+        );
+        return;
+      }
 
-          {/* =========================================================================
-              AUDIO PLAYER CARD: Maroon Play Button + Golden Seek Bar + Duration
-             ========================================================================= */}
-          <View style={styles.audioPlayerCard}>
-            {/* Play/Pause Button */}
-            <TouchableOpacity
-              style={styles.playButton}
-              onPress={handleTogglePlay}
-              activeOpacity={0.85}
-              accessibilityLabel={isPlaying ? 'Pause Audio' : 'Play Audio'}
-            >
-              {isPlaying ? <PauseIcon /> : <PlayTriangleIcon />}
-            </TouchableOpacity>
+      // Bullet points
+      if (trimmed.startsWith('•') || trimmed.startsWith('*')) {
+        elements.push(
+          <Text key={`bullet-${idx}`} style={styles.readingBodyText}>
+            {trimmed}
+          </Text>
+        );
+        return;
+      }
 
-            {/* Seek Track Bar */}
-            <TouchableOpacity
-              style={styles.seekContainer}
-              activeOpacity={1}
-              onPress={handleSeek}
-            >
-              <View style={styles.seekTrack}>
-                <View
-                  style={[styles.seekProgress, { width: `${progressRatio * 100}%` }]}
+      // Regular lines/paragraphs
+      elements.push(
+        <Text key={`line-${idx}`} style={styles.readingBodyText}>
+          {trimmed}
+        </Text>
+      );
+    });
+
+    if (inTable) {
+      flushTable('table-end');
+    }
+
+    return elements;
+  };
+
+  const deityAvatar = getMedallion(
+    selectedSubItem || liveRecord || { title: resolvedContent.title, id: resolvedContent.id },
+    resolvedContent.deityId
+  );
+
+  // =========================================================================
+  // VIEW 2: SACRED READING DETAIL VIEW (When Sub-Item is tapped or single item)
+  // =========================================================================
+  if (selectedSubItem) {
+    const currentTitle = selectedSubItem.title || resolvedContent.title;
+    let currentDesc =
+      subItemDetail?.lyrics ||
+      subItemDetail?.descriptionTelugu ||
+      subItemDetail?.fullScriptureText ||
+      subItemDetail?.description ||
+      subItemDetail?.content ||
+      subItemDetail?.overview ||
+      selectedSubItem.lyrics ||
+      selectedSubItem.descriptionTelugu ||
+      selectedSubItem.fullScriptureText ||
+      selectedSubItem.description ||
+      selectedSubItem.content ||
+      '';
+    if ((!currentDesc || currentDesc.length < 150) && (subItemDetail?.lyrics || subItemDetail?.descriptionTelugu)) {
+      currentDesc = subItemDetail.lyrics || subItemDetail.descriptionTelugu;
+    }
+    const currentInstruction = subItemDetail?.instructionNote || selectedSubItem?.instructionNote || '';
+    const mantrasList = Array.isArray(subItemDetail?.mantras) && subItemDetail.mantras.length > 0
+      ? subItemDetail.mantras
+      : (Array.isArray(selectedSubItem?.mantras) ? selectedSubItem.mantras : []);
+    const procedureList = Array.isArray(subItemDetail?.procedure) && subItemDetail.procedure.length > 0
+      ? subItemDetail.procedure
+      : (Array.isArray(selectedSubItem?.procedure) ? selectedSubItem.procedure : []);
+    const contentsList = Array.isArray(subItemDetail?.contents) && subItemDetail.contents.length > 0
+      ? subItemDetail.contents
+      : (Array.isArray(subItemDetail?.devotionalContents) ? subItemDetail.devotionalContents : []);
+    const benefitsList = (Array.isArray(subItemDetail?.benefits) && subItemDetail.benefits.length > 0
+      ? subItemDetail.benefits
+      : (Array.isArray(selectedSubItem?.benefits) ? selectedSubItem.benefits : [])).filter((b: any) => {
+        const s = String(typeof b === 'string' ? b : (b.title || b.description || '')).toLowerCase();
+        return !s.includes('profound peace') && !s.includes('spiritual strength') && !s.includes('planetary doshams') && !s.includes('negative vibrations') && !s.includes('divine protection of the presiding deity');
+      });
+
+    return (
+      <SafeAreaView style={styles.screenContainer}>
+        <StatusBar barStyle="light-content" backgroundColor="#173D32" translucent />
+
+        {/* Top Header with Back Arrow to return to sub-items list */}
+        <LinearGradient
+          colors={['#173D32', '#173D32', '#0C251E']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.padiHeaderBar}
+        >
+          <TouchableOpacity
+            style={styles.padiBackBtn}
+            onPress={() => setSelectedSubItem(null)}
+            activeOpacity={0.7}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            accessibilityRole="button"
+            accessibilityLabel="Back to list"
+          >
+            <Text style={styles.padiBackArrowText}>←</Text>
+          </TouchableOpacity>
+          <Text style={styles.padiHeaderTitle} numberOfLines={1}>
+            {currentTitle}
+          </Text>
+          <View style={styles.headerFiligreeWrapper}>
+            <HeaderCornerFiligree flipped />
+          </View>
+        </LinearGradient>
+
+        {/* Serene Deity Watermark Background */}
+        <Image
+          source={require('../../../../assets/ayyappa_watermark.png')}
+          style={styles.watermarkImage}
+          resizeMode="contain"
+        />
+
+        <ScrollView
+          style={styles.subListScrollView}
+          contentContainerStyle={styles.detailScrollContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={loadingDetail}
+              onRefresh={() => handleSelectSubItem(selectedSubItem)}
+              colors={['#173D32', '#DFA62E']}
+              tintColor="#173D32"
+            />
+          }
+        >
+          <View style={styles.readingCard}>
+            {/* Card Header with Medallion */}
+            <View style={styles.readingCardHeader}>
+              <View style={styles.readingMedallionWrapper}>
+                <Image
+                  source={deityAvatar}
+                  style={styles.readingMedallionImage}
+                  resizeMode="cover"
                 />
               </View>
-              {/* Thumb Knob */}
-              <View
-                style={[
-                  styles.seekThumb,
-                  { left: `${Math.max(0, Math.min(94, progressRatio * 94))}%` },
-                ]}
-              />
-            </TouchableOpacity>
-
-            {/* Duration Display: 00:00 / 05:32 */}
-            <View style={styles.durationContainer}>
-              <Text style={styles.durationText}>
-                {formatTime(currentProgressSeconds)} / {sloka.audioFormattedDuration}
-              </Text>
-            </View>
-          </View>
-
-          {/* =========================================================================
-              BOTTOM ACTION BUTTONS: Share | Save | Download
-             ========================================================================= */}
-          <View style={styles.bottomActionsRow}>
-            {/* 1. Share */}
-            <TouchableOpacity
-              style={styles.actionItem}
-              onPress={handleShare}
-              activeOpacity={0.75}
-            >
-              <ShareIcon />
-              <Text style={styles.actionLabel}>Share</Text>
-            </TouchableOpacity>
-
-            {/* 2. Save */}
-            <TouchableOpacity
-              style={styles.actionItem}
-              onPress={handleToggleSave}
-              activeOpacity={0.75}
-            >
-              <BookmarkIcon isSaved={isSaved} />
-              <Text
-                style={[
-                  styles.actionLabel,
-                  isSaved && styles.actionLabelSaved,
-                ]}
-              >
-                {isSaved ? 'Saved' : 'Save'}
-              </Text>
-            </TouchableOpacity>
-
-            {/* 3. Download */}
-            <TouchableOpacity
-              style={styles.actionItem}
-              onPress={handleOpenDownload}
-              activeOpacity={0.75}
-            >
-              <DownloadIcon />
-              <Text style={styles.actionLabel}>Download</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </ScrollView>
-
-      {/* =========================================================================
-          DOWNLOAD OPTIONS MODAL
-         ========================================================================= */}
-      <Modal
-        visible={isDownloadModalOpen}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setIsDownloadModalOpen(false)}
-      >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalContainer}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Download Sacred Sloka</Text>
+              <View style={styles.readingTitleContainer}>
+                <Text style={styles.readingTitle}>{currentTitle}</Text>
+                <Text style={styles.readingSubtitle}>
+                  {resolvedContent.deityId === 'ayyappa'
+                    ? 'ఓం స్వామియే శరణమయ్యప్ప 🙏'
+                    : '|| శుభం భూయాత్ ||'}
+                </Text>
+              </View>
               <TouchableOpacity
-                onPress={() => setIsDownloadModalOpen(false)}
-                style={styles.modalCloseButton}
+                style={styles.cardHeaderSaveBtn}
+                onPress={handleToggleSave}
+                activeOpacity={0.7}
               >
-                <Text style={styles.modalCloseButtonText}>✕</Text>
+                <HeartFavoriteIcon isSaved={isSaved} />
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.modalSubtitle}>{sloka.englishTitle}</Text>
+            <View style={styles.readingDivider} />
 
-            {/* Option 1: Audio MP3 */}
-            <TouchableOpacity
-              style={styles.downloadOption}
-              onPress={() => handlePerformDownload('audio')}
-              activeOpacity={0.8}
-            >
-              <View style={styles.downloadOptionIcon}>
-                <Text style={styles.optionEmoji}>🎧</Text>
+            {loadingDetail ? (
+              <View style={styles.readingLoadingBox}>
+                <ActivityIndicator size="large" color="#173D32" />
+                <Text style={styles.readingLoadingText}>{ui.loadingText}</Text>
               </View>
-              <View style={styles.downloadOptionText}>
-                <Text style={styles.downloadOptionTitle}>Chanting Audio (MP3)</Text>
-                <Text style={styles.downloadOptionDesc}>
-                  Authentic studio recitation for offline devotion ({sloka.audioFormattedDuration})
-                </Text>
-              </View>
-            </TouchableOpacity>
+            ) : (
+              <View>
+                {/* Instruction note badge */}
+                {currentInstruction ? (
+                  <View style={styles.instructionBadge}>
+                    <Text style={styles.instructionText}>✦ {currentInstruction} ✦</Text>
+                  </View>
+                ) : null}
 
-            {/* Option 2: PDF Document */}
-            <TouchableOpacity
-              style={styles.downloadOption}
-              onPress={() => handlePerformDownload('pdf')}
-              activeOpacity={0.8}
-            >
-              <View style={styles.downloadOptionIcon}>
-                <Text style={styles.optionEmoji}>📜</Text>
-              </View>
-              <View style={styles.downloadOptionText}>
-                <Text style={styles.downloadOptionTitle}>Sloka & Meaning (PDF)</Text>
-                <Text style={styles.downloadOptionDesc}>
-                  Printable devotional sheet in Devanagari, Telugu & English
-                </Text>
-              </View>
-            </TouchableOpacity>
+                {/* Formatted Scripture Text */}
+                {currentDesc ? renderFormattedScripture(currentDesc) : null}
 
-            {/* Option 3: Offline Sacred Text */}
-            <TouchableOpacity
-              style={styles.downloadOption}
-              onPress={() => handlePerformDownload('text')}
-              activeOpacity={0.8}
-            >
-              <View style={styles.downloadOptionIcon}>
-                <Text style={styles.optionEmoji}>📱</Text>
-              </View>
-              <View style={styles.downloadOptionText}>
-                <Text style={styles.downloadOptionTitle}>Offline Reading Text</Text>
-                <Text style={styles.downloadOptionDesc}>
-                  Cached in local app storage for reading without internet
-                </Text>
-              </View>
-            </TouchableOpacity>
+                {/* Mantras List */}
+                {mantrasList && mantrasList.length > 0 ? (
+                  <View style={{ marginTop: 14 }}>
+                    <Text style={[styles.sectionHeaderText, { marginBottom: 10, color: '#173D32' }]}>
+                      ❖ {ui.verses}:
+                    </Text>
+                    {mantrasList.map((m: any, mIdx: number) => (
+                      <View key={m.id || mIdx} style={styles.mantraBox}>
+                        {m.title ? (
+                          <Text style={[styles.stepTitle, { color: '#8B4513', marginBottom: 6 }]}>
+                            ✦ {m.title} ✦
+                          </Text>
+                        ) : null}
+                        <Text style={styles.mantraText}>{m.script || m.mantra || m.text}</Text>
+                        {m.transliteration ? (
+                          <Text style={[styles.readingBodyText, { fontStyle: 'italic', marginTop: 4 }]}>
+                            {m.transliteration}
+                          </Text>
+                        ) : null}
+                        {m.meaning ? (
+                          <Text style={[styles.readingBodyText, { marginTop: 6, color: '#333' }]}>
+                            <Text style={{ fontWeight: '700', color: '#173D32' }}>
+                              {ui.meaning}:{' '}
+                            </Text>
+                            {m.meaning}
+                          </Text>
+                        ) : null}
+                      </View>
+                    ))}
+                  </View>
+                ) : null}
 
-            <TouchableOpacity
-              style={styles.modalCancelButton}
-              onPress={() => setIsDownloadModalOpen(false)}
-            >
-              <Text style={styles.modalCancelText}>Cancel</Text>
-            </TouchableOpacity>
+                {/* Procedure Steps / Stanzas */}
+                {procedureList && procedureList.length > 0 ? (
+                  <View style={{ marginTop: 14 }}>
+                    {procedureList.map((step: any, sIdx: number) => (
+                      <View key={step.id || sIdx} style={styles.stepCardItem}>
+                        <View style={styles.stepBadge}>
+                          <Text style={styles.stepBadgeText}>{step.step || (sIdx + 1)}</Text>
+                        </View>
+                        <View style={{ flex: 1, marginLeft: 10 }}>
+                          <Text style={styles.stepTitle}>{step.title || (`Verse ${sIdx + 1}`)}</Text>
+                          {step.mantra ? (
+                            <View style={[styles.mantraBox, { marginVertical: 6 }]}>
+                              <Text style={styles.mantraText}>{step.mantra}</Text>
+                            </View>
+                          ) : null}
+                          {step.desc || step.description ? (
+                            <Text style={styles.readingBodyText}>{step.desc || step.description}</Text>
+                          ) : null}
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                ) : null}
+
+                {/* Devotional Contents */}
+                {contentsList && contentsList.length > 0 ? (
+                  <View style={{ marginTop: 14 }}>
+                    {contentsList.map((c: any, cIdx: number) => (
+                      <View key={c.id || cIdx} style={{ marginTop: 8, paddingVertical: 4 }}>
+                        {c.title ? <Text style={styles.stepTitle}>✦ {c.title} ✦</Text> : null}
+                        {c.sacredText ? (
+                          <View style={[styles.mantraBox, { marginVertical: 6 }]}>
+                            <Text style={styles.mantraText}>{c.sacredText}</Text>
+                          </View>
+                        ) : null}
+                        <Text style={styles.readingBodyText}>
+                          {c.content || c.text || c.meaning || c.description}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                ) : null}
+
+                {/* Benefits / Phalasruti */}
+                {benefitsList && benefitsList.length > 0 ? (
+                  <View style={{ marginTop: 14 }}>
+                    <Text style={[styles.sectionHeaderText, { marginBottom: 8, color: '#173D32' }]}>
+                      ✨ {ui.benefits}:
+                    </Text>
+                    {benefitsList.map((b: any, bIdx: number) => (
+                      <View key={bIdx} style={{ marginBottom: 6 }}>
+                        <Text style={[styles.stepTitle, { fontSize: 14 }]}>
+                          ❖ {typeof b === 'string' ? b : (b.title || `Benefit ${bIdx + 1}`)}
+                        </Text>
+                        {b.description && b.description !== b.title ? (
+                          <Text style={styles.readingBodyText}>{b.description}</Text>
+                        ) : null}
+                      </View>
+                    ))}
+                  </View>
+                ) : null}
+
+                {/* Download PDF Action Button (Hidden for Bhajans & Songs) */}
+                {!isBhajanOrSong && (
+                  <TouchableOpacity
+                    style={styles.downloadPdfButton}
+                    onPress={handleDownloadPdf}
+                    activeOpacity={0.8}
+                  >
+                    <DownloadTrayIcon />
+                    <Text style={styles.downloadPdfText}>{ui.downloadPdf}</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
           </View>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  // =========================================================================
+  // VIEW 1: MASTER LIST VIEW (If Sub-items exist) OR DIRECT READING CARD
+  // =========================================================================
+  return (
+    <SafeAreaView style={styles.screenContainer}>
+      <StatusBar barStyle="light-content" backgroundColor="#173D32" translucent />
+
+      {/* Sacred Header Bar */}
+      <LinearGradient
+        colors={['#173D32', '#173D32', '#0C251E']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.padiHeaderBar}
+      >
+        <TouchableOpacity
+          style={styles.padiBackBtn}
+          onPress={onBack}
+          activeOpacity={0.7}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+        >
+          <Text style={styles.padiBackArrowText}>←</Text>
+        </TouchableOpacity>
+        <Text style={styles.padiHeaderTitle} numberOfLines={1}>
+          {resolvedContent.title}
+        </Text>
+        <View style={styles.headerFiligreeWrapper}>
+          <HeaderCornerFiligree flipped />
         </View>
-      </Modal>
+      </LinearGradient>
+
+      {/* Serene Deity Watermark Background */}
+      <Image
+        source={require('../../../../assets/ayyappa_watermark.png')}
+        style={styles.watermarkImage}
+        resizeMode="contain"
+      />
+
+      <ScrollView
+        style={styles.subListScrollView}
+        contentContainerStyle={styles.subListScrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshingSubList}
+            onRefresh={() => loadSubItems(true)}
+            colors={['#173D32', '#DFA62E']}
+            tintColor="#173D32"
+          />
+        }
+      >
+        {loadingSubItems && !refreshingSubList ? (
+          <View style={styles.subListLoadingBox}>
+            <ActivityIndicator size="large" color="#173D32" />
+            <Text style={styles.subListLoadingText}>{ui.loadingText}</Text>
+          </View>
+        ) : subItems.length === 0 ? (
+          /* Direct Single Sacred Reading Card when no child subcategories exist */
+          <View style={styles.readingCard}>
+            <View style={styles.readingCardHeader}>
+              <View style={styles.readingMedallionWrapper}>
+                <Image
+                  source={deityAvatar}
+                  style={styles.readingMedallionImage}
+                  resizeMode="cover"
+                />
+              </View>
+              <View style={styles.readingTitleContainer}>
+                <Text style={styles.readingTitle}>{resolvedContent.title}</Text>
+                <Text style={styles.readingSubtitle}>
+                  {resolvedContent.deityId === 'ayyappa'
+                    ? 'ఓం స్వామియే శరణమయ్యప్ప 🙏'
+                    : '|| శుభం భూయాత్ ||'}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.cardHeaderSaveBtn}
+                onPress={handleToggleSave}
+                activeOpacity={0.7}
+              >
+                <HeartFavoriteIcon isSaved={isSaved} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.readingDivider} />
+
+            <View style={{ marginTop: 6 }}>
+              {/* Sacred Instruction Note */}
+              {resolvedContent.instructionNote ? (
+                <View style={styles.instructionBadge}>
+                  <Text style={styles.instructionText}>✦ {resolvedContent.instructionNote} ✦</Text>
+                </View>
+              ) : null}
+
+              {/* Formatted Scripture Text */}
+              {resolvedContent.description
+                ? renderFormattedScripture(resolvedContent.description)
+                : null}
+
+              {/* Mantras from DB */}
+              {resolvedContent.mantras && resolvedContent.mantras.length > 0 ? (
+                <View style={{ marginTop: 14 }}>
+                  <Text style={[styles.sectionHeaderText, { marginBottom: 10, color: '#173D32' }]}>
+                    ❖ {ui.verses}:
+                  </Text>
+                  {resolvedContent.mantras.map((m: any, mIdx: number) => (
+                    <View key={m.id || mIdx} style={styles.mantraBox}>
+                      {m.title ? (
+                        <Text style={[styles.stepTitle, { color: '#8B4513', marginBottom: 6 }]}>
+                          ✦ {m.title} ✦
+                        </Text>
+                      ) : null}
+                      <Text style={styles.mantraText}>{m.script || m.mantra || m.text}</Text>
+                      {m.transliteration ? (
+                        <Text style={[styles.readingBodyText, { fontStyle: 'italic', marginTop: 4 }]}>
+                          {m.transliteration}
+                        </Text>
+                      ) : null}
+                      {m.meaning ? (
+                        <Text style={[styles.readingBodyText, { marginTop: 6, color: '#333' }]}>
+                          <Text style={{ fontWeight: '700', color: '#173D32' }}>
+                            {ui.meaning}:{' '}
+                          </Text>
+                          {m.meaning}
+                        </Text>
+                      ) : null}
+                    </View>
+                  ))}
+                </View>
+              ) : null}
+
+              {/* Procedure / Stanza Steps from DB */}
+              {resolvedContent.procedure && resolvedContent.procedure.length > 0 ? (
+                <View style={{ marginTop: 14 }}>
+                  {resolvedContent.procedure.map((pr: any, prIdx: number) => (
+                    <View key={pr.stepNumber || prIdx} style={styles.stepCardItem}>
+                      <View style={styles.stepBadge}>
+                        <Text style={styles.stepBadgeText}>{pr.stepNumber || (prIdx + 1)}</Text>
+                      </View>
+                      <View style={{ flex: 1, marginLeft: 10 }}>
+                        <Text style={styles.stepTitle}>{pr.title}</Text>
+                        {pr.mantra ? (
+                          <View style={[styles.mantraBox, { marginVertical: 6 }]}>
+                            <Text style={styles.mantraText}>{pr.mantra}</Text>
+                          </View>
+                        ) : null}
+                        {pr.description ? (
+                          <Text style={styles.readingBodyText}>{pr.description}</Text>
+                        ) : null}
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              ) : null}
+
+              {/* Devotional Contents from DB */}
+              {resolvedContent.contents && resolvedContent.contents.length > 0 ? (
+                <View style={{ marginTop: 14 }}>
+                  {resolvedContent.contents.map((c: any, cIdx: number) => (
+                    <View key={c.id || cIdx} style={{ marginTop: 8, paddingVertical: 4 }}>
+                      {c.title ? <Text style={styles.stepTitle}>✦ {c.title} ✦</Text> : null}
+                      {c.sacredText ? (
+                        <View style={[styles.mantraBox, { marginVertical: 6 }]}>
+                          <Text style={styles.mantraText}>{c.sacredText}</Text>
+                        </View>
+                      ) : null}
+                      <Text style={styles.readingBodyText}>
+                        {c.content || c.text || c.meaning || c.description}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              ) : null}
+
+              {/* Benefits / Phalasruti from DB */}
+              {resolvedContent.benefits && resolvedContent.benefits.length > 0 ? (
+                <View style={{ marginTop: 14 }}>
+                  <Text style={[styles.sectionHeaderText, { marginBottom: 8, color: '#173D32' }]}>
+                    ✨ {ui.benefits}:
+                  </Text>
+                  {resolvedContent.benefits.map((b: any, bIdx: number) => (
+                    <View key={bIdx} style={{ marginBottom: 6 }}>
+                      <Text style={[styles.stepTitle, { fontSize: 14 }]}>
+                        ❖ {typeof b === 'string' ? b : (b.title || `Benefit ${bIdx + 1}`)}
+                      </Text>
+                      {b.description && b.description !== b.title ? (
+                        <Text style={styles.readingBodyText}>{b.description}</Text>
+                      ) : null}
+                    </View>
+                  ))}
+                </View>
+              ) : null}
+
+              {/* Download PDF Button (Hidden for Bhajans & Songs) */}
+              {!isBhajanOrSong && (
+                <TouchableOpacity
+                  style={styles.downloadPdfButton}
+                  onPress={handleDownloadPdf}
+                  activeOpacity={0.8}
+                >
+                  <DownloadTrayIcon />
+                  <Text style={styles.downloadPdfText}>{ui.downloadPdf}</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        ) : (
+          /* Sub-items List Cards */
+          <View style={styles.subListCardsContainer}>
+            {subItems.map((item, index) => {
+              const itemTitle = item.title || item.slug || `Item ${index + 1}`;
+              const itemSubtitle = item.description || item.subtitle || '';
+              const medallion = getMedallion(item, resolvedContent.deityId);
+
+              return (
+                <TouchableOpacity
+                  key={String(item.id || index)}
+                  style={styles.subItemCard}
+                  activeOpacity={0.82}
+                  onPress={() => handleSelectSubItem(item)}
+                  accessibilityRole="button"
+                  accessibilityLabel={itemTitle}
+                >
+                  <View style={styles.subItemMedallionWrapper}>
+                    <Image
+                      source={medallion}
+                      style={styles.subItemMedallionImage}
+                      resizeMode="cover"
+                    />
+                  </View>
+
+                  <View style={styles.subItemContent}>
+                    <Text style={styles.subItemCardTitle} numberOfLines={2}>
+                      {itemTitle}
+                    </Text>
+                    {itemSubtitle ? (
+                      <Text style={styles.subItemCardSubtitle} numberOfLines={1}>
+                        {itemSubtitle.replace(/^\[.*?\]\s*/, '').trim()}
+                      </Text>
+                    ) : null}
+                  </View>
+
+                  <View style={styles.subItemPlayIconWrapper}>
+                    <CardPlayTriangleIcon />
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
+      </ScrollView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
+  screenContainer: {
     flex: 1,
-    backgroundColor: '#173D32',
+    backgroundColor: '#FAF5EB',
   },
-  scrollView: {
-    flex: 1,
-    backgroundColor: '#FFF8EB',
-  },
-  scrollContent: {
-    paddingBottom: 40,
-  },
-
-  // Header styles
-  header: {
-    height: Platform.OS === 'ios' ? 88 : (StatusBar.currentHeight || 20) + 52,
-    paddingTop: Platform.OS === 'ios' ? 36 : StatusBar.currentHeight || 18,
+  padiHeaderBar: {
+    minHeight: 56 + ANDROID_STATUS_BAR_HEIGHT,
+    paddingTop: ANDROID_STATUS_BAR_HEIGHT + 6,
+    paddingBottom: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     position: 'relative',
-    zIndex: 10,
-  },
-  headerBackButton: {
-    position: 'absolute',
-    left: 16,
-    top: Platform.OS === 'ios' ? 44 : (StatusBar.currentHeight || 18) + 12,
-    width: 36,
-    height: 36,
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 12,
-  },
-  headerTitle: {
-    fontFamily: Platform.select({ ios: 'Poppins-Bold', android: 'Poppins_700Bold', web: 'Poppins, sans-serif', default: 'Poppins_700Bold' }),
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#FFFDF8',
-    letterSpacing: 0.5,
-    textAlign: 'center',
-  },
-  headerRightOrnament: {
-    position: 'absolute',
-    right: 6,
-    top: 4,
-  },
-  filigreeTopLeft: {
-    position: 'absolute',
-    left: 6,
-    top: 4,
-  },
-
-  // Deity Hero Image
-  heroContainer: {
-    width: '100%',
-    height: 165,
-    position: 'relative',
-    overflow: 'hidden',
-    backgroundColor: '#0C251E',
-  },
-  heroImageShiva: {
-    width: '100%',
-    height: 350,
-    position: 'absolute',
-    top: -40,
-  },
-  heroImageOther: {
-    width: '100%',
-    height: '100%',
-  },
-  heroGradientOverlay: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: 50,
-  },
-
-  // Main Card Container
-  mainCard: {
-    backgroundColor: '#FFF8EB',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    marginTop: -20,
-    paddingTop: 16,
-    paddingHorizontal: 16,
-    borderWidth: 1.5,
-    borderBottomWidth: 0,
-    borderColor: '#E6C687',
-    minHeight: 520,
-  },
-
-  // 4 Tabs: Sanskrit | Telugu | English | Meaning
-  tabBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  tabPill: {
-    flex: 1,
-    paddingVertical: 7,
-    marginHorizontal: 3,
-    borderRadius: 20,
-    backgroundColor: '#FFF8EB',
-    borderWidth: 1,
-    borderColor: '#DFA62E',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tabPillActive: {
-    backgroundColor: '#173D32',
-    borderColor: '#173D32',
-    shadowColor: '#173D32',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  tabPillText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#345147',
-  },
-  tabPillTextActive: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-  },
-
-  // Sloka Title Section
-  titleSection: {
-    alignItems: 'center',
-    marginBottom: 16,
-    paddingHorizontal: 8,
-  },
-  slokaPrimaryTitle: {
-    fontFamily: Platform.select({ ios: 'Poppins-Bold', android: 'Poppins_700Bold', web: 'Poppins, sans-serif', default: 'Poppins_700Bold' }),
-    fontSize: 21,
-    fontWeight: '700',
-    color: '#173D32',
-    textAlign: 'center',
-    marginBottom: 4,
-    letterSpacing: 0.3,
-  },
-  slokaEnglishTitle: {
-    fontSize: 15.5,
-    fontWeight: '600',
-    color: '#173D32',
-    textAlign: 'center',
-  },
-
-  // Sacred Verses Section
-  versesSection: {
-    marginBottom: 18,
-    paddingHorizontal: 4,
-  },
-  stanzaContainer: {
-    marginBottom: 16,
-    alignItems: 'center',
-  },
-  verseNumberBadge: {
-    fontSize: 12.5,
-    fontWeight: '700',
-    color: '#173D32',
-    marginBottom: 4,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  verseText: {
-    color: '#0C251E',
-    lineHeight: 28,
-    textAlign: 'center',
-    fontWeight: '600',
-    letterSpacing: 0.2,
-  },
-  meaningText: {
-    fontStyle: 'normal',
-    fontWeight: '400',
-    lineHeight: 22,
-    textAlign: 'center',
-    color: '#345147',
-    paddingHorizontal: 8,
-  },
-
-  // Audio Player Card
-  audioPlayerCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFF4E4',
-    borderRadius: 18,
-    borderWidth: 1.2,
-    borderColor: '#E4BD70',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  playButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#173D32',
-    borderWidth: 1.8,
-    borderColor: '#FFD700',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 10,
-    shadowColor: '#000',
+    borderBottomWidth: 1.2,
+    borderBottomColor: '#DFA62E',
+    shadowColor: '#071914',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3,
     elevation: 4,
   },
-  seekContainer: {
-    flex: 1,
-    height: 30,
+  padiBackBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#FFFDF8',
+    alignItems: 'center',
     justifyContent: 'center',
-    position: 'relative',
-    marginRight: 8,
+    borderWidth: 1.2,
+    borderColor: '#DFA62E',
+    marginRight: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15,
+    shadowRadius: 2,
+    elevation: 2,
   },
-  seekTrack: {
-    height: 4.5,
-    borderRadius: 2.5,
-    backgroundColor: '#E5D0A6',
-    overflow: 'hidden',
+  padiBackArrowText: {
+    color: '#173D32',
+    fontSize: 22,
+    fontWeight: '700',
+    lineHeight: 24,
   },
-  seekProgress: {
-    height: '100%',
-    backgroundColor: '#173D32',
-    borderRadius: 2.5,
+  padiHeaderTitle: {
+    flex: 1,
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#FFFDF8',
+    letterSpacing: 0.3,
   },
-  seekThumb: {
+  headerFiligreeWrapper: {
     position: 'absolute',
-    width: 14,
-    height: 14,
-    borderRadius: 7,
+    right: 0,
+    top: ANDROID_STATUS_BAR_HEIGHT,
+    bottom: 0,
+    justifyContent: 'center',
+    opacity: 0.85,
+  },
+  watermarkImage: {
+    position: 'absolute',
+    width: SCREEN_WIDTH * 0.9,
+    height: SCREEN_WIDTH * 0.9,
+    alignSelf: 'center',
+    top: '22%',
+    opacity: 0.08,
+    zIndex: 0,
+  },
+
+  // Sub-items List
+  subListScrollView: {
+    flex: 1,
+    zIndex: 1,
+  },
+  subListScrollContent: {
+    paddingHorizontal: 14,
+    paddingTop: 14,
+    paddingBottom: 40,
+  },
+  subListCardsContainer: {
+    width: '100%',
+    gap: 10,
+  },
+  subItemCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFDF8',
+    borderRadius: 16,
+    borderWidth: 1.2,
+    borderColor: '#E6C898',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    shadowColor: '#071914',
+    shadowOffset: { width: 0, height: 1.5 },
+    shadowOpacity: 0.06,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  subItemMedallionWrapper: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 2,
+    borderColor: '#DFA62E',
+    overflow: 'hidden',
     backgroundColor: '#173D32',
-    borderWidth: 1.5,
-    borderColor: '#FFD700',
-    top: 8,
+    marginRight: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
   },
-  durationContainer: {
-    minWidth: 84,
-    alignItems: 'flex-end',
+  subItemMedallionImage: {
+    width: '100%',
+    height: '100%',
   },
-  durationText: {
-    fontSize: 12,
+  subItemContent: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingRight: 6,
+  },
+  subItemCardTitle: {
+    fontFamily: Platform.select({ ios: 'Poppins-Bold', android: 'Poppins_700Bold', default: 'Poppins_700Bold' }),
+    fontSize: 15.5,
     fontWeight: '700',
     color: '#0C251E',
+    marginBottom: 2,
+    letterSpacing: 0.2,
   },
-
-  // Bottom Action Buttons
-  bottomActionsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#EED9B3',
-    marginTop: 4,
+  subItemCardSubtitle: {
+    fontSize: 12,
+    color: '#6B4B3D',
+    fontWeight: '500',
+    lineHeight: 16,
   },
-  actionItem: {
+  subItemPlayIconWrapper: {
+    width: 28,
+    height: 28,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 6,
+    marginLeft: 4,
   },
-  actionLabel: {
-    fontSize: 12.5,
+  subListLoadingBox: {
+    padding: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  subListLoadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#173D32',
     fontWeight: '600',
-    color: '#173D32',
-    marginTop: 5,
-  },
-  actionLabelSaved: {
-    fontWeight: '700',
   },
 
-  // Download Modal
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.65)',
-    justifyContent: 'flex-end',
+  // Reading Detail Card
+  detailScrollContent: {
+    padding: 14,
+    paddingBottom: 40,
   },
-  modalContainer: {
+  readingCard: {
     backgroundColor: '#FFFDF8',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingTop: 18,
-    paddingBottom: 32,
-    paddingHorizontal: 20,
+    borderRadius: 16,
+    padding: 18,
+    borderWidth: 1.2,
+    borderColor: '#E6C898',
+    elevation: 3,
+    shadowColor: '#071914',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
   },
-  modalHeader: {
+  readingCardHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 12,
   },
-  modalTitle: {
-    fontSize: 18,
+  readingMedallionWrapper: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    borderWidth: 2,
+    borderColor: '#DFA62E',
+    overflow: 'hidden',
+    backgroundColor: '#173D32',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  readingMedallionImage: {
+    width: '100%',
+    height: '100%',
+  },
+  readingTitleContainer: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  readingTitle: {
+    fontSize: 17,
     fontWeight: '700',
     color: '#173D32',
+    marginBottom: 3,
   },
-  modalCloseButton: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#F0E6D2',
-    justifyContent: 'center',
+  readingSubtitle: {
+    fontSize: 12.5,
+    color: '#8A5A0A',
+    fontWeight: '600',
+  },
+  cardHeaderSaveBtn: {
+    padding: 6,
+    marginLeft: 8,
+  },
+  readingDivider: {
+    height: 1.2,
+    backgroundColor: '#E6C898',
+    marginVertical: 12,
+  },
+  readingLoadingBox: {
+    padding: 30,
     alignItems: 'center',
   },
-  modalCloseButtonText: {
+  readingLoadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#173D32',
+  },
+  readingBodyText: {
+    fontSize: 15.5,
+    lineHeight: 26,
+    color: '#2C1D11',
+    fontWeight: '500',
+    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' }),
+  },
+  instructionBadge: {
+    backgroundColor: 'rgba(223, 166, 46, 0.15)',
+    borderWidth: 1,
+    borderColor: '#DFA62E',
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    marginBottom: 12,
+    alignSelf: 'flex-start',
+  },
+  instructionText: {
+    color: '#173D32',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  sectionHeaderCard: {
+    backgroundColor: '#FFF3E0',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: '#DFA62E',
+    marginVertical: 8,
+  },
+  sectionHeaderText: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#173D32',
+    color: '#8B4513',
   },
-  modalSubtitle: {
-    fontSize: 13.5,
-    color: '#6E553F',
-    marginBottom: 16,
-  },
-  downloadOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFBF2',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#E8CA94',
+  mantraBox: {
+    backgroundColor: 'rgba(223, 166, 46, 0.12)',
+    borderLeftWidth: 4,
+    borderLeftColor: '#DFA62E',
     padding: 12,
-    marginBottom: 10,
+    borderRadius: 8,
+    marginBottom: 14,
   },
-  downloadOptionIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#FFF5DE',
-    justifyContent: 'center',
+  mantraText: {
+    fontSize: 15,
+    lineHeight: 24,
+    color: '#8B4513',
+    fontWeight: '700',
+  },
+  stepCardItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: 'rgba(23, 61, 50, 0.03)',
+    borderRadius: 10,
+    padding: 10,
+    marginVertical: 6,
+    borderWidth: 1,
+    borderColor: '#E8D5B5',
+  },
+  stepBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#173D32',
     alignItems: 'center',
-    marginRight: 12,
+    justifyContent: 'center',
+    marginTop: 2,
   },
-  optionEmoji: {
-    fontSize: 20,
+  stepBadgeText: {
+    color: '#FFD700',
+    fontSize: 13,
+    fontWeight: '700',
   },
-  downloadOptionText: {
-    flex: 1,
-  },
-  downloadOptionTitle: {
-    fontSize: 14.5,
+  stepTitle: {
+    fontSize: 15,
     fontWeight: '700',
     color: '#173D32',
     marginBottom: 2,
   },
-  downloadOptionDesc: {
-    fontSize: 12,
-    color: '#345147',
-    lineHeight: 16,
-  },
-  modalCancelButton: {
-    marginTop: 8,
-    paddingVertical: 12,
+  downloadPdfButton: {
+    flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 20,
-    backgroundColor: '#F3EFE6',
+    justifyContent: 'center',
+    backgroundColor: '#FFF8EC',
+    borderWidth: 1.4,
+    borderColor: '#DFA62E',
+    borderRadius: 10,
+    paddingVertical: 12,
+    marginTop: 20,
+    gap: 8,
   },
-  modalCancelText: {
-    fontSize: 14,
-    fontWeight: '600',
+  downloadPdfText: {
+    fontSize: 14.5,
+    fontWeight: '700',
     color: '#173D32',
   },
-});
 
+  // Markdown Table styles
+  tableCardContainer: {
+    marginVertical: 10,
+    borderRadius: 10,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#E8D5B5',
+  },
+  tableScroll: {
+    width: '100%',
+  },
+  tableCard: {
+    backgroundColor: '#FFFDF8',
+  },
+  tableHeaderRow: {
+    flexDirection: 'row',
+    backgroundColor: '#173D32',
+    paddingVertical: 8,
+  },
+  tableHeaderCell: {
+    borderRightColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  tableHeaderText: {
+    color: '#FFD700',
+    fontWeight: '700',
+    fontSize: 12.5,
+  },
+  tableDataRow: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0E6D8',
+    paddingVertical: 7,
+  },
+  tableRowAlt: {
+    backgroundColor: '#FAF5EB',
+  },
+  tableCell: {
+    paddingHorizontal: 10,
+    borderRightWidth: 1,
+    borderRightColor: '#F0E6D8',
+    justifyContent: 'center',
+  },
+  tableCellText: {
+    fontSize: 12.5,
+    color: '#2C1D11',
+  },
+});

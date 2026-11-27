@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -33,243 +33,8 @@ const MODAL_CARD_WIDTH = Math.floor(
 // Background and Emblem
 const SARANAM_DEITY_BG = require('../../../../assets/deities/deity_selection_bg.jpg');
 
-// Comprehensive Deities Catalog
-export const ALL_DEITIES_CATALOG: (DeityItem & {
-  category: 'popular' | 'shiva' | 'vishnu' | 'devi' | 'others';
-  image: any;
-  aliases: string[];
-})[] = [
-  // 6 Featured
-  {
-    id: 'ayyappa',
-    name: 'Lord Ayyappa',
-    teluguName: 'అయ్యప్ప స్వామి',
-    tamilName: 'ஐயப்பன்',
-    kannadaName: 'ಅಯ್ಯಪ್ಪ ಸ್ವಾಮಿ',
-    hindiName: 'अय्यप्पा स्वामी',
-    category: 'popular',
-    isFeatured: true,
-    image: require('../../../../assets/deities/lord_ayyappa.png'),
-    aliases: ['ayyappa', 'manikanta', 'shabarimala', 'shasta', 'swamy'],
-  },
-  {
-    id: 'ganesha',
-    name: 'Lord Ganesha',
-    teluguName: 'గణపతి / వినాయక',
-    tamilName: 'விநாயகர்',
-    kannadaName: 'ಗಣೇಶ',
-    hindiName: 'गणेश भगवान',
-    category: 'popular',
-    isFeatured: true,
-    image: require('../../../../assets/deities/lord_ganesha.png'),
-    aliases: ['ganesh', 'ganapathi', 'vinayaka', 'vighneshwara', 'pillayar'],
-  },
-  {
-    id: 'murugan',
-    name: 'Lord Murugan',
-    teluguName: 'మురుగన్ / సుబ్రహ్మణ్య',
-    tamilName: 'முருகன்',
-    kannadaName: 'ಮುರುಗನ್',
-    hindiName: 'मुरुगन / कार्तिकेय',
-    category: 'popular',
-    isFeatured: true,
-    image: require('../../../../assets/deities/lord_murugan.png'),
-    aliases: ['muruga', 'subrahmanya', 'kartikeya', 'skanda', 'velan'],
-  },
-  {
-    id: 'shiva',
-    name: 'Lord Shiva',
-    teluguName: 'పరమ శివుడు',
-    tamilName: 'சிவன்',
-    kannadaName: 'ಶಿವ',
-    hindiName: 'शिव शंकर',
-    category: 'shiva',
-    isFeatured: true,
-    image: require('../../../../assets/deities/lord_shiva.png'),
-    aliases: ['shiva', 'mahadev', 'shankara', 'bholenath', 'ishwara'],
-  },
-  {
-    id: 'vishnu',
-    name: 'Lord Vishnu',
-    teluguName: 'మహా విష్ణువు',
-    tamilName: 'விஷ்ணு',
-    kannadaName: 'ಮಹಾ ವಿಷ್ಣು',
-    hindiName: 'भगवान विष्णु',
-    category: 'vishnu',
-    isFeatured: true,
-    image: require('../../../../assets/deities/lord_vishnu.png'),
-    aliases: ['vishnu', 'narayana', 'hari', 'perumal', 'govinda'],
-  },
-  {
-    id: 'devi',
-    name: 'Goddess Devi',
-    teluguName: 'దేవి / అమ్మవారు',
-    tamilName: 'அம்மன் / தேவி',
-    kannadaName: 'ದೇವಿ',
-    hindiName: 'देवी मां',
-    category: 'devi',
-    isFeatured: true,
-    image: require('../../../../assets/deities/goddess_devi.png'),
-    aliases: ['devi', 'amman', 'shakti', 'mata', 'parvati', 'goddess'],
-  },
-
-  // Popular & Extended Catalog
-  {
-    id: 'venkateswara',
-    name: 'Lord Venkateswara',
-    teluguName: 'శ్రీ వేంకటేశ్వర స్వామి',
-    tamilName: 'வெங்கடேஸ்வரர்',
-    kannadaName: 'ವೆಂಕಟೇಶ್ವರ ಸ್ವಾಮಿ',
-    hindiName: 'श्री वेंकटेश्वर',
-    category: 'vishnu',
-    image: require('../../../../assets/deities/venkateswara.jpg'),
-    aliases: ['balaji', 'govinda', 'tirupati', 'srinivasa', 'venkanna'],
-  },
-  {
-    id: 'krishna',
-    name: 'Lord Krishna',
-    teluguName: 'శ్రీ కృష్ణుడు',
-    tamilName: 'கிருஷ்ணர்',
-    kannadaName: 'ಕೃಷ್ಣ',
-    hindiName: 'भगवान कृष्ण',
-    category: 'vishnu',
-    image: require('../../../../assets/deities/krishna.jpg'),
-    aliases: ['krishna', 'gopala', 'kanha', 'vasudeva', 'madhava'],
-  },
-  {
-    id: 'rama',
-    name: 'Sri Rama',
-    teluguName: 'శ్రీ సీతారామ చంద్రులు',
-    tamilName: 'ஸ்ரீ ராமர்',
-    kannadaName: 'ಶ್ರೀ ರಾಮ',
-    hindiName: 'श्री राम',
-    category: 'vishnu',
-    image: require('../../../../assets/deities/rama.jpg'),
-    aliases: ['ram', 'rama', 'raghava', 'sitaram', 'maryada purushottam'],
-  },
-  {
-    id: 'hanuman',
-    name: 'Lord Hanuman',
-    teluguName: 'హనుమాన్ స్వామి',
-    tamilName: 'ஹனுமான்',
-    kannadaName: 'ಹನುಮಂತ',
-    hindiName: 'हनुमान जी',
-    category: 'others',
-    image: require('../../../../assets/deities/hanuman.jpg'),
-    aliases: ['hanuman', 'anjaneya', 'maruti', 'bajrangbali', 'pavanputra'],
-  },
-  {
-    id: 'durga',
-    name: 'Goddess Durga',
-    teluguName: 'దుర్గా భవానీ',
-    tamilName: 'துர்கா தேவி',
-    kannadaName: 'ದುರ್ಗಾ ದೇವಿ',
-    hindiName: 'दुर्गा माता',
-    category: 'devi',
-    image: require('../../../../assets/deities/durga.jpg'),
-    aliases: ['durga', 'sherawali', 'bhavani', 'mahishasuramardini', 'chandi'],
-  },
-  {
-    id: 'parvati',
-    name: 'Goddess Parvati',
-    teluguName: 'పార్వతీ దేవి',
-    tamilName: 'பார்வதி',
-    kannadaName: 'ಪಾರ್ವತಿ',
-    hindiName: 'पार्वती माता',
-    category: 'shiva',
-    image: require('../../../../assets/deities/goddess_devi.png'),
-    aliases: ['parvati', 'gouri', 'girija', 'uma', 'shiva parvati'],
-  },
-  {
-    id: 'lakshmi',
-    name: 'Goddess Lakshmi',
-    teluguName: 'మహాలక్ష్మి దేవి',
-    tamilName: 'லட்சுமி தேவி',
-    kannadaName: 'ಲಕ್ಷ್ಮೀ ದೇವಿ',
-    hindiName: 'महालक्ष्मी',
-    category: 'devi',
-    image: require('../../../../assets/deities/goddess_devi.png'),
-    aliases: ['lakshmi', 'laxmi', 'sri', 'padma', 'dhanalakshmi'],
-  },
-  {
-    id: 'saraswati',
-    name: 'Goddess Saraswati',
-    teluguName: 'సరస్వతీ దేవి',
-    tamilName: 'சரஸ்வதி',
-    kannadaName: 'ಸರಸ್ವತಿ',
-    hindiName: 'मां सरस्वती',
-    category: 'devi',
-    image: require('../../../../assets/deities/goddess_devi.png'),
-    aliases: ['saraswati', 'sharada', 'vidya', 'veena vani'],
-  },
-  {
-    id: 'kali',
-    name: 'Maa Kali',
-    teluguName: 'కాళికా దేవి',
-    tamilName: 'காளி மாதா',
-    kannadaName: 'ಕಾಳಿ ದೇವಿ',
-    hindiName: 'काली माता',
-    category: 'devi',
-    image: require('../../../../assets/deities/durga.jpg'),
-    aliases: ['kali', 'mahakali', 'kalika', 'bhadrakali'],
-  },
-  {
-    id: 'narasimha',
-    name: 'Lord Narasimha',
-    teluguName: 'లక్ష్మీ నరసింహ స్వామి',
-    tamilName: 'நரசிம்மர்',
-    kannadaName: 'ನರಸಿಂಹ',
-    hindiName: 'नरसिंह भगवान',
-    category: 'vishnu',
-    image: require('../../../../assets/deities/venkateswara.jpg'),
-    aliases: ['narasimha', 'simhadri', 'panchamukha'],
-  },
-  {
-    id: 'saibaba',
-    name: 'Shirdi Sai Baba',
-    teluguName: 'షిర్డీ సాయి బాబా',
-    tamilName: 'சாயி பாபா',
-    kannadaName: 'ಸಾಯಿ ಬಾಬಾ',
-    hindiName: 'साईं बाबा',
-    category: 'others',
-    image: require('../../../../assets/deities/lord_ayyappa.png'),
-    aliases: ['saibaba', 'sai', 'shirdi', 'sadguru'],
-  },
-  {
-    id: 'dattatreya',
-    name: 'Lord Dattatreya',
-    teluguName: 'శ్రీ దత్తాత్రేయ స్వామి',
-    tamilName: 'தத்தாத்ரேயர்',
-    kannadaName: 'ದತ್ತಾತ್ರೇಯ',
-    hindiName: 'दत्तात्रेय भगवान',
-    category: 'others',
-    image: require('../../../../assets/deities/lord_shiva.png'),
-    aliases: ['datta', 'dattatreya', 'guru datta'],
-  },
-  {
-    id: 'surya',
-    name: 'Surya Bhagavan',
-    teluguName: 'సూర్య భగవాన్',
-    tamilName: 'சூரிய பகவான்',
-    kannadaName: 'ಸೂರ್ಯ ಭಗವಾನ್',
-    hindiName: 'सूर्य देव',
-    category: 'others',
-    image: require('../../../../assets/deities/lord_vishnu.png'),
-    aliases: ['surya', 'sun', 'aditya', 'bhaskar', 'ravaye'],
-  },
-  {
-    id: 'bhairava',
-    name: 'Kala Bhairava',
-    teluguName: 'కాల భైరవ స్వామి',
-    tamilName: 'கால பைரவர்',
-    kannadaName: 'ಕಾಲ ಭೈರವ',
-    hindiName: 'काल भैरव',
-    category: 'shiva',
-    image: require('../../../../assets/deities/lord_shiva.png'),
-    aliases: ['bhairava', 'kala bhairav', 'kshetrapala'],
-  },
-];
-
+// Deities are fetched dynamically from DB via ApiService.getDeities()
+// Strictly zero hardcoded, mock, or fake data.
 type CategoryFilter = 'all' | 'popular' | 'shiva' | 'vishnu' | 'devi' | 'others';
 
 interface CategoryTab {
@@ -294,7 +59,12 @@ export interface AllDeitiesScreenProps {
   onClose: () => void;
 }
 
-import { isDeityComingSoon } from './ChooseDeityScreen';
+export const isDeityComingSoon = (deity: DeityItem | null | undefined): boolean => {
+  if (!deity) return false;
+  const name = (deity.name || '').toLowerCase();
+  const id = (deity.id || '').toLowerCase();
+  return !name.includes('ayyappa') && !id.includes('ayyappa');
+};
 
 export const AllDeitiesScreen: React.FC<AllDeitiesScreenProps> = ({
   visible,
@@ -341,35 +111,16 @@ export const AllDeitiesScreen: React.FC<AllDeitiesScreenProps> = ({
         const results = await ApiService.getDeities({
           search: searchQuery,
           category: selectedCategory,
+          lang: currentLanguage,
         });
         if (!isCancelled) {
           setDeitiesList(results);
         }
       } catch (err: any) {
         if (!isCancelled) {
-          // Graceful fallback to bundled catalog
-          let filtered: DeityItem[] = [...ALL_DEITIES_CATALOG];
-          if (selectedCategory && selectedCategory !== 'all') {
-            if (selectedCategory === 'popular') {
-              filtered = filtered.filter((d: any) => d.category === 'popular' || d.isFeatured);
-            } else {
-              filtered = filtered.filter((d: any) => d.category === selectedCategory);
-            }
-          }
-          if (searchQuery && searchQuery.trim()) {
-            const q = searchQuery.trim().toLowerCase();
-            filtered = filtered.filter(
-              (d: any) =>
-                (d.name && d.name.toLowerCase().includes(q)) ||
-                (d.teluguName && d.teluguName.includes(q)) ||
-                (d.tamilName && d.tamilName.includes(q)) ||
-                (d.kannadaName && d.kannadaName.includes(q)) ||
-                (d.hindiName && d.hindiName.includes(q)) ||
-                (d.aliases && d.aliases.some((a: string) => a.toLowerCase().includes(q)))
-            );
-          }
-          setDeitiesList(filtered);
-          setError(null);
+          // Strictly ZERO mock, fake, or fallback data - load exclusively from DB
+          setDeitiesList([]);
+          setError(err?.message || 'Failed to load deities from database.');
         }
       } finally {
         if (!isCancelled) {
@@ -382,7 +133,7 @@ export const AllDeitiesScreen: React.FC<AllDeitiesScreenProps> = ({
       isCancelled = true;
       clearTimeout(timer);
     };
-  }, [visible, searchQuery, selectedCategory]);
+  }, [visible, searchQuery, selectedCategory, currentLanguage]);
 
   const handleCardPress = (deity: DeityItem) => {
     if (isDeityComingSoon(deity)) {
@@ -407,15 +158,12 @@ export const AllDeitiesScreen: React.FC<AllDeitiesScreenProps> = ({
   };
 
   const getLocalizedName = (item: DeityItem): string => {
-    const trans = (item as any).translations;
-    if (trans && trans[currentLanguage]?.name) {
-      return trans[currentLanguage].name;
-    }
-    if (currentLanguage === 'te' && (item.teluguName || trans?.te?.name)) return item.teluguName || trans?.te?.name;
-    if (currentLanguage === 'ta' && (item.tamilName || trans?.ta?.name)) return item.tamilName || trans?.ta?.name;
-    if (currentLanguage === 'kn' && (item.kannadaName || trans?.kn?.name)) return item.kannadaName || trans?.kn?.name;
-    if (currentLanguage === 'hi' && (item.hindiName || trans?.hi?.name)) return item.hindiName || trans?.hi?.name;
-    return trans?.en?.name || item.name;
+    if (currentLanguage === 'en') return item.englishName || item.name;
+    if (currentLanguage === 'te') return item.teluguName || item.name;
+    if (currentLanguage === 'ta') return item.tamilName || item.englishName || item.name;
+    if (currentLanguage === 'kn') return item.kannadaName || item.englishName || item.name;
+    if (currentLanguage === 'hi') return item.hindiName || item.englishName || item.name;
+    return item.name || item.englishName || item.teluguName || '';
   };
 
   return (

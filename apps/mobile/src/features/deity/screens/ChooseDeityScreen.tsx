@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   StyleSheet,
   View,
@@ -9,34 +9,18 @@ import {
   Platform,
   StatusBar,
   ScrollView,
-  BackHandler,
   SafeAreaView,
-  ImageBackground,
+  TextInput,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import Svg, { Path, Circle, Rect } from 'react-native-svg';
+import Svg, { Path, Circle } from 'react-native-svg';
 import { DeityItem, SupportedLanguage } from '../../../types';
 import { StorageService } from '../../../services/storageService';
 import { ApiService } from '../../../services/api';
-import { AllDeitiesScreen, ALL_DEITIES_CATALOG } from './AllDeitiesScreen';
 import { resolveDeityImage } from '../utils/deityImageResolver';
-import { useBranding } from '../../../services/brandingService';
-
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-
-// Responsive Calculations
-const PANEL_MAX_WIDTH = Math.min(SCREEN_WIDTH * 0.92, 386);
-const PANEL_PADDING = 14;
-const GRID_GAP = 8;
-const CARD_WIDTH = Math.floor((PANEL_MAX_WIDTH - PANEL_PADDING * 2 - GRID_GAP * 2) / 3);
-const CARD_HEIGHT = SCREEN_HEIGHT < 700 ? 94 : (SCREEN_HEIGHT < 820 ? 104 : 110);
-const CARD_IMAGE_SIZE = SCREEN_HEIGHT < 700 ? 50 : 58;
-
-// Local Asset Imports (Exact Reference Assets)
-const SARANAM_DEITY_BG = require('../../../../assets/deities/deity_selection_bg.jpg');
-const SARANAM_DEITY_EMBLEM = require('../../../../assets/deities/saranam_deity_emblem.png');
-const BOTTOM_GREEN_HILLS = require('../../../../assets/deities/bottom_green_hills.jpg');
+import { CategorySkeleton } from '../../../components/common/CategorySkeleton';
 
 export interface ChooseDeityScreenProps {
   currentLanguage?: SupportedLanguage;
@@ -44,20 +28,44 @@ export interface ChooseDeityScreenProps {
   onBack: () => void;
 }
 
-const READY_DEITY_IDS = new Set([
-  'ayyappa',
-  'shiva',
-  'ganesha',
-  'ganapathi',
-  'murugan',
-  'karthikeya',
-]);
+// Right Chevron Arrow (Matches Services Screen)
+const ChevronRightIcon = () => (
+  <Svg width={18} height={18} viewBox="0 0 18 18" fill="none">
+    <Path d="M6.5 4.5 L11 9 L6.5 13.5" stroke="#2E7561" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
 
-export const isDeityComingSoon = (deity: DeityItem | null | undefined): boolean => {
-  if (!deity) return false;
-  if (deity.isComingSoon !== undefined) return deity.isComingSoon;
-  const slug = (deity.id || (deity as any).slug || '').toLowerCase();
-  return !READY_DEITY_IDS.has(slug);
+// Header Corner Filigree
+const HeaderCornerFiligree = () => (
+  <Svg width={36} height={36} viewBox="0 0 36 36" fill="none">
+    <Path d="M2 2 C12 2 22 8 28 16 C24 18 18 16 12 22 C8 16 6 8 2 2 Z" fill="#DFA62E" fillOpacity={0.65} />
+  </Svg>
+);
+
+// Search Outline Icon
+const SearchIcon = ({ size = 20, color = '#173D32' }: { size?: number; color?: string }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Circle cx="11" cy="11" r="7" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+    <Path d="M16.5 16.5L21.5 21.5" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
+const SCREEN_TITLES: Record<string, string> = {
+  te: 'ఆరాధ్య దైవాన్ని ఎంచుకోండి',
+  kn: 'ಆರಾಧ್ಯ ದೈವವನ್ನು ಆಯ್ಕೆಮಾಡಿ',
+  ta: 'உங்கள் தெய்வத்தைத் தேர்வுசெய்க',
+  hi: 'अपने आराध्य देव का चयन करें',
+  ml: 'നിങ്ങളുടെ ആരാധനാ മൂർത്തിയെ തിരഞ്ഞെടുക്കുക',
+  en: 'Choose Your Deity',
+};
+
+const SEARCH_PLACEHOLDERS: Record<string, string> = {
+  te: 'దేవుడు, దేవత లేదా నామం వెతకండి...',
+  kn: 'ದೇವರ ಹೆಸರು, ದೇವತೆ ಹುಡುಕಿ...',
+  ta: 'கடவுள் பெயர் அல்லது துதியைத் தேடுங்கள்...',
+  hi: 'भगवान या देवी का नाम खोजें...',
+  ml: 'ദൈവത്തിന്റെ പേര് തിരയുക...',
+  en: 'Search deities, gods, goddesses...',
 };
 
 export const ChooseDeityScreen: React.FC<ChooseDeityScreenProps> = ({
@@ -65,402 +73,301 @@ export const ChooseDeityScreen: React.FC<ChooseDeityScreenProps> = ({
   onContinue,
   onBack,
 }) => {
-  const { getLogoSource, onLogoError } = useBranding();
-  // Dynamic Deities strictly fetched from DB via API (Strictly NO fallback, static, or fake data)
-  const [featuredDeities, setFeaturedDeities] = useState<DeityItem[]>([]);
+  const [deities, setDeities] = useState<DeityItem[]>([]);
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedDeity, setSelectedDeity] = useState<DeityItem | null>(null);
-  const [allDeitiesModalVisible, setAllDeitiesModalVisible] = useState<boolean>(false);
-  const [comingSoonToast, setComingSoonToast] = useState<string | null>(null);
-  const [showAllDeities, setShowAllDeities] = useState<boolean>(false);
+  const [activeDeityId, setActiveDeityId] = useState<string | null>(null);
 
-  // Fetch featured deities directly from DB via API
-  const loadFeaturedDeities = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await ApiService.getDeities({ featured: true });
-      if (!data || data.length === 0) {
-        throw new Error('No deities returned from database');
-      }
-      setFeaturedDeities(data);
-
-      const stored = await StorageService.getStoredDeity();
-      if (stored && !isDeityComingSoon(stored)) {
-        const found = data.find((d) => d.id === stored.id || d.name === stored.name);
-        setSelectedDeity(found || stored);
-      } else {
-        const firstReady = data.find((d) => !isDeityComingSoon(d)) || data[0];
-        setSelectedDeity(firstReady);
-      }
-    } catch (err: any) {
-      // Graceful offline fallback to bundled featured catalog
-      const fallback = (ALL_DEITIES_CATALOG || []).filter((d) => d.isFeatured);
-      if (fallback.length > 0) {
-        setFeaturedDeities(fallback);
-        const firstReady = fallback.find((d) => !isDeityComingSoon(d)) || fallback[0];
-        setSelectedDeity(firstReady);
-        setError(null);
-      } else {
-        setError(err?.message || 'Failed to load deities from database');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Restore stored active deity to highlight current selection
   useEffect(() => {
-    loadFeaturedDeities();
+    StorageService.getStoredDeity().then((stored) => {
+      if (stored) {
+        setActiveDeityId(stored.id || (stored as any).slug || null);
+      }
+    });
   }, []);
 
-  // Auto-dismiss coming soon toast
-  useEffect(() => {
-    if (comingSoonToast) {
-      const timer = setTimeout(() => setComingSoonToast(null), 3500);
-      return () => clearTimeout(timer);
-    }
-  }, [comingSoonToast]);
-
-  // Android Hardware Back handling
-  useEffect(() => {
-    const onHardwareBackPress = () => {
-      if (allDeitiesModalVisible) {
-        setAllDeitiesModalVisible(false);
-        return true;
+  // Fetch deities strictly from DB via API response (Strictly ZERO mock or fake data)
+  const fetchDeities = useCallback(
+    async (queryText: string, isManualRefresh = false) => {
+      if (isManualRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
       }
-      onBack();
-      return true;
+      setError(null);
+
+      try {
+        const data = await ApiService.getDeities({
+          search: queryText || undefined,
+          lang: currentLanguage,
+        });
+        setDeities(Array.isArray(data) ? data : []);
+      } catch (err: any) {
+        console.warn('[ChooseDeityScreen] DB fetch notice:', err?.message || err);
+        setError(err?.message || 'Failed to load deities from database.');
+        setDeities([]);
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [currentLanguage]
+  );
+
+  useEffect(() => {
+    let isCancelled = false;
+    const timer = setTimeout(() => {
+      if (!isCancelled) {
+        fetchDeities(searchQuery.trim());
+      }
+    }, 280);
+
+    return () => {
+      isCancelled = true;
+      clearTimeout(timer);
     };
+  }, [searchQuery, fetchDeities]);
 
-    const backSub = BackHandler.addEventListener('hardwareBackPress', onHardwareBackPress);
-    return () => backSub.remove();
-  }, [allDeitiesModalVisible, onBack]);
+  const handleSelectDeity = async (item: DeityItem) => {
+    setActiveDeityId(item.id);
+    await StorageService.setStoredDeity(item);
+    onContinue(item);
+  };
 
-  const handleSelectFeatured = (deity: DeityItem) => {
-    if (isDeityComingSoon(deity)) {
-      setComingSoonToast(
-        `${getDeityDisplayName(deity)} services & poojas are coming soon! Please choose Lord Ayyappa, Lord Shiva, Lord Ganapathi, or Lord Karthikeya.`
-      );
-      return;
+  const getLocalizedName = (item: DeityItem): string => {
+    if (currentLanguage === 'en') return item.englishName || item.name;
+    if (currentLanguage === 'te') return item.teluguName || item.name;
+    if (currentLanguage === 'ta') return item.tamilName || item.englishName || item.name;
+    if (currentLanguage === 'kn') return item.kannadaName || item.englishName || item.name;
+    if (currentLanguage === 'hi') return item.hindiName || item.englishName || item.name;
+    return item.name || item.englishName || item.teluguName || '';
+  };
+
+  const getSubtitle = (item: DeityItem): string => {
+    if (item.description && item.description.trim()) {
+      return item.description.trim();
     }
-    setComingSoonToast(null);
-    setSelectedDeity(deity);
-  };
-
-  const handleSelectFromAll = (deity: DeityItem) => {
-    if (isDeityComingSoon(deity)) {
-      setComingSoonToast(
-        `${getDeityDisplayName(deity)} services & poojas are coming soon! Please choose Lord Ayyappa, Lord Shiva, Lord Ganapathi, or Lord Karthikeya.`
-      );
-      return;
+    const aliases = (item as any).aliases;
+    if (Array.isArray(aliases) && aliases.length > 0) {
+      return aliases.slice(0, 3).join(' • ');
     }
-    setComingSoonToast(null);
-    setSelectedDeity(deity);
-    setAllDeitiesModalVisible(false);
-  };
-
-  const handleContinuePress = async () => {
-    if (!selectedDeity || isDeityComingSoon(selectedDeity)) {
-      setComingSoonToast('Please select an active deity (Lord Ayyappa, Lord Shiva, Lord Ganapathi, or Lord Karthikeya) to continue.');
-      return;
+    if (currentLanguage === 'te') {
+      return 'భక్తి పూజలు, స్తోత్రాలు & సేవలు';
     }
-    await StorageService.setStoredDeity(selectedDeity);
-    onContinue(selectedDeity);
+    if (currentLanguage === 'ta') {
+      return 'பக்தி பூஜைகள் மற்றும் ஸ்தோத்திரங்கள்';
+    }
+    if (currentLanguage === 'kn') {
+      return 'ಭಕ್ತಿ ಪೂಜೆಗಳು ಮತ್ತು ಸ್ತೋತ್ರಗಳು';
+    }
+    if (currentLanguage === 'hi') {
+      return 'भक्ति पूजा, स्तोत्र एवं सेवाएं';
+    }
+    return 'Devotional Prayers, Sevas & Stotras';
   };
 
-  // Catalog of all deities when expanded (from API or bundled catalog)
-  const allDeitiesList =
-    featuredDeities.length > 6
-      ? featuredDeities
-      : (ALL_DEITIES_CATALOG && ALL_DEITIES_CATALOG.length > 6
-          ? (ALL_DEITIES_CATALOG as DeityItem[])
-          : featuredDeities);
-
-  // Initial state strictly renders 6 cards only; expands to all upon tapping "View All Deities"
-  const displayedDeities = showAllDeities
-    ? allDeitiesList
-    : featuredDeities.slice(0, 6);
-
-  // Check if selected deity is outside the 6 initial cards
-  const isCustomSelected = Boolean(
-    selectedDeity && !featuredDeities.slice(0, 6).some((d) => d.id === selectedDeity.id)
-  );
-
-  // Helper for localized deity name
-  const getDeityDisplayName = (item: DeityItem | null | undefined): string => {
-    if (!item) return '';
-    if (currentLanguage === 'te' && item.teluguName) return item.teluguName;
-    if (currentLanguage === 'ta' && item.tamilName) return item.tamilName;
-    if (currentLanguage === 'kn' && item.kannadaName) return item.kannadaName;
-    if (currentLanguage === 'hi' && item.hindiName) return item.hindiName;
-    return item.name;
-  };
-
-  const contentBody = (
-    <View style={styles.fixedContentContainer}>
-      {/* 2. Authentic Saranam Ayyappa Logo (Image 2) */}
-      <View style={styles.logoContainer}>
-        <Image
-          source={getLogoSource(SARANAM_DEITY_EMBLEM)}
-          onError={onLogoError}
-          style={styles.logoImage}
-          resizeMode="contain"
-        />
-      </View>
-
-      {/* 3. Main Ivory Ornamental Panel (Image 1 Layout) */}
-      <View style={styles.panelShadowWrapper}>
-        <LinearGradient
-          colors={['#FFFBF2', '#FAF3E3', '#F5EBD8']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          style={styles.ornamentalPanel}
-        >
-          {/* Panel Top Curved Golden Crest Motif */}
-          <View style={styles.panelCrownContainer}>
-            <View style={styles.crownFlankLine} />
-            <View style={styles.crownDiamond}>
-              <Svg width={18} height={14} viewBox="0 0 18 14" fill="none">
-                <Path d="M9 1 L14 7 L9 13 L4 7 Z" fill="#DFA62E" />
-                <Circle cx="9" cy="7" r="1.8" fill="#FFFBF2" />
-                <Circle cx="2" cy="7" r="1.3" fill="#DFA62E" />
-                <Circle cx="16" cy="7" r="1.3" fill="#DFA62E" />
-              </Svg>
-            </View>
-            <View style={styles.crownFlankLine} />
-          </View>
-
-          {/* 4. Title: Choose Your Deity */}
-          <View style={styles.headingRow}>
-            <View style={styles.headingLine} />
-            <Text style={styles.headingText}>Choose Your Deity</Text>
-            <View style={styles.headingLine} />
-          </View>
-
-          {/* 5. Subtitle */}
-          <Text style={styles.subtitleText}>
-            Select your preferred deity for a personalized{'\n'}devotional experience
-          </Text>
-
-          {/* 6. Six Featured Deity Cards (3 columns x 2 rows) */}
-          {loading ? (
-            <View style={styles.stateCenterContainer}>
-              <ActivityIndicator size="small" color="#0B4420" />
-              <Text style={styles.stateLoadingText}>Loading deities from database...</Text>
-            </View>
-          ) : error ? (
-            <View style={styles.stateCenterContainer}>
-              <Text style={styles.stateErrorText}>{error}</Text>
-              <TouchableOpacity style={styles.stateRetryBtn} onPress={loadFeaturedDeities}>
-                <Text style={styles.stateRetryBtnText}>Retry</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <View style={styles.cardsGrid}>
-              {displayedDeities.map((deity) => {
-                const isComingSoon = isDeityComingSoon(deity);
-                const isSelected = selectedDeity?.id === deity.id;
-                const displayName = getDeityDisplayName(deity);
-                const imageSource = resolveDeityImage(deity);
-
-                return (
-                  <TouchableOpacity
-                    key={deity.id}
-                    style={[
-                      styles.deityCard,
-                      isSelected ? styles.deityCardSelected : styles.deityCardUnselected,
-                      isComingSoon && styles.deityCardComingSoon,
-                    ]}
-                    onPress={() => handleSelectFeatured(deity)}
-                    activeOpacity={0.85}
-                    accessibilityRole="radio"
-                    accessibilityState={{ selected: isSelected }}
-                    accessibilityLabel={`${deity.name}, ${isComingSoon ? 'Coming Soon' : isSelected ? 'Selected' : 'Unselected'}`}
-                  >
-                    {/* Deity Portrait Artwork with Radiant Glow */}
-                    <View style={styles.cardImageContainer}>
-                      {/* "Coming Soon" Badge Above Image */}
-                      {isComingSoon && (
-                        <View style={styles.comingSoonBadge}>
-                          <Text style={styles.comingSoonBadgeText}>Coming Soon</Text>
-                        </View>
-                      )}
-
-                      <Image
-                        source={imageSource}
-                        style={[styles.deityArtwork, isComingSoon && styles.deityArtworkComingSoon]}
-                        resizeMode="contain"
-                      />
-
-                      {/* Circular Green Checkmark Badge on Selected */}
-                      {isSelected && !isComingSoon && (
-                        <View style={styles.checkmarkBadge}>
-                          <Svg width={11} height={11} viewBox="0 0 14 14" fill="none">
-                            <Path
-                              d="M2.5 7 L5.5 10 L11.5 3.5"
-                              stroke="#FFFFFF"
-                              strokeWidth={2.4}
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </Svg>
-                        </View>
-                      )}
-                    </View>
-
-                    {/* Deity Name */}
-                    <Text
-                      style={[
-                        styles.cardNameText,
-                        isSelected && styles.cardNameTextSelected,
-                        isComingSoon && styles.cardNameTextComingSoon,
-                      ]}
-                      numberOfLines={2}
-                    >
-                      {displayName}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          )}
-
-          {/* Coming Soon Toast Banner */}
-          {comingSoonToast && (
-            <View style={styles.comingSoonToastBox}>
-              <Text style={styles.comingSoonToastIcon}>⏳</Text>
-              <Text style={styles.comingSoonToastText}>{comingSoonToast}</Text>
-            </View>
-          )}
-
-          {/* Optional Indicator if selected deity is from "All Deities" */}
-          {isCustomSelected && selectedDeity && (
-            <View style={styles.customSelectionBadge}>
-              <Text style={styles.customSelectionCheck}>✓</Text>
-              <Text style={styles.customSelectionText} numberOfLines={1}>
-                Selected: {getDeityDisplayName(selectedDeity)}
-              </Text>
-            </View>
-          )}
-
-          {/* 7. View All Deities Button (Expands 6 cards to show all deities dynamically on this screen) */}
-          <TouchableOpacity
-            style={styles.viewAllButton}
-            onPress={() => setShowAllDeities((prev) => !prev)}
-            activeOpacity={0.85}
-            accessibilityRole="button"
-            accessibilityLabel={showAllDeities ? 'Show Fewer Deities' : 'View All Deities'}
-          >
-            {/* Left 9-Dot Grid Icon */}
-            <View style={styles.viewAllIconWrapper}>
-              <Svg width={16} height={16} viewBox="0 0 18 18" fill="none">
-                <Circle cx="3" cy="3" r="1.8" fill="#063E2D" />
-                <Circle cx="9" cy="3" r="1.8" fill="#063E2D" />
-                <Circle cx="15" cy="3" r="1.8" fill="#063E2D" />
-                <Circle cx="3" cy="9" r="1.8" fill="#063E2D" />
-                <Circle cx="9" cy="9" r="1.8" fill="#063E2D" />
-                <Circle cx="15" cy="9" r="1.8" fill="#063E2D" />
-                <Circle cx="3" cy="15" r="1.8" fill="#063E2D" />
-                <Circle cx="9" cy="15" r="1.8" fill="#063E2D" />
-                <Circle cx="15" cy="15" r="1.8" fill="#063E2D" />
-              </Svg>
-            </View>
-
-            <Text style={styles.viewAllButtonText}>
-              {showAllDeities ? 'Show Fewer Deities' : 'View All Deities'}
-            </Text>
-
-            {/* Right Chevron / Indicator */}
-            <Text style={styles.viewAllChevron}>
-              {showAllDeities ? '▲' : '›'}
-            </Text>
-          </TouchableOpacity>
-
-          {/* 8. Full-Width Deep Green Continue Button */}
-          <TouchableOpacity
-            style={[
-              styles.continueButtonWrapper,
-              (loading || !selectedDeity) && { opacity: 0.6 },
-            ]}
-            onPress={handleContinuePress}
-            disabled={loading || !selectedDeity}
-            activeOpacity={0.88}
-            accessibilityRole="button"
-            accessibilityLabel="Continue"
-          >
-            <LinearGradient
-              colors={['#075E2B', '#094C23', '#0B4420']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.continueButtonGradient}
-            >
-              <Text style={styles.continueButtonText}>Continue →</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-
-          {/* 9. Bottom Decorative Mountain & Temple Landscape */}
-          <View style={styles.bottomArtworkContainer}>
-            <Image
-              source={BOTTOM_GREEN_HILLS}
-              style={styles.bottomArtworkImage}
-              resizeMode="contain"
-            />
-          </View>
-        </LinearGradient>
-      </View>
-    </View>
-  );
+  const screenTitle = SCREEN_TITLES[currentLanguage] || SCREEN_TITLES.en;
+  const placeholderText = SEARCH_PLACEHOLDERS[currentLanguage] || SEARCH_PLACEHOLDERS.en;
 
   return (
     <View style={styles.root}>
-      <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
+      <StatusBar barStyle="light-content" backgroundColor="#173D32" translucent={false} />
 
-      {/* 1. Full-Screen Scenic Devotional Temple Background (Image 3) */}
-      <ImageBackground
-        source={SARANAM_DEITY_BG}
-        style={styles.fullScreenBackground}
-        imageStyle={styles.backgroundImageStyle}
-        resizeMode="cover"
-      >
-        <SafeAreaView style={styles.safeArea}>
-          {/* Top Floating Circular Back Button (Image 1 top left) */}
-          <View style={styles.topNavRow}>
+      {/* =========================================================
+          1. SACRED GREEN HEADER WITH CORNER FILIGREE
+         ========================================================= */}
+      <SafeAreaView style={styles.safeHeaderArea}>
+        <LinearGradient
+          colors={['#173D32', '#173D32', '#0C251E']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.headerBar}
+        >
+          {/* Corner Filigree Ornaments */}
+          <View style={styles.cornerTopLeft}>
+            <HeaderCornerFiligree />
+          </View>
+          <View style={styles.cornerTopRight}>
+            <HeaderCornerFiligree />
+          </View>
+
+          {/* Left: Back Button */}
+          {onBack && (
             <TouchableOpacity
-              style={styles.backButtonCircle}
+              style={styles.backBtn}
               onPress={onBack}
-              activeOpacity={0.8}
+              activeOpacity={0.7}
               hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
               accessibilityRole="button"
-              accessibilityLabel="Back to Language Selection"
+              accessibilityLabel="Back"
             >
               <Text style={styles.backArrowText}>←</Text>
             </TouchableOpacity>
-          </View>
-
-          {SCREEN_HEIGHT < 720 || showAllDeities ? (
-            <ScrollView
-              contentContainerStyle={styles.scrollContentContainer}
-              showsVerticalScrollIndicator={false}
-              bounces={false}
-              keyboardShouldPersistTaps="handled"
-            >
-              {contentBody}
-            </ScrollView>
-          ) : (
-            contentBody
           )}
-        </SafeAreaView>
-      </ImageBackground>
 
-      {/* Dedicated All Deities Screen / Modal */}
-      <AllDeitiesScreen
-        visible={allDeitiesModalVisible}
-        selectedDeity={selectedDeity || featuredDeities[0] || ({ id: 'ayyappa', name: 'Lord Ayyappa' } as DeityItem)}
-        currentLanguage={currentLanguage}
-        onSelectDeity={handleSelectFromAll}
-        onClose={() => setAllDeitiesModalVisible(false)}
-      />
+          {/* Center Title */}
+          <View style={styles.headerTitleContainer}>
+            <Text style={styles.headerTitleText} numberOfLines={1}>
+              {screenTitle}
+            </Text>
+          </View>
+        </LinearGradient>
+      </SafeAreaView>
+
+      {/* =========================================================
+          2. SEARCH BAR (MATCHING SERVICES SCREEN DESIGN)
+         ========================================================= */}
+      <View style={styles.searchBarWrapper}>
+        <View style={styles.searchBox}>
+          <SearchIcon size={19} color="#173D32" />
+          <TextInput
+            style={styles.searchInput}
+            placeholder={placeholderText}
+            placeholderTextColor="#8C7661"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            returnKeyType="search"
+            autoCorrect={false}
+            autoCapitalize="none"
+            clearButtonMode="while-editing"
+          />
+          {loading && (
+            <ActivityIndicator size="small" color="#DFA62E" style={styles.searchSpinner} />
+          )}
+          {searchQuery.length > 0 && !loading && (
+            <TouchableOpacity
+              onPress={() => setSearchQuery('')}
+              style={styles.clearBtn}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={styles.clearBtnText}>✕</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
+      {/* =========================================================
+          3. SCROLLABLE DEITIES LIST (SERVICES LAYOUT & CARDS)
+         ========================================================= */}
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => fetchDeities(searchQuery.trim(), true)}
+            colors={['#173D32', '#DFA62E']}
+            tintColor="#173D32"
+          />
+        }
+      >
+        {/* Animated Skeleton Loading */}
+        {loading && deities.length === 0 && (
+          <CategorySkeleton count={8} />
+        )}
+
+        {/* Error State with Retry Button */}
+        {error && !loading && deities.length === 0 && (
+          <View style={styles.centerContainer}>
+            <Text style={styles.errorIcon}>⚠️</Text>
+            <Text style={styles.errorTitle}>Database Connection Notice</Text>
+            <Text style={styles.errorSubtitle}>{error}</Text>
+            <TouchableOpacity
+              style={styles.retryBtn}
+              onPress={() => fetchDeities(searchQuery.trim())}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.retryBtnText}>Retry Connection</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Empty State */}
+        {!loading && !error && deities.length === 0 && (
+          <View style={styles.centerContainer}>
+            <Text style={styles.emptyIcon}>🔍</Text>
+            <Text style={styles.emptyTitle}>
+              {searchQuery.trim()
+                ? `No deities found for "${searchQuery.trim()}"`
+                : 'No deities available in database'}
+            </Text>
+            {searchQuery.trim().length > 0 && (
+              <TouchableOpacity
+                style={styles.clearFilterBtn}
+                onPress={() => setSearchQuery('')}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.clearFilterBtnText}>Clear Search Filter</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
+        {/* Deities Cards List (Exact Services Screen Layout) */}
+        {deities.length > 0 && (
+          <View style={styles.listContainer}>
+            {deities.map((item) => {
+              const localizedName = getLocalizedName(item);
+              const subtitle = getSubtitle(item);
+              const isSelected = activeDeityId === item.id || activeDeityId === (item as any).slug;
+              const deityImageSource = resolveDeityImage(item);
+
+              return (
+                <TouchableOpacity
+                  key={item.id}
+                  style={[
+                    styles.deityCard,
+                    isSelected && styles.deityCardSelected,
+                  ]}
+                  activeOpacity={0.82}
+                  onPress={() => handleSelectDeity(item)}
+                  accessibilityRole="button"
+                  accessibilityLabel={localizedName}
+                >
+                  {/* Left: Rounded Square Medallion with Deity Image Avatar */}
+                  <LinearGradient
+                    colors={['#173D32', '#173D32', '#0C251E']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.iconSquare}
+                  >
+                    <Image
+                      source={deityImageSource}
+                      style={styles.deityImage}
+                      resizeMode="cover"
+                    />
+                  </LinearGradient>
+
+                  {/* Center: Deity Title & Description */}
+                  <View style={styles.textContainer}>
+                    <View style={styles.titleRow}>
+                      <Text style={styles.cardTitle} numberOfLines={1}>
+                        {localizedName}
+                      </Text>
+                      {isSelected && (
+                        <View style={styles.selectedBadge}>
+                          <Text style={styles.selectedBadgeText}>Active</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={styles.cardSubtitle} numberOfLines={1}>
+                      {subtitle}
+                    </Text>
+                  </View>
+
+                  {/* Right: Sacred Chevron Arrow */}
+                  <View style={styles.chevronContainer}>
+                    <ChevronRightIcon />
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
+      </ScrollView>
     </View>
   );
 };
@@ -468,433 +375,260 @@ export const ChooseDeityScreen: React.FC<ChooseDeityScreenProps> = ({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#1B542C', // Pearl Green
+    backgroundColor: '#FAF5EB',
   },
-  fullScreenBackground: {
-    flex: 1,
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#1B542C',
+  safeHeaderArea: {
+    backgroundColor: '#173D32',
   },
-  backgroundImageStyle: {
-    opacity: 0.7, // 70% opacity
-  },
-  safeArea: {
-    flex: 1,
-  },
-  topNavRow: {
+  headerBar: {
+    height: 52,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-start',
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 16) + 4 : 8,
-    zIndex: 20,
+    position: 'relative',
+    borderBottomWidth: 1.2,
+    borderBottomColor: '#DFA62E',
   },
-  backButtonCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#FFFDF8',
-    borderWidth: 1.4,
-    borderColor: '#DFA62E',
+  cornerTopLeft: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+  },
+  cornerTopRight: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    transform: [{ scaleX: -1 }],
+  },
+  backBtn: {
+    width: 36,
+    height: 36,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#173D32',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.16,
-    shadowRadius: 4,
-    elevation: 3,
+    zIndex: 10,
   },
   backArrowText: {
-    color: '#063E2D',
-    fontSize: 20,
+    color: '#FFF8EB',
+    fontSize: 24,
     fontWeight: '700',
-    marginTop: Platform.OS === 'ios' ? -2 : -3,
+    marginTop: Platform.OS === 'ios' ? -2 : -4,
   },
-
-  fixedContentContainer: {
-    flex: 1,
-    width: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingBottom: Platform.OS === 'ios' ? 14 : 8,
-  },
-  scrollContentContainer: {
-    alignItems: 'center',
-    paddingBottom: 24,
-  },
-
-  // Centered Saranam Ayyappa Logo (Image 2) - Increased by 25% for prominent devotional presentation
-  logoContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: SCREEN_HEIGHT < 700 ? -12 : -6,
-    marginBottom: SCREEN_HEIGHT < 700 ? -22 : -16,
-    zIndex: 10,
-  },
-  logoImage: {
-    width: SCREEN_HEIGHT < 700 ? 145 : (SCREEN_HEIGHT < 820 ? 168 : 185),
-    height: SCREEN_HEIGHT < 700 ? 160 : (SCREEN_HEIGHT < 820 ? 185 : 205),
-  },
-
-  // Main Ivory Ornamental Panel (Image 1)
-  panelShadowWrapper: {
-    width: PANEL_MAX_WIDTH,
-    borderRadius: 30,
-    shadowColor: '#DFA62E',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.22,
-    shadowRadius: 14,
-    elevation: 7,
-  },
-  ornamentalPanel: {
-    width: '100%',
-    borderRadius: 30,
-    borderWidth: 1.6,
-    borderColor: '#DFA62E',
-    paddingTop: SCREEN_HEIGHT < 700 ? 10 : 14,
-    paddingBottom: SCREEN_HEIGHT < 700 ? 4 : 6,
-    paddingHorizontal: PANEL_PADDING,
-    alignItems: 'center',
-    position: 'relative',
-    overflow: 'hidden',
-  },
-
-  // Panel Top Decorative Crest
-  panelCrownContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 5,
-    width: '100%',
-  },
-  crownFlankLine: {
-    width: 32,
-    height: 1.2,
-    backgroundColor: '#DFA62E',
-    opacity: 0.8,
-  },
-  crownDiamond: {
-    marginHorizontal: 8,
+  headerTitleContainer: {
+    position: 'absolute',
+    left: 48,
+    right: 48,
     alignItems: 'center',
     justifyContent: 'center',
   },
-
-  // Title: Choose Your Deity
-  headingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '100%',
-    marginBottom: 3,
-  },
-  headingLine: {
-    flex: 1,
-    maxWidth: 24,
-    height: 1.2,
-    backgroundColor: '#DFA62E',
-    opacity: 0.7,
-  },
-  headingText: {
-    fontSize: SCREEN_HEIGHT < 700 ? 18 : 20,
-    fontWeight: '800',
-    color: '#063E2D',
+  headerTitleText: {
     fontFamily: Platform.select({
       ios: 'Poppins-Bold',
       android: 'Poppins_700Bold',
       web: 'Poppins, sans-serif',
       default: 'Poppins_700Bold',
     }),
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFF8EB',
     letterSpacing: 0.3,
-    marginHorizontal: 8,
-    textAlign: 'center',
-  },
-  subtitleText: {
-    fontSize: SCREEN_HEIGHT < 700 ? 11 : 12,
-    color: '#3A4B43',
-    textAlign: 'center',
-    lineHeight: SCREEN_HEIGHT < 700 ? 15 : 17,
-    marginBottom: 10,
-    paddingHorizontal: 8,
   },
 
-  // 6 Featured Cards Grid
-  cardsGrid: {
+  // Search Bar
+  searchBarWrapper: {
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 6,
+    backgroundColor: '#FAF5EB',
+  },
+  searchBox: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#FFFDF8',
+    borderRadius: 12,
+    borderWidth: 1.4,
+    borderColor: '#E6C898',
+    paddingHorizontal: 12,
+    paddingVertical: Platform.OS === 'ios' ? 10 : 6,
+    shadowColor: '#071914',
+    shadowOffset: { width: 0, height: 1.5 },
+    shadowOpacity: 0.06,
+    shadowRadius: 2.5,
+    elevation: 2,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: '#0C251E',
+    marginLeft: 8,
+    padding: 0,
+    fontFamily: Platform.select({
+      ios: 'Poppins-Regular',
+      android: 'Poppins_400Regular',
+      web: 'Poppins, sans-serif',
+      default: 'Poppins_400Regular',
+    }),
+  },
+  searchSpinner: {
+    marginLeft: 6,
+  },
+  clearBtn: {
+    padding: 4,
+    marginLeft: 4,
+  },
+  clearBtnText: {
+    fontSize: 14,
+    color: '#8C7661',
+    fontWeight: 'bold',
+  },
+
+  // Content List
+  scrollContent: {
+    paddingHorizontal: 12,
+    paddingTop: 6,
+    paddingBottom: 28,
+  },
+  listContainer: {
     width: '100%',
-    marginBottom: 8,
+    gap: 10,
   },
   deityCard: {
-    width: CARD_WIDTH,
-    height: CARD_HEIGHT,
-    borderRadius: 14,
-    paddingVertical: 5,
-    paddingHorizontal: 4,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: GRID_GAP,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
+    backgroundColor: '#FFFDF8',
+    borderRadius: 14,
+    borderWidth: 1.2,
+    borderColor: '#E6C898',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    shadowColor: '#071914',
+    shadowOffset: { width: 0, height: 1.5 },
+    shadowOpacity: 0.06,
     shadowRadius: 3,
     elevation: 2,
-  },
-  deityCardUnselected: {
-    backgroundColor: '#FFFDF7',
-    borderWidth: 1.2,
-    borderColor: '#DFA62E',
-    shadowColor: '#DFA62E',
   },
   deityCardSelected: {
-    backgroundColor: '#ECF5DD',
-    borderWidth: 1.8,
-    borderColor: '#08682F',
-    shadowColor: '#08682F',
+    borderColor: '#D4932A',
+    borderWidth: 1.6,
+    backgroundColor: '#FFFBF2',
   },
-  cardImageContainer: {
-    position: 'relative',
-    width: CARD_IMAGE_SIZE + 6,
-    height: CARD_IMAGE_SIZE,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  deityArtwork: {
-    width: CARD_IMAGE_SIZE + 4,
-    height: CARD_IMAGE_SIZE,
-    borderRadius: 8,
-  },
-  deityCardComingSoon: {
-    opacity: 0.9,
-  },
-  deityArtworkComingSoon: {
-    opacity: 0.72,
-  },
-  cardNameTextComingSoon: {
-    color: '#76857E',
-  },
-  comingSoonBadge: {
-    position: 'absolute',
-    top: -4,
-    zIndex: 10,
-    backgroundColor: '#FFE9B5',
-    borderWidth: 1,
-    borderColor: '#D49216',
-    borderRadius: 6,
-    paddingHorizontal: 4,
-    paddingVertical: 1,
-    alignSelf: 'center',
-    shadowColor: '#8C5E13',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.18,
-    shadowRadius: 1.5,
-    elevation: 3,
-  },
-  comingSoonBadgeText: {
-    fontFamily: Platform.select({
-      ios: 'Poppins-Bold',
-      android: 'Poppins_700Bold',
-      web: 'Poppins, sans-serif',
-      default: 'Poppins_700Bold',
-    }),
-    fontSize: 6.8,
-    fontWeight: '800',
-    color: '#8C5E13',
-    letterSpacing: 0.3,
-    textTransform: 'uppercase',
-  },
-  comingSoonToastBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#FFF6E3',
-    borderWidth: 1.2,
-    borderColor: '#E5A932',
+  iconSquare: {
+    width: 46,
+    height: 46,
     borderRadius: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    marginBottom: 8,
-    width: '100%',
-    shadowColor: '#8C5E13',
-    shadowOffset: { width: 0, height: 1.5 },
-    shadowOpacity: 0.12,
-    shadowRadius: 3,
-    elevation: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 213, 79, 0.45)',
+    overflow: 'hidden',
   },
-  comingSoonToastIcon: {
-    fontSize: 14,
+  deityImage: {
+    width: 44,
+    height: 44,
+    borderRadius: 11,
   },
-  comingSoonToastText: {
+  textContainer: {
     flex: 1,
+    justifyContent: 'center',
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  cardTitle: {
     fontFamily: Platform.select({
-      ios: 'Poppins-Medium',
-      android: 'Poppins_500Medium',
-      web: 'Poppins, sans-serif',
-      default: 'Poppins_500Medium',
+      ios: 'Georgia',
+      android: 'serif',
+      default: 'serif',
     }),
-    fontSize: 10.5,
-    color: '#7D4F00',
-    lineHeight: 14.5,
-  },
-  checkmarkBadge: {
-    position: 'absolute',
-    top: -3,
-    right: -4,
-    width: 17,
-    height: 17,
-    borderRadius: 8.5,
-    backgroundColor: '#08682F',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.2,
-    borderColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  cardNameText: {
-    fontSize: SCREEN_HEIGHT < 700 ? 10.5 : 11.5,
+    fontSize: 15.5,
     fontWeight: '700',
-    color: '#063E2D',
-    textAlign: 'center',
-    marginTop: 3,
-    lineHeight: 14,
-  },
-  cardNameTextSelected: {
-    color: '#08682F',
-  },
-
-  // Custom Selection Pill (when user selected a non-featured deity from All Deities)
-  customSelectionBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ECF5DD',
-    borderWidth: 1.2,
-    borderColor: '#08682F',
-    borderRadius: 14,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    marginBottom: 6,
-    width: '100%',
-    justifyContent: 'center',
-  },
-  customSelectionCheck: {
-    color: '#08682F',
-    fontSize: 12,
-    fontWeight: '800',
-    marginRight: 6,
-  },
-  customSelectionText: {
-    fontSize: 11.5,
-    fontWeight: '700',
-    color: '#08682F',
-  },
-
-  // View All Deities Button
-  viewAllButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    width: '100%',
-    height: SCREEN_HEIGHT < 700 ? 38 : 42,
-    borderRadius: 21,
-    backgroundColor: '#FFFDF7',
-    borderWidth: 1.2,
-    borderColor: '#DFA62E',
-    paddingHorizontal: 16,
-    marginBottom: 8,
-    shadowColor: '#DFA62E',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  viewAllIconWrapper: {
-    width: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  viewAllButtonText: {
-    fontSize: 13.5,
-    fontWeight: '700',
-    color: '#063E2D',
+    color: '#0C251E',
     letterSpacing: 0.2,
   },
-  viewAllChevron: {
-    fontSize: 20,
+  selectedBadge: {
+    backgroundColor: '#173D32',
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 6,
+  },
+  selectedBadgeText: {
+    color: '#FFD54F',
+    fontSize: 10,
     fontWeight: '700',
-    color: '#063E2D',
-    marginTop: -2,
   },
-
-  // Continue Button
-  continueButtonWrapper: {
-    width: '100%',
-    height: SCREEN_HEIGHT < 700 ? 42 : 46,
-    borderRadius: 23,
-    overflow: 'hidden',
-    shadowColor: '#075E2B',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.32,
-    shadowRadius: 8,
-    elevation: 5,
-    marginBottom: 4,
-  },
-  continueButtonGradient: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  continueButtonText: {
-    color: '#FFFFFF',
-    fontSize: SCREEN_HEIGHT < 700 ? 14 : 15.5,
-    fontWeight: '800',
-    letterSpacing: 0.4,
-  },
-
-  // Bottom Green Hills Landscape (Image 1 bottom)
-  bottomArtworkContainer: {
-    width: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: -4,
-    marginBottom: -4,
-  },
-  bottomArtworkImage: {
-    width: '100%',
-    height: SCREEN_HEIGHT < 700 ? 32 : 40,
-  },
-
-  stateCenterContainer: {
-    height: 180,
-    width: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
-  },
-  stateLoadingText: {
-    marginTop: 8,
+  cardSubtitle: {
+    fontFamily: Platform.select({
+      ios: 'Poppins-Regular',
+      android: 'Poppins_400Regular',
+      default: 'System',
+    }),
     fontSize: 12,
-    color: '#0B4420',
-    fontWeight: '600',
+    color: '#6E6152',
+    marginTop: 2,
   },
-  stateErrorText: {
-    fontSize: 12,
-    color: '#B71C1C',
-    textAlign: 'center',
+  chevronContainer: {
+    marginLeft: 8,
+    width: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // Error & Empty States
+  centerContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 48,
+    paddingHorizontal: 20,
+  },
+  errorIcon: {
+    fontSize: 36,
     marginBottom: 8,
   },
-  stateRetryBtn: {
-    backgroundColor: '#0B4420',
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  stateRetryBtnText: {
-    color: '#FFF8EB',
-    fontSize: 11,
+  errorTitle: {
+    fontSize: 16,
     fontWeight: '700',
+    color: '#0C251E',
+    marginBottom: 4,
+  },
+  errorSubtitle: {
+    fontSize: 13,
+    color: '#6E6152',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  retryBtn: {
+    backgroundColor: '#173D32',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  retryBtnText: {
+    color: '#FFF8EB',
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  emptyIcon: {
+    fontSize: 36,
+    marginBottom: 8,
+  },
+  emptyTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#6E6152',
+    textAlign: 'center',
+  },
+  clearFilterBtn: {
+    marginTop: 12,
+    backgroundColor: '#E6C898',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  clearFilterBtnText: {
+    color: '#0C251E',
+    fontWeight: '700',
+    fontSize: 12,
   },
 });

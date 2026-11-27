@@ -62,6 +62,106 @@ const BANNER_MARGIN = 0;
 const BANNER_WIDTH = SCREEN_WIDTH - (HERO_CARD_MARGIN * 2);
 const BANNER_HEIGHT = 175;
 
+const HOME_UI_TEXTS: Record<string, {
+  searchPlaceholder: string;
+  heroGreeting: string;
+  heroDesc: string;
+  heroExplore: string;
+  drawerChooseLanguage: string;
+  drawerPanchangam: string;
+  drawerFestivals: string;
+  drawerServices: string;
+  drawerAbout: string;
+  drawerContact: string;
+  drawerShare: string;
+  drawerClose: string;
+}> = {
+  te: {
+    searchPlaceholder: 'సేవను వెతకండి...',
+    heroGreeting: 'తత్త్వమసి',
+    heroDesc: 'మీ నిత్య పూజలు, పంచాంగం, ఆలయాలు & ఆధ్యాత్మిక మార్గదర్శనం.',
+    heroExplore: 'ఇప్పుడే దర్శించండి  →',
+    drawerChooseLanguage: 'భాషను ఎంచుకోండి',
+    drawerPanchangam: 'నేటి పంచాంగం',
+    drawerFestivals: 'పండుగలు & విశేష దినాలు',
+    drawerServices: 'ఆధ్యాత్మిక సేవలు',
+    drawerAbout: 'శరణం అయ్యప్ప గురించి',
+    drawerContact: 'సంప్రదించండి & మద్దతు',
+    drawerShare: 'యాప్‌ను భాగస్వామ్యం చేయండి',
+    drawerClose: '✕ మెనూ మూసివేయి',
+  },
+  kn: {
+    searchPlaceholder: 'ಸೇವೆಯನ್ನು ಹುಡುಕಿ...',
+    heroGreeting: 'ತತ್ತ್ವಮಸಿ',
+    heroDesc: 'ನಿಮ್ಮ ನಿತ್ಯ ಪೂಜೆಗಳು, ಪಂಚಾಂಗ, ದೇವಾಲಯಗಳು & ಆಧ್ಯಾತ್ಮಿಕ ಮಾರ್ಗದರ್ಶನ.',
+    heroExplore: 'ಈಗಲೇ ವೀಕ್ಷಿಸಿ  →',
+    drawerChooseLanguage: 'ಭಾಷೆಯನ್ನು ಆಯ್ಕೆಮಾಡಿ',
+    drawerPanchangam: 'ಇಂದಿನ ಪಂಚಾಂಗ',
+    drawerFestivals: 'ಹಬ್ಬಗಳು & ವಿಶೇಷ ದಿನಗಳು',
+    drawerServices: 'ಆಧ್ಯಾತ್ಮಿಕ ಸೇವೆಗಳು',
+    drawerAbout: 'ಶರಣಂ ಅಯ್ಯಪ್ಪ ಬಗ್ಗೆ',
+    drawerContact: 'ಸಂಪರ್ಕಿಸಿ & ಬೆಂಬಲ',
+    drawerShare: 'ಅಪ್ಲಿಕೇಶನ್ ಹಂಚಿಕೊಳ್ಳಿ',
+    drawerClose: '✕ ಮೆನು ಮುಚ್ಚಿ',
+  },
+  ta: {
+    searchPlaceholder: 'சேவையைத் தேடுங்கள்...',
+    heroGreeting: 'தத்துவமசி',
+    heroDesc: 'உங்கள் தினசரி பூஜைகள், பஞ்சாங்கம், கோயில்கள் & ஆன்மீக வழிகாட்டுதல்.',
+    heroExplore: 'இப்போதே காண்க  →',
+    drawerChooseLanguage: 'மொழியைத் தேர்ந்தெடுக்கவும்',
+    drawerPanchangam: 'இன்றைய பஞ்சாங்கம்',
+    drawerFestivals: 'திருவிழாக்கள் & சிறப்பு நாட்கள்',
+    drawerServices: 'ஆன்மீக சேவைகள்',
+    drawerAbout: 'சரணம் ஐயப்பா பற்றி',
+    drawerContact: 'தொடர்பு & ஆதரவு',
+    drawerShare: 'செயலியைப் பகிரவும்',
+    drawerClose: '✕ மெனுவை மூடு',
+  },
+  hi: {
+    searchPlaceholder: 'सेवा खोजें...',
+    heroGreeting: 'तत्त्वमसि',
+    heroDesc: 'आपकी नित्य पूजा, पंचांग, मंदिर और आध्यात्मिक मार्गदर्शन।',
+    heroExplore: 'अभी देखें  →',
+    drawerChooseLanguage: 'भाषा चुनें',
+    drawerPanchangam: 'आज का पंचांग',
+    drawerFestivals: 'त्यौहार एवं विशेष दिन',
+    drawerServices: 'आध्यात्मिक सेवाएँ',
+    drawerAbout: 'शरणम अय्यप्पा के बारे में',
+    drawerContact: 'संपर्क एवं सहायता',
+    drawerShare: 'ऐप साझा करें',
+    drawerClose: '✕ मेनू बंद करें',
+  },
+  ml: {
+    searchPlaceholder: 'സേവനം തിരയുക...',
+    heroGreeting: 'തത്ത്വമസി',
+    heroDesc: 'നിങ്ങളുടെ നിത്യ പൂജകൾ, പഞ്ചാംഗം, ക്ഷേത്രങ്ങൾ & ആത്മീയ മാർഗ്ഗനിർദ്ദേശം.',
+    heroExplore: 'ഇപ്പോൾ കാണുക  →',
+    drawerChooseLanguage: 'ഭാഷ തിരഞ്ഞെടുക്കുക',
+    drawerPanchangam: 'ഇന്നത്തെ പഞ്ചാംഗം',
+    drawerFestivals: 'ഉത്സവങ്ങളും വിശേഷ ദിനങ്ങളും',
+    drawerServices: 'ആത്മീയ സേവനങ്ങൾ',
+    drawerAbout: 'ശരണം അയ്യപ്പയെക്കുറിച്ച്',
+    drawerContact: 'ബന്ധപ്പെടുക & പിന്തുണ',
+    drawerShare: 'ആപ്പ് പങ്കിടുക',
+    drawerClose: '✕ മെനു അടയ്ക്കുക',
+  },
+  en: {
+    searchPlaceholder: 'Search for a service',
+    heroGreeting: 'Thathwamasi',
+    heroDesc: 'Your daily poojas, panchangam, temples & spiritual guidance.',
+    heroExplore: 'Explore Now  →',
+    drawerChooseLanguage: 'Choose Language',
+    drawerPanchangam: "Today's Panchangam",
+    drawerFestivals: 'Festivals & Sacred Days',
+    drawerServices: 'Spiritual Services',
+    drawerAbout: 'About Saranam Ayyappa',
+    drawerContact: 'Contact & Support',
+    drawerShare: 'Share Application',
+    drawerClose: '✕ Close Menu',
+  },
+};
+
 const ChevronDownIcon = ({ size = 13, color = '#E7B844' }: { size?: number; color?: string }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
     <Path d="M6 9L12 15L18 9" stroke={color} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
@@ -538,10 +638,12 @@ export const HomeScreen: React.FC<Props> = ({
               activeOpacity={0.9}
               onPress={() => (onOpenSearch ? onOpenSearch() : onNavigateToCategories?.())}
               accessibilityRole="button"
-              accessibilityLabel="Search for a service"
+              accessibilityLabel={HOME_UI_TEXTS[currentLanguage]?.searchPlaceholder || 'Search for a service'}
             >
               <HeaderSearchIcon size={14} color="#718096" />
-              <Text style={styles.unifiedSearchPlaceholder}>Search for a service</Text>
+              <Text style={styles.unifiedSearchPlaceholder}>
+                {HOME_UI_TEXTS[currentLanguage]?.searchPlaceholder || 'Search for a service'}
+              </Text>
             </TouchableOpacity>
 
             {/* Bottom Row: Inset Rounded Hero Banner Card */}
@@ -574,10 +676,12 @@ export const HomeScreen: React.FC<Props> = ({
                   </View>
 
                   <View style={styles.heroContentLeft}>
-                    <Text style={styles.heroGreetingTop}>Thathwamasi</Text>
+                    <Text style={styles.heroGreetingTop}>
+                      {HOME_UI_TEXTS[currentLanguage]?.heroGreeting || 'Thathwamasi'}
+                    </Text>
                     <HeroGoldDivider />
                     <Text style={styles.heroDevotionalDesc} numberOfLines={3}>
-                      Your daily poojas, panchangam, temples & spiritual guidance.
+                      {HOME_UI_TEXTS[currentLanguage]?.heroDesc || 'Your daily poojas, panchangam, temples & spiritual guidance.'}
                     </Text>
                     <TouchableOpacity
                       style={styles.heroExploreBtn}
@@ -590,7 +694,9 @@ export const HomeScreen: React.FC<Props> = ({
                         end={{ x: 1, y: 0 }}
                         style={styles.heroExploreGradient}
                       >
-                        <Text style={styles.heroExploreText}>Explore Now  →</Text>
+                        <Text style={styles.heroExploreText}>
+                          {HOME_UI_TEXTS[currentLanguage]?.heroExplore || 'Explore Now  →'}
+                        </Text>
                       </LinearGradient>
                     </TouchableOpacity>
                   </View>
@@ -686,9 +792,10 @@ export const HomeScreen: React.FC<Props> = ({
             3. CURVED IVORY CONTAINER (SEAMLESS DEVOTIONAL TRANSITION)
            ========================================================= */}
         <View style={styles.curvedTransitionContainer}>
-          {/* SECTION 1: SIX DEVOTIONAL SHORTCUTS (3x2 GRID) */}
+          {/* SECTION 1: DEVOTIONAL SHORTCUTS (FETCHED DYNAMICALLY FROM DB VIA API) */}
           <DevotionalShortcuts
             language={currentLanguage}
+            services={services}
             onOpenDetail={onOpenDetail}
             onOpenPanchangam={onOpenPanchangam}
             onNavigateToCategories={onNavigateToCategories}
@@ -752,7 +859,9 @@ export const HomeScreen: React.FC<Props> = ({
                 }}
               >
                 <Text style={styles.drawerMenuIcon}>🌐</Text>
-                <Text style={styles.drawerMenuText}>Choose Language</Text>
+                <Text style={styles.drawerMenuText}>
+                  {HOME_UI_TEXTS[currentLanguage]?.drawerChooseLanguage || 'Choose Language'}
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -763,7 +872,9 @@ export const HomeScreen: React.FC<Props> = ({
                 }}
               >
                 <Text style={styles.drawerMenuIcon}>📅</Text>
-                <Text style={styles.drawerMenuText}>Today's Panchangam</Text>
+                <Text style={styles.drawerMenuText}>
+                  {HOME_UI_TEXTS[currentLanguage]?.drawerPanchangam || "Today's Panchangam"}
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -775,15 +886,7 @@ export const HomeScreen: React.FC<Props> = ({
               >
                 <Text style={styles.drawerMenuIcon}>🪔</Text>
                 <Text style={styles.drawerMenuText}>
-                  {currentLanguage === 'te'
-                    ? 'పండుగలు & విశేష దినాలు'
-                    : currentLanguage === 'kn'
-                      ? 'ಹಬ್ಬಗಳು & ವಿಶೇಷ ದಿನಗಳು'
-                      : currentLanguage === 'ta'
-                        ? 'திருவிழாக்கள் & சிறப்பு நாட்கள்'
-                        : currentLanguage === 'hi'
-                          ? 'त्यौहार एवं विशेष दिन'
-                          : 'Festivals & Sacred Days'}
+                  {HOME_UI_TEXTS[currentLanguage]?.drawerFestivals || 'Festivals & Sacred Days'}
                 </Text>
               </TouchableOpacity>
 
@@ -796,15 +899,7 @@ export const HomeScreen: React.FC<Props> = ({
               >
                 <Text style={styles.drawerMenuIcon}>📑</Text>
                 <Text style={styles.drawerMenuText}>
-                  {currentLanguage === 'te'
-                    ? 'ఆధ్యాత్మిక సేవలు'
-                    : currentLanguage === 'kn'
-                      ? 'ಆಧ್ಯಾತ್ಮಿಕ ಸೇವೆಗಳು'
-                      : currentLanguage === 'ta'
-                        ? 'ஆன்மீக சேவைகள்'
-                        : currentLanguage === 'hi'
-                          ? 'आध्यात्मिक सेवाएँ'
-                          : 'Spiritual Services'}
+                  {HOME_UI_TEXTS[currentLanguage]?.drawerServices || 'Spiritual Services'}
                 </Text>
               </TouchableOpacity>
 
@@ -816,7 +911,9 @@ export const HomeScreen: React.FC<Props> = ({
                 }}
               >
                 <Text style={styles.drawerMenuIcon}>ℹ️</Text>
-                <Text style={styles.drawerMenuText}>About Saranam Ayyappa</Text>
+                <Text style={styles.drawerMenuText}>
+                  {HOME_UI_TEXTS[currentLanguage]?.drawerAbout || 'About Saranam Ayyappa'}
+                </Text>
               </TouchableOpacity>
 
               {onOpenContactScreen && (
@@ -828,7 +925,9 @@ export const HomeScreen: React.FC<Props> = ({
                   }}
                 >
                   <Text style={styles.drawerMenuIcon}>📞</Text>
-                  <Text style={styles.drawerMenuText}>Contact & Support</Text>
+                  <Text style={styles.drawerMenuText}>
+                    {HOME_UI_TEXTS[currentLanguage]?.drawerContact || 'Contact & Support'}
+                  </Text>
                 </TouchableOpacity>
               )}
 
@@ -840,7 +939,9 @@ export const HomeScreen: React.FC<Props> = ({
                 }}
               >
                 <Text style={styles.drawerMenuIcon}>📤</Text>
-                <Text style={styles.drawerMenuText}>Share Application</Text>
+                <Text style={styles.drawerMenuText}>
+                  {HOME_UI_TEXTS[currentLanguage]?.drawerShare || 'Share Application'}
+                </Text>
               </TouchableOpacity>
             </View>
 
@@ -848,7 +949,9 @@ export const HomeScreen: React.FC<Props> = ({
               style={styles.drawerCloseBtn}
               onPress={() => setDrawerOpen(false)}
             >
-              <Text style={styles.drawerCloseText}>✕ Close Menu</Text>
+              <Text style={styles.drawerCloseText}>
+                {HOME_UI_TEXTS[currentLanguage]?.drawerClose || '✕ Close Menu'}
+              </Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>

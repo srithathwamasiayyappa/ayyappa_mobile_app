@@ -18,6 +18,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { SupportedLanguage, TempleItem } from '../../../types';
 import { ApiService } from '../../../services/api';
+import { MASTER_TEMPLES } from '../../../data/templesData';
 
 interface Props {
   currentLanguage: SupportedLanguage;
@@ -207,9 +208,19 @@ export const TemplesListScreen: React.FC<Props> = ({
   };
 
   const renderTempleCard = ({ item }: { item: TempleItem }) => {
-    // Dynamic localized name
+    // Dynamic localized name with master fallback if API returned empty localNames
+    const masterFallback = MASTER_TEMPLES.find(
+      (m) =>
+        m.id === item.id ||
+        (m.slug && (m.slug === item.slug || item.id?.includes(m.slug))) ||
+        (item.name && m.name && item.name.toLowerCase().includes(m.name.toLowerCase()))
+    );
+    const resolvedLocalNames = {
+      ...(masterFallback?.localNames || {}),
+      ...(item.localNames || {}),
+    };
     const localizedName =
-      (item.localNames && item.localNames[currentLanguage]) || item.name;
+      resolvedLocalNames[currentLanguage] || item.name;
 
     return (
       <TouchableOpacity

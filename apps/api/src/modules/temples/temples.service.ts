@@ -336,7 +336,23 @@ export class TemplesService implements OnModuleInit {
       else if (t.contactJson) contact = JSON.parse(t.contactJson);
     } catch {}
 
-    const localizedName = (localNames && localNames[lang]) || t.name;
+    // Dynamic resolution if localNames for requested language is missing
+    const targetLang = (lang || 'en').toLowerCase().trim();
+    if (!localNames[targetLang]) {
+      const tSlug = (t.slug || '').toLowerCase();
+      const tName = (t.name || '').toLowerCase();
+      const matchInitial = INITIAL_TEMPLES.find(
+        (it) => it.slug === tSlug || tSlug.includes(it.slug) || (it.name && tName.includes(it.name.toLowerCase()))
+      );
+      if (matchInitial && matchInitial.localNamesJson) {
+        try {
+          const parsed = JSON.parse(matchInitial.localNamesJson);
+          localNames = { ...parsed, ...localNames };
+        } catch {}
+      }
+    }
+
+    const localizedName = (localNames && (localNames[targetLang] || localNames[lang])) || t.name;
 
     return {
       id: t.slug,

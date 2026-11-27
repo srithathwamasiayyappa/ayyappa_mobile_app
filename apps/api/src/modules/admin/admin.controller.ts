@@ -518,7 +518,61 @@ export class AdminController {
   }
 
 
-    // 4. Categories Management (Root categories: parentId == null)
+  // Synchronize dynamic category_services into content_categories root records
+  private async syncCategoryServicesToContentCategories(): Promise<void> {
+    try {
+      let services: any[] = [];
+      const sSetting = await this.prisma.appSetting.findUnique({ where: { key: 'category_services' } });
+      if (sSetting?.value) {
+        try { services = JSON.parse(sSetting.value); } catch (_) {}
+      }
+      if (!Array.isArray(services) || services.length === 0) return;
+
+      for (const service of services) {
+        const slug = (service.serviceId || service.id || '').trim();
+        if (!slug) continue;
+
+        const existing = await this.prisma.contentCategory.findFirst({
+          where: {
+            OR: [
+              { slug: slug },
+              ...(isNaN(Number(slug)) ? [] : [{ id: Number(slug) }])
+            ]
+          },
+          include: { translations: true }
+        });
+
+        if (!existing) {
+          const title = (service.title || slug).trim();
+          const desc = (service.sub || '').trim();
+          let languages = await this.prisma.language.findMany().catch(() => []);
+          const transData = languages.length > 0
+            ? languages.map(l => ({ languageId: l.id, title, description: desc }))
+            : [
+                { languageId: 1, title, description: desc },
+                { languageId: 2, title, description: desc }
+              ];
+
+          await this.prisma.contentCategory.create({
+            data: {
+              slug: slug,
+              parentId: null,
+              displayOrder: parseInt(service.displayOrder, 10) || 0,
+              isAudio: false,
+              isArchived: false,
+              translations: {
+                create: transData
+              }
+            }
+          });
+        }
+      }
+    } catch (err: any) {
+      console.warn('[Admin] syncCategoryServicesToContentCategories notice:', err?.message || err);
+    }
+  }
+
+  // 4. Categories Management (Root categories: parentId == null)
   @Get('categories')
   async getCategories(
     @Query('page') page: string = '1',
@@ -530,6 +584,7 @@ export class AdminController {
     @Query('sortBy') sortBy: string = 'displayOrder',
     @Query('sortOrder') sortOrder: string = 'asc'
   ) {
+    await this.syncCategoryServicesToContentCategories();
     const pageNum = Math.max(1, parseInt(page, 10) || 1);
     const take = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
     const skip = (pageNum - 1) * take;
@@ -840,6 +895,7 @@ export class AdminController {
   // 4b. Category Tree & Parents Lookup
   @Get('categories/parents')
   async getParentCategoriesLookup(@Query('lang') lang: string = 'te') {
+    await this.syncCategoryServicesToContentCategories();
     let categories: any[] = [];
     try {
       categories = await this.prisma.contentCategory.findMany({
@@ -1543,121 +1599,33 @@ export class AdminController {
         })
       ]);
 
-      // If database has records, return them
-      if (totalRecords > 0) {
-        return {
-          success: true,
-          data: items,
-          meta: {
-            page: pageNum,
-            limit: take,
-            totalRecords,
-            totalPages: Math.ceil(totalRecords / take),
-            hasNextPage: pageNum < Math.ceil(totalRecords / take),
-            hasPreviousPage: pageNum > 1
-          }
-        };
-      }
+      return {
+        success: true,
+        data: items,
+        meta: {
+          page: pageNum,
+          limit: take,
+          totalRecords,
+          totalPages: Math.ceil(totalRecords / take),
+          hasNextPage: pageNum < Math.ceil(totalRecords / take),
+          hasPreviousPage: pageNum > 1
+        }
+      };
     } catch (err) {
-      console.warn('[Admin] Festival database query fallback:', err);
+      console.warn('[Admin] Festival database query error:', err);
+      return {
+        success: true,
+        data: [],
+        meta: {
+          page: pageNum,
+          limit: take,
+          totalRecords: 0,
+          totalPages: 0,
+          hasNextPage: false,
+          hasPreviousPage: false
+        }
+      };
     }
-
-    // Default authoritative Sabarimala festivals fallback so admin always has rich data
-    const fallbackFestivals = [
-      {
-        id: 1,
-        slug: 'makaravilakku-sankranti',
-        festivalDate: new Date('2026-01-14'),
-        sourceNote: 'Sabarimala Devaswom — Makaravilakku & Makara Jyothi Darshanam',
-        isPublished: true,
-        translations: [
-          { name: 'Makaravilakku & Makara Sankranti', description: 'Sacred Makara Jyothi manifests at Ponnambalamedu', language: { code: 'en', name: 'English' } },
-          { name: 'మకరవిళక్కు & మకర సంక్రాంతి', description: 'పొన్నంబలమేడుపై దివ్య మకరజ్యోతి దర్శనం', language: { code: 'te', name: 'Telugu' } },
-          { name: 'ಮಕರವಿಳಕ್ಕು & ಮಕರ ಸಂಕ್ರಾಂತಿ', description: 'ಪೊನ್ನಂಬಲಮೇಡುವಿನಲ್ಲಿ ದಿವ್ಯ ಮಕರಜ್ಯೋತಿ ದರ್ಶನ', language: { code: 'kn', name: 'Kannada' } },
-          { name: 'மகரவிளக்கு & மகர சங்கராந்தி', description: 'பொன்னம்பலமேட்டில் திவ்ய மகரஜோதி தரிசனம்', language: { code: 'ta', name: 'Tamil' } },
-          { name: 'मकरविलक्कु एवं मकर संक्रांति', description: 'पोन्नम्बलमेडु पर दिव्य मकर ज्योति दर्शन', language: { code: 'hi', name: 'Hindi' } },
-        ]
-      },
-      {
-        id: 2,
-        slug: 'pamba-arattu-ayyappa-jayanthi',
-        festivalDate: new Date('2026-04-01'),
-        sourceNote: 'Pamba Holy River — Sri Dharma Sastha Jayanthi & Arattu',
-        isPublished: true,
-        translations: [
-          { name: 'Pamba Arattu (Sri Ayyappa Jayanthi)', description: 'Sacred holy dip at Pamba River honoring Lord Ayyappa manifestation', language: { code: 'en', name: 'English' } },
-          { name: 'పంబా ఆరాట్టు (శ్రీ అయ్యప్ప స్వామి జయంతి)', description: 'పవిత్ర పంబా నదిలో ఆరాట్టు మహోత్సవం', language: { code: 'te', name: 'Telugu' } },
-          { name: 'ಪಂಪಾ ಆರಾಟ್ಟು (ಶ್ರೀ ಅಯ್ಯಪ್ಪ ಸ್ವಾಮಿ ಜಯಂತಿ)', description: 'ಪವಿತ್ರ ಪಂಪಾ ನದಿಯಲ್ಲಿ ಆರಾಟ್ಟು ಮಹೋತ್ಸವ', language: { code: 'kn', name: 'Kannada' } },
-          { name: 'பம்பா ஆராட்டு (ஸ்ரீ ஐயப்ப ஜெயந்தி)', description: 'புனித பம்பா நதியில் ஆராட்டு விழா', language: { code: 'ta', name: 'Tamil' } },
-          { name: 'पंपा आराट्टु (श्री अय्यप्पा जयंती)', description: 'पवित्र पंपा नदी में आराट्टु स्नान महोत्सव', language: { code: 'hi', name: 'Hindi' } },
-        ]
-      },
-      {
-        id: 3,
-        slug: 'vishu-kani-festival',
-        festivalDate: new Date('2026-04-14'),
-        sourceNote: 'Sabarimala Sri Ayyappa Temple — Vishu Kani Darshanam',
-        isPublished: true,
-        translations: [
-          { name: 'Vishu Kani Festival', description: 'Auspicious New Year festival & gold coin offering (Kaineettam) at Sabarimala', language: { code: 'en', name: 'English' } },
-          { name: 'విషు కణి మహోత్సవం', description: 'శబరిమలలో విషు కణి దర్శనం మరియు కైనీట్టం', language: { code: 'te', name: 'Telugu' } },
-          { name: 'ವಿಷು ಕಣಿ ಮಹೋತ್ಸವ', description: 'ಶಬರಿಮಲೆಯಲ್ಲಿ ವಿಷು ಕಣಿ ದರ್ಶನ ಮತ್ತು ಕೈನೀಟ್ಟಂ', language: { code: 'kn', name: 'Kannada' } },
-          { name: 'விஷு கனி விழா', description: 'சபரிமலையில் விஷு கனி தரிசனம் மற்றும் கைநீட்டம்', language: { code: 'ta', name: 'Tamil' } },
-          { name: 'विषु कणि महोत्सव', description: 'सबरीमला में विषु कणि दर्शन और कैनीट्टम', language: { code: 'hi', name: 'Hindi' } },
-        ]
-      },
-      {
-        id: 4,
-        slug: 'mandala-pooja-commencement',
-        festivalDate: new Date('2026-11-17'),
-        sourceNote: 'Vrischika Masam 1 — 41-Day Sacred Mandala Vrata Commencement',
-        isPublished: true,
-        translations: [
-          { name: 'Mandala Pooja Commencement', description: 'Beginning of the holy 41-day Mandala Deeksha across South India', language: { code: 'en', name: 'English' } },
-          { name: 'మండల పూజ ప్రారంభం (వృశ్చిక మాసం 1)', description: '41 రోజుల పవిత్ర మండల దీక్ష ఆరంభం', language: { code: 'te', name: 'Telugu' } },
-          { name: 'ಮಂಡಲ ಪೂಜೆ ಪ್ರಾರಂಭ (ವೃಶ್ಚಿಕ ಮಾಸ 1)', description: '41 ದಿನಗಳ ಪವಿತ್ರ ಮಂಡಲ ದೀಕ್ಷೆ ಆರಂಭ', language: { code: 'kn', name: 'Kannada' } },
-          { name: 'மண்டல பூஜை தொடக்கம் (கார்த்திகை 1)', description: '41 நாட்கள் புனித மண்டல விரதத் தொடக்கம்', language: { code: 'ta', name: 'Tamil' } },
-          { name: 'मंडला पूजा आरंभ (वृश्चिक मास 1)', description: '41 दिवसीय पवित्र मंडला दीक्षा का आरंभ', language: { code: 'hi', name: 'Hindi' } },
-        ]
-      },
-      {
-        id: 5,
-        slug: 'mandala-pooja-finale',
-        festivalDate: new Date('2026-12-27'),
-        sourceNote: 'Sabarimala Sanctum Sanctorum — Mandala Kalam Conclusion with Kalabhabhishekam',
-        isPublished: true,
-        translations: [
-          { name: 'Mandala Pooja Finale', description: 'Grand culmination of the 41-day Mandala season with Golden Thanki Anki adornment', language: { code: 'en', name: 'English' } },
-          { name: 'మండల పూజ ముగింపు (కళభాభిషేకం)', description: 'తంగ అంగి అలంకరణతో మండల కాలం ముగింపు', language: { code: 'te', name: 'Telugu' } },
-          { name: 'ಮಂಡಲ ಪೂಜೆ ಮುಕ್ತಾಯ (ಕಳಭಾಭಿಷೇಕ)', description: 'ತಂಗ ಅಂಗಿ ಅಲಂಕಾರದೊಂದಿಗೆ ಮಂಡಲ ಕಾಲ ಸಮಾಪ್ತಿ', language: { code: 'kn', name: 'Kannada' } },
-          { name: 'மண்டல பூஜை நிறைவு (களபாபிஷேகம்)', description: 'தங்க அங்கி அலங்காரத்துடன் மண்டல பூஜை நிறைவு', language: { code: 'ta', name: 'Tamil' } },
-          { name: 'मंडला पूजा समापन (कलभाभिषेकम)', description: 'स्वर्ण अंगी श्रृंगार के साथ मंडला काल का भव्य समापन', language: { code: 'hi', name: 'Hindi' } },
-        ]
-      }
-    ];
-
-    let filtered = fallbackFestivals;
-    if (search && search.trim() !== '') {
-      const q = search.trim().toLowerCase();
-      filtered = fallbackFestivals.filter(f => 
-        f.slug.toLowerCase().includes(q) ||
-        f.sourceNote.toLowerCase().includes(q) ||
-        f.translations.some(t => t.name.toLowerCase().includes(q) || (t.description && t.description.toLowerCase().includes(q)))
-      );
-    }
-
-    return {
-      success: true,
-      data: filtered,
-      meta: {
-        page: pageNum,
-        limit: take,
-        totalRecords: filtered.length,
-        totalPages: 1,
-        hasNextPage: false,
-        hasPreviousPage: false
-      }
-    };
   }
 
   @Get('panchangam/festivals/:id')
@@ -1675,13 +1643,6 @@ export class AdminController {
       } catch (err) {
         console.warn('Get festival by id error:', err);
       }
-    }
-
-    // Lookup in fallback festivals
-    const listRes = await this.getFestivals('1', '100');
-    const match = listRes.data.find((f: any) => String(f.id) === id || f.slug === id);
-    if (match) {
-      return { success: true, data: match };
     }
 
     return { success: false, statusCode: 404, message: `Festival '${id}' not found.` };
@@ -3070,8 +3031,8 @@ export class AdminController {
 
   @Get('category-services')
   async getCategoryServices() {
+    // 1. Query dedicated category_services table from MySQL DB
     try {
-      // 1. Query dedicated category_services table from MySQL DB
       if ((this.prisma as any).categoryService) {
         const items = await (this.prisma as any).categoryService.findMany({
           orderBy: { displayOrder: 'asc' }
@@ -3094,8 +3055,12 @@ export class AdminController {
           };
         }
       }
+    } catch (err: any) {
+      console.warn('[Admin] categoryService table query notice:', err?.message || err);
+    }
 
-      // 2. Query dynamic app_settings for category_services in MySQL DB
+    // 2. Query dynamic app_settings for category_services in MySQL DB
+    try {
       const setting = await this.prisma.appSetting.findUnique({ where: { key: 'category_services' } });
       if (setting && setting.value) {
         const parsed = JSON.parse(setting.value);
@@ -3107,8 +3072,40 @@ export class AdminController {
           };
         }
       }
-    } catch (e: any) {
-      console.warn('[Admin] getCategoryServices database error:', e?.message);
+    } catch (err: any) {
+      console.warn('[Admin] app_settings query notice:', err?.message || err);
+    }
+
+    // 3. Fallback to Root Categories from content_categories table in DB
+    try {
+      const rootCats = await this.prisma.contentCategory.findMany({
+        where: { parentId: null, isArchived: false },
+        orderBy: { displayOrder: 'asc' },
+        include: { translations: true }
+      });
+      if (rootCats && rootCats.length > 0) {
+        const mapped = rootCats.map(cat => {
+          const trans = cat.translations?.[0];
+          return {
+            id: cat.slug,
+            serviceId: cat.slug,
+            title: trans?.title || cat.slug,
+            sub: trans?.description || '',
+            icon: 'Sparkles',
+            url: '/subcategories',
+            artwork: `/images/categories/art-${cat.slug}-trans.png`,
+            displayOrder: cat.displayOrder,
+            isActive: true
+          };
+        });
+        return {
+          success: true,
+          total: mapped.length,
+          data: mapped
+        };
+      }
+    } catch (err: any) {
+      console.warn('[Admin] content_categories fallback notice:', err?.message || err);
     }
 
     // Zero fallback / mock data: strictly return database result
@@ -3172,6 +3169,8 @@ export class AdminController {
       update: { value: JSON.stringify(services) },
       create: { key: 'category_services', value: JSON.stringify(services), description: 'Devotional Services Directory' }
     });
+
+    await this.syncCategoryServicesToContentCategories();
 
     return {
       success: true,
@@ -3269,6 +3268,14 @@ export class AdminController {
       data: { value: JSON.stringify(services) }
     });
 
+    // Also soft-delete / archive in content_categories if it exists
+    try {
+      await this.prisma.contentCategory.updateMany({
+        where: { slug: id, parentId: null },
+        data: { isArchived: true }
+      });
+    } catch (_) {}
+
     return {
       success: true,
       message: 'Devotional service deleted successfully.'
@@ -3281,54 +3288,85 @@ export class AdminController {
 
   @Get('deities')
   async getDeities(@Query('lang') lang?: string) {
-    const setting = await this.prisma.appSetting.findUnique({
-      where: { key: 'deities' }
-    });
+    const targetLang = (lang || '').toLowerCase().trim();
 
-    let defaultDeities: any[] = [];
+    // 1. Dedicated MySQL `deities` table
     try {
-      defaultDeities = require('./deities-five-languages.json');
-    } catch {}
+      const dbDeities: any[] = await this.prisma.$queryRawUnsafe(
+        'SELECT * FROM `deities` WHERE `is_active` = 1 ORDER BY `order_index` ASC, `id` ASC'
+      );
+      if (Array.isArray(dbDeities) && dbDeities.length > 0) {
+        const mapped = dbDeities.map((d: any) => {
+          let localizedName = d.name;
+          if (targetLang === 'te' && d.telugu_name) localizedName = d.telugu_name;
+          else if (targetLang === 'ta' && d.tamil_name) localizedName = d.tamil_name;
+          else if (targetLang === 'kn' && d.kannada_name) localizedName = d.kannada_name;
+          else if (targetLang === 'hi' && d.hindi_name) localizedName = d.hindi_name;
 
-    let deities = defaultDeities;
-    if (setting && setting.value) {
-      try {
-        const parsed = JSON.parse(setting.value);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          deities = parsed;
-        }
-      } catch {}
-    } else if (defaultDeities.length > 0) {
-      // Auto-initialize in appSetting
-      try {
-        await this.prisma.appSetting.upsert({
-          where: { key: 'deities' },
-          update: { value: JSON.stringify(defaultDeities) },
-          create: { key: 'deities', value: JSON.stringify(defaultDeities), description: 'Gods and Goddesses directory (16 Sacred Deities)' }
+          return {
+            id: d.slug || String(d.id),
+            slug: d.slug || String(d.id),
+            name: localizedName,
+            englishName: d.name,
+            teluguName: d.telugu_name || '',
+            tamilName: d.tamil_name || '',
+            kannadaName: d.kannada_name || '',
+            hindiName: d.hindi_name || '',
+            description: d.description || '',
+            category: d.category || 'popular',
+            imageUrl: d.image_url || '',
+            image: d.image_url || '',
+            isFeatured: Boolean(d.is_featured),
+            displayOrder: d.order_index ?? 0,
+            isActive: Boolean(d.is_active),
+          };
         });
-      } catch {}
+        return {
+          success: true,
+          total: mapped.length,
+          data: mapped,
+        };
+      }
+    } catch (err) {
+      console.warn('[Admin] Direct deities table query notice:', err);
     }
 
-    const targetLang = (lang || '').toLowerCase().trim();
-    const mapped = deities.map((deity: any) => {
-      const trans = deity.translations || {};
-      const loc = (targetLang && trans[targetLang]) ? trans[targetLang] : null;
-      return {
-        ...deity,
-        name: loc?.name || deity.name,
-        alternateName: loc && loc.alternateName !== undefined ? loc.alternateName : deity.alternateName,
-        vahana: loc && loc.vahana !== undefined ? loc.vahana : deity.vahana,
-        moolaMantra: loc && loc.moolaMantra !== undefined ? loc.moolaMantra : deity.moolaMantra,
-        primaryTemple: loc && loc.primaryTemple !== undefined ? loc.primaryTemple : deity.primaryTemple,
-        description: loc && loc.description !== undefined ? loc.description : deity.description,
-        translations: trans
-      };
-    });
+    // 2. MySQL app_settings table (key: 'deities')
+    try {
+      const setting = await this.prisma.appSetting.findUnique({
+        where: { key: 'deities' }
+      });
+      if (setting && setting.value) {
+        const deities = JSON.parse(setting.value);
+        if (Array.isArray(deities) && deities.length > 0) {
+          const mapped = deities.map((deity: any) => {
+            const trans = deity.translations || {};
+            const loc = (targetLang && trans[targetLang]) ? trans[targetLang] : null;
+            return {
+              ...deity,
+              name: loc?.name || deity.name,
+              alternateName: loc && loc.alternateName !== undefined ? loc.alternateName : deity.alternateName,
+              vahana: loc && loc.vahana !== undefined ? loc.vahana : deity.vahana,
+              moolaMantra: loc && loc.moolaMantra !== undefined ? loc.moolaMantra : deity.moolaMantra,
+              primaryTemple: loc && loc.primaryTemple !== undefined ? loc.primaryTemple : deity.primaryTemple,
+              description: loc && loc.description !== undefined ? loc.description : deity.description,
+              translations: trans
+            };
+          });
+          return {
+            success: true,
+            total: mapped.length,
+            data: mapped,
+          };
+        }
+      }
+    } catch {}
 
+    // Strictly return empty list - ZERO mock/fallback
     return {
       success: true,
-      total: mapped.length,
-      data: mapped
+      total: 0,
+      data: [],
     };
   }
 
@@ -3723,13 +3761,13 @@ export class AdminController {
       });
 
       return {
-        ticker: setting?.value || '🕉️ స్వామియే శరణం అయ్యప్ప — శ్రీ అయ్యప్ప స్వామి నిత్య పూజా విధానం, అష్టోత్తరం, హరివరాసనం మరియు సమగ్ర శబరిమల యాత్రా దర్శిని 🕉️',
+        ticker: setting?.value || '',
         updatedAt: setting?.updatedAt || new Date()
       };
     } catch (err: any) {
       console.warn('[Admin] getTicker DB warning:', err?.message || err);
       return {
-        ticker: '🕉️ స్వామియే శరణం అయ్యప్ప — శ్రీ అయ్యప్ప స్వామి నిత్య పూజా విధానం, అష్టోత్తరం, హరివరాసనం మరియు సమగ్ర శబరిమల యాత్రా దర్శిని 🕉️',
+        ticker: '',
         updatedAt: new Date()
       };
     }

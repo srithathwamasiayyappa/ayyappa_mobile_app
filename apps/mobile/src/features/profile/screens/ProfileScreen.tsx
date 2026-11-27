@@ -36,6 +36,7 @@ interface Props {
   onOpenNotifications: () => void;
   onOpenTerms: () => void;
   onOpenPrivacyPolicy: () => void;
+  onOpenRefundPolicy?: () => void;
   onOpenAbout: () => void;
   onOpenAuth?: () => void;
   onLanguageChange?: (lang: SupportedLanguage) => void;
@@ -289,6 +290,18 @@ const MenuDeleteAccountIcon = () => (
       stroke="#C62828"
       strokeWidth={1.5}
       strokeLinecap="round"
+    />
+  </Svg>
+);
+
+const BookmarkTrashIcon = () => (
+  <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"
+      stroke="#A32424"
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
     />
   </Svg>
 );
@@ -569,10 +582,58 @@ const PROFILE_I18N: Record<string, Record<string, string>> = {
   legalPoliciesSubtitle: {
     en: 'Terms, Privacy & More',
     te: 'నిబంధనలు, గోప్యతా విధానం',
-    kn: 'ಷರತ್ತುಗಳು, ಗೌಪ್ಯತೆ ಮತ್ತು ಇನ್ನಷ್ಟು',
+    kn: 'ಷರತ್ತುಗಳು, ಗೌಪ್ಯತೆ మరియు ಇನ್ನಷ್ಟು',
     ta: 'விதிமுறைகள், தனியுரிமை & மேலும்',
     hi: 'शर्तें, गोपनीयता नीति एवं अधिक',
     ml: 'നിബന്ധനകൾ, സ്വകാര്യത & കൂടുതൽ',
+  },
+  termsConditionsTitle: {
+    en: 'Terms & Conditions',
+    te: 'నిబంధనలు & షరతులు',
+    kn: 'ನಿಯಮಗಳು & ಷರತ್ತುಗಳು',
+    ta: 'விதிமுறைகள் & நிபந்தனைகள்',
+    hi: 'नियम एवं शर्तें',
+    ml: 'നിബന്ധനകളും വ്യവസ്ഥകളും',
+  },
+  termsConditionsSubtitle: {
+    en: 'Read the terms of sacred devotional service',
+    te: 'పవిత్ర సేవా వినియోగ నిబంధనలను చదవండి',
+    kn: 'పవిత్ర సేవా ಬಳಕೆಯ ನಿಯಮಗಳನ್ನು ಓದಿ',
+    ta: 'புனித பக்தி சேவையின் விதிமுறைகளைப் படிக்கவும்',
+    hi: 'पवित्र भक्ति सेवा की शर्तें पढ़ें',
+    ml: 'വിശുദ്ധ ഭക്തി സേവന വ്യവസ്ഥകൾ വായിക്കുക',
+  },
+  privacyPolicyTitle: {
+    en: 'Privacy Policy',
+    te: 'గోప్యతా విధానం',
+    kn: 'ಗೌಪ್ಯತಾ ನೀತಿ',
+    ta: 'தனியுரிமைக் கொள்கை',
+    hi: 'गोपनीयता नीति',
+    ml: 'സ്വകാര്യതാ നയം',
+  },
+  privacyPolicySubtitle: {
+    en: 'How devotee information and privacy are protected',
+    te: 'భక్తుల సమాచారం మరియు గోప్యత ఎలా రక్షించబడుతుందో తెలుసుకోండి',
+    kn: 'ಭಕ್ತರ ಮಾಹಿತಿ ಮತ್ತು ಗೌಪ್ಯತೆ ಹೇಗೆ ರಕ್ಷಿಸಲ್ಪಡುತ್ತದೆ',
+    ta: 'பக்தர் தகவல் மற்றும் தனியுரிமை எவ்வாறு பாதுகாக்கப்படுகிறது',
+    hi: 'भक्तों की जानकारी और गोपनीयता कैसे सुरक्षित रखी जाती है',
+    ml: 'ഭക്തരുടെ വിവരങ്ങളും സ്വകാര്യതയും എങ്ങനെ സംരക്ഷിക്കപ്പെടുന്നു',
+  },
+  refundPolicyTitle: {
+    en: 'Refund & Cancellation Policy',
+    te: 'రీఫండ్ & రద్దు విధానం',
+    kn: 'ಮರುಪಾವತಿ & ರದ್ದತಿ ನೀತಿ',
+    ta: 'ரீஃபண்ட் & ரத்து கொள்கை',
+    hi: 'वापसी एवं रद्दीकरण नीति',
+    ml: 'റീഫണ്ട് & റദ്ദാക്കൽ നയം',
+  },
+  refundPolicySubtitle: {
+    en: 'Official guidelines on temple donations & seva refunds',
+    te: 'ఆలయ విరాళాలు & సేవల రీఫండ్‌పై అధికారిక మార్గదర్శకాలు',
+    kn: 'ದೇವಾಲಯ ದೇಣಿಗೆಗಳು & ಸೇವೆಗಳ ಮರುಪಾವತಿ ಮಾರ್ಗಸೂಚಿಗಳು',
+    ta: 'கோயில் நன்கொடைகள் & சேவைகள் ரீஃபண்ட் வழிகாட்டுதல்கள்',
+    hi: 'मंदिर दान एवं सेवा वापसी के आधिकारिक दिशानिर्देश',
+    ml: 'ക്ഷേത്ര സംഭാവനകളും സേവനങ്ങളും റീഫണ്ട് മാർഗ്ഗനിർദ്ദേശങ്ങൾ',
   },
   aboutApp: {
     en: 'About',
@@ -730,6 +791,7 @@ export const ProfileScreen: React.FC<Props> = ({
   onOpenNotifications,
   onOpenTerms,
   onOpenPrivacyPolicy,
+  onOpenRefundPolicy,
   onOpenAbout,
   onOpenAuth,
   onLanguageChange,
@@ -842,6 +904,7 @@ export const ProfileScreen: React.FC<Props> = ({
   const [legalModalVisible, setLegalModalVisible] = useState(false);
   const [bookmarks, setBookmarks] = useState<BookmarkItem[]>([]);
   const [bookmarksLoading, setBookmarksLoading] = useState<boolean>(false);
+  const [bookmarkCategoryFilter, setBookmarkCategoryFilter] = useState<'all' | 'pooja' | 'sloka' | 'stotra' | 'bhajan' | 'temple'>('all');
   const [availableLanguages, setAvailableLanguages] = useState<any[]>([]);
   const [loadingLanguages, setLoadingLanguages] = useState<boolean>(false);
   const [switchingLanguage, setSwitchingLanguage] = useState<boolean>(false);
@@ -1617,22 +1680,78 @@ export const ProfileScreen: React.FC<Props> = ({
   const handleOpenBookmarks = async () => {
     setBookmarksModalVisible(true);
     setBookmarksLoading(true);
-    const userId = currentUser?.id ? Number(currentUser.id) : undefined;
-    if (userId) {
-      try {
-        const dbBookmarks = await ApiService.getUserBookmarks(userId);
-        if (Array.isArray(dbBookmarks)) {
-          setBookmarks(dbBookmarks);
-          setBookmarksLoading(false);
-          return;
-        }
-      } catch (e) {
-        console.warn('Failed to load bookmarks from DB API:', e);
+    const userId = currentUser?.id ? Number(currentUser.id) : 1;
+    try {
+      const dbBookmarks = await ApiService.getUserBookmarks(userId);
+      if (Array.isArray(dbBookmarks) && dbBookmarks.length > 0) {
+        setBookmarks(dbBookmarks);
+        setBookmarksLoading(false);
+        return;
       }
+    } catch (e) {
+      console.warn('Failed to load bookmarks from DB API:', e);
     }
     const saved = await StorageService.getBookmarks();
     setBookmarks(saved || []);
     setBookmarksLoading(false);
+  };
+
+  const handleRemoveBookmark = async (item: BookmarkItem) => {
+    const userId = currentUser?.id ? Number(currentUser.id) : 1;
+    try {
+      await ApiService.removeUserBookmark(userId, item.id);
+    } catch (e) {
+      console.warn('Failed to remove bookmark from DB API:', e);
+    }
+    const updated = bookmarks.filter((b) => b.id !== item.id);
+    setBookmarks(updated);
+    await StorageService.toggleBookmark(item, userId);
+  };
+
+  const displayedBookmarks = React.useMemo(() => {
+    if (bookmarkCategoryFilter === 'all') return bookmarks;
+    return bookmarks.filter((b) => {
+      const c = (b.category || '').toLowerCase();
+      if (bookmarkCategoryFilter === 'pooja') return c.includes('pooja');
+      if (bookmarkCategoryFilter === 'sloka') return c.includes('sloka');
+      if (bookmarkCategoryFilter === 'stotra') return c.includes('stotra');
+      if (bookmarkCategoryFilter === 'bhajan') return c.includes('bhajan') || c.includes('song');
+      if (bookmarkCategoryFilter === 'temple') return c.includes('temple');
+      return c === bookmarkCategoryFilter;
+    });
+  }, [bookmarks, bookmarkCategoryFilter]);
+
+  const getCategoryBadge = (cat?: string) => {
+    const c = (cat || '').toLowerCase();
+    const langStr = String(currentLanguage || 'en');
+    const isTe = langStr === 'te';
+    const isKn = langStr === 'kn';
+    const isTa = langStr === 'ta';
+    const isHi = langStr === 'hi';
+    const isMl = langStr === 'ml';
+
+    let label = 'Devotional';
+    if (c.includes('pooja')) {
+      label = isTe ? 'పూజా విధానం' : isKn ? 'ಪೂಜಾ ವಿಧಾನ' : isTa ? 'பூஜை முறை' : isHi ? 'पूजा विधान' : isMl ? 'പൂജാ വിധി' : 'Pooja Vidhanam';
+      return { label, bg: '#FFF3E0', text: '#E65100', border: '#FFE0B2' };
+    }
+    if (c.includes('sloka')) {
+      label = isTe ? 'నిత్య శ్లోకం' : isKn ? 'ನಿತ್ಯ ಶ್ಲೋಕ' : isTa ? 'நித்ய ஸ்லோகம்' : isHi ? 'नित्य श्लोक' : isMl ? 'നിത്യ ശ്ലോകം' : 'Daily Sloka';
+      return { label, bg: '#E8F5E9', text: '#2E7D32', border: '#C8E6C9' };
+    }
+    if (c.includes('stotra')) {
+      label = isTe ? 'దివ్య స్తోత్రం' : isKn ? 'ದಿವ್ಯ ಸ್ತೋತ್ರ' : isTa ? 'திவ்ய ஸ்தோத்திரம்' : isHi ? 'दिव्य स्तोत्र' : isMl ? 'ദിവ്യ സ്തോത്രം' : 'Divine Stotram';
+      return { label, bg: '#F3E5F5', text: '#6A1B9A', border: '#E1BEE7' };
+    }
+    if (c.includes('bhajan') || c.includes('song')) {
+      label = isTe ? 'భజనలు & పాటలు' : isKn ? 'ಭಜನೆಗಳು ಮತ್ತು ಹಾಡುಗಳು' : isTa ? 'பஜனைகள் & பாடல்கள்' : isHi ? 'भजन व गीत' : isMl ? 'ഭജനകളും ഗാനങ്ങളും' : 'Bhajans & Songs';
+      return { label, bg: '#E0F2F1', text: '#00695C', border: '#B2DFDB' };
+    }
+    if (c.includes('temple')) {
+      label = isTe ? 'పుణ్యక్షేత్రం' : isKn ? 'ಪುಣ್ಯಕ್ಷೇತ್ರ' : isTa ? 'புண்ணிய தலம்' : isHi ? 'पवित्र मंदिर' : isMl ? 'പുണ്യക്ഷേത്രം' : 'Holy Mandir';
+      return { label, bg: '#FFF8E1', text: '#F57F17', border: '#FFECB3' };
+    }
+    return { label, bg: '#ECEFF1', text: '#37474F', border: '#CFD8DC' };
   };
 
   // Refresh Profile & Mandir Data dynamically from DB
@@ -1811,6 +1930,7 @@ export const ProfileScreen: React.FC<Props> = ({
         onOpenNotifications={onOpenNotifications}
         onOpenTerms={onOpenTerms}
         onOpenPrivacyPolicy={onOpenPrivacyPolicy}
+        onOpenRefundPolicy={onOpenRefundPolicy}
         onOpenAbout={onOpenAbout}
         onLogout={onLogout}
         onSelectTempleDetail={(temple) => {
@@ -1950,79 +2070,6 @@ export const ProfileScreen: React.FC<Props> = ({
             )}
           </View>
         </View>
-
-        {/* SACRED DEVOTEE SPIRITUAL DETAILS CARD (Dynamic from Database) */}
-        {!isGuest && (
-          <View style={styles.devoteeDetailsCard}>
-            <View style={styles.devoteeDetailsHeaderRow}>
-              <View style={styles.devoteeDetailsHeaderTitleRow}>
-                <Text style={{ fontSize: 16, marginRight: 6 }}>🕉️</Text>
-                <Text style={styles.devoteeDetailsHeaderTitle}>
-                  {currentLanguage === 'te' ? 'భక్తుని వివరాలు' : 'Sacred Devotee Details'}
-                </Text>
-              </View>
-              <TouchableOpacity
-                onPress={onOpenEditProfile}
-                style={styles.devoteeDetailsEditPill}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.devoteeDetailsEditText}>
-                  {currentLanguage === 'te' ? 'సవరించండి ✏️' : 'Edit ✏️'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.devoteeDetailsGrid}>
-              {/* Rashi */}
-              <View style={styles.devoteeGridItem}>
-                <Text style={styles.devoteeGridLabel}>{currentLanguage === 'te' ? 'రాశి (Zodiac)' : 'Rashi (Zodiac)'}</Text>
-                <Text style={styles.devoteeGridValue} numberOfLines={1}>
-                  {profile?.rashiName || currentUser?.rashiName || '—'}
-                </Text>
-              </View>
-
-              {/* Nakshatram */}
-              <View style={styles.devoteeGridItem}>
-                <Text style={styles.devoteeGridLabel}>{currentLanguage === 'te' ? 'నక్షత్రం' : 'Nakshatram'}</Text>
-                <Text style={styles.devoteeGridValue} numberOfLines={1}>
-                  {profile?.nakshatraName || currentUser?.nakshatraName || '—'}
-                </Text>
-              </View>
-
-              {/* DOB */}
-              <View style={styles.devoteeGridItem}>
-                <Text style={styles.devoteeGridLabel}>{currentLanguage === 'te' ? 'పుట్టిన తేదీ' : 'Date of Birth'}</Text>
-                <Text style={styles.devoteeGridValue} numberOfLines={1}>
-                  {profile?.dateOfBirth ? String(profile.dateOfBirth).split('T')[0] : (currentUser?.dateOfBirth ? String(currentUser.dateOfBirth).split('T')[0] : '—')}
-                </Text>
-              </View>
-
-              {/* Gender */}
-              <View style={styles.devoteeGridItem}>
-                <Text style={styles.devoteeGridLabel}>{currentLanguage === 'te' ? 'లింగము' : 'Gender'}</Text>
-                <Text style={styles.devoteeGridValue} numberOfLines={1}>
-                  {profile?.gender || currentUser?.gender || '—'}
-                </Text>
-              </View>
-
-              {/* Location */}
-              <View style={styles.devoteeGridItem}>
-                <Text style={styles.devoteeGridLabel}>{currentLanguage === 'te' ? 'స్థలం' : 'Location'}</Text>
-                <Text style={styles.devoteeGridValue} numberOfLines={1}>
-                  {[profile?.city || currentUser?.city, profile?.state || currentUser?.state].filter(Boolean).join(', ') || '—'}
-                </Text>
-              </View>
-
-              {/* Devotee Since */}
-              <View style={styles.devoteeGridItem}>
-                <Text style={styles.devoteeGridLabel}>{currentLanguage === 'te' ? 'భక్తుని కాలం' : 'Devotee Since'}</Text>
-                <Text style={styles.devoteeGridValue} numberOfLines={1}>
-                  {profile?.devoteeSince || currentUser?.devoteeSince || 'Recent'}
-                </Text>
-              </View>
-            </View>
-          </View>
-        )}
 
         {/* DHARMA KARTHA SACRED TRUSTEE MANDIR DASHBOARD (Rendered exclusively for Dharma Kartha) */}
         {isDharmaKartha && (
@@ -2347,7 +2394,7 @@ export const ProfileScreen: React.FC<Props> = ({
         </ImageBackground>
       </Modal>
 
-      {/* MODAL B: MY BOOKMARKS */}
+      {/* MODAL B: MY BOOKMARKS (Dynamically fetched from MariaDB via API) */}
       <Modal
         visible={bookmarksModalVisible}
         transparent
@@ -2366,39 +2413,115 @@ export const ProfileScreen: React.FC<Props> = ({
               </TouchableOpacity>
             </View>
 
+            {/* Category Filter Pills (All | Pooja | Slokas | Stotras | Bhajans | Temples) */}
+            <View style={styles.bookmarkFilterContainer}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.bookmarkFilterScroll}>
+                {[
+                  { id: 'all', label: currentLanguage === 'te' ? 'అన్నీ' : currentLanguage === 'kn' ? 'ಎಲ್ಲವೂ' : currentLanguage === 'ta' ? 'அனைத்தும்' : currentLanguage === 'hi' ? 'सभी' : (currentLanguage as any) === 'ml' ? 'എല്ലാം' : 'All' },
+                  { id: 'pooja', label: currentLanguage === 'te' ? 'పూజా విధానం' : currentLanguage === 'kn' ? 'ಪೂಜಾ ವಿಧಾನ' : currentLanguage === 'ta' ? 'பூஜை முறை' : currentLanguage === 'hi' ? 'पूजा विधान' : (currentLanguage as any) === 'ml' ? 'പൂജാ വിധി' : 'Pooja Vidhanam' },
+                  { id: 'sloka', label: currentLanguage === 'te' ? 'నిత్య శ్లోకాలు' : currentLanguage === 'kn' ? 'ನಿತ್ಯ ಶ್ಲೋಕಗಳು' : currentLanguage === 'ta' ? 'நித்ய ஸ்லோகங்கள்' : currentLanguage === 'hi' ? 'नित्य श्लोक' : (currentLanguage as any) === 'ml' ? 'നിത്യ ശ്ലോകങ്ങൾ' : 'Daily Slokas' },
+                  { id: 'stotra', label: currentLanguage === 'te' ? 'దివ్య స్తోత్రాలు' : currentLanguage === 'kn' ? 'ದಿವ್ಯ ಸ್ತೋತ್ರಗಳು' : currentLanguage === 'ta' ? 'திவ்ய ஸ்தோத்திரங்கள்' : currentLanguage === 'hi' ? 'दिव्य स्तोत्र' : (currentLanguage as any) === 'ml' ? 'ദിവ്യ സ്തോത്രങ്ങൾ' : 'Divine Stotras' },
+                  { id: 'bhajan', label: currentLanguage === 'te' ? 'భజనలు & పాటలు' : currentLanguage === 'kn' ? 'ಭಜನೆಗಳು ಮತ್ತು ಹಾಡುಗಳು' : currentLanguage === 'ta' ? 'பஜனைகள் & பாடல்கள்' : currentLanguage === 'hi' ? 'भजन व गीत' : (currentLanguage as any) === 'ml' ? 'ഭജനകളും ഗാനങ്ങളും' : 'Bhajans & Songs' },
+                  { id: 'temple', label: currentLanguage === 'te' ? 'పుణ్యక్షేత్రాలు' : currentLanguage === 'kn' ? 'ಪುಣ್ಯಕ್ಷೇತ್ರಗಳು' : currentLanguage === 'ta' ? 'புண்ணிய தலங்கள்' : currentLanguage === 'hi' ? 'पवित्र मंदिर' : (currentLanguage as any) === 'ml' ? 'പുണ്യക്ഷേത്രങ്ങൾ' : 'Holy Mandir' },
+                ].map((f) => {
+                  const isActive = bookmarkCategoryFilter === f.id;
+                  return (
+                    <TouchableOpacity
+                      key={f.id}
+                      onPress={() => setBookmarkCategoryFilter(f.id as any)}
+                      style={[styles.bookmarkFilterTab, isActive && styles.bookmarkFilterTabActive]}
+                    >
+                      <Text style={[styles.bookmarkFilterTabText, isActive && styles.bookmarkFilterTabTextActive]}>
+                        {f.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+
             <ScrollView showsVerticalScrollIndicator={false} style={styles.sheetBody}>
               {bookmarksLoading ? (
                 <View style={{ paddingVertical: 32, alignItems: 'center', justifyContent: 'center' }}>
                   <ActivityIndicator size="small" color="#DFA62E" />
-                  <Text style={{ marginTop: 8, fontSize: 13, color: '#5A4A3A' }}>Loading saved bookmarks from database...</Text>
+                  <Text style={{ marginTop: 8, fontSize: 13, color: '#5A4A3A' }}>
+                    {currentLanguage === 'te' ? 'సేవ్ చేసిన బుక్‌మార్క్‌లను డేటాబేస్ నుండి లోడ్ చేస్తోంది...' : 'Loading saved bookmarks from database...'}
+                  </Text>
                 </View>
-              ) : bookmarks.length === 0 ? (
+              ) : displayedBookmarks.length === 0 ? (
                 <View style={styles.emptyBookmarksBox}>
                   <MenuBookmarksIcon />
-                  <Text style={styles.emptyBookmarksTitle}>No Saved Bookmarks Yet</Text>
+                  <Text style={styles.emptyBookmarksTitle}>
+                    {bookmarkCategoryFilter === 'all'
+                      ? (currentLanguage === 'te' ? 'సేవ్ చేసిన బుక్‌మార్క్‌లు లేవు' : 'No Saved Bookmarks Yet')
+                      : (currentLanguage === 'te' ? `${bookmarkCategoryFilter === 'pooja' ? 'పూజ' : bookmarkCategoryFilter === 'sloka' ? 'శ్లోక' : bookmarkCategoryFilter === 'stotra' ? 'స్తోత్ర' : bookmarkCategoryFilter === 'bhajan' ? 'భజన' : 'ఆలయ'} బుక్‌మార్క్‌లు లేవు` : `No Saved ${bookmarkCategoryFilter.toUpperCase()} Bookmarks`)}
+                  </Text>
                   <Text style={styles.emptyBookmarksSubtitle}>
-                    Tap the Save / Bookmark icon while reading Slokas, Poojas or viewing Temples to keep them easily accessible here.
+                    {currentLanguage === 'te'
+                      ? 'పూజలు, శ్లోకాలు, స్తోత్రాలు లేదా భజనలను వీక్షిస్తున్నప్పుడు మీ ప్రొఫైల్‌కు వాటిని భద్రపరచుకోవడానికి హార్ట్ ఐకాన్‌ను నొక్కండి.'
+                      : 'Tap the Save / Bookmark heart icon while viewing Poojas, Slokas, Stotras or Bhajans to save them directly to your profile.'}
                   </Text>
                 </View>
               ) : (
-                bookmarks.map((b) => (
-                  <TouchableOpacity
-                    key={b.id}
-                    style={styles.bookmarkItemCard}
-                    onPress={() => {
-                      setBookmarksModalVisible(false);
-                      if (onNavigateDestination) {
-                        onNavigateDestination(b.category === 'temple' ? 'temple_detail' : 'sloka_detail', { id: b.id, title: b.title });
-                      }
-                    }}
-                  >
-                    <View style={styles.bookmarkInfo}>
-                      <Text style={styles.bookmarkItemTitle}>{b.title}</Text>
-                      {b.subtitle && <Text style={styles.bookmarkItemSubtitle}>{b.subtitle}</Text>}
-                    </View>
-                    <ChevronRightIcon />
-                  </TouchableOpacity>
-                ))
+                displayedBookmarks.map((b) => {
+                  const badge = getCategoryBadge(b.category);
+                  return (
+                    <TouchableOpacity
+                      key={b.id}
+                      style={styles.bookmarkItemCard}
+                      activeOpacity={0.8}
+                      onPress={() => {
+                        setBookmarksModalVisible(false);
+                        if (onNavigateDestination) {
+                          let screen = 'sloka_detail';
+                          let catParam: string | undefined = undefined;
+                          const c = (b.category || '').toLowerCase();
+                          if (c === 'pooja') {
+                            screen = 'pooja_detail';
+                          } else if (c === 'temple') {
+                            screen = 'temple_detail';
+                          } else if (c === 'bhajan' || c === 'song') {
+                            screen = 'sloka_detail';
+                            catParam = 'bhajans';
+                          } else if (c === 'stotra') {
+                            screen = 'sloka_detail';
+                            catParam = 'stotras';
+                          } else {
+                            screen = 'sloka_detail';
+                          }
+
+                          onNavigateDestination(screen, {
+                            id: b.id,
+                            rawId: b.rawId,
+                            title: b.title,
+                            category: catParam,
+                          } as any);
+                        }
+                      }}
+                    >
+                      <View style={styles.bookmarkInfo}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                          <View style={[styles.bookmarkCategoryBadge, { backgroundColor: badge.bg, borderColor: badge.border }]}>
+                            <Text style={[styles.bookmarkCategoryBadgeText, { color: badge.text }]}>{badge.label}</Text>
+                          </View>
+                        </View>
+                        <Text style={styles.bookmarkItemTitle}>{b.title}</Text>
+                        {b.subtitle && (
+                          <Text style={styles.bookmarkItemSubtitle} numberOfLines={2}>
+                            {b.subtitle}
+                          </Text>
+                        )}
+                      </View>
+                      <TouchableOpacity
+                        style={styles.bookmarkRemoveBtn}
+                        onPress={() => handleRemoveBookmark(b)}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      >
+                        <BookmarkTrashIcon />
+                      </TouchableOpacity>
+                    </TouchableOpacity>
+                  );
+                })
               )}
             </ScrollView>
           </View>
@@ -2509,8 +2632,8 @@ export const ProfileScreen: React.FC<Props> = ({
                 }}
               >
                 <View style={styles.legalTextCol}>
-                  <Text style={styles.legalTitle}>Terms & Conditions</Text>
-                  <Text style={styles.legalSubtitle}>Read the terms of sacred devotional service</Text>
+                  <Text style={styles.legalTitle}>{t('termsConditionsTitle')}</Text>
+                  <Text style={styles.legalSubtitle}>{t('termsConditionsSubtitle')}</Text>
                 </View>
                 <ChevronRightIcon />
               </TouchableOpacity>
@@ -2524,8 +2647,24 @@ export const ProfileScreen: React.FC<Props> = ({
                 }}
               >
                 <View style={styles.legalTextCol}>
-                  <Text style={styles.legalTitle}>Privacy Policy</Text>
-                  <Text style={styles.legalSubtitle}>How devotee information and privacy are protected</Text>
+                  <Text style={styles.legalTitle}>{t('privacyPolicyTitle')}</Text>
+                  <Text style={styles.legalSubtitle}>{t('privacyPolicySubtitle')}</Text>
+                </View>
+                <ChevronRightIcon />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.legalOptionRow}
+                activeOpacity={0.8}
+                onPress={() => {
+                  setLegalModalVisible(false);
+                  if (onOpenRefundPolicy) onOpenRefundPolicy();
+                  else onOpenTerms();
+                }}
+              >
+                <View style={styles.legalTextCol}>
+                  <Text style={styles.legalTitle}>{t('refundPolicyTitle')}</Text>
+                  <Text style={styles.legalSubtitle}>{t('refundPolicySubtitle')}</Text>
                 </View>
                 <ChevronRightIcon />
               </TouchableOpacity>
@@ -2582,9 +2721,39 @@ export const ProfileScreen: React.FC<Props> = ({
               {deleteStep === 'REASON' ? (
                 <View style={{ marginTop: 8 }}>
                   <Text style={styles.deleteInputLabel}>{t('reasonPlaceholder')}</Text>
+
+                  {/* Industry-Level Quick Reason Selection Chips */}
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
+                    <View style={{ flexDirection: 'row', gap: 6, paddingVertical: 2 }}>
+                      {[
+                        'No longer using this account',
+                        'Privacy and data concerns',
+                        'Too many SMS / alerts',
+                        'Created duplicate account',
+                        'Other reason',
+                      ].map((r) => {
+                        const isSelected = deleteReason.startsWith(r);
+                        return (
+                          <TouchableOpacity
+                            key={r}
+                            onPress={() => setDeleteReason(r)}
+                            style={[
+                              styles.deityChip,
+                              isSelected && { backgroundColor: '#B71C1C', borderColor: '#B71C1C' },
+                            ]}
+                          >
+                            <Text style={[styles.deityChipText, isSelected && { color: '#FFFFFF', fontWeight: '700' }]}>
+                              {r}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </ScrollView>
+
                   <TextInput
                     style={styles.deleteReasonInput}
-                    placeholder="Enter reason for account deletion..."
+                    placeholder="Enter or customize reason for account deletion..."
                     placeholderTextColor="#A1887F"
                     multiline
                     numberOfLines={3}
@@ -4732,6 +4901,37 @@ const styles = StyleSheet.create({
   },
 
   // Bookmarks
+  bookmarkFilterContainer: {
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0E5D0',
+    backgroundColor: '#FCFAF5',
+  },
+  bookmarkFilterScroll: {
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  bookmarkFilterTab: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E6D8C0',
+  },
+  bookmarkFilterTabActive: {
+    backgroundColor: '#173D32',
+    borderColor: '#173D32',
+  },
+  bookmarkFilterTabText: {
+    fontSize: 12.5,
+    fontWeight: '600',
+    color: '#5C4A33',
+  },
+  bookmarkFilterTabTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
   emptyBookmarksBox: {
     alignItems: 'center',
     paddingVertical: 36,
@@ -4763,6 +4963,17 @@ const styles = StyleSheet.create({
   bookmarkInfo: {
     flex: 1,
   },
+  bookmarkCategoryBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  bookmarkCategoryBadgeText: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
   bookmarkItemTitle: {
     fontSize: 15,
     fontWeight: '700',
@@ -4772,6 +4983,12 @@ const styles = StyleSheet.create({
   bookmarkItemSubtitle: {
     fontSize: 12.5,
     color: '#215344',
+  },
+  bookmarkRemoveBtn: {
+    padding: 8,
+    marginLeft: 6,
+    borderRadius: 8,
+    backgroundColor: '#FDECEC',
   },
 
   // Preferences

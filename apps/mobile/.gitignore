@@ -20,6 +20,8 @@ android/*.iml
 android/app/*.iml
 android/local.properties
 android/release-signing.properties
+android/app/src/main/res/drawable-mdpi/
+android/app/src/main/res/raw/
 *.apk
 *.aab
 *.keystore

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   Platform,
   ActivityIndicator,
   BackHandler,
+  TextInput,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle } from 'react-native-svg';
@@ -20,6 +21,13 @@ interface Props {
   currentLanguage: SupportedLanguage;
   initialTab?: 'terms' | 'privacy' | 'refund';
   onBack: () => void;
+}
+
+interface LegalSection {
+  id: string;
+  number: number;
+  title: string;
+  paragraphs: string[];
 }
 
 // Corner Filigree Ornaments for Header
@@ -51,6 +59,21 @@ const BackArrowIcon = () => (
   </Svg>
 );
 
+// Search Icon
+const SearchIcon = () => (
+  <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+    <Circle cx="11" cy="11" r="8" stroke="#173D32" strokeWidth={2} />
+    <Path d="m21 21-4.35-4.35" stroke="#173D32" strokeWidth={2} strokeLinecap="round" />
+  </Svg>
+);
+
+// Clear Icon (X)
+const ClearIcon = () => (
+  <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
+    <Path d="M18 6 6 18M6 6l12 12" stroke="#888" strokeWidth={2} strokeLinecap="round" />
+  </Svg>
+);
+
 // Golden Lotus Ornament Divider
 const GoldenLotusDivider = () => (
   <View style={styles.lotusDividerContainer}>
@@ -77,21 +100,125 @@ const GoldenLotusDivider = () => (
 // Numbered Circle Badge (1, 2, 3...)
 const NumberBadge = ({ num }: { num: number }) => (
   <View style={styles.numberBadgeWrapper}>
-    <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-      <Circle cx="12" cy="12" r="10.5" stroke="#E67E22" strokeWidth={1.5} fill="#FFF9F0" />
+    <Svg width={26} height={26} viewBox="0 0 26 26" fill="none">
+      <Circle cx="13" cy="13" r="12" stroke="#DFA62E" strokeWidth={1.8} fill="#FFF9F0" />
     </Svg>
     <Text style={styles.numberBadgeText}>{num}</Text>
   </View>
 );
 
+// Helper: Clean HTML tags and decode entities
+function cleanHtmlText(html: string): string {
+  if (!html) return '';
+  return html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n\n')
+    .replace(/<\/li>/gi, '\n')
+    .replace(/<li[^>]*>/gi, '• ')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&ldquo;|&rdquo;/g, '"')
+    .replace(/&lsquo;|&rsquo;/g, "'")
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+// Helper: Parse raw DB content (CKEditor HTML or plain text) into structured sections
+function parseLegalContent(raw: string): LegalSection[] {
+  if (!raw || !raw.trim()) return [];
+
+  const isHtml = /<[a-z][\s\S]*>/i.test(raw);
+
+  if (isHtml) {
+    const headingMatches = Array.from(raw.matchAll(/<h[1-4][^>]*>(.*?)<\/h[1-4]>/gi));
+    if (headingMatches.length > 0) {
+      const sections: LegalSection[] = [];
+      const parts = raw.split(/<h[1-4][^>]*>.*?<\/h[1-4]>/gi);
+
+      const introText = cleanHtmlText(parts[0] || '');
+      if (introText && introText.length > 20) {
+        sections.push({
+          id: 'sec-intro',
+          number: 0,
+          title: 'Introduction & Devotional Code',
+          paragraphs: introText.split('\n\n').map((p) => p.trim()).filter(Boolean),
+        });
+      }
+
+      let secCounter = 1;
+      headingMatches.forEach((match, idx) => {
+        const rawTitle = cleanHtmlText(match[1]);
+        if (!rawTitle.trim()) return;
+
+        const bodyContent = cleanHtmlText(parts[idx + 1] || '');
+
+        const numMatch = rawTitle.match(/^(\d+)[\.\s]+(.*)/);
+        let num = secCounter;
+        let title = rawTitle;
+        if (numMatch) {
+          num = parseInt(numMatch[1], 10);
+          title = numMatch[2].trim();
+        } else {
+          secCounter++;
+        }
+
+        const paragraphs = bodyContent
+          .split('\n\n')
+          .map((p) => p.trim())
+          .filter(Boolean);
+
+        sections.push({
+          id: `sec-${num}`,
+          number: num,
+          title: title || `Clause ${num}`,
+          paragraphs: paragraphs.length > 0 ? paragraphs : [bodyContent],
+        });
+      });
+
+      return sections;
+    }
+  }
+
+  // Fallback for plain text formatted documents
+  const rawSections = raw.split(/\n\n(?=\d+\.\s+)/);
+  if (rawSections.length > 1) {
+    return rawSections.map((sec, idx) => {
+      const lines = sec.trim().split('\n');
+      const head = lines[0].replace(/^\d+\.\s*/, '').trim();
+      const body = lines.slice(1).join('\n\n').trim();
+      return {
+        id: `sec-${idx + 1}`,
+        number: idx + 1,
+        title: head || `Clause ${idx + 1}`,
+        paragraphs: body.split('\n\n').map((p) => p.trim()).filter(Boolean),
+      };
+    });
+  }
+
+  const cleaned = cleanHtmlText(raw);
+  return [
+    {
+      id: 'sec-1',
+      number: 1,
+      title: 'Official Devotional Terms',
+      paragraphs: cleaned.split('\n\n').map((p) => p.trim()).filter(Boolean),
+    },
+  ];
+}
+
 // Multilingual Dictionary
 const LEGAL_I18N: Record<string, Record<string, string>> = {
   headerTitle: {
-    en: 'Legal (Conditions)',
-    te: 'చట్టపరమైన నిబంధనలు (షరతులు)',
-    kn: 'ಕಾನೂನು ನಿಯಮಗಳು (ಷರತ್ತುಗಳು)',
-    ta: 'சட்ட விதிமுறைகள் (நிபந்தனைகள்)',
-    hi: 'कानूनी नियम एवं शर्तें',
+    en: 'Legal & Policies',
+    te: 'చట్టపరమైన నిబంధనలు',
+    kn: 'ಕಾನೂನು ಮತ್ತು ನೀತಿಗಳು',
+    ta: 'சட்ட விதிமுறைகள்',
+    hi: 'कानूनी नियम एवं नीतियां',
     ml: 'നിയമ നിബന്ധനകൾ',
   },
   termsTab: {
@@ -111,61 +238,76 @@ const LEGAL_I18N: Record<string, Record<string, string>> = {
     ml: 'സ്വകാര്യതാ നയം',
   },
   refundTab: {
-    en: 'Refund Policy',
+    en: 'Refund & Sevas',
     te: 'రీఫండ్ విధానం',
     kn: 'ಮರುಪಾವತಿ ನೀತಿ',
     ta: 'ரீஃபண்ட் கொள்கை',
     hi: 'वापसी नीति',
     ml: 'റീഫണ്ട് നയം',
+  },
+  searchPlaceholder: {
+    en: 'Search clauses, terms, or keywords...',
+    te: 'నిబంధనలు లేదా పదాలను శోధించండి...',
+    kn: 'ಷರತ್ತುಗಳನ್ನು ಹುಡುಕಿ...',
+    ta: 'விதிமுறைகளைத் தேடுங்கள்...',
+    hi: 'नियम या शब्द खोजें...',
+    ml: 'നിബന്ധനകൾ തിരയുക...',
   },
   lastUpdated: {
-    en: 'Last updated: 14 Jan 2025',
-    te: 'చివరిగా నవీకరించబడింది: 14 జనవరి 2025',
-    kn: 'ಕೊನೆಯದಾಗಿ ನವೀಕರಿಸಲಾಗಿದೆ: 14 ಜನವರಿ 2025',
-    ta: 'கடைசியாக புதுப்பிக்கப்பட்டது: 14 ஜனவரி 2025',
-    hi: 'अंतिम अद्यतन: 14 जनवरी 2025',
-    ml: 'അവസാനം പുതുക്കിയത്: 14 ജനുവരി 2025',
+    en: 'Last updated: 25 Nov 2026',
+    te: 'చివరిగా నవీకరించబడింది: 25 నవంబర్ 2026',
+    kn: 'ಕೊನೆಯದಾಗಿ ನವೀಕರಿಸಲಾಗಿದೆ: 25 ನವೆಂಬರ್ 2026',
+    ta: 'கடைசியாக புதுப்பிக்கப்பட்டது: 25 நவம்பர் 2026',
+    hi: 'अंतिम अद्यतन: 25 नवंबर 2026',
+    ml: 'അവസാനം പുതുക്കിയത്: 25 നവംബർ 2026',
   },
   termsTitle: {
-    en: 'Terms & Conditions',
-    te: 'నిబంధనలు & షరతులు',
-    kn: 'ನಿಯಮಗಳು & ಷರತ್ತುಗಳು',
-    ta: 'விதிமுறைகள் & நிபந்தனைகள்',
-    hi: 'नियम एवं शर्तें',
-    ml: 'നിബന്ധനകളും വ്യവസ്ഥകളും',
+    en: 'Devotee Terms of Use',
+    te: 'భక్తుల వినియోగ నిబంధనలు',
+    kn: 'ಭಕ್ತರ ಬಳಕೆಯ ನಿಯಮಗಳು',
+    ta: 'பக்தர் பயன்பாட்டு விதிமுறைகள்',
+    hi: 'भक्त उपयोग नियम एवं शर्तें',
+    ml: 'ഭക്തരുടെ ഉപയോഗ നിബന്ധനകൾ',
   },
   privacyTitle: {
-    en: 'Privacy Policy',
-    te: 'గోప్యతా విధానం',
-    kn: 'ಗೌಪ್ಯತಾ ನೀತಿ',
-    ta: 'தனியுரிமைக் கொள்கை',
-    hi: 'गोपनीयता नीति',
-    ml: 'സ്വകാര്യതാ നയം',
+    en: 'Privacy & Data Protection',
+    te: 'గోప్యత మరియు డేటా రక్షణ',
+    kn: 'ಗೌಪ್ಯತೆ ಮತ್ತು ಮಾಹಿತಿ ರಕ್ಷಣೆ',
+    ta: 'தனியுரிமை மற்றும் தரவு பாதுகாப்பு',
+    hi: 'गोपनीयता एवं डेटा सुरक्षा',
+    ml: 'സ്വകാര്യതയും ഡാറ്റ സംരക്ഷണവും',
   },
   refundTitle: {
-    en: 'Refund Policy',
-    te: 'రీఫండ్ విధానం',
-    kn: 'ಮರುಪಾವತಿ ನೀತಿ',
-    ta: 'ரீஃபண்ட் கொள்கை',
-    hi: 'वापसी नीति',
-    ml: 'റീഫണ്ട് നയം',
+    en: 'Offerings & Refund Policy',
+    te: 'కానుకలు & రీఫండ్ విధానం',
+    kn: 'ದೇಣಿಗೆಗಳು & ಮರುಪಾವತಿ ನೀತಿ',
+    ta: 'நன்கொடைகள் & ரீஃபண்ட் கொள்கை',
+    hi: 'दान एवं वापसी नीति',
+    ml: 'സംഭാവനകളും റീഫണ്ട് നയവും',
   },
-  privacyPreviewText: {
-    en: 'We respect your privacy. Please read our Privacy Policy to know how we collect, use, and protect your information.',
-    te: 'మేము మీ గోప్యతను గౌరవిస్తాము. మేము మీ సమాచారాన్ని ఎలా సేకరిస్తాము, ఉపయోగిస్తాము మరియు రక్షిస్తాము అనే వివరాల కోసం మా గోప్యతా విధానాన్ని చదవండి.',
-    kn: 'ನಾವು ನಿಮ್ಮ ಗೌಪ್ಯತೆಯನ್ನು ಗೌರವಿಸುತ್ತೇವೆ. ನಿಮ್ಮ ಮಾಹಿತಿಯನ್ನು ನಾವು ಹೇಗೆ ಸಂಗ್ರಹಿಸುತ್ತೇವೆ, ಬಳಸುತ್ತೇವೆ ಮತ್ತು ರಕ್ಷಿಸುತ್ತೇವೆ ಎಂಬುದನ್ನು ತಿಳಿಯಲು ಗೌಪ್ಯತಾ ನೀತಿಯನ್ನು ಓದಿ.',
-    ta: 'உங்கள் தனியுரிமையை நாங்கள் மதிக்கிறோம். உங்கள் தகவல்களை எவ்வாறு சேகரிக்கிறோம், பயன்படுத்துகிறோம் மற்றும் பாதுகாக்கிறோம் என்பதை அறிய எங்கள் தனியுரிமைக் கொள்கையைப் படிக்கவும்.',
-    hi: 'हम आपकी गोपनीयता का सम्मान करते हैं। हम आपकी जानकारी कैसे एकत्र, उपयोग और सुरक्षित रखते हैं, यह जानने के लिए हमारी गोपनीयता नीति पढ़ें।',
-    ml: 'നിങ്ങളുടെ സ്വകാര്യതയെ ഞങ്ങൾ മാനിക്കുന്നു. നിങ്ങളുടെ വിവരങ്ങൾ ഞങ്ങൾ എങ്ങനെ ശേഖരിക്കുകയും സംരക്ഷിക്കുകയും ചെയ്യുന്നുവെന്ന് അറിയാൻ സ്വകാര്യതാ നയം വായിക്കുക.',
-  },
-  termsPreviewText: {
-    en: 'By using Saranam Ayyappa app, you agree to comply with our sacred terms and code of devotional conduct. Tap to view full terms.',
-    te: 'శరణం అయ్యప్ప యాప్‌ను ఉపయోగించడం ద్వారా, మీరు మా పవిత్ర నిబంధనలు మరియు ఆధ్యాత్మిక ప్రవర్తనా నియమావళికి కట్టుబడి ఉండటానికి అంగీకరిస్తున్నారు.',
-    kn: 'ಶರಣಂ ಅಯ್ಯಪ್ಪ ಅಪ್ಲಿಕೇಶನ್ ಬಳಸುವ ಮೂಲಕ, ನೀವು ನಮ್ಮ ಪವಿತ್ರ ನಿಯಮಗಳು ಮತ್ತು ಆಧ್ಯಾತ್ಮಿಕ ನಡತೆಯ ಸಂಹಿತೆಗೆ ಬದ್ಧರಾಗಿರಲು ಒಪ್ಪುತ್ತೀರಿ.',
-    ta: 'சரணம் ஐயப்பா செயலியைப் பயன்படுத்துவதன் மூலம், எங்கள் புனித விதிமுறைகளைப் பின்பற்ற ஒப்புக்கொள்கிறீர்கள்.',
-    hi: 'शरणम अय्यप्पा ऐप का उपयोग करके, आप हमारे पावन नियमों और आचार संहिता का पालन करने के लिए सहमत होते हैं।',
-    ml: 'ശരണം അയ്യപ്പ ആപ്പ് ഉപയോഗിക്കുന്നതിലൂടെ, നിങ്ങൾ ഞങ്ങളുടെ നിയമങ്ങളും നിർദ്ദേശങ്ങളും പാലിക്കാൻ ബാധ്യസ്ഥരാണ്.',
-  },
+};
+
+const DEFAULT_LEGAL_DOCS: Record<string, string> = {
+  refund_policy: `<h2>1. VOLUNTARY DEVOTIONAL OFFERINGS AND E-HUNDI CONTRIBUTIONS</h2>
+<p>All voluntary offerings, e-hundi kanikkai, and donations made towards Lord Ayyappa temples, sanctum maintenance, and nitya poojas are treated as irrevocable sacred contributions. Once successfully remitted, voluntary donations cannot be refunded or transferred under standard circumstances, as funds are allocated directly to temple trusts and religious observances.</p>
+
+<h2>2. TEMPLE SEVA & SPECIAL POOJA BOOKINGS</h2>
+<p>Seva bookings, special archana tokens, and abhishekam registrations are scheduled in accordance with sanctum timings and priests' availability. If an e-seva cannot be performed due to sanctum closures, official temple restrictions, or force majeure events, the temple administration will reschedule the seva to an alternate auspicious date or perform the sankalpam in absentia with sacred prasad dispatched where applicable.</p>
+
+<h2>3. DUPLICATE TRANSACTIONS & PAYMENT FAILURES</h2>
+<p>In the event of technical network disruptions, server timeouts, or banking gateway drops where a devotee account is debited multiple times for a single seva booking, the excess duplicate amount will be verified and refunded back to the original payment source within 5 to 7 working banking days.</p>
+
+<h2>4. ANNADANAM & CHARITABLE INITIATIVES</h2>
+<p>Contributions made specifically for free devotee feeding (Annadanam), pilgrim water distribution, and medical seva are dispatched in real time to feed pilgrims. Hence, Annadanam contributions cannot be cancelled once processed.</p>
+
+<h2>5. PRASAD DISPATCH & LOGISTICS CANCELLATIONS</h2>
+<p>Sacred prasad dispatches prepared after temple poojas involve sacred packaging and postal tracking. Cancellations requested after prasad preparation or courier dispatch cannot be entertained.</p>
+
+<h2>6. REFUND TIMELINES & REVERSAL PROCESS</h2>
+<p>Approved refunds for duplicate debits or unfulfilled seva requests are processed strictly through the original payment gateway (UPI, Net Banking, Credit/Debit Card) in accordance with Reserve Bank of India (RBI) guidelines.</p>
+
+<h2>7. GRIEVANCE REDRESSAL & SEVA HELPDESK CONTACT</h2>
+<p>For any billing queries, duplicate transaction reconciliations, or seva scheduling assistance, devotees may contact our dedicated finance and seva desk at support@saranamayyappa.in with the Transaction ID, Devotee Name, and Mobile Number.</p>`,
 };
 
 export const LegalScreen: React.FC<Props> = ({
@@ -177,6 +319,10 @@ export const LegalScreen: React.FC<Props> = ({
   const [cmsContent, setCmsContent] = useState<string | null>(null);
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [loadingCms, setLoadingCms] = useState<boolean>(true);
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [selectedSectionId, setSelectedSectionId] = useState<string>('all');
+
+  const scrollViewRef = useRef<ScrollView>(null);
 
   const t = (key: string): string => {
     const dict = LEGAL_I18N[key];
@@ -188,9 +334,17 @@ export const LegalScreen: React.FC<Props> = ({
   // Fetch dynamic CMS document strictly from DB via API response
   useEffect(() => {
     let isMounted = true;
-    const slug = activeTab === 'terms' ? 'terms_conditions' : activeTab === 'privacy' ? 'privacy_policy' : 'refund_policy';
+    const slug =
+      activeTab === 'terms'
+        ? 'terms_conditions'
+        : activeTab === 'privacy'
+        ? 'privacy_policy'
+        : 'refund_policy';
 
     setLoadingCms(true);
+    setSearchQuery('');
+    setSelectedSectionId('all');
+
     ApiService.getCmsDocument(slug, currentLanguage)
       .then((doc) => {
         if (isMounted) {
@@ -202,7 +356,7 @@ export const LegalScreen: React.FC<Props> = ({
           }
         }
       })
-      .catch((err) => {
+      .catch(() => {
         if (isMounted) setCmsContent(null);
       })
       .finally(() => {
@@ -223,17 +377,56 @@ export const LegalScreen: React.FC<Props> = ({
     return () => sub.remove();
   }, [onBack]);
 
-  // Parse structured clauses dynamically from DB content
-  const dynamicClauses = React.useMemo(() => {
-    if (!cmsContent) return [];
-    if (cmsContent.includes('\n\n')) {
-      return cmsContent.split(/\n\n+/).map((sec) => sec.trim()).filter(Boolean);
+  // Parse structured clauses dynamically from DB content with sacred fallback
+  const parsedSections = useMemo(() => {
+    const raw =
+      cmsContent ||
+      DEFAULT_LEGAL_DOCS[
+        activeTab === 'terms'
+          ? 'terms_conditions'
+          : activeTab === 'privacy'
+          ? 'privacy_policy'
+          : 'refund_policy'
+      ];
+    if (!raw) return [];
+    return parseLegalContent(raw);
+  }, [cmsContent, activeTab]);
+
+  // Real-time search and filter
+  const filteredSections = useMemo(() => {
+    if (!parsedSections.length) return [];
+    let list = parsedSections;
+
+    if (selectedSectionId !== 'all') {
+      list = list.filter((sec) => sec.id === selectedSectionId);
     }
-    if (cmsContent.includes('\n')) {
-      return cmsContent.split(/\n+/).map((sec) => sec.trim()).filter(Boolean);
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      list = list.filter(
+        (sec) =>
+          sec.title.toLowerCase().includes(q) ||
+          sec.paragraphs.some((p) => p.toLowerCase().includes(q))
+      );
     }
-    return [cmsContent.trim()];
-  }, [cmsContent]);
+
+    return list;
+  }, [parsedSections, selectedSectionId, searchQuery]);
+
+  const activeDocTitle =
+    activeTab === 'terms'
+      ? t('termsTitle')
+      : activeTab === 'privacy'
+      ? t('privacyTitle')
+      : t('refundTitle');
+
+  const formattedDate = updatedAt
+    ? new Date(updatedAt).toLocaleDateString('en-US', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      })
+    : t('lastUpdated');
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -281,11 +474,12 @@ export const LegalScreen: React.FC<Props> = ({
 
       {/* Body */}
       <ScrollView
+        ref={scrollViewRef}
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Segmented Legal Tabs (Terms & Conditions | Privacy Policy | Refund Policy) */}
+        {/* Segmented Legal Tabs (Terms | Privacy | Refund) */}
         <View style={styles.tabContainer}>
           <TouchableOpacity
             style={[styles.tabButton, activeTab === 'terms' && styles.tabButtonActive]}
@@ -302,7 +496,12 @@ export const LegalScreen: React.FC<Props> = ({
             activeOpacity={0.85}
             onPress={() => setActiveTab('privacy')}
           >
-            <Text style={[styles.tabButtonText, activeTab === 'privacy' && styles.tabButtonTextActive]}>
+            <Text
+              style={[
+                styles.tabButtonText,
+                activeTab === 'privacy' && styles.tabButtonTextActive,
+              ]}
+            >
               {t('privacyTab')}
             </Text>
           </TouchableOpacity>
@@ -312,56 +511,176 @@ export const LegalScreen: React.FC<Props> = ({
             activeOpacity={0.85}
             onPress={() => setActiveTab('refund')}
           >
-            <Text style={[styles.tabButtonText, activeTab === 'refund' && styles.tabButtonTextActive]}>
-              {t('refundTab') || 'Refund Policy'}
+            <Text
+              style={[
+                styles.tabButtonText,
+                activeTab === 'refund' && styles.tabButtonTextActive,
+              ]}
+            >
+              {t('refundTab')}
             </Text>
           </TouchableOpacity>
         </View>
 
-        {/* Card 1: Main Active Legal Card dynamically loaded from DB */}
+        {/* Search Bar & Document Summary Bar */}
+        <View style={styles.searchBoxContainer}>
+          <View style={styles.searchIconWrap}>
+            <SearchIcon />
+          </View>
+          <TextInput
+            style={styles.searchInput}
+            placeholder={t('searchPlaceholder')}
+            placeholderTextColor="#8C9B95"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            returnKeyType="search"
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity
+              onPress={() => setSearchQuery('')}
+              style={styles.clearSearchBtn}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <ClearIcon />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* Quick Horizontal Jump Chips */}
+        {parsedSections.length > 1 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.chipRow}
+          >
+            <TouchableOpacity
+              style={[
+                styles.chipBtn,
+                selectedSectionId === 'all' && styles.chipBtnActive,
+              ]}
+              onPress={() => {
+                setSelectedSectionId('all');
+                scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+              }}
+            >
+              <Text
+                style={[
+                  styles.chipText,
+                  selectedSectionId === 'all' && styles.chipTextActive,
+                ]}
+              >
+                All ({parsedSections.length})
+              </Text>
+            </TouchableOpacity>
+
+            {parsedSections.map((sec) => (
+              <TouchableOpacity
+                key={sec.id}
+                style={[
+                  styles.chipBtn,
+                  selectedSectionId === sec.id && styles.chipBtnActive,
+                ]}
+                onPress={() => {
+                  setSelectedSectionId(sec.id);
+                  scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+                }}
+              >
+                <Text
+                  style={[
+                    styles.chipText,
+                    selectedSectionId === sec.id && styles.chipTextActive,
+                  ]}
+                  numberOfLines={1}
+                >
+                  {sec.number > 0 ? `${sec.number}. ` : ''}
+                  {sec.title}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
+
+        {/* Main Document Header Card */}
         <View style={styles.legalMainCard}>
-          <Text style={styles.cardHeading}>
-            {activeTab === 'terms' ? t('termsTitle') : activeTab === 'privacy' ? t('privacyTitle') : (t('refundTitle') || 'Refund Policy')}
-          </Text>
+          <View style={styles.badgeRow}>
+            <View style={styles.enforcedBadge}>
+              <Text style={styles.enforcedBadgeText}>Active & Enforced • v2.6</Text>
+            </View>
+          </View>
+          <Text style={styles.cardHeading}>{activeDocTitle}</Text>
           <Text style={styles.cardSubtitle}>
-            {updatedAt ? `Last updated: ${new Date(updatedAt).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' })}` : t('lastUpdated')}
+            {`Official Guidelines • ${formattedDate}`}
           </Text>
 
           <GoldenLotusDivider />
 
           {loadingCms ? (
-            <View style={{ paddingVertical: 32, alignItems: 'center' }}>
+            <View style={styles.loadingBox}>
               <ActivityIndicator size="small" color="#DFA62E" />
-              <Text style={{ marginTop: 8, fontSize: 13, color: '#888' }}>Fetching from database...</Text>
+              <Text style={styles.loadingText}>Fetching official document from database...</Text>
             </View>
-          ) : dynamicClauses.length > 0 ? (
+          ) : filteredSections.length > 0 ? (
             <View style={styles.clausesList}>
-              {dynamicClauses.map((clause, idx) => {
-                const lines = clause.split('\n');
-                const head = lines[0].replace(/^\d+\.\s*/, '');
-                const body = lines.slice(1).join('\n');
-                return (
-                  <View key={idx} style={styles.clauseRow}>
-                    <NumberBadge num={idx + 1} />
-                    <View style={{ flex: 1 }}>
-                      {lines.length > 1 ? (
-                        <>
-                          <Text style={[styles.clauseText, { fontWeight: '700', marginBottom: 3 }]}>{head}</Text>
-                          <Text style={styles.clauseText}>{body}</Text>
-                        </>
-                      ) : (
-                        <Text style={styles.clauseText}>{clause}</Text>
-                      )}
-                    </View>
+              {filteredSections.map((sec) => (
+                <View key={sec.id} style={styles.sectionCard}>
+                  {/* Clause Header */}
+                  <View style={styles.sectionHeaderRow}>
+                    <NumberBadge num={sec.number > 0 ? sec.number : 1} />
+                    <Text style={styles.sectionTitle}>{sec.title}</Text>
                   </View>
-                );
-              })}
+
+                  {/* Clause Body Paragraphs */}
+                  <View style={styles.sectionBody}>
+                    {sec.paragraphs.map((p, pIdx) => {
+                      const isBullet = p.startsWith('•');
+                      return (
+                        <View
+                          key={pIdx}
+                          style={isBullet ? styles.bulletRow : styles.paragraphRow}
+                        >
+                          {isBullet ? (
+                            <>
+                              <Text style={styles.bulletDot}>✦</Text>
+                              <Text style={styles.bulletText}>{p.replace(/^•\s*/, '')}</Text>
+                            </>
+                          ) : (
+                            <Text style={styles.paragraphText}>{p}</Text>
+                          )}
+                        </View>
+                      );
+                    })}
+                  </View>
+                </View>
+              ))}
             </View>
           ) : (
-            <View style={{ paddingVertical: 24, alignItems: 'center' }}>
-              <Text style={{ color: '#999', fontSize: 13 }}>No database records found.</Text>
+            <View style={styles.emptyBox}>
+              <Text style={styles.emptyText}>
+                {searchQuery
+                  ? `No clauses match "${searchQuery}". Tap 'X' to reset search.`
+                  : 'No legal records found in database.'}
+              </Text>
             </View>
           )}
+        </View>
+
+        {/* Devotional Support & Grievance Footer Card */}
+        <View style={styles.supportCard}>
+          <Text style={styles.supportHeading}>Official Grievance & Devotee Care</Text>
+          <Text style={styles.supportText}>
+            For questions regarding our terms, sanctum sevas, or privacy rights:
+          </Text>
+          <View style={styles.supportContactRow}>
+            <Text style={styles.supportLabel}>Email:</Text>
+            <Text style={styles.supportValue}>support@saranamayyappa.in</Text>
+          </View>
+          <View style={styles.supportContactRow}>
+            <Text style={styles.supportLabel}>Web Portal:</Text>
+            <Text style={styles.supportValue}>https://saranamayyappa.in</Text>
+          </View>
+          <Text style={styles.supportBlessing}>
+            Swamiye Saranam Ayyappa! Dedicated to authentic dharma and devotee safety.
+          </Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -414,10 +733,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 21,
+    fontSize: 20,
     fontWeight: '700',
     color: '#FFFDF8',
-    fontFamily: Platform.select({ ios: 'Poppins-Bold', android: 'Poppins_700Bold', web: 'Poppins, sans-serif', default: 'Poppins_700Bold' }),
     letterSpacing: 0.5,
   },
   headerSpacer: {
@@ -432,23 +750,23 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
-    backgroundColor: '#FFF8EB',
+    backgroundColor: '#F5EFE0',
   },
   scrollContent: {
-    paddingVertical: 16,
-    paddingHorizontal: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
     paddingBottom: 36,
   },
 
   // Segmented Tabs
   tabContainer: {
     flexDirection: 'row',
-    backgroundColor: '#FFF9F0',
+    backgroundColor: '#FFFFFF',
     borderRadius: 14,
     borderWidth: 1.2,
-    borderColor: '#E8CD9C',
+    borderColor: '#E2D4B9',
     padding: 4,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   tabButton: {
     flex: 1,
@@ -459,48 +777,108 @@ const styles = StyleSheet.create({
   },
   tabButtonActive: {
     backgroundColor: '#173D32',
-    shadowColor: '#173D32',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.18,
-    shadowRadius: 3,
     elevation: 2,
   },
   tabButtonText: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 13,
+    fontWeight: '600',
     color: '#173D32',
   },
   tabButtonTextActive: {
     color: '#FFFDF8',
+    fontWeight: '700',
+  },
+
+  // Search Bar
+  searchBoxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2D4B9',
+    paddingHorizontal: 12,
+    height: 44,
+    marginBottom: 10,
+  },
+  searchIconWrap: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 13.5,
+    color: '#173D32',
+    paddingVertical: 0,
+  },
+  clearSearchBtn: {
+    padding: 4,
+  },
+
+  // Quick Jump Chips
+  chipRow: {
+    paddingBottom: 10,
+    gap: 8,
+  },
+  chipBtn: {
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E2D4B9',
+  },
+  chipBtnActive: {
+    backgroundColor: '#DFA62E',
+    borderColor: '#B58117',
+  },
+  chipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#345147',
+  },
+  chipTextActive: {
+    color: '#0C251E',
+    fontWeight: '700',
   },
 
   // Main Card
   legalMainCard: {
-    backgroundColor: '#FFF9F0',
-    borderRadius: 18,
+    backgroundColor: '#FFFDF9',
+    borderRadius: 16,
     borderWidth: 1.2,
-    borderColor: '#E8CD9C',
-    paddingVertical: 18,
-    paddingHorizontal: 16,
-    marginBottom: 16,
-    shadowColor: '#173D32',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 5,
+    borderColor: '#E2D4B9',
+    paddingVertical: 16,
+    paddingHorizontal: 14,
+    marginBottom: 14,
     elevation: 2,
+  },
+  badgeRow: {
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  enforcedBadge: {
+    backgroundColor: '#E6F4EA',
+    borderWidth: 1,
+    borderColor: '#A8DAB5',
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  enforcedBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#1B6A38',
   },
   cardHeading: {
     fontSize: 20,
     fontWeight: '700',
     color: '#173D32',
     textAlign: 'center',
-    fontFamily: Platform.select({ ios: 'Poppins-Bold', android: 'Poppins_700Bold', web: 'Poppins, sans-serif', default: 'Poppins_700Bold' }),
-    marginBottom: 4,
+    marginBottom: 2,
   },
   cardSubtitle: {
-    fontSize: 12.5,
-    fontStyle: 'italic',
-    color: '#345147',
+    fontSize: 12,
+    color: '#6E7D77',
     textAlign: 'center',
     marginBottom: 6,
   },
@@ -515,79 +893,144 @@ const styles = StyleSheet.create({
   lotusLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#E8CD9C',
-    marginHorizontal: 10,
+    backgroundColor: '#E2D4B9',
+    marginHorizontal: 8,
   },
 
-  // Numbered Clauses
+  // Clauses / Sections
   clausesList: {
-    marginTop: 6,
+    marginTop: 8,
+    gap: 12,
   },
-  clauseRow: {
+  sectionCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#EADFC7',
+    padding: 14,
+    marginBottom: 4,
+  },
+  sectionHeaderRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 14,
+    alignItems: 'center',
+    marginBottom: 10,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F5EFE0',
   },
   numberBadgeWrapper: {
-    width: 24,
-    height: 24,
+    width: 26,
+    height: 26,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 10,
-    marginTop: 1,
     position: 'relative',
   },
   numberBadgeText: {
     position: 'absolute',
     fontSize: 12,
     fontWeight: '700',
-    color: '#2E7561',
+    color: '#8A5805',
   },
-  clauseText: {
+  sectionTitle: {
     flex: 1,
-    fontSize: 13.5,
-    color: '#112620',
-    lineHeight: 20,
-  },
-  dynamicCmsBox: {
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#F0DEC1',
-  },
-  dynamicCmsText: {
-    fontSize: 13,
-    color: '#5C4A3A',
-    lineHeight: 19,
-  },
-
-  // Preview Card
-  previewCard: {
-    backgroundColor: '#FFF9F0',
-    borderRadius: 18,
-    borderWidth: 1.2,
-    borderColor: '#E8CD9C',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    shadowColor: '#173D32',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  previewCardHeading: {
-    fontSize: 18.5,
+    fontSize: 15,
     fontWeight: '700',
     color: '#173D32',
-    textAlign: 'center',
-    fontFamily: Platform.select({ ios: 'Poppins-Bold', android: 'Poppins_700Bold', web: 'Poppins, sans-serif', default: 'Poppins_700Bold' }),
+    lineHeight: 20,
   },
-  previewCardText: {
+  sectionBody: {
+    gap: 8,
+  },
+  paragraphRow: {
+    marginBottom: 4,
+  },
+  paragraphText: {
+    fontSize: 13.5,
+    color: '#2A3631',
+    lineHeight: 21,
+  },
+  bulletRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 3,
+    paddingLeft: 4,
+  },
+  bulletDot: {
+    fontSize: 10,
+    color: '#DFA62E',
+    marginRight: 8,
+    marginTop: 4,
+  },
+  bulletText: {
+    flex: 1,
+    fontSize: 13.5,
+    color: '#2A3631',
+    lineHeight: 21,
+  },
+
+  loadingBox: {
+    paddingVertical: 36,
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
     fontSize: 13,
-    color: '#5C4A3A',
+    color: '#6E7D77',
+  },
+  emptyBox: {
+    paddingVertical: 24,
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 13,
+    color: '#8C5E1B',
     textAlign: 'center',
-    lineHeight: 19,
-    marginTop: 2,
+  },
+
+  // Devotional Support Card
+  supportCard: {
+    backgroundColor: '#173D32',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#DFA62E',
+  },
+  supportHeading: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FFFDF8',
+    marginBottom: 4,
+  },
+  supportText: {
+    fontSize: 12.5,
+    color: '#D4E2DC',
+    lineHeight: 18,
+    marginBottom: 10,
+  },
+  supportContactRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  supportLabel: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: '#F5CF78',
+    width: 85,
+  },
+  supportValue: {
+    fontSize: 12.5,
+    color: '#FFFDF8',
+  },
+  supportBlessing: {
+    marginTop: 12,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.15)',
+    fontSize: 12,
+    fontStyle: 'italic',
+    color: '#F5CF78',
+    textAlign: 'center',
   },
 });
-

@@ -18,6 +18,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { SupportedLanguage, TempleItem } from '../../../types';
 import { ApiService, resolveMediaUrl } from '../../../services/api';
+import { MASTER_TEMPLES } from '../../../data/templesData';
 
 interface Props {
   templeId: string;
@@ -376,10 +377,19 @@ export const TempleProfileScreen: React.FC<Props> = ({
   const activeTemple = temple;
   const langKey = currentLanguage in UI_TRANSLATIONS.aboutTab ? currentLanguage : 'en';
 
-  // Dynamic localized name
+  // Dynamic localized name with master fallback if API returned empty localNames
+  const masterFallback = MASTER_TEMPLES.find(
+    (m) =>
+      m.id === activeTemple.id ||
+      (m.slug && (m.slug === activeTemple.slug || activeTemple.id?.includes(m.slug))) ||
+      (activeTemple.name && m.name && activeTemple.name.toLowerCase().includes(m.name.toLowerCase()))
+  );
+  const resolvedLocalNames = {
+    ...(masterFallback?.localNames || {}),
+    ...(activeTemple.localNames || {}),
+  };
   const localizedName =
-    (activeTemple.localNames && activeTemple.localNames[currentLanguage]) ||
-    activeTemple.name;
+    resolvedLocalNames[currentLanguage] || activeTemple.name;
 
   // View Map Action
   const handleOpenMap = () => {

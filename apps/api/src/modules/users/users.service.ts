@@ -410,6 +410,59 @@ export class UsersService {
     return { success: true, message: 'Bookmark removed successfully.' };
   }
 
+  async toggleBookmark(
+    userId: number,
+    body: { itemId: string; itemType: string; title: string; subtitle?: string; thumbnailUrl?: string }
+  ) {
+    await this.ensureBookmarksTable();
+    if (!body.itemId || !body.title) {
+      throw new BadRequestException('itemId and title are required for bookmark');
+    }
+    const itemType = body.itemType || 'general';
+
+    const existing: any = await this.prisma.$queryRawUnsafe(
+      'SELECT id FROM `user_bookmarks` WHERE `user_id` = ? AND `item_id` = ? LIMIT 1',
+      userId,
+      body.itemId,
+    );
+
+    if (Array.isArray(existing) && existing.length > 0) {
+      await this.prisma.$queryRawUnsafe(
+        'DELETE FROM `user_bookmarks` WHERE `user_id` = ? AND `item_id` = ?',
+        userId,
+        body.itemId,
+      );
+      return { success: true, isBookmarked: false, message: 'Bookmark removed successfully.' };
+    } else {
+      await this.prisma.$queryRawUnsafe(
+        `INSERT INTO \`user_bookmarks\` (\`user_id\`, \`item_id\`, \`item_type\`, \`title\`, \`subtitle\`, \`thumbnail_url\`)
+         VALUES (?, ?, ?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE \`title\` = VALUES(\`title\`), \`subtitle\` = VALUES(\`subtitle\`), \`thumbnail_url\` = VALUES(\`thumbnail_url\`)`,
+        userId,
+        body.itemId,
+        itemType,
+        body.title,
+        body.subtitle || null,
+        body.thumbnailUrl || null,
+      );
+      return { success: true, isBookmarked: true, message: 'Bookmark added successfully.' };
+    }
+  }
+
+  async checkBookmark(userId: number, itemId: string) {
+    if (!userId || !itemId) {
+      return { success: true, isBookmarked: false };
+    }
+    await this.ensureBookmarksTable();
+    const rows: any = await this.prisma.$queryRawUnsafe(
+      'SELECT id FROM `user_bookmarks` WHERE `user_id` = ? AND `item_id` = ? LIMIT 1',
+      userId,
+      itemId,
+    );
+    const isBookmarked = Array.isArray(rows) && rows.length > 0;
+    return { success: true, isBookmarked };
+  }
+
   async getPreferences(userId: number) {
     const user = await this.prisma.appUser.findUnique({
       where: { id: userId },
