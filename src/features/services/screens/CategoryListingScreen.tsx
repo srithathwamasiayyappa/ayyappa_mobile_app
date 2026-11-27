@@ -183,7 +183,8 @@ export const CategoryListingScreen: React.FC<Props> = ({
             else if (/venkates|vishnu|ramanuja|guruvayoor|tulasi|వేంకట|వెంకట|విష్ణు|రామానుజ|గురువాయూరప్ప|తులసి/.test(txt)) detectedDeity = 'venkateswara';
             else if (/ganesh|vignesh|vinayak|ganapathi|గణపతి|వినాయక|విఘ్నేశ్వర/.test(txt)) detectedDeity = 'ganesha';
             else if (/hanuman|anjaneya|హనుమాన్|ఆంజనేయ/.test(txt)) detectedDeity = 'hanuman';
-            else if (/subrahmanya|murugan|pazhani|palani|udipi|సుబ్రహ్మణ్య|మురుగన్|పళని|ఉడిపి/.test(txt)) detectedDeity = 'murugan';
+            else if (/subrahmanya|murugan|kanda|sashti|pazhani|palani|udipi|సుబ్రహ్మణ్య|మురుగన్|స్కంద|షష్ఠి|పళని|ఉడిపి/.test(txt)) detectedDeity = 'murugan';
+            else if (/morning|meal|night|bedtime|ప్రాతః|భోజన|రాత్రి|శయన/.test(txt)) detectedDeity = 'all';
             else detectedDeity = isAyyappa ? 'ayyappa' : (deityToFetch !== 'all' ? deityToFetch : 'ayyappa');
           }
           const itemDeity = detectedDeity.toLowerCase();
@@ -367,14 +368,44 @@ export const CategoryListingScreen: React.FC<Props> = ({
       });
     }
 
-    // 3. DAILY SLOKAS: Show ONLY Slokas & Verses
-    if (normCat === 'slokas' || normCat === 'daily-slokas' || normCat.includes('sloka')) {
-      return allCategoryItems.filter((item) => {
+    // 3. DAILY SLOKAS: Show Slokas & Verses filtered strictly by selected God / Goddess
+    if (normCat === 'slokas' || normCat === 'daily-slokas' || normCat.includes('sloka') || normCat === '115') {
+      const slokasOnly = allCategoryItems.filter((item) => {
         const titleLower = (item.title || '').toLowerCase();
         const slugLower = (item.id || '').toLowerCase();
         const text = `${titleLower} ${slugLower}`;
         return !text.includes('pooja') && !text.includes('పూజ') && !text.includes('bhajan') && !text.includes('భజన');
       });
+
+      if (selectedFilter && selectedFilter !== 'all') {
+        return slokasOnly.filter((item) => {
+          const d = (item.deityId || '').toLowerCase();
+          const t = `${item.title || ''} ${item.id || ''}`.toLowerCase();
+          const isUniversal =
+            item.deityId === 'all' ||
+            t.includes('nithya-paarayana') ||
+            t.includes('morning-prayers') ||
+            t.includes('meal-prayers') ||
+            t.includes('night-prayers') ||
+            t.includes('ప్రాతః') ||
+            t.includes('భోజన') ||
+            t.includes('రాత్రి') ||
+            t.includes('శయన');
+
+          return (
+            isUniversal ||
+            d === selectedFilter ||
+            (selectedFilter === 'ganesha' && (d === 'ganesha' || t.includes('ganesh') || t.includes('pancharatnam') || t.includes('గణపతి') || t.includes('వినాయక'))) ||
+            (selectedFilter === 'hanuman' && (d === 'hanuman' || t.includes('hanuman') || t.includes('chalisa') || t.includes('హనుమాన్') || t.includes('ఆంజనేయ'))) ||
+            (selectedFilter === 'venkateswara' && (d === 'venkateswara' || t.includes('venkat') || t.includes('suprabhat') || t.includes('వేంకట') || t.includes('సుప్రభాత'))) ||
+            (selectedFilter === 'murugan' && (d === 'murugan' || t.includes('murugan') || t.includes('subramanya') || t.includes('kanda') || t.includes('sashti') || t.includes('స్కంద') || t.includes('షష్ఠి'))) ||
+            (selectedFilter === 'ayyappa' && (d === 'ayyappa' || t.includes('ayyap') || t.includes('sastha') || t.includes('శాస్త') || t.includes('సుప్రభాతం') || t.includes('suprabatham'))) ||
+            (selectedFilter === 'shiva' && (d === 'shiva' || t.includes('shiva') || t.includes('శివ') || t.includes('linga') || t.includes('రుద్ర'))) ||
+            (selectedFilter === 'devi' && (d === 'devi' || t.includes('devi') || t.includes('durga') || t.includes('దేవి') || t.includes('దుర్గ') || t.includes('లక్ష్మి')))
+          );
+        });
+      }
+      return slokasOnly;
     }
 
     // 4. BHAJANS & SONGS: Show ALL Songs, Bhajans, Harathis filtered by selected deity

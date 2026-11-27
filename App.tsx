@@ -571,6 +571,8 @@ export default function App() {
     const activeDeity = deity || currentDeity?.id || currentDeity?.slug || 'all';
     if (id === 'bhajans' || id === 'harathis' || id === 'songs' || id === 'bhajans-songs' || id === '116') {
       navigateTo('category_listing', { id: 'songs', title: title || 'Bhajans & Songs', deity: activeDeity });
+    } else if (id === 'slokas' || id === 'daily-slokas' || id === '115') {
+      navigateTo('category_listing', { id: 'slokas', title: title || 'Daily Slokas', deity: activeDeity });
     } else if (id === 'live-streams' || id === 'live' || id === 'live_streams' || id === 'live-darshan') {
       navigateTo('live_streams', { id, title: title || 'Live Streams', deity: activeDeity });
     } else if (id === 'temples' || id === 'temples-in-india' || id === 'temple_listing') {
