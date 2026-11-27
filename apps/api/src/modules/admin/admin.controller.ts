@@ -690,7 +690,6 @@ export class AdminController {
         description: preferred?.description || catSub,
         imageUrl: catArtwork,
         artwork: catArtwork,
-        icon: sInfo.icon || 'Sparkles',
         subcategoriesCount: subCount,
         devotionalCount: devCount,
         createdAt: cat.createdAt,
@@ -755,6 +754,42 @@ export class AdminController {
       } catch (_) {}
     }
 
+    const rawDeity = (body as any).deityId || (body as any).deity;
+    if (rawDeity) {
+      try {
+        const deitySetting = await this.prisma.appSetting.findUnique({ where: { key: 'subcategory_deities' } });
+        let map: Record<string, string> = {};
+        if (deitySetting && deitySetting.value) {
+          try { map = JSON.parse(deitySetting.value); } catch {}
+        }
+        map[String(created.id)] = String(rawDeity).trim();
+        map[created.slug] = String(rawDeity).trim();
+        await this.prisma.appSetting.upsert({
+          where: { key: 'subcategory_deities' },
+          update: { value: JSON.stringify(map) },
+          create: { key: 'subcategory_deities', value: JSON.stringify(map), description: 'Subcategory Deity Association Map' }
+        });
+      } catch (_) {}
+    }
+
+    if ((body as any).status) {
+      try {
+        const statusSetting = await this.prisma.appSetting.findUnique({ where: { key: 'subcategory_statuses' } });
+        let map: Record<string, string> = {};
+        if (statusSetting && statusSetting.value) {
+          try { map = JSON.parse(statusSetting.value); } catch {}
+        }
+        const cleanStatus = ['active', 'coming_soon', 'inactive'].includes((body as any).status) ? (body as any).status : 'active';
+        map[String(created.id)] = cleanStatus;
+        map[created.slug] = cleanStatus;
+        await this.prisma.appSetting.upsert({
+          where: { key: 'subcategory_statuses' },
+          update: { value: JSON.stringify(map) },
+          create: { key: 'subcategory_statuses', value: JSON.stringify(map), description: 'Subcategory Statuses Map' }
+        });
+      } catch (_) {}
+    }
+
     return { success: true, data: { id: String(created.id), ...body } };
   }
 
@@ -798,6 +833,48 @@ export class AdminController {
         });
       } catch (err) {
         console.warn('Could not save subcategory image:', err);
+      }
+    }
+
+    const rawDeity = (body as any).deityId || (body as any).deity;
+    if (rawDeity) {
+      try {
+        const deitySetting = await this.prisma.appSetting.findUnique({ where: { key: 'subcategory_deities' } });
+        let map: Record<string, string> = {};
+        if (deitySetting && deitySetting.value) {
+          try { map = JSON.parse(deitySetting.value); } catch {}
+        }
+        map[String(numId)] = String(rawDeity).trim();
+        map[existing.slug] = String(rawDeity).trim();
+        if (body.slug && body.slug !== existing.slug) map[body.slug] = String(rawDeity).trim();
+        await this.prisma.appSetting.upsert({
+          where: { key: 'subcategory_deities' },
+          update: { value: JSON.stringify(map) },
+          create: { key: 'subcategory_deities', value: JSON.stringify(map), description: 'Subcategory Deity Association Map' }
+        });
+      } catch (err) {
+        console.warn('Could not save subcategory deity association:', err);
+      }
+    }
+
+    if (body.status !== undefined && body.status !== null) {
+      try {
+        const statusSetting = await this.prisma.appSetting.findUnique({ where: { key: 'subcategory_statuses' } });
+        let map: Record<string, string> = {};
+        if (statusSetting && statusSetting.value) {
+          try { map = JSON.parse(statusSetting.value); } catch {}
+        }
+        const cleanStatus = ['active', 'coming_soon', 'inactive'].includes(body.status) ? body.status : 'active';
+        map[String(numId)] = cleanStatus;
+        map[existing.slug] = cleanStatus;
+        if (body.slug && body.slug !== existing.slug) map[body.slug] = cleanStatus;
+        await this.prisma.appSetting.upsert({
+          where: { key: 'subcategory_statuses' },
+          update: { value: JSON.stringify(map) },
+          create: { key: 'subcategory_statuses', value: JSON.stringify(map), description: 'Subcategory Statuses Map' }
+        });
+      } catch (err) {
+        console.warn('Could not save subcategory status:', err);
       }
     }
 
@@ -895,7 +972,31 @@ export class AdminController {
   // 4b. Category Tree & Parents Lookup
   @Get('categories/parents')
   async getParentCategoriesLookup(@Query('lang') lang: string = 'te') {
-    await this.syncCategoryServicesToContentCategories();
+    const targetLang = (lang || 'te').toLowerCase().trim();
+
+    // Canonical 9 sacred sanctum services mapping
+    const CANONICAL_MAP: { [key: string]: { canonicalKey: string; order: number; titles: { [l: string]: string } } } = {
+      'pooja': { canonicalKey: 'pooja', order: 1, titles: { te: 'పూజా విధానము', en: 'Pooja Vidhanam', kn: 'ಪೂಜಾ ವಿಧಾನ', ta: 'பூஜா விதானம்', hi: 'पूजा विधान' } },
+      'pooja-vidhanam': { canonicalKey: 'pooja', order: 1, titles: { te: 'పూజా విధానము', en: 'Pooja Vidhanam', kn: 'ಪೂಜಾ ವಿಧಾನ', ta: 'பூஜா விதானம்', hi: 'पूजा विधान' } },
+      'stotras': { canonicalKey: 'stotras', order: 2, titles: { te: 'దివ్య స్తోత్రాలు', en: 'Divine Stotras', kn: 'ದಿವ್ಯ ಸ್ತೋತ್ರಗಳು', ta: 'திவ்ய ஸ்தோத்திரங்கள்', hi: 'दिव्य स्तोत्र' } },
+      'divine-stotras': { canonicalKey: 'stotras', order: 2, titles: { te: 'దివ్య స్తోత్రాలు', en: 'Divine Stotras', kn: 'ದಿವ್ಯ ಸ್ತೋತ್ರಗಳು', ta: 'திவ்ய ஸ்தோத்திரங்கள்', hi: 'दिव्य स्तोत्र' } },
+      'slokas': { canonicalKey: 'slokas', order: 3, titles: { te: 'నిత్య శ్లోకాలు', en: 'Daily Slokas', kn: 'ನಿತ್ಯ ಶ್ಲೋಕಗಳು', ta: 'நித்ய ஸ்லோகங்கள்', hi: 'नित्य श्लोक' } },
+      'daily-slokas': { canonicalKey: 'slokas', order: 3, titles: { te: 'నిత్య శ్లోకాలు', en: 'Daily Slokas', kn: 'ನಿತ್ಯ ಶ್ಲೋಕಗಳು', ta: 'நித்ய ஸ்லோகங்கள்', hi: 'नित्य श्लोक' } },
+      'songs': { canonicalKey: 'songs', order: 4, titles: { te: 'భజనలు & కీర్తనలు', en: 'Bhajans & Songs', kn: 'ಭಜನೆಗಳು & ಕೀರ್ತನೆಗಳು', ta: 'பஜனைகள் & பாடல்கள்', hi: 'भजन एवं कीर्तन' } },
+      'bhajans': { canonicalKey: 'songs', order: 4, titles: { te: 'భజనలు & కీర్తనలు', en: 'Bhajans & Songs', kn: 'ಭಜನೆಗಳು & ಕೀರ್ತನೆಗಳು', ta: 'பஜனைகள் & பாடல்கள்', hi: 'भजन एवं कीर्तन' } },
+      'live-streams': { canonicalKey: 'live-streams', order: 5, titles: { te: 'ప్రత్యక్ష దర్శనం', en: 'Live Darshan', kn: 'ಲೈವ್ ದರ್ಶನ', ta: 'நேரலை தரிசனம்', hi: 'लाइव दर्शन' } },
+      'live-darshan': { canonicalKey: 'live-streams', order: 5, titles: { te: 'ప్రత్యక్ష దర్శనం', en: 'Live Darshan', kn: 'ಲೈವ್ ದರ್ಶನ', ta: 'நேரலை தரிசனம்', hi: 'लाइव दर्शन' } },
+      'darshan': { canonicalKey: 'live-streams', order: 5, titles: { te: 'ప్రత్యక్ష దర్శనం', en: 'Live Darshan', kn: 'ಲೈವ್ ದರ್ಶನ', ta: 'நேரலை தரிசனம்', hi: 'लाइव दर्शन' } },
+      'panchangam': { canonicalKey: 'panchangam', order: 6, titles: { te: 'పంచాంగం', en: 'Panchangam', kn: 'ಪಂಚಾಂಗ', ta: 'பஞ்சாங்கம்', hi: 'पंचांग' } },
+      'festivals': { canonicalKey: 'festivals', order: 7, titles: { te: 'ఆలయ ఉత్సవాలు', en: 'Temple Festivals', kn: 'ದೇವಾಲಯ ಉತ್ಸವಗಳು', ta: 'திருவிழாக்கள்', hi: 'मंदिर उत्सव' } },
+      'temple-festivals': { canonicalKey: 'festivals', order: 7, titles: { te: 'ఆలయ ఉత్సవాలు', en: 'Temple Festivals', kn: 'ದೇವಾಲಯ ಉತ್ಸವಗಳು', ta: 'திருவிழாக்கள்', hi: 'मंदिर उत्सव' } },
+      'temples': { canonicalKey: 'temples', order: 8, titles: { te: 'పుణ్యక్షేత్రాలు', en: 'Sacred Temples', kn: 'ಪುಣ್ಯಕ್ಷೇತ್ರಗಳು', ta: 'புண்ணிய தலங்கள்', hi: 'पुण्य क्षेत्र व मंदिर' } },
+      'sacred-temples': { canonicalKey: 'temples', order: 8, titles: { te: 'పుణ్యక్షేత్రాలు', en: 'Sacred Temples', kn: 'ಪುಣ್ಯಕ್ಷೇತ್ರಗಳು', ta: 'புண்ணிய தலங்கள்', hi: 'पुण्य क्षेत्र व मंदिर' } },
+      'donations': { canonicalKey: 'donations', order: 9, titles: { te: 'అన్నదాన సేవ', en: 'Annadanam Seva', kn: 'ಅನ್ನದಾನ ಸೇವೆ', ta: 'அன்னதான சேவை', hi: 'अन्नदान सेवा' } },
+      'annadanam-seva': { canonicalKey: 'donations', order: 9, titles: { te: 'అన్నదాన సేవ', en: 'Annadanam Seva', kn: 'ಅನ್ನದಾನ ಸೇವೆ', ta: 'அன்னதான சேவை', hi: 'अन्नदान सेवा' } },
+      'annadanam': { canonicalKey: 'donations', order: 9, titles: { te: 'అన్నదాన సేవ', en: 'Annadanam Seva', kn: 'ಅನ್ನದಾನ ಸೇವೆ', ta: 'அன்னதான சேவை', hi: 'अन्नदान सेवा' } }
+    };
+
     let categories: any[] = [];
     try {
       categories = await this.prisma.contentCategory.findMany({
@@ -909,30 +1010,67 @@ export class AdminController {
       console.warn('[Admin] Parent categories lookup error:', e);
     }
 
-    if (!categories || categories.length === 0) {
-      // Fallback standard 9 sanctum parent categories
-      return [
-        { id: 1, slug: 'pooja', title: 'Pooja Vidhanam', parentId: null },
-        { id: 2, slug: 'stotras', title: 'Divine Stotras', parentId: null },
-        { id: 3, slug: 'slokas', title: 'Daily Slokas', parentId: null },
-        { id: 4, slug: 'songs', title: 'Bhajans & Songs', parentId: null },
-        { id: 5, slug: 'live-streams', title: 'Live Darshan', parentId: null },
-        { id: 6, slug: 'panchangam', title: 'Panchangam', parentId: null },
-        { id: 7, slug: 'festivals', title: 'Temple Festivals', parentId: null },
-        { id: 8, slug: 'temples', title: 'Sacred Temples', parentId: null },
-        { id: 9, slug: 'donations', title: 'Annadanam Seva', parentId: null },
-      ];
+    const seenCanonicals = new Set<string>();
+    const result: any[] = [];
+
+    if (categories && categories.length > 0) {
+      for (const c of categories) {
+        const slug = (c.slug || '').toLowerCase().trim();
+        // Ignore calendar / dates non-category rows
+        if (slug.includes('dates') || slug.includes('nakshatra') || slug.includes('opening')) continue;
+
+        const canonical = CANONICAL_MAP[slug];
+        if (!canonical) continue;
+        if (seenCanonicals.has(canonical.canonicalKey)) continue;
+        seenCanonicals.add(canonical.canonicalKey);
+
+        const match = c.translations?.find((t: any) => t.language?.code === targetLang) || c.translations?.[0];
+        const displayTitle = match?.title || canonical.titles[targetLang] || canonical.titles['en'] || c.slug;
+
+        // Dynamic subcategory count across direct children and nested category items
+        let count = 0;
+        try {
+          const childCats = await this.prisma.contentCategory.findMany({
+            where: { parentId: c.id, isArchived: false },
+            select: { id: true }
+          });
+          const allFamilyIds = [c.id, ...childCats.map(ch => ch.id)];
+          count = await this.prisma.contentCategory.count({
+            where: { parentId: { in: allFamilyIds }, isArchived: false }
+          });
+        } catch (_) { }
+
+        result.push({
+          id: c.id,
+          slug: c.slug,
+          title: displayTitle,
+          parentId: c.parentId,
+          order: canonical.order,
+          subcategoriesCount: count
+        });
+      }
     }
 
-    return categories.map(c => {
-      const match = c.translations?.find((t: any) => t.language?.code === lang) || c.translations?.[0];
-      return {
-        id: c.id,
-        slug: c.slug,
-        title: match ? match.title : c.slug,
-        parentId: c.parentId
-      };
-    });
+    // Ensure all 9 canonical sanctum parent categories exist
+    const missingKeys = ['pooja', 'stotras', 'slokas', 'songs', 'live-streams', 'panchangam', 'festivals', 'temples', 'donations'];
+    for (const mKey of missingKeys) {
+      if (!seenCanonicals.has(mKey)) {
+        const info = CANONICAL_MAP[mKey];
+        if (info) {
+          result.push({
+            id: info.order,
+            slug: mKey,
+            title: info.titles[targetLang] || info.titles['en'] || mKey,
+            parentId: null,
+            order: info.order,
+            subcategoriesCount: 0
+          });
+        }
+      }
+    }
+
+    result.sort((a, b) => (a.order || 0) - (b.order || 0));
+    return result;
   }
 
   // 5. Subcategories CRUD (Items based on categories with parent filtering)
@@ -942,7 +1080,8 @@ export class AdminController {
     @Query('limit') limit: string = '100',
     @Query('search') search?: string,
     @Query('lang') lang: string = 'te',
-    @Query('parentId') parentId?: string
+    @Query('parentId') parentId?: string,
+    @Query('status') status?: string
   ) {
     const pageNum = Math.max(1, parseInt(page, 10) || 1);
     const take = Math.min(200, Math.max(1, parseInt(limit, 10) || 100));
@@ -951,66 +1090,47 @@ export class AdminController {
     let targetParentCondition: any = { not: null };
 
     if (parentId && parentId !== 'all') {
-      const parsed = parseInt(parentId, 10);
-      if (!isNaN(parsed) && parsed > 0) {
-        targetParentCondition = parsed;
-      } else {
-        try {
-          let parentMatch: any = null;
-          const cleanPid = parentId.toLowerCase().trim();
-          if (cleanPid === 'pooja' || cleanPid === 'pooja-vidhanam' || cleanPid === 'poojalu-vrathaalu' || cleanPid === '113') {
-            parentMatch = await this.prisma.contentCategory.findFirst({
-              where: {
-                OR: [
-                  { id: 113 },
-                  { slug: 'pooja-vidhanam' }
-                ],
-                parentId: null
-              }
-            });
-            if (!parentMatch) {
-              parentMatch = await this.prisma.contentCategory.findFirst({
-                where: {
-                  OR: [
-                    { slug: 'poojalu-vrathaalu' },
-                    { slug: 'pooja' }
-                  ],
-                  parentId: null
-                }
-              });
-            }
-          } else if (cleanPid === 'stotras' || cleanPid === 'divine-stotras' || cleanPid === '114' || cleanPid === '4') {
-            parentMatch = await this.prisma.contentCategory.findFirst({
-              where: {
-                OR: [
-                  { id: 114 },
-                  { slug: 'stotras' },
-                  { id: 4 },
-                  { slug: 'divine-stotras' },
-                  { slug: 'stotramulu' }
-                ],
-                parentId: null
-              }
-            });
-          } else {
-            parentMatch = await this.prisma.contentCategory.findFirst({
-              where: {
-                OR: [
-                  { slug: parentId },
-                  { slug: cleanPid }
-                ],
-                parentId: null
-              }
-            });
-          }
-          if (parentMatch) {
-            targetParentCondition = parentMatch.id;
-          } else {
-            targetParentCondition = -999999;
-          }
-        } catch (_) {
+      try {
+        let parentMatch: any = null;
+        const cleanPid = String(parentId).toLowerCase().trim();
+        const parsed = parseInt(cleanPid, 10);
+
+        if (cleanPid === 'pooja' || cleanPid === 'pooja-vidhanam' || cleanPid === 'poojalu-vrathaalu' || cleanPid === '113') {
+          parentMatch = await this.prisma.contentCategory.findFirst({
+            where: { OR: [{ id: 113 }, { slug: 'pooja-vidhanam' }, { slug: 'pooja' }], parentId: null }
+          });
+        } else if (cleanPid === 'stotras' || cleanPid === 'divine-stotras' || cleanPid === '114' || cleanPid === '4') {
+          parentMatch = await this.prisma.contentCategory.findFirst({
+            where: { OR: [{ id: 114 }, { slug: 'stotras' }, { slug: 'divine-stotras' }, { id: 4 }], parentId: null }
+          });
+        } else if (cleanPid === 'slokas' || cleanPid === 'daily-slokas' || cleanPid === '115') {
+          parentMatch = await this.prisma.contentCategory.findFirst({
+            where: { OR: [{ id: 115 }, { slug: 'slokas' }, { slug: 'daily-slokas' }], parentId: null }
+          });
+        } else if (cleanPid === 'songs' || cleanPid === 'bhajans' || cleanPid === '116') {
+          parentMatch = await this.prisma.contentCategory.findFirst({
+            where: { OR: [{ id: 116 }, { slug: 'songs' }, { slug: 'bhajans' }], parentId: null }
+          });
+        } else if (!isNaN(parsed) && parsed > 0) {
+          parentMatch = await this.prisma.contentCategory.findUnique({ where: { id: parsed } });
+        } else {
+          parentMatch = await this.prisma.contentCategory.findFirst({
+            where: { OR: [{ slug: parentId }, { slug: cleanPid }] }
+          });
+        }
+
+        if (parentMatch) {
+          const childCats = await this.prisma.contentCategory.findMany({
+            where: { parentId: parentMatch.id, isArchived: false },
+            select: { id: true }
+          });
+          const allFamilyIds = [parentMatch.id, ...childCats.map(c => c.id)];
+          targetParentCondition = { in: allFamilyIds };
+        } else {
           targetParentCondition = -999999;
         }
+      } catch (_) {
+        targetParentCondition = -999999;
       }
     }
 
@@ -1042,7 +1162,8 @@ export class AdminController {
           orderBy: { displayOrder: 'asc' },
           include: {
             parent: { include: { translations: true } },
-            translations: { include: { language: true } }
+            translations: { include: { language: true } },
+            _count: { select: { devotionalContents: true, subcategories: true } }
           }
         })
       ]);
@@ -1052,17 +1173,27 @@ export class AdminController {
 
     if (items.length > 0) {
       let customImages: Record<string, string> = {};
+      let customDeities: Record<string, string> = {};
+      let customStatuses: Record<string, string> = {};
       try {
-        const imgSetting = await this.prisma.appSetting.findUnique({ where: { key: 'subcategory_images' } });
+        const [imgSetting, deitySetting, statusSetting] = await Promise.all([
+          this.prisma.appSetting.findUnique({ where: { key: 'subcategory_images' } }),
+          this.prisma.appSetting.findUnique({ where: { key: 'subcategory_deities' } }),
+          this.prisma.appSetting.findUnique({ where: { key: 'subcategory_statuses' } })
+        ]);
         if (imgSetting && imgSetting.value) customImages = JSON.parse(imgSetting.value);
+        if (deitySetting && deitySetting.value) customDeities = JSON.parse(deitySetting.value);
+        if (statusSetting && statusSetting.value) customStatuses = JSON.parse(statusSetting.value);
       } catch (_) {}
 
       const totalPages = Math.ceil(totalRecords / take);
-      const formatted = items.map(cat => {
+      let formatted = items.map(cat => {
         const preferred = cat.translations.find((t: any) => t.language?.code === lang) || cat.translations[0];
         const parentPref = cat.parent?.translations?.find((t: any) => t.languageId === preferred?.languageId) || cat.parent?.translations?.[0];
         const pSlug = cat.parent?.slug || 'pooja';
         const customImg = customImages[String(cat.id)] || customImages[cat.slug];
+        const deityId = customDeities[String(cat.id)] || customDeities[cat.slug] || 'ayyappa';
+        const subStatus = customStatuses[String(cat.id)] || customStatuses[cat.slug] || 'active';
 
         // Format clean title if not in DB translations
         const titleFormatted = cat.slug
@@ -1072,6 +1203,12 @@ export class AdminController {
         const finalTitle = (preferred?.title && preferred.title !== cat.slug)
           ? preferred.title
           : titleFormatted;
+
+        const devCount = cat._count?.devotionalContents ?? 0;
+        const childTypesCount = cat._count?.subcategories ?? 0;
+        const combinedTypesCount = devCount > 0 && childTypesCount > 0
+          ? (devCount + childTypesCount)
+          : (devCount || childTypesCount || 0);
 
         return {
           id: String(cat.id),
@@ -1083,19 +1220,27 @@ export class AdminController {
           parentTitle: parentPref ? parentPref.title : pSlug,
           displayOrder: cat.displayOrder,
           isAudio: cat.isAudio,
+          typesCount: combinedTypesCount,
+          deityId,
+          status: subStatus,
+          isActive: subStatus === 'active',
           imageUrl: customImg || resolveCategoryCardArtwork(cat.slug, finalTitle, pSlug, cat.displayOrder),
           image: customImg || resolveCategoryCardArtwork(cat.slug, finalTitle, pSlug, cat.displayOrder),
           createdAt: cat.createdAt
         };
       });
 
+      if (status && status !== 'all') {
+        formatted = formatted.filter(s => s.status === status);
+      }
+
       return {
         data: formatted,
         meta: {
           page: pageNum,
           limit: take,
-          totalRecords,
-          totalPages,
+          totalRecords: (status && status !== 'all') ? formatted.length : totalRecords,
+          totalPages: (status && status !== 'all') ? Math.ceil(formatted.length / take) : totalPages,
           hasNextPage: pageNum < totalPages,
           hasPreviousPage: pageNum > 1
         }
@@ -1126,9 +1271,20 @@ export class AdminController {
     const where: any = isNum ? { id: Number(id) } : { slug: id };
 
     let customImages: Record<string, string> = {};
+    let customDeities: Record<string, string> = {};
+    let customStatuses: Record<string, string> = {};
+    let typeStatuses: Record<string, string> = {};
     try {
-      const imgSetting = await this.prisma.appSetting.findUnique({ where: { key: 'subcategory_images' } });
+      const [imgSetting, deitySetting, statusSetting, typeStatusSetting] = await Promise.all([
+        this.prisma.appSetting.findUnique({ where: { key: 'subcategory_images' } }),
+        this.prisma.appSetting.findUnique({ where: { key: 'subcategory_deities' } }),
+        this.prisma.appSetting.findUnique({ where: { key: 'subcategory_statuses' } }),
+        this.prisma.appSetting.findUnique({ where: { key: 'type_statuses' } })
+      ]);
       if (imgSetting && imgSetting.value) customImages = JSON.parse(imgSetting.value);
+      if (deitySetting && deitySetting.value) customDeities = JSON.parse(deitySetting.value);
+      if (statusSetting && statusSetting.value) customStatuses = JSON.parse(statusSetting.value);
+      if (typeStatusSetting && typeStatusSetting.value) typeStatuses = JSON.parse(typeStatusSetting.value);
     } catch (_) {}
 
     try {
@@ -1146,7 +1302,6 @@ export class AdminController {
             include: { language: true }
           },
           devotionalContents: {
-            where: { isPublished: true },
             orderBy: { displayOrder: 'asc' }
           },
           subcategories: {
@@ -1192,6 +1347,7 @@ export class AdminController {
 
         const contents = cat.devotionalContents.map((d: any) => {
           const loc = contentSettingMap.get(`devotional_content_${d.id}_${lang.toLowerCase()}`);
+          const cStatus = typeStatuses[String(d.id)] || (d.isPublished !== false ? 'active' : 'inactive');
           return {
             id: d.id,
             title: loc?.title || d.title,
@@ -1199,6 +1355,8 @@ export class AdminController {
             sacredText: loc?.sacredText || d.sacredText || null,
             meaning: loc?.meaning || d.meaning || null,
             displayOrder: d.displayOrder,
+            status: cStatus,
+            isPublished: cStatus === 'active',
             hasExactTranslation: Boolean(loc)
           };
         });
@@ -1212,6 +1370,8 @@ export class AdminController {
             description: subPref ? subPref.description : null
           };
         });
+
+        const catStatus = customStatuses[String(cat.id)] || customStatuses[cat.slug] || 'active';
 
         return {
           success: true,
@@ -1229,7 +1389,11 @@ export class AdminController {
             parentSlug: pSlug,
             displayOrder: cat.displayOrder,
             isAudio: cat.isAudio,
+            typesCount: (contents.length || 0) + (subcategories.length || 0),
             isSubcategory: Boolean(cat.parentId),
+            status: catStatus,
+            isActive: catStatus === 'active',
+            deityId: customDeities[String(cat.id)] || customDeities[cat.slug] || 'ayyappa',
             imageUrl: customImg || resolveCategoryCardArtwork(cat.slug, preferred ? preferred.title : cat.slug, pSlug, cat.displayOrder),
             image: customImg || resolveCategoryCardArtwork(cat.slug, preferred ? preferred.title : cat.slug, pSlug, cat.displayOrder),
             translations: allTranslations,
@@ -1253,10 +1417,11 @@ export class AdminController {
     @Query('page') page: string = '1',
     @Query('limit') limit: string = '20',
     @Query('search') search?: string,
-    @Query('categoryId') categoryId?: string
+    @Query('categoryId') categoryId?: string,
+    @Query('status') status?: string
   ) {
     const pageNum = Math.max(1, parseInt(page, 10) || 1);
-    const take = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
+    const take = Math.min(5000, Math.max(1, parseInt(limit, 10) || 20));
     const skip = (pageNum - 1) * take;
 
     const where: any = {};
@@ -1269,7 +1434,7 @@ export class AdminController {
     }
 
     try {
-      const [totalRecords, items] = await Promise.all([
+      const [totalRecords, items, typeStatusSetting] = await Promise.all([
         this.prisma.devotionalContent.count({ where }),
         this.prisma.devotionalContent.findMany({
           where,
@@ -1277,16 +1442,35 @@ export class AdminController {
           take,
           orderBy: { displayOrder: 'asc' },
           include: { category: true }
-        })
+        }),
+        this.prisma.appSetting.findUnique({ where: { key: 'type_statuses' } })
       ]);
 
+      let typeStatuses: Record<string, string> = {};
+      if (typeStatusSetting && typeStatusSetting.value) {
+        try { typeStatuses = JSON.parse(typeStatusSetting.value); } catch {}
+      }
+
+      let formatted = items.map((i: any) => {
+        const itemStatus = typeStatuses[String(i.id)] || (i.isPublished !== false ? 'active' : 'inactive');
+        return {
+          ...i,
+          status: itemStatus,
+          isPublished: itemStatus === 'active'
+        };
+      });
+
+      if (status && status !== 'all') {
+        formatted = formatted.filter((i: any) => i.status === status);
+      }
+
       return {
-        data: items,
+        data: formatted,
         meta: {
           page: pageNum,
           limit: take,
-          totalRecords,
-          totalPages: Math.ceil(totalRecords / take),
+          totalRecords: (status && status !== 'all') ? formatted.length : totalRecords,
+          totalPages: (status && status !== 'all') ? Math.ceil(formatted.length / take) : Math.ceil(totalRecords / take),
           hasNextPage: pageNum < Math.ceil(totalRecords / take),
           hasPreviousPage: pageNum > 1
         }
@@ -1338,6 +1522,12 @@ export class AdminController {
       throw new NotFoundException(`Devotional content #${id} not found.`);
     }
 
+    let typeStatuses: Record<string, string> = {};
+    try {
+      const typeStatusSetting = await this.prisma.appSetting.findUnique({ where: { key: 'type_statuses' } });
+      if (typeStatusSetting && typeStatusSetting.value) typeStatuses = JSON.parse(typeStatusSetting.value);
+    } catch {}
+
     // Check localized translations from appSetting for requested lang
     let locSetting: any = null;
     try {
@@ -1365,6 +1555,8 @@ export class AdminController {
       } catch {}
     }
 
+    const itemStatus = typeStatuses[String(item.id)] || (item.isPublished !== false ? 'active' : 'inactive');
+
     return {
       success: true,
       data: {
@@ -1381,7 +1573,8 @@ export class AdminController {
         requestedLang: lang,
         translations: contentTranslations,
         displayOrder: item.displayOrder,
-        isPublished: item.isPublished,
+        status: itemStatus,
+        isPublished: itemStatus === 'active',
         createdAt: item.createdAt,
         updatedAt: item.updatedAt,
         category: item.category ? {
@@ -1403,7 +1596,8 @@ export class AdminController {
   }
 
   @Post('content')
-  async createDevotionalContent(@Body() body: { categoryId: number; title: string; slug: string; sacredText?: string; meaning?: string; displayOrder?: number; isPublished?: boolean; lang?: string }) {
+  async createDevotionalContent(@Body() body: { categoryId: number; title: string; slug: string; sacredText?: string; meaning?: string; displayOrder?: number; isPublished?: boolean; status?: string; lang?: string }) {
+    const statusVal = body.status || (body.isPublished !== false ? 'active' : 'inactive');
     const created = await this.prisma.devotionalContent.create({
       data: {
         categoryId: Number(body.categoryId),
@@ -1412,9 +1606,25 @@ export class AdminController {
         sacredText: body.sacredText || '',
         meaning: body.meaning || '',
         displayOrder: body.displayOrder !== undefined ? Number(body.displayOrder) : 0,
-        isPublished: body.isPublished !== undefined ? Boolean(body.isPublished) : true
+        isPublished: statusVal === 'active'
       }
     });
+
+    if (body.status !== undefined) {
+      try {
+        const typeStatusSetting = await this.prisma.appSetting.findUnique({ where: { key: 'type_statuses' } });
+        let map: Record<string, string> = {};
+        if (typeStatusSetting && typeStatusSetting.value) {
+          try { map = JSON.parse(typeStatusSetting.value); } catch {}
+        }
+        map[String(created.id)] = body.status;
+        await this.prisma.appSetting.upsert({
+          where: { key: 'type_statuses' },
+          update: { value: JSON.stringify(map) },
+          create: { key: 'type_statuses', value: JSON.stringify(map), description: 'Subcategory Type Statuses Map' }
+        });
+      } catch (_) {}
+    }
 
     if (body.lang) {
       const contentKey = `devotional_content_${created.id}_${String(body.lang).toLowerCase()}`;
@@ -1440,12 +1650,15 @@ export class AdminController {
       });
     }
 
-    return { success: true, data: created };
+    return { success: true, data: { ...created, status: statusVal } };
   }
 
   @Put('content/:id')
   async updateDevotionalContent(@Param('id') id: string, @Body() body: any) {
     const numId = parseInt(id, 10);
+    const statusVal = body.status !== undefined ? body.status : (body.isPublished !== undefined ? (body.isPublished ? 'active' : 'inactive') : undefined);
+    const isPubVal = statusVal !== undefined ? (statusVal === 'active') : (body.isPublished !== undefined ? Boolean(body.isPublished) : undefined);
+
     const updated = await this.prisma.devotionalContent.update({
       where: { id: numId },
       data: {
@@ -1454,9 +1667,25 @@ export class AdminController {
         sacredText: body.sacredText,
         meaning: body.meaning,
         displayOrder: body.displayOrder !== undefined ? Number(body.displayOrder) : undefined,
-        isPublished: body.isPublished !== undefined ? Boolean(body.isPublished) : undefined
+        isPublished: isPubVal
       }
     });
+
+    if (body.status !== undefined) {
+      try {
+        const typeStatusSetting = await this.prisma.appSetting.findUnique({ where: { key: 'type_statuses' } });
+        let map: Record<string, string> = {};
+        if (typeStatusSetting && typeStatusSetting.value) {
+          try { map = JSON.parse(typeStatusSetting.value); } catch {}
+        }
+        map[String(numId)] = body.status;
+        await this.prisma.appSetting.upsert({
+          where: { key: 'type_statuses' },
+          update: { value: JSON.stringify(map) },
+          create: { key: 'type_statuses', value: JSON.stringify(map), description: 'Subcategory Type Statuses Map' }
+        });
+      } catch (_) {}
+    }
 
     if (body.lang) {
       const contentKey = `devotional_content_${numId}_${String(body.lang).toLowerCase()}`;
@@ -3030,7 +3259,14 @@ export class AdminController {
   // =========================================================
 
   @Get('category-services')
-  async getCategoryServices() {
+  async getCategoryServices(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('search') search?: string,
+    @Query('status') status?: string,
+  ) {
+    let allItems: any[] = [];
+
     // 1. Query dedicated category_services table from MySQL DB
     try {
       if ((this.prisma as any).categoryService) {
@@ -3038,21 +3274,17 @@ export class AdminController {
           orderBy: { displayOrder: 'asc' }
         });
         if (items && items.length > 0) {
-          return {
-            success: true,
-            total: items.length,
-            data: items.map((item: any) => ({
-              id: item.serviceId,
-              serviceId: item.serviceId,
-              title: item.title,
-              sub: item.sub || '',
-              icon: item.icon,
-              url: item.url,
-              artwork: item.artwork || '',
-              displayOrder: item.displayOrder,
-              isActive: item.isActive ?? true
-            }))
-          };
+          allItems = items.map((item: any) => ({
+            id: item.serviceId,
+            serviceId: item.serviceId,
+            title: item.title,
+            sub: item.sub || '',
+            url: item.url,
+            artwork: item.artwork || '',
+            displayOrder: item.displayOrder,
+            status: item.status || (item.isActive !== false ? 'active' : 'inactive'),
+            isActive: item.status ? item.status === 'active' : (item.isActive ?? true)
+          }));
         }
       }
     } catch (err: any) {
@@ -3060,59 +3292,165 @@ export class AdminController {
     }
 
     // 2. Query dynamic app_settings for category_services in MySQL DB
-    try {
-      const setting = await this.prisma.appSetting.findUnique({ where: { key: 'category_services' } });
-      if (setting && setting.value) {
-        const parsed = JSON.parse(setting.value);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return {
-            success: true,
-            total: parsed.length,
-            data: parsed
-          };
+    if (allItems.length === 0) {
+      try {
+        const setting = await this.prisma.appSetting.findUnique({ where: { key: 'category_services' } });
+        if (setting && setting.value) {
+          const parsed = JSON.parse(setting.value);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            allItems = parsed.map((item: any) => ({
+              ...item,
+              status: item.status || (item.isActive !== false ? 'active' : 'inactive'),
+              isActive: item.status ? item.status === 'active' : (item.isActive ?? true)
+            }));
+          }
         }
+      } catch (err: any) {
+        console.warn('[Admin] app_settings query notice:', err?.message || err);
       }
-    } catch (err: any) {
-      console.warn('[Admin] app_settings query notice:', err?.message || err);
     }
 
     // 3. Fallback to Root Categories from content_categories table in DB
-    try {
-      const rootCats = await this.prisma.contentCategory.findMany({
-        where: { parentId: null, isArchived: false },
-        orderBy: { displayOrder: 'asc' },
-        include: { translations: true }
-      });
-      if (rootCats && rootCats.length > 0) {
-        const mapped = rootCats.map(cat => {
-          const trans = cat.translations?.[0];
-          return {
-            id: cat.slug,
-            serviceId: cat.slug,
-            title: trans?.title || cat.slug,
-            sub: trans?.description || '',
-            icon: 'Sparkles',
-            url: '/subcategories',
-            artwork: `/images/categories/art-${cat.slug}-trans.png`,
-            displayOrder: cat.displayOrder,
-            isActive: true
-          };
+    if (allItems.length === 0) {
+      try {
+        const rootCats = await this.prisma.contentCategory.findMany({
+          where: { parentId: null, isArchived: false },
+          orderBy: { displayOrder: 'asc' },
+          include: { translations: true }
         });
-        return {
-          success: true,
-          total: mapped.length,
-          data: mapped
-        };
+        if (rootCats && rootCats.length > 0) {
+          allItems = rootCats.map(cat => {
+            const trans = cat.translations?.[0];
+            return {
+              id: cat.slug,
+              serviceId: cat.slug,
+              title: trans?.title || cat.slug,
+              sub: trans?.description || '',
+              url: '/subcategories',
+              artwork: `/images/categories/art-${cat.slug}-trans.png`,
+              displayOrder: cat.displayOrder,
+              status: 'active',
+              isActive: true
+            };
+          });
+        }
+      } catch (err: any) {
+        console.warn('[Admin] content_categories fallback notice:', err?.message || err);
       }
-    } catch (err: any) {
-      console.warn('[Admin] content_categories fallback notice:', err?.message || err);
     }
 
-    // Zero fallback / mock data: strictly return database result
+    // Dynamic subcategories count directly from MySQL DB
+    try {
+      const allSubcats = await this.prisma.contentCategory.findMany({
+        where: { parentId: { not: null }, isArchived: false },
+        select: { id: true, slug: true, parentId: true }
+      });
+
+      const rootFamilyMap: { [id: number]: string } = {
+        113: 'pooja', 25: 'pooja', 120: 'pooja', 130: 'pooja', 26: 'pooja', 27: 'pooja', 28: 'pooja', 3: 'pooja', 117: 'pooja', 7: 'pooja', 6: 'pooja', 122: 'pooja', 229: 'pooja',
+        114: 'stotras', 21: 'stotras', 52: 'stotras', 4: 'stotras',
+        115: 'slokas',
+        116: 'bhajans', 2311: 'bhajans', 11: 'bhajans', 93: 'bhajans',
+        2312: 'darshan',
+        2313: 'festivals',
+        2314: 'temples',
+        2315: 'annadanam'
+      };
+
+      const countsMap: Record<string, number> = {
+        pooja: 0, stotras: 0, slokas: 0, bhajans: 0, songs: 0, darshan: 0, 'live-streams': 0,
+        panchangam: 0, festivals: 0, temples: 0, annadanam: 0, donations: 0
+      };
+
+      for (const item of allSubcats) {
+        const pid = Number(item.parentId);
+        const slug = (item.slug || '').toLowerCase();
+        if (rootFamilyMap[pid]) {
+          const key = rootFamilyMap[pid];
+          countsMap[key] = (countsMap[key] || 0) + 1;
+        } else if (pid === 113 || slug.includes('pooja') || slug.includes('vratham')) {
+          countsMap['pooja'] = (countsMap['pooja'] || 0) + 1;
+        } else if (pid === 114 || slug.includes('stotra') || slug.includes('ashtottar')) {
+          countsMap['stotras'] = (countsMap['stotras'] || 0) + 1;
+        } else if (pid === 115 || slug.includes('sloka')) {
+          countsMap['slokas'] = (countsMap['slokas'] || 0) + 1;
+        } else if (pid === 116 || pid === 2311 || slug.includes('bhajan') || slug.includes('song') || slug.includes('gosha') || slug.includes('harathi')) {
+          countsMap['bhajans'] = (countsMap['bhajans'] || 0) + 1;
+        } else if (pid === 2312 || slug.includes('darshan') || slug.includes('stream')) {
+          countsMap['darshan'] = (countsMap['darshan'] || 0) + 1;
+        } else if (pid === 6 || slug.includes('panchang')) {
+          countsMap['panchangam'] = (countsMap['panchangam'] || 0) + 1;
+        } else if (pid === 2313 || slug.includes('festiv')) {
+          countsMap['festivals'] = (countsMap['festivals'] || 0) + 1;
+        } else if (pid === 2314 || slug.includes('temple')) {
+          countsMap['temples'] = (countsMap['temples'] || 0) + 1;
+        } else if (pid === 2315 || slug.includes('annadan') || slug.includes('donat')) {
+          countsMap['annadanam'] = (countsMap['annadanam'] || 0) + 1;
+        }
+      }
+      countsMap['songs'] = countsMap['bhajans'];
+      countsMap['live-streams'] = countsMap['darshan'];
+      countsMap['donations'] = countsMap['annadanam'];
+
+      for (const s of allItems) {
+        const k = (s.serviceId || s.id || '').toLowerCase();
+        s.subcategoriesCount = countsMap[k] ?? 0;
+      }
+    } catch (e) {
+      console.warn('[Admin] Failed to compute subcategoriesCount:', e);
+    }
+
+    // Server-side filtering: status ('all' | 'active' | 'coming_soon' | 'inactive')
+    let filtered = allItems;
+    if (status && status !== 'all') {
+      if (status === 'active') {
+        filtered = filtered.filter(item => (item.status === 'active' || (!item.status && item.isActive !== false)));
+      } else if (status === 'coming_soon') {
+        filtered = filtered.filter(item => item.status === 'coming_soon');
+      } else if (status === 'inactive') {
+        filtered = filtered.filter(item => (item.status === 'inactive' || (!item.status && item.isActive === false)));
+      }
+    }
+
+    // Server-side searching: search by title, sub, serviceId, url
+    if (search && search.trim() !== '') {
+      const q = search.trim().toLowerCase();
+      filtered = filtered.filter(item => {
+        const matchTitle = item.title?.toLowerCase().includes(q);
+        const matchSub = item.sub?.toLowerCase().includes(q);
+        const matchId = (item.serviceId || item.id)?.toLowerCase().includes(q);
+        const matchUrl = item.url?.toLowerCase().includes(q);
+        return matchTitle || matchSub || matchId || matchUrl;
+      });
+    }
+
+    const totalCount = filtered.length;
+
+    // Server-side pagination
+    const pageNum = page ? Math.max(1, parseInt(page, 10) || 1) : 1;
+    const limitNum = limit ? Math.max(1, parseInt(limit, 10) || 10) : (page ? 10 : (totalCount || 10));
+    const totalPages = Math.ceil(totalCount / limitNum) || 1;
+
+    let pagedData = filtered;
+    if (page || limit) {
+      const startIndex = (pageNum - 1) * limitNum;
+      pagedData = filtered.slice(startIndex, startIndex + limitNum);
+    }
+
+    pagedData.forEach(item => {
+      delete item.icon;
+    });
+
     return {
       success: true,
-      total: 0,
-      data: []
+      total: totalCount,
+      data: pagedData,
+      meta: {
+        page: pageNum,
+        limit: limitNum,
+        totalRecords: totalCount,
+        totalPages: totalPages
+      }
     };
   }
 
@@ -3123,6 +3461,7 @@ export class AdminController {
     if (!service) {
       return { success: false, statusCode: 404, message: 'Devotional service not found.' };
     }
+    delete service.icon;
     return { success: true, data: service };
   }
 
@@ -3151,17 +3490,19 @@ export class AdminController {
       finalArtwork = this.saveBase64Image(finalArtwork, 'service');
     }
 
-    const newService = {
+    const statusVal = body.status || (body.isActive !== false ? 'active' : 'inactive');
+    const newService: any = {
       id: serviceId,
       serviceId: serviceId,
       title: body.title.trim(),
       sub: body.sub?.trim() || '',
-      icon: body.icon?.trim() || 'Sparkles',
       url: body.url?.trim() || `/${serviceId}`,
       artwork: finalArtwork,
       displayOrder: parseInt(body.displayOrder, 10) || (services.length + 1),
-      isActive: body.isActive !== undefined ? Boolean(body.isActive) : true
+      status: statusVal,
+      isActive: statusVal === 'active'
     };
+    delete newService.icon;
     services.push(newService);
 
     await this.prisma.appSetting.upsert({
@@ -3196,8 +3537,8 @@ export class AdminController {
 
     if (body.title) services[index].title = body.title.trim();
     if (body.sub !== undefined) services[index].sub = body.sub.trim();
-    if (body.icon) services[index].icon = body.icon.trim();
     if (body.url) services[index].url = body.url.trim();
+    delete services[index].icon;
     if (body.artwork !== undefined) {
       let finalArt = body.artwork.trim();
       if (finalArt.startsWith('data:image/')) {
@@ -3206,7 +3547,13 @@ export class AdminController {
       services[index].artwork = finalArt;
     }
     if (body.displayOrder !== undefined) services[index].displayOrder = parseInt(body.displayOrder, 10);
-    if (body.isActive !== undefined) services[index].isActive = Boolean(body.isActive);
+    if (body.status !== undefined) {
+      services[index].status = body.status;
+      services[index].isActive = body.status === 'active';
+    } else if (body.isActive !== undefined) {
+      services[index].isActive = Boolean(body.isActive);
+      services[index].status = body.isActive ? 'active' : 'inactive';
+    }
 
     await this.prisma.appSetting.update({
       where: { key: 'category_services' },

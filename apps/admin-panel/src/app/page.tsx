@@ -333,6 +333,20 @@ const resolveArtworkUrl = (url?: string) => {
   return url;
 };
 
+const stripHtml = (html: string | undefined | null): string => {
+  if (!html) return '';
+  return String(html)
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
 const renderServiceIcon = (iconName: string) => {
   switch (iconName?.toLowerCase()) {
     case 'flame': return <Flame className="w-5 h-5 text-amber-500" />;
@@ -1534,7 +1548,7 @@ export default function EnterpriseSuperAdminDashboard() {
   // Dynamically compute and cache real-time Types counts for every Subcategory from DB
   const loadSubcategoriesTypeCounts = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/admin/content?limit=2000`);
+      const res = await fetch(`${API_BASE_URL}/admin/content?limit=5000`);
       const json = await res.json();
       const items = json && Array.isArray(json.data) ? json.data : (Array.isArray(json) ? json : []);
       const counts: Record<string, number> = {};
@@ -1542,6 +1556,13 @@ export default function EnterpriseSuperAdminDashboard() {
         if (item.categoryId) {
           const key = String(item.categoryId);
           counts[key] = (counts[key] || 0) + 1;
+        }
+        if (item.category?.id) {
+          const key = String(item.category.id);
+          counts[key] = (counts[key] || 0) + 1;
+        }
+        if (item.category?.slug) {
+          counts[item.category.slug] = (counts[item.category.slug] || 0) + 1;
         }
       });
       setSubcategoriesTypeCounts(counts);
@@ -3286,6 +3307,19 @@ export default function EnterpriseSuperAdminDashboard() {
           body: JSON.stringify(payload)
         });
         showToast('Type Created', `"${typeFormTitle}" created successfully.`);
+
+        // Instantly reflect in local state
+        const targetCatId = String(typeFormCategoryId);
+        setSubcategoriesTypeCounts(prev => ({
+          ...prev,
+          [targetCatId]: (prev[targetCatId] || 0) + 1
+        }));
+        setSubcategories(prev => prev.map(s => {
+          if (String(s.id) === targetCatId) {
+            return { ...s, typesCount: (s.typesCount || 0) + 1 };
+          }
+          return s;
+        }));
       }
       setPageMode('LIST');
       loadDevotionalContent(1, searchQuery, String(typeFormCategoryId), typeLimit);
@@ -3304,6 +3338,20 @@ export default function EnterpriseSuperAdminDashboard() {
       const res = await fetch(`${API_BASE_URL}/admin/content/${id}`, { method: 'DELETE' });
       if (res.ok) {
         showToast('Type Deleted', `"${title}" was removed.`);
+
+        // Instantly reflect in local state
+        const targetCatId = String(selectedSubcategoryForTypes);
+        setSubcategoriesTypeCounts(prev => ({
+          ...prev,
+          [targetCatId]: Math.max(0, (prev[targetCatId] || 0) - 1)
+        }));
+        setSubcategories(prev => prev.map(s => {
+          if (String(s.id) === targetCatId) {
+            return { ...s, typesCount: Math.max(0, (s.typesCount || 0) - 1) };
+          }
+          return s;
+        }));
+
         loadDevotionalContent(typePage, searchQuery, selectedSubcategoryForTypes, typeLimit);
         loadSubcategoriesTypeCounts();
       } else {
@@ -7898,8 +7946,8 @@ export default function EnterpriseSuperAdminDashboard() {
                                     </div>
                                     <div className="font-mono text-[11px] text-amber-400/90 mt-0.5">/{item.slug}</div>
                                     {(item.subtitle || item.description) && (
-                                      <div className="text-[11px] text-gray-400 truncate max-w-sm mt-0.5" title={item.subtitle || item.description}>
-                                        {item.subtitle || item.description}
+                                      <div className="text-[11px] text-gray-400 truncate max-w-sm mt-0.5" title={stripHtml(item.subtitle || item.description)}>
+                                        {stripHtml(item.subtitle || item.description)}
                                       </div>
                                     )}
                                   </td>
@@ -8427,7 +8475,7 @@ export default function EnterpriseSuperAdminDashboard() {
                                       <div className="flex items-center gap-2 mt-0.5">
                                         <span className="text-[11px] font-mono text-amber-400/80">/{sub.slug}</span>
                                         {sub.description && (
-                                          <span className="text-[11px] text-gray-400 line-clamp-1 max-w-sm" title={sub.description}>· {sub.description}</span>
+                                          <span className="text-[11px] text-gray-400 line-clamp-1 max-w-sm" title={stripHtml(sub.description)}>· {stripHtml(sub.description)}</span>
                                         )}
                                       </div>
                                     </div>
