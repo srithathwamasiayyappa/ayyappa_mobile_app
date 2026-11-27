@@ -19,12 +19,12 @@ body {
   overflow-x: hidden;
 }
 
-/* Headings apply Poppins */
+/* Headings apply Poppins for English, NTR for Indic */
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--admin-title-font);
 }
 
-/* Paragraphs, descriptions and controls apply Raleway */
+/* Paragraphs, descriptions and controls apply Poppins for English, NTR for Indic */
 p, span, label, input, textarea, select, table, th, td {
   font-family: var(--admin-desc-font);
 }

@@ -141,11 +141,72 @@ export const THEME_FONTS = {
 
   // Font family specifically for devotional & information texts
   sacredFontFamily: Platform.select({
+    ios: 'NTR-Regular',
+    android: 'NTR-Regular',
+    web: 'NTR, Poppins, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif',
+    default: 'NTR-Regular',
+  }),
+
+  // NTR Font specifically for Telugu, Kannada, Tamil, Hindi
+  ntrFont: Platform.select({
+    ios: 'NTR-Regular',
+    android: 'NTR-Regular',
+    web: 'NTR, "Noto Sans Kannada", "Noto Sans Tamil", "Noto Sans Devanagari", Poppins, sans-serif',
+    default: 'NTR-Regular',
+  }),
+
+  // Poppins Font specifically for English
+  poppinsFont: Platform.select({
     ios: 'Poppins-Regular',
     android: 'Poppins_400Regular',
-    web: 'Poppins, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif',
+    web: 'Poppins, sans-serif',
     default: 'Poppins_400Regular',
   }),
+
+  // Dynamic language-aware font resolver:
+  // - Telugu, Kannada, Tamil, Hindi -> NTR font style
+  // - English -> Poppins
+  getFontForLanguage: (lang: string = 'en', weight: 'regular' | 'medium' | 'semiBold' | 'bold' = 'regular') => {
+    const isIndic = ['te', 'kn', 'ta', 'hi'].includes(String(lang).toLowerCase());
+    if (isIndic) {
+      return Platform.select({
+        ios: 'NTR-Regular',
+        android: 'NTR-Regular',
+        web: 'NTR, "Noto Sans Kannada", "Noto Sans Tamil", "Noto Sans Devanagari", Poppins, sans-serif',
+        default: 'NTR-Regular',
+      });
+    }
+    if (weight === 'bold') {
+      return Platform.select({
+        ios: 'Poppins-Bold',
+        android: 'Poppins_700Bold',
+        web: 'Poppins, sans-serif',
+        default: 'Poppins_700Bold',
+      });
+    }
+    if (weight === 'semiBold') {
+      return Platform.select({
+        ios: 'Poppins-SemiBold',
+        android: 'Poppins_600SemiBold',
+        web: 'Poppins, sans-serif',
+        default: 'Poppins_600SemiBold',
+      });
+    }
+    if (weight === 'medium') {
+      return Platform.select({
+        ios: 'Poppins-Medium',
+        android: 'Poppins_500Medium',
+        web: 'Poppins, sans-serif',
+        default: 'Poppins_500Medium',
+      });
+    }
+    return Platform.select({
+      ios: 'Poppins-Regular',
+      android: 'Poppins_400Regular',
+      web: 'Poppins, sans-serif',
+      default: 'Poppins_400Regular',
+    });
+  },
 
   // Font weights
   weights: {

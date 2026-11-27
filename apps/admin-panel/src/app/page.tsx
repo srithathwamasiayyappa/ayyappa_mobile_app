@@ -2349,6 +2349,15 @@ export default function EnterpriseSuperAdminDashboard() {
     reader.readAsDataURL(file);
   };
 
+  // Sync document language attributes for multi-language font switching (NTR for Indic, Poppins for English)
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.documentElement.lang = selectedLang;
+      document.documentElement.setAttribute('data-lang', selectedLang);
+      document.body.setAttribute('data-lang', selectedLang);
+    }
+  }, [selectedLang]);
+
   // 1. Initial global stats and lookups on authentication mount (runs once)
   useEffect(() => {
     if (!isAuthenticated) return;

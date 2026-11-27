@@ -9,7 +9,7 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const defaultAppFont = Platform.select({
   ios: 'Poppins-Regular',
   android: 'Poppins_400Regular',
-  web: 'Poppins, sans-serif',
+  web: 'Poppins, NTR, sans-serif',
   default: 'Poppins_400Regular',
 });
 
@@ -158,6 +158,8 @@ export default function App() {
     'Poppins-Bold': Poppins_700Bold,
     'Poppins-ExtraBold': Poppins_800ExtraBold,
     Poppins: Poppins_400Regular,
+    NTR: require('./assets/fonts/NTR-Regular.ttf'),
+    'NTR-Regular': require('./assets/fonts/NTR-Regular.ttf'),
   });
 
   const [fontTimeoutPassed, setFontTimeoutPassed] = useState(false);
