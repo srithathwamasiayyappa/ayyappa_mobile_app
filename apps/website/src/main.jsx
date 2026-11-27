@@ -1768,7 +1768,7 @@ function App() {
       )}
       {path === '/terms' && <TermsPage />}
       {path === '/privacy' && <PrivacyPolicyPage />}
-      {path === '/refund-policy' && <RefundPolicyPage />}
+      {(path === '/refund-policy' || path === '/refund') && <RefundPolicyPage />}
       {path === '/about' && <AboutPage />}
       {path === '/contact' && <ContactPage notify={notify} />}
       {path === '/help-center' && <ContactPage notify={notify} />}

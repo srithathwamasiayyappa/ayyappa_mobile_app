@@ -9,6 +9,9 @@ echo.
 :: Add Android SDK platform-tools to PATH so adb works
 set "PATH=%LOCALAPPDATA%\Android\Sdk\platform-tools;%PATH%"
 
+:: Forward port 8081 over USB so connected phone connects reliably
+adb reverse tcp:8081 tcp:8081 >nul 2>&1
+
 cd /d "%~dp0apps\mobile"
 
 echo Starting Expo Metro Bundler...
