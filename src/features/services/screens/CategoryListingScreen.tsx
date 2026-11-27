@@ -174,16 +174,16 @@ export const CategoryListingScreen: React.FC<Props> = ({
 
       if (Array.isArray(items) && items.length > 0) {
         const mapped: ListingItem[] = items.map((item: any) => {
-          const isAyyappa = /ayyap|sastha|padi|irumudi|kettu|kattu|maaladharan|poorvaang|మాలాధారణ|పూర్వాంగ|శబరి|అయ్యప్ప|ఇరుముడి/.test((item.slug + ' ' + (item.title || '')).toLowerCase());
+          const isAyyappa = /ayyap|sastha|padi|irumudi|kettu|kattu|maaladharan|poorvaang|harivarasanam|nauka|మాలాధారణ|పూర్వాంగ|శబరి|అయ్యప్ప|ఇరుముడి|హరివరాసనం|నౌక/.test((item.slug + ' ' + (item.title || '')).toLowerCase());
           let detectedDeity = item.deityId ? item.deityId.toLowerCase() : '';
           if (!detectedDeity || detectedDeity === 'all') {
             const txt = (item.slug + ' ' + (item.title || '')).toLowerCase();
-            if (/shiva|linga|rudra|vishwanath|shankara|renuka|శివ|లింగ|రుద్ర|విశ్వనాథ|శంకర|శఙ్కర|రేణుక/.test(txt)) detectedDeity = 'shiva';
-            else if (/devi|durga|lakshmi|vasavi|akhiland|kanyaka|దేవి|లక్ష్మి|దుర్గ|వాసవి|వాసవీ|అఖిలాండ|కన్యక/.test(txt)) detectedDeity = 'devi';
-            else if (/venkates|vishnu|ramanuja|వేంకట|వెంకట|విష్ణు|రామానుజ/.test(txt)) detectedDeity = 'venkateswara';
-            else if (/ganesh|vignesh|vinayak|గణపతి|వినాయక|విఘ్నేశ్వర/.test(txt)) detectedDeity = 'ganesha';
+            if (/shiva|linga|rudra|vishwanath|shankara|renuka|umamaheshwara|శివ|లింగ|రుద్ర|విశ్వనాథ|శంకర|శఙ్కర|రేణుక|ఉమామహేశ్వర/.test(txt)) detectedDeity = 'shiva';
+            else if (/devi|durga|lakshmi|vasavi|akhiland|kanyaka|dandaal|amba|దేవి|లక్ష్మి|దుర్గ|వాసవి|వాసవీ|అఖిలాండ|కన్యక|దండాల|అంబ/.test(txt)) detectedDeity = 'devi';
+            else if (/venkates|vishnu|ramanuja|guruvayoor|tulasi|వేంకట|వెంకట|విష్ణు|రామానుజ|గురువాయూరప్ప|తులసి/.test(txt)) detectedDeity = 'venkateswara';
+            else if (/ganesh|vignesh|vinayak|ganapathi|గణపతి|వినాయక|విఘ్నేశ్వర/.test(txt)) detectedDeity = 'ganesha';
             else if (/hanuman|anjaneya|హనుమాన్|ఆంజనేయ/.test(txt)) detectedDeity = 'hanuman';
-            else if (/subrahmanya|murugan|సుబ్రహ్మణ్య|మురుగన్/.test(txt)) detectedDeity = 'murugan';
+            else if (/subrahmanya|murugan|pazhani|palani|udipi|సుబ్రహ్మణ్య|మురుగన్|పళని|ఉడిపి/.test(txt)) detectedDeity = 'murugan';
             else detectedDeity = isAyyappa ? 'ayyappa' : (deityToFetch !== 'all' ? deityToFetch : 'ayyappa');
           }
           const itemDeity = detectedDeity.toLowerCase();
@@ -377,31 +377,20 @@ export const CategoryListingScreen: React.FC<Props> = ({
       });
     }
 
-    // 4. BHAJANS & SONGS: Show ONLY Songs, Bhajans, Harathis
-    if (normCat === 'bhajans' || normCat === 'songs' || normCat === 'harathis' || normCat.includes('bhajan') || normCat.includes('song')) {
-      return allCategoryItems.filter((item) => {
-        const titleLower = (item.title || '').toLowerCase();
-        const slugLower = (item.id || '').toLowerCase();
-        const text = `${titleLower} ${slugLower}`;
-        return (
-          text.includes('bhajan') ||
-          text.includes('song') ||
-          text.includes('harathi') ||
-          text.includes('keerthana') ||
-          text.includes('harivarasanam') ||
-          text.includes('భజన') ||
-          text.includes('హారతి') ||
-          text.includes('కీర్తన') ||
-          text.includes('హరివరాసనం') ||
-          text.includes('గీతం') ||
-          item.rawId === '11' ||
-          item.rawId === '13'
-        );
-      });
+    // 4. BHAJANS & SONGS: Show ALL Songs, Bhajans, Harathis filtered by selected deity
+    if (normCat === 'bhajans' || normCat === 'songs' || normCat === 'harathis' || normCat.includes('bhajan') || normCat.includes('song') || normCat === '116') {
+      if (selectedFilter && selectedFilter !== 'all') {
+        return allCategoryItems.filter((item) => item.deityId === selectedFilter || item.deityId === 'all');
+      }
+      return allCategoryItems;
+    }
+
+    if (selectedFilter && selectedFilter !== 'all') {
+      return allCategoryItems.filter((item) => item.deityId === selectedFilter || item.deityId === 'all');
     }
 
     return allCategoryItems;
-  }, [allCategoryItems, categoryId]);
+  }, [allCategoryItems, categoryId, selectedFilter]);
 
   return (
     <View style={styles.root}>

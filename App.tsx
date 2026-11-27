@@ -568,8 +568,8 @@ export default function App() {
       return;
     }
     const activeDeity = deity || currentDeity?.id || currentDeity?.slug || 'all';
-    if (id === 'bhajans' || id === 'harathis' || id === 'songs' || id === 'bhajans-songs') {
-      navigateTo('bhajans_songs', { id, title: title || 'Bhajans & Songs', deity: activeDeity });
+    if (id === 'bhajans' || id === 'harathis' || id === 'songs' || id === 'bhajans-songs' || id === '116') {
+      navigateTo('category_listing', { id: 'songs', title: title || 'Bhajans & Songs', deity: activeDeity });
     } else if (id === 'live-streams' || id === 'live' || id === 'live_streams' || id === 'live-darshan') {
       navigateTo('live_streams', { id, title: title || 'Live Streams', deity: activeDeity });
     } else if (id === 'temples' || id === 'temples-in-india' || id === 'temple_listing') {
@@ -1013,13 +1013,16 @@ export default function App() {
                 navigateTo('pooja_detail', { id, title, rawId });
               } else if (
                 activeDetail.id === 'bhajans' ||
+                activeDetail.id === 'songs' ||
                 activeDetail.id === 'harathis' ||
                 id === 'bhajans' ||
                 id === 'harathis' ||
                 id.includes('bhajan') ||
-                id.includes('harathi')
+                id.includes('harathi') ||
+                id.includes('keerthana') ||
+                id.includes('song')
               ) {
-                navigateTo('bhajans_songs', { id, title });
+                navigateTo('sloka_detail', { id, title, rawId });
               } else if (
                 activeDetail.id === 'slokas' ||
                 activeDetail.id === 'astothrams' ||
