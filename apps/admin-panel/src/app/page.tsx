@@ -6176,23 +6176,6 @@ export default function EnterpriseSuperAdminDashboard() {
 
                     {/* Scroll Canvas with Sanctum Green & Divine Gold Typography */}
                     <div className="bg-gradient-to-b from-[#082218] via-[#0A291E] to-[#071D15] p-6 text-center text-xs leading-relaxed max-h-[760px] overflow-y-auto space-y-5">
-
-                      {/* Top Sacred Arch Motif (Lotus Filigree) in Gold */}
-                      <div className="flex justify-center pt-2">
-                        <svg className="w-16 h-8 text-[#FFB300] opacity-80" viewBox="0 0 100 40" fill="currentColor">
-                          <path d="M50 0 C40 15, 20 20, 0 20 C20 25, 45 35, 50 40 C55 35, 80 25, 100 20 C80 20, 60 15, 50 0 Z"></path>
-                        </svg>
-                      </div>
-
-                      {/* Initial Sacred Invocations */}
-                      <div className="space-y-1 text-sm font-semibold text-[#FDE68A]">
-                        <p>śrī mahāgaṇādhipatayē namaḥ</p>
-                        <p>śrī gurubhyō namaḥ</p>
-                        <p className="font-bold text-[#FFB300]">hariḥ ōṁ</p>
-                      </div>
-
-                      <div className="border-b border-dotted border-[#D4AF37]/40 w-3/4 mx-auto my-3"></div>
-
                       {/* Case A: If Attached Devotional Types / Verses Exist in Contents */}
                       {viewDetail.contents && viewDetail.contents.length > 0 ? (
                         <div className="space-y-6">
@@ -6723,20 +6706,6 @@ export default function EnterpriseSuperAdminDashboard() {
                     </div>
 
                     <div className="bg-gradient-to-b from-[#082218] via-[#0A291E] to-[#071D15] p-5 text-center text-xs leading-relaxed max-h-[500px] overflow-y-auto space-y-4">
-                      <div className="flex justify-center pt-1">
-                        <svg className="w-12 h-6 text-[#FFB300] opacity-80" viewBox="0 0 100 40" fill="currentColor">
-                          <path d="M50 0 C40 15, 20 20, 0 20 C20 25, 45 35, 50 40 C55 35, 80 25, 100 20 C80 20, 60 15, 50 0 Z"></path>
-                        </svg>
-                      </div>
-
-                      <div className="space-y-0.5 text-xs font-semibold text-[#FDE68A]">
-                        <p>śrī mahāgaṇādhipatayē namaḥ</p>
-                        <p>śrī gurubhyō namaḥ</p>
-                        <p className="font-bold text-[#FFB300]">hariḥ ōṁ</p>
-                      </div>
-
-                      <div className="border-b border-dotted border-[#D4AF37]/40 w-3/4 mx-auto my-2"></div>
-
                       <h4 className="text-base font-bold text-[#FFB300] tracking-wide">
                         {formTitle || 'Master Devotional Category'}
                       </h4>
@@ -6951,23 +6920,6 @@ export default function EnterpriseSuperAdminDashboard() {
 
                     {/* Scroll Canvas with Sanctum Green & Divine Gold Typography */}
                     <div className="bg-gradient-to-b from-[#082218] via-[#0A291E] to-[#071D15] p-6 text-center text-xs leading-relaxed max-h-[760px] overflow-y-auto space-y-5">
-
-                      {/* Top Sacred Arch Motif in Gold */}
-                      <div className="flex justify-center pt-2">
-                        <svg className="w-16 h-8 text-[#FFB300] opacity-80" viewBox="0 0 100 40" fill="currentColor">
-                          <path d="M50 0 C40 15, 20 20, 0 20 C20 25, 45 35, 50 40 C55 35, 80 25, 100 20 C80 20, 60 15, 50 0 Z"></path>
-                        </svg>
-                      </div>
-
-                      {/* Invocations */}
-                      <div className="space-y-1 text-sm font-semibold text-[#FDE68A]">
-                        <p>śrī mahāgaṇādhipatayē namaḥ</p>
-                        <p>śrī gurubhyō namaḥ</p>
-                        <p className="font-bold text-[#FFB300]">hariḥ ōṁ</p>
-                      </div>
-
-                      <div className="border-b border-dotted border-[#D4AF37]/40 w-3/4 mx-auto my-3"></div>
-
                       {/* Editable Sacred Notes & Full Lyrics Area */}
                       <div className="p-3.5 bg-[#061A13]/90 rounded-xl border border-[#1B563D] text-left max-w-md mx-auto space-y-2">
                         <div className="flex items-center justify-between">
@@ -7668,22 +7620,6 @@ export default function EnterpriseSuperAdminDashboard() {
 
                     {/* Scroll Canvas with Sacred Text & Meaning */}
                     <div className="bg-gradient-to-b from-[#082218] via-[#0A291E] to-[#071D15] p-5 text-center text-xs leading-relaxed max-h-[500px] overflow-y-auto space-y-4">
-
-                      {/* Top Sacred Arch */}
-                      <div className="flex justify-center pt-1">
-                        <svg className="w-12 h-6 text-[#FFB300] opacity-80" viewBox="0 0 100 40" fill="currentColor">
-                          <path d="M50 0 C40 15, 20 20, 0 20 C20 25, 45 35, 50 40 C55 35, 80 25, 100 20 C80 20, 60 15, 50 0 Z"></path>
-                        </svg>
-                      </div>
-
-                      <div className="space-y-0.5 text-xs font-semibold text-[#FDE68A]">
-                        <p>śrī mahāgaṇādhipatayē namaḥ</p>
-                        <p>śrī gurubhyō namaḥ</p>
-                        <p className="font-bold text-[#FFB300]">hariḥ ōṁ</p>
-                      </div>
-
-                      <div className="border-b border-dotted border-[#D4AF37]/40 w-3/4 mx-auto my-2"></div>
-
                       {/* Step Title in Radiant Gold */}
                       <h4 className="text-sm font-bold text-[#FFB300] tracking-wide uppercase">
                         {typeFormTitle || 'Type / Verse Title'}
