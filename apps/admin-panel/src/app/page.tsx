@@ -3433,7 +3433,6 @@ export default function EnterpriseSuperAdminDashboard() {
       serviceId: '',
       title: '',
       sub: '',
-      icon: 'Sparkles',
       url: '/',
       artwork: '',
       displayOrder: (devotionalServices.length + 1),
@@ -4888,17 +4887,6 @@ export default function EnterpriseSuperAdminDashboard() {
 
                   <div className="flex flex-wrap items-center gap-3">
                     <button
-                      onClick={() => loadCategoryServices()}
-                      disabled={loadingServices}
-                      className="px-3 py-1.5 bg-[#141414] hover:bg-[#252525] border border-[#2C2C2C] rounded-lg text-xs font-semibold flex items-center gap-1.5 text-gray-300 transition"
-                    >
-                      <RefreshCw className={`w-3.5 h-3.5 ${loadingServices ? 'animate-spin text-amber-400' : ''}`} />
-                      <span>Refresh</span>
-                    </button>
-                    <span className="px-3 py-1 bg-emerald-950/70 border border-emerald-800/40 text-emerald-300 rounded-lg text-xs font-bold">
-                      {devotionalServices.length || 9} Active in Portal
-                    </span>
-                    <button
                       onClick={handleOpenCreateService}
                       className="px-3.5 py-1.5 bg-[#FFB300] hover:bg-[#FFA000] text-black rounded-lg text-xs font-bold flex items-center gap-1.5 transition shadow-lg shadow-amber-500/20"
                     >
@@ -5020,7 +5008,7 @@ export default function EnterpriseSuperAdminDashboard() {
                       <thead>
                         <tr className="bg-[#151515] border-b border-[#2C2C2C] text-[11px] font-bold text-gray-400 uppercase tracking-wider">
                           <th className="py-3 px-4 w-14 text-center">#</th>
-                          <th className="py-3 px-4 w-28">Icon & Art</th>
+                          <th className="py-3 px-4 w-20 text-center">Artwork</th>
                           <th className="py-3 px-4 min-w-[220px]">Devotional Service</th>
                           <th className="py-3 px-4 w-32">Canonical Key</th>
                           <th className="py-3 px-4 w-32">Route Path</th>
@@ -5056,12 +5044,9 @@ export default function EnterpriseSuperAdminDashboard() {
                                 </span>
                               </td>
 
-                              {/* Icon & Art */}
+                              {/* Artwork */}
                               <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
-                                <div className="flex items-center gap-2">
-                                  <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[#2A2A2A] to-[#141414] border border-[#3A3A3A] group-hover:border-[#FFB300]/40 flex items-center justify-center flex-shrink-0 shadow-inner">
-                                    {renderServiceIcon(service.icon || service.id)}
-                                  </div>
+                                <div className="flex items-center justify-center">
                                   {artworkSrc ? (
                                     <div className="relative group/art w-9 h-9 rounded-lg bg-neutral-900 border border-neutral-800 overflow-hidden flex items-center justify-center flex-shrink-0">
                                       <img
@@ -5136,10 +5121,9 @@ export default function EnterpriseSuperAdminDashboard() {
                                     setActiveTab('subcategories');
                                   }}
                                   title="View subcategories in this category"
-                                  className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 rounded-full font-semibold text-[11px] transition shadow-sm hover:scale-105"
+                                  className="inline-flex items-center justify-center min-w-[2.2rem] px-2.5 py-0.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 rounded-full font-bold font-mono text-xs transition shadow-sm hover:scale-105"
                                 >
-                                  <Layers className="w-3 h-3 text-amber-400" />
-                                  <span className="font-bold">{subCount}</span>
+                                  <span>{subCount}</span>
                                 </button>
                               </td>
 
@@ -5288,9 +5272,20 @@ export default function EnterpriseSuperAdminDashboard() {
                     {/* Visual Card Banner */}
                     <div className="bg-gradient-to-r from-[#241F14] to-[#1A1A1A] border border-[#3A3220] rounded-xl p-4 flex items-center justify-between gap-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-14 h-14 rounded-xl bg-[#2A2A2A] border border-[#FFB300]/40 flex items-center justify-center flex-shrink-0 shadow-lg">
-                          {renderServiceIcon(selectedViewService.icon || selectedViewService.id)}
-                        </div>
+                        {(selectedViewService.artwork || categoryArtworkMap[selectedViewService.serviceId || selectedViewService.id]) ? (
+                          <div className="w-14 h-14 rounded-xl bg-neutral-900 border border-neutral-800 flex items-center justify-center flex-shrink-0 overflow-hidden shadow-lg p-1">
+                            <img
+                              src={resolveArtworkUrl(selectedViewService.artwork || categoryArtworkMap[selectedViewService.serviceId || selectedViewService.id])}
+                              alt={selectedViewService.title}
+                              className="w-full h-full object-contain opacity-90 drop-shadow"
+                              onError={(e: any) => { e.currentTarget.style.display = 'none'; }}
+                            />
+                          </div>
+                        ) : (
+                          <div className="w-14 h-14 rounded-xl bg-neutral-900 border border-neutral-800 flex items-center justify-center flex-shrink-0 shadow-lg text-gray-500">
+                            <ImageIcon className="w-6 h-6" />
+                          </div>
+                        )}
                         <div>
                           <h4 className="text-base font-bold text-gray-100">{selectedViewService.title}</h4>
                           <p className="text-xs text-amber-300 font-medium">{selectedViewService.sub || 'Step-by-step sacred rituals'}</p>
@@ -5299,14 +5294,6 @@ export default function EnterpriseSuperAdminDashboard() {
                           </span>
                         </div>
                       </div>
-                      {(selectedViewService.artwork || categoryArtworkMap[selectedViewService.serviceId || selectedViewService.id]) && (
-                        <img
-                          src={resolveArtworkUrl(selectedViewService.artwork || categoryArtworkMap[selectedViewService.serviceId || selectedViewService.id])}
-                          alt={selectedViewService.title}
-                          className="w-14 h-14 object-contain opacity-90 drop-shadow"
-                          onError={(e: any) => { e.currentTarget.style.display = 'none'; }}
-                        />
-                      )}
                     </div>
 
                     {/* Metadata Grid */}
@@ -5329,10 +5316,6 @@ export default function EnterpriseSuperAdminDashboard() {
                           <span className={`w-1.5 h-1.5 rounded-full ${selectedViewService.isActive !== false ? 'bg-emerald-400 animate-pulse' : 'bg-gray-400'}`} />
                           {selectedViewService.isActive !== false ? 'Active & Published' : 'Draft / Inactive'}
                         </span>
-                      </div>
-                      <div className="col-span-2 bg-[#141414] p-3 rounded-lg border border-[#2C2C2C]">
-                        <span className="text-[10px] uppercase tracking-wider text-gray-400 block font-semibold mb-1">Assigned Icon Glyph</span>
-                        <span className="text-gray-300 font-mono">{selectedViewService.icon || 'Sparkles'}</span>
                       </div>
                     </div>
 
@@ -5459,47 +5442,19 @@ export default function EnterpriseSuperAdminDashboard() {
                         </div>
                       </div>
 
-                      {/* Icon & Display Order */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                          <label className="text-xs font-semibold text-gray-300 block mb-1">
-                            Icon Glyph
-                          </label>
-                          <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-lg bg-[#141414] border border-[#2C2C2C] flex items-center justify-center text-amber-400 flex-shrink-0">
-                              {renderServiceIcon(editingCategoryService.icon || 'Sparkles')}
-                            </div>
-                            <select
-                              value={editingCategoryService.icon || 'Sparkles'}
-                              onChange={(e) => setEditingCategoryService({ ...editingCategoryService, icon: e.target.value })}
-                              className="w-full bg-[#141414] border border-[#2C2C2C] rounded-lg px-3 py-2 text-xs text-gray-200 focus:outline-none focus:border-[#FFB300]"
-                            >
-                              <option value="Flame">Flame (Pooja / Fire Rituals)</option>
-                              <option value="BookOpen">BookOpen (Stotras / Sacred Books)</option>
-                              <option value="Scroll">Scroll (Daily Slokas / Mantras)</option>
-                              <option value="Music">Music (Bhajans & Songs)</option>
-                              <option value="Tv">Tv (Live Darshan / Streaming)</option>
-                              <option value="Calendar">Calendar (Panchangam / Timings)</option>
-                              <option value="Sparkles">Sparkles (Festivals / Celebrations)</option>
-                              <option value="Landmark">Landmark (Temples / Shrines)</option>
-                              <option value="HeartHandshake">HeartHandshake (Annadanam / Seva)</option>
-                            </select>
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="text-xs font-semibold text-gray-300 block mb-1">
-                            Display Order
-                          </label>
-                          <input
-                            type="number"
-                            min="1"
-                            max="99"
-                            value={editingCategoryService.displayOrder || 1}
-                            onChange={(e) => setEditingCategoryService({ ...editingCategoryService, displayOrder: parseInt(e.target.value, 10) || 1 })}
-                            className="w-full bg-[#141414] border border-[#2C2C2C] rounded-lg px-3 py-2 text-xs text-gray-200 focus:outline-none focus:border-[#FFB300]"
-                          />
-                        </div>
+                      {/* Display Order */}
+                      <div>
+                        <label className="text-xs font-semibold text-gray-300 block mb-1">
+                          Display Order
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          max="99"
+                          value={editingCategoryService.displayOrder || 1}
+                          onChange={(e) => setEditingCategoryService({ ...editingCategoryService, displayOrder: parseInt(e.target.value, 10) || 1 })}
+                          className="w-full bg-[#141414] border border-[#2C2C2C] rounded-lg px-3 py-2 text-xs text-gray-200 focus:outline-none focus:border-[#FFB300]"
+                        />
                       </div>
 
                       {/* Artwork Image Upload & URL */}
