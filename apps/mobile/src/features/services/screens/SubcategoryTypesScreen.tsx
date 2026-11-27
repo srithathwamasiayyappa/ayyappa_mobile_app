@@ -12,7 +12,7 @@ import {
   Dimensions,
   ActivityIndicator,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { SacredHeader } from '../../../components/common/SacredHeader';
 import Svg, { Path, Polygon } from 'react-native-svg';
 import { SupportedLanguage } from '../../../types';
 import { API_BASE_URL, PRODUCTION_BASE_URL } from '../../../services/api';
@@ -208,6 +208,21 @@ export const SubcategoryTypesScreen: React.FC<Props> = ({
             }
           }
 
+          // If no child types exist, but the subcategory itself has devotional content/description, show it as a readable item
+          if (resolvedList.length === 0 && (d.description || d.fullScriptureText || d.lyrics)) {
+            resolvedList = [
+              {
+                id: String(d.rawId || d.id || subcategoryId),
+                slug: d.slug || String(subcategoryId),
+                title: d.title || subcategoryTitle,
+                description: (d.description || d.fullScriptureText || d.lyrics || '').replace(/<[^>]+>/g, '').trim(),
+                imageUrl: d.imageUrl,
+                deityId: d.deityId || 'ayyappa',
+                order: 1,
+              },
+            ];
+          }
+
           if (resolvedList.length > 0) {
             setTypes(resolvedList);
           } else {
@@ -232,43 +247,10 @@ export const SubcategoryTypesScreen: React.FC<Props> = ({
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor="#173D32" translucent={false} />
+      <StatusBar barStyle="light-content" backgroundColor="#173D32" translucent />
 
-      {/* ── 1. SACRED MAROON HEADER WITH BACK ARROW & CORNER FILIGREE ── */}
-      <SafeAreaView style={styles.safeHeaderArea}>
-        <LinearGradient
-          colors={['#173D32', '#173D32', '#0C251E']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.headerGradient}
-        >
-          <View style={styles.headerLeftFiligree}>
-            <CornerFiligree />
-          </View>
-          <View style={styles.headerRightFiligree}>
-            <CornerFiligree />
-          </View>
-
-          <View style={styles.headerRow}>
-            <TouchableOpacity
-              onPress={onBack}
-              style={styles.backButton}
-              activeOpacity={0.8}
-              accessibilityLabel="Back"
-            >
-              <BackArrowIcon />
-            </TouchableOpacity>
-
-            <View style={styles.headerCenter}>
-              <Text style={styles.headerTitle} numberOfLines={1}>
-                {headerInfo.title}
-              </Text>
-            </View>
-
-            <View style={{ width: 38 }} />
-          </View>
-        </LinearGradient>
-      </SafeAreaView>
+      {/* ── 1. SACRED HEADER ── */}
+      <SacredHeader title={headerInfo.title} onBack={onBack} />
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* ── 2. TYPES RECORD LIST (EXACT SUBCATEGORY STYLE) ── */}

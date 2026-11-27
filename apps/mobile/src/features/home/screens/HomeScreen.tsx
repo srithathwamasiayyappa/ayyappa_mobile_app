@@ -589,204 +589,204 @@ export const HomeScreen: React.FC<Props> = ({
               <HeaderCornerFlourishLeft />
               <HeaderCornerFlourishRight />
 
-            {/* Top Row: Title on Left, Location Dropdown, Bell & White Avatar on Right */}
-            <View style={styles.headerTopRow}>
-              <View style={styles.headerLeftCol}>
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  onPress={() => setDrawerOpen(true)}
-                  accessibilityRole="button"
-                  accessibilityLabel="Open Menu"
-                >
-                  <Text style={styles.headerTopTitle}>Saranam Ayyappa</Text>
-                </TouchableOpacity>
+              {/* Top Row: Title on Left, Location Dropdown, Bell & White Avatar on Right */}
+              <View style={styles.headerTopRow}>
+                <View style={styles.headerLeftCol}>
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={() => setDrawerOpen(true)}
+                    accessibilityRole="button"
+                    accessibilityLabel="Open Menu"
+                  >
+                    <Text style={styles.headerTopTitle}>Saranam Ayyappa</Text>
+                  </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={styles.headerLocationRow}
-                  activeOpacity={0.7}
-                  onPress={() => setLocationModalOpen(true)}
-                  accessibilityRole="button"
-                  accessibilityLabel="Change Location"
-                >
-                  <Text style={styles.headerLocationText} numberOfLines={1}>
-                    {currentLocation || selectedLocation} • Sabarimala Shrine
-                  </Text>
-                  <ChevronDownIcon size={13} color="#E7B844" />
-                </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.headerLocationRow}
+                    activeOpacity={0.7}
+                    onPress={() => setLocationModalOpen(true)}
+                    accessibilityRole="button"
+                    accessibilityLabel="Change Location"
+                  >
+                    <Text style={styles.headerLocationText} numberOfLines={1}>
+                      {currentLocation || selectedLocation} • Sabarimala Shrine
+                    </Text>
+                    <ChevronDownIcon size={13} color="#E7B844" />
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.headerRightActions}>
+                  <TouchableOpacity
+                    style={styles.headerBellBtn}
+                    onPress={() => (onOpenNotifications ? onOpenNotifications() : setNotificationsOpen(true))}
+                    activeOpacity={0.7}
+                    hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
+                    accessibilityRole="button"
+                    accessibilityLabel="Open Notifications"
+                  >
+                    <HeaderBellIcon size={20} color="#FFF9ED" />
+                    <View style={styles.notificationDot} />
+                  </TouchableOpacity>
+
+                  <DevoteeAvatarCircle onPress={() => (onOpenProfile ? onOpenProfile() : setDrawerOpen(true))} />
+                </View>
               </View>
 
-              <View style={styles.headerRightActions}>
-                <TouchableOpacity
-                  style={styles.headerBellBtn}
-                  onPress={() => (onOpenNotifications ? onOpenNotifications() : setNotificationsOpen(true))}
-                  activeOpacity={0.7}
-                  hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
-                  accessibilityRole="button"
-                  accessibilityLabel="Open Notifications"
-                >
-                  <HeaderBellIcon size={20} color="#FFF9ED" />
-                  <View style={styles.notificationDot} />
-                </TouchableOpacity>
-
-                <DevoteeAvatarCircle onPress={() => (onOpenProfile ? onOpenProfile() : setDrawerOpen(true))} />
-              </View>
-            </View>
-
-            {/* Middle Row: White Pill Search Bar */}
-            <TouchableOpacity
-              style={styles.unifiedSearchBar}
-              activeOpacity={0.9}
-              onPress={() => (onOpenSearch ? onOpenSearch() : onNavigateToCategories?.())}
-              accessibilityRole="button"
-              accessibilityLabel={HOME_UI_TEXTS[currentLanguage]?.searchPlaceholder || 'Search for a service'}
-            >
-              <HeaderSearchIcon size={14} color="#718096" />
-              <Text style={styles.unifiedSearchPlaceholder}>
-                {HOME_UI_TEXTS[currentLanguage]?.searchPlaceholder || 'Search for a service'}
-              </Text>
-            </TouchableOpacity>
-
-            {/* Bottom Row: Inset Rounded Hero Banner Card */}
-            <View style={styles.embeddedHeroContainer}>
-              <ScrollView
-                horizontal
-                pagingEnabled
-                decelerationRate="fast"
-                snapToInterval={BANNER_WIDTH}
-                snapToAlignment="center"
-                showsHorizontalScrollIndicator={false}
-                onMomentumScrollEnd={(e) => {
-                  const offset = e.nativeEvent.contentOffset.x;
-                  const index = Math.round(offset / BANNER_WIDTH);
-                  setActiveBannerIndex(index);
-                }}
+              {/* Middle Row: White Pill Search Bar */}
+              <TouchableOpacity
+                style={styles.unifiedSearchBar}
+                activeOpacity={0.9}
+                onPress={() => (onOpenSearch ? onOpenSearch() : onNavigateToCategories?.())}
+                accessibilityRole="button"
+                accessibilityLabel={HOME_UI_TEXTS[currentLanguage]?.searchPlaceholder || 'Search for a service'}
               >
-                {/* Slide 1: Thathwamasi */}
-                <View style={[styles.heroSlideWrapper, { width: BANNER_WIDTH }]}>
-                  <Image source={HOME_HERO_SCENIC_BG} style={styles.heroScenicBgImage} resizeMode="cover" />
-                  <LinearGradient
-                    colors={['rgba(0, 47, 37, 0.96)', 'rgba(0, 47, 37, 0.85)', 'rgba(0, 47, 37, 0.42)', 'rgba(0, 47, 37, 0.0)']}
-                    locations={[0, 0.46, 0.72, 1.0]}
-                    start={{ x: 0, y: 0.5 }}
-                    end={{ x: 1, y: 0.5 }}
-                    style={styles.heroGradientOverlay}
-                  />
-                  <View style={styles.heroDeityForegroundWrapper} pointerEvents="none">
-                    <Image source={AYYAPPA_HERO_FOREGROUND} style={styles.heroDeityForegroundImage} resizeMode="contain" />
-                  </View>
+                <HeaderSearchIcon size={14} color="#718096" />
+                <Text style={styles.unifiedSearchPlaceholder}>
+                  {HOME_UI_TEXTS[currentLanguage]?.searchPlaceholder || 'Search for a service'}
+                </Text>
+              </TouchableOpacity>
 
-                  <View style={styles.heroContentLeft}>
-                    <Text style={styles.heroGreetingTop}>
-                      {HOME_UI_TEXTS[currentLanguage]?.heroGreeting || 'Thathwamasi'}
-                    </Text>
-                    <HeroGoldDivider />
-                    <Text style={styles.heroDevotionalDesc} numberOfLines={3}>
-                      {HOME_UI_TEXTS[currentLanguage]?.heroDesc || 'Your daily poojas, panchangam, temples & spiritual guidance.'}
-                    </Text>
-                    <TouchableOpacity
-                      style={styles.heroExploreBtn}
-                      activeOpacity={0.85}
-                      onPress={() => (onNavigateToCategories ? onNavigateToCategories() : onOpenDetail?.('pooja-vidhanam', 'Mandala Pooja Special'))}
-                    >
-                      <LinearGradient
-                        colors={['#F5C249', '#E7B844']}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                        style={styles.heroExploreGradient}
+              {/* Bottom Row: Inset Rounded Hero Banner Card */}
+              <View style={styles.embeddedHeroContainer}>
+                <ScrollView
+                  horizontal
+                  pagingEnabled
+                  decelerationRate="fast"
+                  snapToInterval={BANNER_WIDTH}
+                  snapToAlignment="center"
+                  showsHorizontalScrollIndicator={false}
+                  onMomentumScrollEnd={(e) => {
+                    const offset = e.nativeEvent.contentOffset.x;
+                    const index = Math.round(offset / BANNER_WIDTH);
+                    setActiveBannerIndex(index);
+                  }}
+                >
+                  {/* Slide 1: Thathwamasi */}
+                  <View style={[styles.heroSlideWrapper, { width: BANNER_WIDTH }]}>
+                    <Image source={HOME_HERO_SCENIC_BG} style={styles.heroScenicBgImage} resizeMode="cover" />
+                    <LinearGradient
+                      colors={['rgba(0, 47, 37, 0.96)', 'rgba(0, 47, 37, 0.85)', 'rgba(0, 47, 37, 0.42)', 'rgba(0, 47, 37, 0.0)']}
+                      locations={[0, 0.46, 0.72, 1.0]}
+                      start={{ x: 0, y: 0.5 }}
+                      end={{ x: 1, y: 0.5 }}
+                      style={styles.heroGradientOverlay}
+                    />
+                    <View style={styles.heroDeityForegroundWrapper} pointerEvents="none">
+                      <Image source={AYYAPPA_HERO_FOREGROUND} style={styles.heroDeityForegroundImage} resizeMode="contain" />
+                    </View>
+
+                    <View style={styles.heroContentLeft}>
+                      <Text style={styles.heroGreetingTop}>
+                        {HOME_UI_TEXTS[currentLanguage]?.heroGreeting || 'Thathwamasi'}
+                      </Text>
+                      <HeroGoldDivider />
+                      <Text style={styles.heroDevotionalDesc} numberOfLines={3}>
+                        {HOME_UI_TEXTS[currentLanguage]?.heroDesc || 'Your daily poojas, panchangam, temples & spiritual guidance.'}
+                      </Text>
+                      <TouchableOpacity
+                        style={styles.heroExploreBtn}
+                        activeOpacity={0.85}
+                        onPress={() => (onNavigateToCategories ? onNavigateToCategories() : onOpenDetail?.('pooja-vidhanam', 'Mandala Pooja Special'))}
                       >
-                        <Text style={styles.heroExploreText}>
-                          {HOME_UI_TEXTS[currentLanguage]?.heroExplore || 'Explore Now  →'}
-                        </Text>
-                      </LinearGradient>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-
-                {/* Slide 2: Mandala Pooja Season Special */}
-                <View style={[styles.heroSlideWrapper, { width: BANNER_WIDTH }]}>
-                  <Image source={HOME_HERO_SCENIC_BG} style={styles.heroScenicBgImage} resizeMode="cover" />
-                  <LinearGradient
-                    colors={['rgba(0, 47, 37, 0.96)', 'rgba(0, 47, 37, 0.85)', 'rgba(0, 47, 37, 0.42)', 'rgba(0, 47, 37, 0.0)']}
-                    locations={[0, 0.46, 0.72, 1.0]}
-                    start={{ x: 0, y: 0.5 }}
-                    end={{ x: 1, y: 0.5 }}
-                    style={styles.heroGradientOverlay}
-                  />
-                  <View style={styles.heroDeityForegroundWrapper} pointerEvents="none">
-                    <Image source={AYYAPPA_HERO_FOREGROUND} style={styles.heroDeityForegroundImage} resizeMode="contain" />
+                        <LinearGradient
+                          colors={['#F5C249', '#E7B844']}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 0 }}
+                          style={styles.heroExploreGradient}
+                        >
+                          <Text style={styles.heroExploreText}>
+                            {HOME_UI_TEXTS[currentLanguage]?.heroExplore || 'Explore Now  →'}
+                          </Text>
+                        </LinearGradient>
+                      </TouchableOpacity>
+                    </View>
                   </View>
 
-                  <View style={styles.heroContentLeft}>
-                    <Text style={styles.heroGreetingTop}>Mandala Pooja</Text>
-                    <HeroGoldDivider />
-                    <Text style={styles.heroDevotionalDesc} numberOfLines={3}>
-                      41-day sacred Mandala Vratham, rituals, guidelines & prayers.
-                    </Text>
-                    <TouchableOpacity
-                      style={styles.heroExploreBtn}
-                      activeOpacity={0.85}
-                      onPress={() => onOpenDetail?.('pooja-vidhanam', 'Mandala Pooja Special')}
-                    >
-                      <LinearGradient
-                        colors={['#F5C249', '#E7B844']}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                        style={styles.heroExploreGradient}
+                  {/* Slide 2: Mandala Pooja Season Special */}
+                  <View style={[styles.heroSlideWrapper, { width: BANNER_WIDTH }]}>
+                    <Image source={HOME_HERO_SCENIC_BG} style={styles.heroScenicBgImage} resizeMode="cover" />
+                    <LinearGradient
+                      colors={['rgba(0, 47, 37, 0.96)', 'rgba(0, 47, 37, 0.85)', 'rgba(0, 47, 37, 0.42)', 'rgba(0, 47, 37, 0.0)']}
+                      locations={[0, 0.46, 0.72, 1.0]}
+                      start={{ x: 0, y: 0.5 }}
+                      end={{ x: 1, y: 0.5 }}
+                      style={styles.heroGradientOverlay}
+                    />
+                    <View style={styles.heroDeityForegroundWrapper} pointerEvents="none">
+                      <Image source={AYYAPPA_HERO_FOREGROUND} style={styles.heroDeityForegroundImage} resizeMode="contain" />
+                    </View>
+
+                    <View style={styles.heroContentLeft}>
+                      <Text style={styles.heroGreetingTop}>Mandala Pooja</Text>
+                      <HeroGoldDivider />
+                      <Text style={styles.heroDevotionalDesc} numberOfLines={3}>
+                        41-day sacred Mandala Vratham, rituals, guidelines & prayers.
+                      </Text>
+                      <TouchableOpacity
+                        style={styles.heroExploreBtn}
+                        activeOpacity={0.85}
+                        onPress={() => onOpenDetail?.('pooja-vidhanam', 'Mandala Pooja Special')}
                       >
-                        <Text style={styles.heroExploreText}>View Pooja  →</Text>
-                      </LinearGradient>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-
-                {/* Slide 3: Sabarimala Daily Live Darshan */}
-                <View style={[styles.heroSlideWrapper, { width: BANNER_WIDTH }]}>
-                  <Image source={HOME_HERO_SCENIC_BG} style={styles.heroScenicBgImage} resizeMode="cover" />
-                  <LinearGradient
-                    colors={['rgba(0, 47, 37, 0.96)', 'rgba(0, 47, 37, 0.85)', 'rgba(0, 47, 37, 0.42)', 'rgba(0, 47, 37, 0.0)']}
-                    locations={[0, 0.46, 0.72, 1.0]}
-                    start={{ x: 0, y: 0.5 }}
-                    end={{ x: 1, y: 0.5 }}
-                    style={styles.heroGradientOverlay}
-                  />
-                  <View style={styles.heroDeityForegroundWrapper} pointerEvents="none">
-                    <Image source={AYYAPPA_HERO_FOREGROUND} style={styles.heroDeityForegroundImage} resizeMode="contain" />
+                        <LinearGradient
+                          colors={['#F5C249', '#E7B844']}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 0 }}
+                          style={styles.heroExploreGradient}
+                        >
+                          <Text style={styles.heroExploreText}>View Pooja  →</Text>
+                        </LinearGradient>
+                      </TouchableOpacity>
+                    </View>
                   </View>
 
-                  <View style={styles.heroContentLeft}>
-                    <Text style={styles.heroGreetingTop}>Sabarimala Live</Text>
-                    <HeroGoldDivider />
-                    <Text style={styles.heroDevotionalDesc} numberOfLines={3}>
-                      Live Abhishekam, Deeparadhana & Harivarasanam streams.
-                    </Text>
-                    <TouchableOpacity
-                      style={styles.heroExploreBtn}
-                      activeOpacity={0.85}
-                      onPress={() => onOpenDetail?.('live-streams', 'Live Darshan')}
-                    >
-                      <LinearGradient
-                        colors={['#F5C249', '#E7B844']}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                        style={styles.heroExploreGradient}
+                  {/* Slide 3: Sabarimala Daily Live Darshan */}
+                  <View style={[styles.heroSlideWrapper, { width: BANNER_WIDTH }]}>
+                    <Image source={HOME_HERO_SCENIC_BG} style={styles.heroScenicBgImage} resizeMode="cover" />
+                    <LinearGradient
+                      colors={['rgba(0, 47, 37, 0.96)', 'rgba(0, 47, 37, 0.85)', 'rgba(0, 47, 37, 0.42)', 'rgba(0, 47, 37, 0.0)']}
+                      locations={[0, 0.46, 0.72, 1.0]}
+                      start={{ x: 0, y: 0.5 }}
+                      end={{ x: 1, y: 0.5 }}
+                      style={styles.heroGradientOverlay}
+                    />
+                    <View style={styles.heroDeityForegroundWrapper} pointerEvents="none">
+                      <Image source={AYYAPPA_HERO_FOREGROUND} style={styles.heroDeityForegroundImage} resizeMode="contain" />
+                    </View>
+
+                    <View style={styles.heroContentLeft}>
+                      <Text style={styles.heroGreetingTop}>Sabarimala Live</Text>
+                      <HeroGoldDivider />
+                      <Text style={styles.heroDevotionalDesc} numberOfLines={3}>
+                        Live Abhishekam, Deeparadhana & Harivarasanam streams.
+                      </Text>
+                      <TouchableOpacity
+                        style={styles.heroExploreBtn}
+                        activeOpacity={0.85}
+                        onPress={() => onOpenDetail?.('live-streams', 'Live Darshan')}
                       >
-                        <Text style={styles.heroExploreText}>Watch Live  →</Text>
-                      </LinearGradient>
-                    </TouchableOpacity>
+                        <LinearGradient
+                          colors={['#F5C249', '#E7B844']}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 0 }}
+                          style={styles.heroExploreGradient}
+                        >
+                          <Text style={styles.heroExploreText}>Watch Live  →</Text>
+                        </LinearGradient>
+                      </TouchableOpacity>
+                    </View>
                   </View>
-                </View>
-              </ScrollView>
+                </ScrollView>
 
-              {/* Indicator dots at bottom right */}
-              <View style={styles.heroPaginationContainer}>
-                <View style={[styles.heroPaginationBar, activeBannerIndex === 0 && styles.heroPaginationBarActive]} />
-                <View style={[styles.heroPaginationDot, activeBannerIndex === 1 && styles.heroPaginationDotActive]} />
-                <View style={[styles.heroPaginationDot, activeBannerIndex === 2 && styles.heroPaginationDotActive]} />
+                {/* Indicator dots at bottom right */}
+                <View style={styles.heroPaginationContainer}>
+                  <View style={[styles.heroPaginationBar, activeBannerIndex === 0 && styles.heroPaginationBarActive]} />
+                  <View style={[styles.heroPaginationDot, activeBannerIndex === 1 && styles.heroPaginationDotActive]} />
+                  <View style={[styles.heroPaginationDot, activeBannerIndex === 2 && styles.heroPaginationDotActive]} />
+                </View>
               </View>
-            </View>
-          </LinearGradient>
-        </SafeAreaView>
-      </View>
+            </LinearGradient>
+          </SafeAreaView>
+        </View>
 
         {/* =========================================================
             3. CURVED IVORY CONTAINER (SEAMLESS DEVOTIONAL TRANSITION)

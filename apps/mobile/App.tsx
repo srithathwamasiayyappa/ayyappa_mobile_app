@@ -1,5 +1,6 @@
 import './src/polyfills';
 import React, { useState, useEffect, useRef } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StyleSheet, View, Text, TextInput, BackHandler, ToastAndroid, Platform, Image, Dimensions, TouchableOpacity } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 
@@ -175,6 +176,15 @@ export default function App() {
   const [currentScreen, setCurrentScreen] = useState<MobileScreen>('splash');
   const [navHistory, setNavHistory] = useState<NavHistoryEntry[]>([]);
   const [selectedLanguage, setSelectedLanguage] = useState<SupportedLanguage>('en');
+  const [hasLanguageSelected, setHasLanguageSelected] = useState<boolean>(false);
+
+  useEffect(() => {
+    AsyncStorage.getItem('@ayyappa_language_selected')
+      .then((val) => {
+        if (val === 'true') setHasLanguageSelected(true);
+      })
+      .catch(() => {});
+  }, []);
   const [currentDeity, setCurrentDeity] = useState<any>(null);
   const [activeDetail, setActiveDetail] = useState<DetailState | null>(null);
   const [activeTempleData, setActiveTempleData] = useState<TempleItem | null>(null);
@@ -470,8 +480,8 @@ export default function App() {
       handleGoBack();
       return;
     }
-    setCurrentScreen('language');
-    StorageService.saveNavigationState('language', null);
+    setCurrentScreen(hasLanguageSelected ? 'home' : 'language');
+    StorageService.saveNavigationState(hasLanguageSelected ? 'home' : 'language', null);
   };
 
   // When devotee taps Back on Onboarding Screen 1
@@ -490,8 +500,8 @@ export default function App() {
     setCurrentUser(user);
     StorageService.setStoredUser(user);
     // After login screen -> strictly proceed to Language Selection
-    setCurrentScreen('language');
-    StorageService.saveNavigationState('language', null);
+    setCurrentScreen(hasLanguageSelected ? 'home' : 'language');
+    StorageService.saveNavigationState(hasLanguageSelected ? 'home' : 'language', null);
   };
 
   const handleProfileDone = (updated?: any) => {
@@ -505,12 +515,14 @@ export default function App() {
 
   const handleSkipAuth = () => {
     // Guest devotees also strictly proceed to Language Selection -> God Selection
-    setCurrentScreen('language');
-    StorageService.saveNavigationState('language', null);
+    setCurrentScreen(hasLanguageSelected ? 'home' : 'language');
+    StorageService.saveNavigationState(hasLanguageSelected ? 'home' : 'language', null);
   };
 
-  // After devotee selects their language -> Directly navigate to Home screen
+  // After devotee selects their language -> Mark as selected and navigate to Home screen
   const handleLanguageSelect = (lang: SupportedLanguage) => {
+    setHasLanguageSelected(true);
+    AsyncStorage.setItem('@ayyappa_language_selected', 'true').catch(() => {});
     setSelectedLanguage(lang);
     StorageService.setStoredLanguage(lang);
     setActiveDetail(null);
@@ -1128,58 +1140,9 @@ export default function App() {
         )}
 
         {(currentScreen === 'pooja_detail' ||
-          (currentScreen === 'detail' &&
-            activeDetail &&
-            (activeDetail.id.includes('pooja') ||
-              activeDetail.id.includes('vratham') ||
-              activeDetail.id.includes('abhishekam')))) &&
+          currentScreen === 'sloka_detail' ||
+          currentScreen === 'detail') &&
           activeDetail && (
-            <PoojaDetailScreen
-              itemId={activeDetail.id}
-              rawId={activeDetail.rawId}
-              title={activeDetail.title}
-              currentLanguage={selectedLanguage}
-              onBack={handleGoBack}
-            />
-          )}
-
-        {(currentScreen === 'sloka_detail' ||
-          (currentScreen === 'detail' &&
-            activeDetail &&
-            (activeDetail.id.includes('sloka') ||
-              activeDetail.id.includes('stotram') ||
-              activeDetail.id.includes('tandava') ||
-              activeDetail.id.includes('pancharatnam') ||
-              activeDetail.id.includes('gayatri') ||
-              activeDetail.id.includes('suprabhatam') ||
-              activeDetail.id.includes('ashtakam') ||
-              activeDetail.id.includes('chalisa')))) &&
-          activeDetail && (
-            <SlokaDetailScreen
-              itemId={activeDetail.id}
-              rawId={activeDetail.rawId}
-              title={activeDetail.title}
-              category={activeDetail.category || activeDetail.parentTitle}
-              currentLanguage={selectedLanguage}
-              onBack={handleGoBack}
-            />
-          )}
-
-        {currentScreen === 'detail' &&
-          activeDetail &&
-          !(
-            activeDetail.id.includes('pooja') ||
-            activeDetail.id.includes('vratham') ||
-            activeDetail.id.includes('abhishekam') ||
-            activeDetail.id.includes('sloka') ||
-            activeDetail.id.includes('stotram') ||
-            activeDetail.id.includes('tandava') ||
-            activeDetail.id.includes('pancharatnam') ||
-            activeDetail.id.includes('gayatri') ||
-            activeDetail.id.includes('suprabhatam') ||
-            activeDetail.id.includes('ashtakam') ||
-            activeDetail.id.includes('chalisa')
-          ) && (
             <DetailScreen
               title={activeDetail.title}
               itemId={activeDetail.id}

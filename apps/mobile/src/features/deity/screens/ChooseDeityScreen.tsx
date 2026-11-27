@@ -15,6 +15,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { SacredHeader } from '../../../components/common/SacredHeader';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { DeityItem, SupportedLanguage } from '../../../types';
 import { StorageService } from '../../../services/storageService';
@@ -174,48 +175,12 @@ export const ChooseDeityScreen: React.FC<ChooseDeityScreenProps> = ({
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor="#173D32" translucent={false} />
+      <StatusBar barStyle="light-content" backgroundColor="#173D32" translucent />
 
       {/* =========================================================
           1. SACRED GREEN HEADER WITH CORNER FILIGREE
          ========================================================= */}
-      <SafeAreaView style={styles.safeHeaderArea}>
-        <LinearGradient
-          colors={['#173D32', '#173D32', '#0C251E']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.headerBar}
-        >
-          {/* Corner Filigree Ornaments */}
-          <View style={styles.cornerTopLeft}>
-            <HeaderCornerFiligree />
-          </View>
-          <View style={styles.cornerTopRight}>
-            <HeaderCornerFiligree />
-          </View>
-
-          {/* Left: Back Button */}
-          {onBack && (
-            <TouchableOpacity
-              style={styles.backBtn}
-              onPress={onBack}
-              activeOpacity={0.7}
-              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-              accessibilityRole="button"
-              accessibilityLabel="Back"
-            >
-              <Text style={styles.backArrowText}>←</Text>
-            </TouchableOpacity>
-          )}
-
-          {/* Center Title */}
-          <View style={styles.headerTitleContainer}>
-            <Text style={styles.headerTitleText} numberOfLines={1}>
-              {screenTitle}
-            </Text>
-          </View>
-        </LinearGradient>
-      </SafeAreaView>
+      <SacredHeader title={screenTitle} onBack={onBack} showBack={Boolean(onBack)} />
 
       {/* =========================================================
           2. SEARCH BAR (MATCHING SERVICES SCREEN DESIGN)

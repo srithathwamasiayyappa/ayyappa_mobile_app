@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Linking } from 'react-native';
+import { Linking, Image } from 'react-native';
+import { Asset } from 'expo-asset';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ApiService, HomeLogoData, DEFAULT_HOME_LOGO, API_BASE_URL } from './api';
 
@@ -21,6 +22,15 @@ function sanitizeLogoUrl(url?: string): string {
   return url;
 }
 
+function prefetchLogoUrl(url?: string) {
+  if (!url) return;
+  try {
+    Image.prefetch(url).catch(() => {});
+  } catch (_) {
+    // Ignore prefetch errors
+  }
+}
+
 export const BrandingService = {
   // Synchronous read of current in-memory branding
   getCurrentBranding(): HomeLogoData {
@@ -35,6 +45,7 @@ export const BrandingService = {
         const parsed = JSON.parse(cached);
         if (parsed && parsed.logoUrl) {
           parsed.logoUrl = sanitizeLogoUrl(parsed.logoUrl);
+          prefetchLogoUrl(parsed.logoUrl);
           inMemoryBranding = parsed;
           listeners.forEach((listener) => listener(inMemoryBranding));
         }
@@ -51,6 +62,7 @@ export const BrandingService = {
       const latest = await ApiService.getHomeLogo();
       if (latest && latest.logoUrl) {
         latest.logoUrl = sanitizeLogoUrl(latest.logoUrl);
+        prefetchLogoUrl(latest.logoUrl);
         inMemoryBranding = latest;
         listeners.forEach((listener) => listener(inMemoryBranding));
         await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(latest));
@@ -94,7 +106,14 @@ export const BrandingService = {
   },
 };
 
-// Initial background load
+// Initial background load & logo preload (remote + local fallback emblem)
+try {
+  Asset.loadAsync([
+    require('../assets/deities/saranam_deity_emblem.png'),
+    require('../assets/auth/saranam_login_emblem.png'),
+  ]).catch(() => {});
+} catch (_) {}
+prefetchLogoUrl(sanitizeLogoUrl(inMemoryBranding?.logoUrl));
 BrandingService.loadCachedBranding().then(() => {
   BrandingService.fetchLatestBranding();
 });

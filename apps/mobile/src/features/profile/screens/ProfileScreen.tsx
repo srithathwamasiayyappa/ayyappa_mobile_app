@@ -904,7 +904,25 @@ export const ProfileScreen: React.FC<Props> = ({
   const [legalModalVisible, setLegalModalVisible] = useState(false);
   const [bookmarks, setBookmarks] = useState<BookmarkItem[]>([]);
   const [bookmarksLoading, setBookmarksLoading] = useState<boolean>(false);
-  const [bookmarkCategoryFilter, setBookmarkCategoryFilter] = useState<'all' | 'pooja' | 'sloka' | 'stotra' | 'bhajan' | 'temple'>('all');
+  const [bookmarkCategoryFilter, setBookmarkCategoryFilter] = useState<string>('all');
+  const [bookmarkCategories, setBookmarkCategories] = useState<Array<{ id: string; label: string }>>([]);
+
+  useEffect(() => {
+    let mounted = true;
+    ApiService.getCategories(currentLanguage)
+      .then((cats: any[]) => {
+        if (!mounted || !Array.isArray(cats)) return;
+        const mapped = cats.map((cat: any) => ({
+          id: String(cat.slug || cat.id || '').toLowerCase(),
+          label: String(cat.title || cat.name || cat.slug || ''),
+        })).filter((c) => c.id && c.label);
+        setBookmarkCategories(mapped);
+      })
+      .catch(() => {
+        if (mounted) setBookmarkCategories([]);
+      });
+    return () => { mounted = false; };
+  }, [currentLanguage]);
   const [availableLanguages, setAvailableLanguages] = useState<any[]>([]);
   const [loadingLanguages, setLoadingLanguages] = useState<boolean>(false);
   const [switchingLanguage, setSwitchingLanguage] = useState<boolean>(false);
@@ -1000,15 +1018,21 @@ export const ProfileScreen: React.FC<Props> = ({
   }, [otpCountdown]);
 
   const handleSendDeletionOtp = async () => {
-    const rawPhone = profile?.phoneNumber || currentUser?.phoneNumber || currentUser?.phone;
-    if (!rawPhone) {
-      showAlert('Verification Error', 'Registered phone number not found. Please log in again.', undefined, 'error');
+    const candidatePhone = profile?.phoneNumber || currentUser?.phoneNumber || currentUser?.phone || '';
+    const candidateEmail = profile?.email || currentUser?.email || '';
+    const rawPhone = candidatePhone && !String(candidatePhone).includes('@') ? String(candidatePhone).trim() : '';
+    const rawEmail = String(candidateEmail || (String(candidatePhone).includes('@') ? candidatePhone : '')).trim();
+    // Default to mobile number if both are present; otherwise use email
+    const otpTarget = rawPhone || rawEmail;
+
+    if (!otpTarget) {
+      showAlert('Verification Error', 'Registered mobile number or email not found. Please log in again.', undefined, 'error');
       return;
     }
     setDeleteLoading(true);
     setDeleteError(null);
     try {
-      const res = await ApiService.sendOtp(rawPhone, 'delete_account');
+      const res = await ApiService.sendOtp(otpTarget, 'delete_account');
       if (res && res.error) {
         setDeleteError(res.error || 'Failed to send verification OTP');
       } else {
@@ -1710,14 +1734,20 @@ export const ProfileScreen: React.FC<Props> = ({
 
   const displayedBookmarks = React.useMemo(() => {
     if (bookmarkCategoryFilter === 'all') return bookmarks;
+    const f = bookmarkCategoryFilter.toLowerCase();
     return bookmarks.filter((b) => {
       const c = (b.category || '').toLowerCase();
-      if (bookmarkCategoryFilter === 'pooja') return c.includes('pooja');
-      if (bookmarkCategoryFilter === 'sloka') return c.includes('sloka');
-      if (bookmarkCategoryFilter === 'stotra') return c.includes('stotra');
-      if (bookmarkCategoryFilter === 'bhajan') return c.includes('bhajan') || c.includes('song');
-      if (bookmarkCategoryFilter === 'temple') return c.includes('temple');
-      return c === bookmarkCategoryFilter;
+      const t = (b.title || '').toLowerCase();
+      const idStr = String(b.id || '').toLowerCase();
+      const combined = `${c} ${t} ${idStr}`;
+      if (f.includes('pooja') || f.includes('puja')) {
+        return combined.includes('pooja') || combined.includes('puja') || combined.includes('vratham') || combined.includes('abhishekam') || combined.includes('పూజ');
+      }
+      if (f.includes('sloka')) return combined.includes('sloka') || combined.includes('శ్లోక');
+      if (f.includes('stotra')) return combined.includes('stotra') || combined.includes('స్తోత్ర');
+      if (f.includes('bhajan') || f.includes('song')) return combined.includes('bhajan') || combined.includes('song') || combined.includes('భజన') || combined.includes('కీర్తన');
+      if (f.includes('temple')) return combined.includes('temple') || combined.includes('ఆలయ');
+      return c === f || combined.includes(f);
     });
   }, [bookmarks, bookmarkCategoryFilter]);
 
@@ -1854,9 +1884,13 @@ export const ProfileScreen: React.FC<Props> = ({
       });
 
       showAlert('Profile Photo Updated 🙏', 'Your profile picture has been updated successfully and saved.');
-    } catch {
-      setProfile((prev: any) => (prev ? { ...prev, profileImageUrl: base64Data } : { profileImageUrl: base64Data } as any));
-      showAlert('Profile Photo Updated 🙏', 'Your profile picture has been updated successfully.');
+    } catch (err: any) {
+      showAlert(
+        'Upload Failed',
+        err?.message || 'Unable to save profile photo to the server. Please try again.',
+        undefined,
+        'error'
+      );
     } finally {
       setUploadingAvatar(false);
     }
@@ -2413,16 +2447,12 @@ export const ProfileScreen: React.FC<Props> = ({
               </TouchableOpacity>
             </View>
 
-            {/* Category Filter Pills (All | Pooja | Slokas | Stotras | Bhajans | Temples) */}
+            {/* Dynamic Category Filter Pills fetched from DB via API */}
             <View style={styles.bookmarkFilterContainer}>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.bookmarkFilterScroll}>
                 {[
                   { id: 'all', label: currentLanguage === 'te' ? 'అన్నీ' : currentLanguage === 'kn' ? 'ಎಲ್ಲವೂ' : currentLanguage === 'ta' ? 'அனைத்தும்' : currentLanguage === 'hi' ? 'सभी' : (currentLanguage as any) === 'ml' ? 'എല്ലാം' : 'All' },
-                  { id: 'pooja', label: currentLanguage === 'te' ? 'పూజా విధానం' : currentLanguage === 'kn' ? 'ಪೂಜಾ ವಿಧಾನ' : currentLanguage === 'ta' ? 'பூஜை முறை' : currentLanguage === 'hi' ? 'पूजा विधान' : (currentLanguage as any) === 'ml' ? 'പൂജാ വിധി' : 'Pooja Vidhanam' },
-                  { id: 'sloka', label: currentLanguage === 'te' ? 'నిత్య శ్లోకాలు' : currentLanguage === 'kn' ? 'ನಿತ್ಯ ಶ್ಲೋಕಗಳು' : currentLanguage === 'ta' ? 'நித்ய ஸ்லோகங்கள்' : currentLanguage === 'hi' ? 'नित्य श्लोक' : (currentLanguage as any) === 'ml' ? 'നിത്യ ശ്ലോകങ്ങൾ' : 'Daily Slokas' },
-                  { id: 'stotra', label: currentLanguage === 'te' ? 'దివ్య స్తోత్రాలు' : currentLanguage === 'kn' ? 'ದಿವ್ಯ ಸ್ತೋತ್ರಗಳು' : currentLanguage === 'ta' ? 'திவ்ய ஸ்தோத்திரங்கள்' : currentLanguage === 'hi' ? 'दिव्य स्तोत्र' : (currentLanguage as any) === 'ml' ? 'ദിവ്യ സ്തോത്രങ്ങൾ' : 'Divine Stotras' },
-                  { id: 'bhajan', label: currentLanguage === 'te' ? 'భజనలు & పాటలు' : currentLanguage === 'kn' ? 'ಭಜನೆಗಳು ಮತ್ತು ಹಾಡುಗಳು' : currentLanguage === 'ta' ? 'பஜனைகள் & பாடல்கள்' : currentLanguage === 'hi' ? 'भजन व गीत' : (currentLanguage as any) === 'ml' ? 'ഭജനകളും ഗാനങ്ങളും' : 'Bhajans & Songs' },
-                  { id: 'temple', label: currentLanguage === 'te' ? 'పుణ్యక్షేత్రాలు' : currentLanguage === 'kn' ? 'ಪುಣ್ಯಕ್ಷೇತ್ರಗಳು' : currentLanguage === 'ta' ? 'புண்ணிய தலங்கள்' : currentLanguage === 'hi' ? 'पवित्र मंदिर' : (currentLanguage as any) === 'ml' ? 'പുണ്യക്ഷേത്രങ്ങൾ' : 'Holy Mandir' },
+                  ...bookmarkCategories,
                 ].map((f) => {
                   const isActive = bookmarkCategoryFilter === f.id;
                   return (
@@ -2763,8 +2793,16 @@ export const ProfileScreen: React.FC<Props> = ({
                   />
 
                   <View style={styles.phoneVerificationRow}>
-                    <Text style={styles.phoneVerificationLabel}>Registered Phone:</Text>
-                    <Text style={styles.phoneVerificationValue}>{displayPhone}</Text>
+                    <Text style={styles.phoneVerificationLabel}>
+                      {String(displayPhone || '').includes('@') ? 'Registered Email:' : 'Registered Phone:'}
+                    </Text>
+                    <Text
+                      style={[styles.phoneVerificationValue, { flex: 1, textAlign: 'right' }]}
+                      numberOfLines={1}
+                      ellipsizeMode="middle"
+                    >
+                      {displayPhone}
+                    </Text>
                   </View>
 
                   <TouchableOpacity

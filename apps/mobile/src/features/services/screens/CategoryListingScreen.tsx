@@ -14,6 +14,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { SacredHeader } from '../../../components/common/SacredHeader';
 import Svg, { Path, Polygon } from 'react-native-svg';
 import { SupportedLanguage } from '../../../types';
 import { CategoryListingSkeleton } from '../../../components/common/CategorySkeleton';
@@ -558,41 +559,7 @@ export const CategoryListingScreen: React.FC<Props> = ({
       {/* =========================================================
           1. SACRED MAROON HEADER WITH BACK ARROW & CORNER FILIGREE
          ========================================================= */}
-      <SafeAreaView style={styles.safeHeaderArea}>
-        <LinearGradient
-          colors={['#173D32', '#173D32', '#0C251E']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.headerBar}
-        >
-          {/* Corner Filigree Ornaments */}
-          <View style={styles.cornerTopLeft}>
-            <HeaderCornerFiligree />
-          </View>
-          <View style={styles.cornerTopRight}>
-            <HeaderCornerFiligree />
-          </View>
-
-          {/* Left: Back Button */}
-          <TouchableOpacity
-            style={styles.backBtn}
-            onPress={onBack}
-            activeOpacity={0.7}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            accessibilityRole="button"
-            accessibilityLabel="Back"
-          >
-            <Text style={styles.backArrowText}>←</Text>
-          </TouchableOpacity>
-
-          {/* Center Title: Pooja Vidhanam / Dynamic Title */}
-          <View style={styles.headerTitleContainer}>
-            <Text style={styles.headerTitleText} numberOfLines={1}>
-              {displayTitle}
-            </Text>
-          </View>
-        </LinearGradient>
-      </SafeAreaView>
+      <SacredHeader title={displayTitle} onBack={onBack} />
 
       {/* =========================================================
           2. HORIZONTAL DEITY FILTER ROW (All | Ayyappa | Shiva | Devi | Ganesha)

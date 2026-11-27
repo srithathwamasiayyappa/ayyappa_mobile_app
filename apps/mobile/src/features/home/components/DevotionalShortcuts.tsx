@@ -330,7 +330,7 @@ export const DevotionalShortcuts: React.FC<Props> = ({
           <View style={styles.headerIconCircle}>
             <DevotionalCategoriesGridIcon size={14} color="#D4932A" />
           </View>
-          <Text style={styles.sectionTitle}>{t.sectionTitle}</Text>
+          <Text style={styles.sectionTitle} numberOfLines={1}>{t.sectionTitle}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           activeOpacity={0.75}
@@ -397,12 +397,9 @@ const styles = StyleSheet.create({
     }),
   },
   viewAllPill: {
-    backgroundColor: '#FFF8E8',
-    borderWidth: 1,
-    borderColor: '#E6C898',
-    borderRadius: 14,
-    paddingHorizontal: 9,
-    paddingVertical: 3.5,
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    flexShrink: 0,
   },
   viewAllText: {
     fontSize: 11,

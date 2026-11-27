@@ -439,6 +439,150 @@ const I18N_ABOUT: Record<
   },
 };
 
+// Helper to render CMS HTML content cleanly with native devotional typography
+const decodeEntities = (str: string) =>
+  str
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
+
+const renderInlineHtml = (text: string) => {
+  const parts = text.split(/(<(?:strong|b|em|i)>[\s\S]*?<\/(?:strong|b|em|i)>)/gi);
+  return parts.map((part, idx) => {
+    const boldMatch = part.match(/^<(?:strong|b)>([\s\S]*?)<\/(?:strong|b)>$/i);
+    if (boldMatch) {
+      return (
+        <Text key={idx} style={{ fontWeight: '700', color: '#173D32' }}>
+          {decodeEntities(boldMatch[1].replace(/<[^>]+>/g, ''))}
+        </Text>
+      );
+    }
+    const italicMatch = part.match(/^<(?:em|i)>([\s\S]*?)<\/(?:em|i)>$/i);
+    if (italicMatch) {
+      return (
+        <Text key={idx} style={{ fontStyle: 'italic' }}>
+          {decodeEntities(italicMatch[1].replace(/<[^>]+>/g, ''))}
+        </Text>
+      );
+    }
+    return decodeEntities(part.replace(/<[^>]+>/g, ''));
+  });
+};
+
+const renderFormattedAboutHtml = (rawHtml: string) => {
+  if (!rawHtml) return null;
+  // If plain text without HTML tags, render cleanly
+  if (!/<[a-z][\s\S]*>/i.test(rawHtml)) {
+    return (
+      <Text style={{ fontSize: 14.5, lineHeight: 23, color: '#2C221E', textAlign: 'left' }}>
+        {rawHtml}
+      </Text>
+    );
+  }
+
+  const normalized = rawHtml
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(h1|h2|h3|h4|p|li|div)>/gi, '</$1>\n');
+
+  const blockRegex = /<(h1|h2|h3|h4|p|li)[^>]*>([\s\S]*?)<\/\1>/gi;
+  const blocks: React.ReactNode[] = [];
+  let match: RegExpExecArray | null;
+  let idx = 0;
+
+  while ((match = blockRegex.exec(normalized)) !== null) {
+    const tag = match[1].toLowerCase();
+    const inner = match[2].trim();
+    if (!inner) continue;
+
+    if (tag === 'h1') {
+      blocks.push(
+        <Text
+          key={`h1-${idx++}`}
+          style={{
+            fontSize: 17,
+            fontWeight: '800',
+            color: '#173D32',
+            textAlign: 'center',
+            letterSpacing: 0.5,
+            marginTop: 4,
+            marginBottom: 6,
+          }}
+        >
+          {decodeEntities(inner.replace(/<[^>]+>/g, ''))}
+        </Text>
+      );
+    } else if (tag === 'h2') {
+      blocks.push(
+        <Text
+          key={`h2-${idx++}`}
+          style={{
+            fontSize: 15,
+            fontWeight: '700',
+            color: '#8B4513',
+            textAlign: 'center',
+            marginBottom: 4,
+          }}
+        >
+          {decodeEntities(inner.replace(/<[^>]+>/g, ''))}
+        </Text>
+      );
+    } else if (tag === 'h3' || tag === 'h4') {
+      blocks.push(
+        <Text
+          key={`h3-${idx++}`}
+          style={{
+            fontSize: 13.5,
+            fontWeight: '600',
+            color: '#2C4C3E',
+            textAlign: 'center',
+            marginBottom: 12,
+            lineHeight: 20,
+          }}
+        >
+          {decodeEntities(inner.replace(/<[^>]+>/g, ''))}
+        </Text>
+      );
+    } else if (tag === 'li') {
+      blocks.push(
+        <View key={`li-${idx++}`} style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 6, paddingLeft: 4 }}>
+          <Text style={{ fontSize: 14, color: '#DFA62E', marginRight: 8, lineHeight: 22 }}>•</Text>
+          <Text style={{ flex: 1, fontSize: 14, lineHeight: 22, color: '#2C221E', textAlign: 'left' }}>
+            {renderInlineHtml(inner)}
+          </Text>
+        </View>
+      );
+    } else {
+      blocks.push(
+        <Text
+          key={`p-${idx++}`}
+          style={{
+            fontSize: 14.5,
+            lineHeight: 23,
+            color: '#2C221E',
+            textAlign: 'left',
+            marginBottom: 10,
+          }}
+        >
+          {renderInlineHtml(inner)}
+        </Text>
+      );
+    }
+  }
+
+  if (blocks.length === 0) {
+    return (
+      <Text style={{ fontSize: 14.5, lineHeight: 23, color: '#2C221E', textAlign: 'left' }}>
+        {decodeEntities(rawHtml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim())}
+      </Text>
+    );
+  }
+
+  return <View style={{ width: '100%', paddingHorizontal: 4 }}>{blocks}</View>;
+};
+
 export const AboutScreen: React.FC<Props> = ({
   currentLanguage = 'te',
   onBack,
@@ -669,7 +813,7 @@ export const AboutScreen: React.FC<Props> = ({
               </TouchableOpacity>
             </View>
           ) : introText ? (
-            <Text style={styles.introDescriptionText}>{introText}</Text>
+            renderFormattedAboutHtml(introText)
           ) : (
             <Text style={[styles.introDescriptionText, { fontStyle: 'italic', color: '#999' }]}>No description records found in database.</Text>
           )}

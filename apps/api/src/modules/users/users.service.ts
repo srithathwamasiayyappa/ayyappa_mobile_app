@@ -237,18 +237,16 @@ export class UsersService {
     const filePath = path.join(uploadsDir, filename);
     fs.writeFileSync(filePath, buffer);
 
-    // Save robust data URI so React Native mobile Image renders immediately
-    const dataUri = `data:image/jpeg;base64,${cleanBase64}`;
     const relativeUrl = `/uploads/profiles/${filename}`;
 
     await this.prisma.appUser.update({
       where: { id: targetUserId },
-      data: { profileImageUrl: dataUri },
+      data: { profileImageUrl: relativeUrl },
     });
 
     return {
       success: true,
-      profileImageUrl: dataUri,
+      profileImageUrl: relativeUrl,
       relativeUrl,
       profile: await this.getProfile(targetUserId, user.preferredLang || 'te'),
     };
@@ -289,27 +287,33 @@ export class UsersService {
       throw new NotFoundException('User profile not found.');
     }
 
-    if (!user.phoneNumber) {
-      throw new BadRequestException('User does not have a registered mobile number for OTP verification.');
+    const rawPhone = user.phoneNumber && !user.phoneNumber.includes('@') ? user.phoneNumber.trim() : '';
+    const rawEmail = (user.email || (user.phoneNumber && user.phoneNumber.includes('@') ? user.phoneNumber : '') || '').trim().toLowerCase();
+
+    if (!rawPhone && !rawEmail) {
+      throw new BadRequestException('User does not have a registered mobile number or email for OTP verification.');
     }
 
-    const cleanPhone = user.phoneNumber.replace(/[^0-9]/g, '').slice(-10);
+    // Default to mobile number if both are present; otherwise use email
+    const useMobile = Boolean(rawPhone);
+    const cleanPhone = useMobile ? rawPhone.replace(/[^0-9]/g, '').slice(-10) : '';
+    const otpKey = useMobile ? cleanPhone : rawEmail;
     const trimmedOtp = otp.trim();
 
-    // Verify OTP using universal test code bypass, MSG91, or KeyedOtpManager
-    const isMsg91Active = Boolean(process.env.MSG91_AUTH_KEY);
+    // Verify OTP using universal test code bypass, MSG91 (mobile only), or KeyedOtpManager
+    const isMsg91Active = useMobile && Boolean(process.env.MSG91_AUTH_KEY);
     if (trimmedOtp === '123456') {
       // Universal test code bypass matching auth.controller.ts
     } else if (isMsg91Active) {
       const msg91Verify = await Msg91Service.verifyOtp(cleanPhone, trimmedOtp);
       if (!msg91Verify.verified) {
-        const localVerify = KeyedOtpManager.verify(cleanPhone, trimmedOtp);
+        const localVerify = KeyedOtpManager.verify(otpKey, trimmedOtp);
         if (!localVerify.valid) {
           throw new BadRequestException(msg91Verify.message || 'Invalid or expired OTP code.');
         }
       }
     } else {
-      const localVerify = KeyedOtpManager.verify(cleanPhone, trimmedOtp);
+      const localVerify = KeyedOtpManager.verify(otpKey, trimmedOtp);
       if (!localVerify.valid) {
         throw new BadRequestException(localVerify.reason || 'Invalid or expired OTP code.');
       }

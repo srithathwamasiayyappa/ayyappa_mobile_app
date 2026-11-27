@@ -597,7 +597,6 @@ export const DeityManager: React.FC = () => {
                     <option value="shiva">Shiva Family</option>
                     <option value="vishnu">Vishnu Family</option>
                     <option value="devi">Devi (Goddesses)</option>
-                    <option value="others">Others</option>
                   </select>
                 </div>
 
