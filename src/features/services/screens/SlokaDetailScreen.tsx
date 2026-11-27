@@ -466,31 +466,53 @@ export const SlokaDetailScreen: React.FC<Props> = ({
     return () => sub.remove();
   }, [selectedSubItem, onBack]);
 
-  // 6. Saved state in AsyncStorage
+  const resolvedCategory = React.useMemo<'sloka' | 'stotra' | 'bhajan'>(() => {
+    if (isBhajanOrSong) return 'bhajan';
+    const combined = `${category || ''} ${title || ''} ${itemId || ''}`.toLowerCase();
+    if (combined.includes('song') || combined.includes('bhajan') || combined.includes('keerthana') || combined.includes('harathi') || combined.includes('భజన') || combined.includes('హారతి') || combined.includes('పాట')) {
+      return 'bhajan';
+    }
+    if (combined.includes('stotra') || combined.includes('stotram') || combined.includes('astothram') || combined.includes('ashtakam') || combined.includes('స్తోత్ర') || combined.includes('అష్టోత్తర') || combined.includes('అష్టక')) {
+      return 'stotra';
+    }
+    return 'sloka';
+  }, [category, title, itemId, isBhajanOrSong]);
+
+  // 6. Saved bookmark state synchronized dynamically with MariaDB via API & Storage
   useEffect(() => {
+    let isMounted = true;
     async function checkSaved() {
       try {
-        const s = await AsyncStorage.getItem(`@devotional_saved_${resolvedContent.id}`);
-        if (s === 'true') setIsSaved(true);
+        const targetId = String(rawId || itemId || resolvedContent.id);
+        const user = await StorageService.getStoredUser();
+        const userId = user?.id ? Number(user.id) : undefined;
+        const saved = await StorageService.isBookmarked(targetId, userId);
+        if (isMounted) setIsSaved(saved);
       } catch (_) {}
     }
     checkSaved();
-  }, [resolvedContent.id]);
+    return () => { isMounted = false; };
+  }, [resolvedContent.id, itemId, rawId]);
 
   const handleToggleSave = async () => {
-    const nextSaved = !isSaved;
+    const targetId = String(rawId || itemId || resolvedContent.id);
+    const user = await StorageService.getStoredUser();
+    const userId = user?.id ? Number(user.id) : undefined;
+    const itemToBookmark = {
+      id: targetId,
+      rawId: rawId ? String(rawId) : undefined,
+      title: title || resolvedContent.title || 'Devotional Verse',
+      category: resolvedCategory,
+      subtitle: resolvedContent.description ? resolvedContent.description.slice(0, 80) : (resolvedContent.subtitle ? resolvedContent.subtitle.slice(0, 80) : undefined),
+      savedAt: new Date().toISOString(),
+    };
+    const nextSaved = await StorageService.toggleBookmark(itemToBookmark, userId);
     setIsSaved(nextSaved);
-    try {
-      await AsyncStorage.setItem(
-        `@devotional_saved_${resolvedContent.id}`,
-        nextSaved ? 'true' : 'false'
-      );
-      Alert.alert(
-        nextSaved ? '🙏 Swamiye Saranam Ayyappa' : 'Information',
-        nextSaved ? ui.bookmarkAdded : ui.bookmarkRemoved,
-        [{ text: 'OK' }]
-      );
-    } catch (_) {}
+    Alert.alert(
+      nextSaved ? '🙏 Swamiye Saranam Ayyappa' : 'Information',
+      nextSaved ? ui.bookmarkAdded : ui.bookmarkRemoved,
+      [{ text: 'OK' }]
+    );
   };
 
   const handleDownloadPdf = () => {

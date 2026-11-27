@@ -21,6 +21,7 @@ import Svg, { Path, Circle, Line, Polygon, Ellipse, Rect } from 'react-native-sv
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SupportedLanguage } from '../../../types';
 import { ApiService, resolveMediaUrl } from '../../../services/api';
+import { StorageService } from '../../../services/storageService';
 
 const { width: WINDOW_WIDTH, height: WINDOW_HEIGHT } = Dimensions.get('window');
 const { width: SCREEN_WIDTH_FULL, height: SCREEN_HEIGHT_FULL } = Dimensions.get('screen');
@@ -575,20 +576,19 @@ export const PoojaDetailScreen: React.FC<Props> = ({
     return '';
   };
 
-  // Load saved state from AsyncStorage
+  // Load saved bookmark state dynamically from MariaDB via API & Storage
   useEffect(() => {
-    async function loadSavedState() {
-      try {
-        const savedJson = await AsyncStorage.getItem(`@ayyappa_pooja_saved_${poojaContent.id}`);
-        if (savedJson === 'true') {
-          setIsSaved(true);
-        }
-      } catch (e) {
-        // ignore
-      }
+    let isMounted = true;
+    async function checkSavedState() {
+      const targetId = String(rawId || itemId || poojaContent.id);
+      const user = await StorageService.getStoredUser();
+      const userId = user?.id ? Number(user.id) : undefined;
+      const saved = await StorageService.isBookmarked(targetId, userId);
+      if (isMounted) setIsSaved(saved);
     }
-    loadSavedState();
-  }, [poojaContent.id]);
+    checkSavedState();
+    return () => { isMounted = false; };
+  }, [itemId, rawId, poojaContent.id]);
 
   // Handle Hardware Back Button
   useEffect(() => {
@@ -612,21 +612,24 @@ export const PoojaDetailScreen: React.FC<Props> = ({
   };
 
   const handleToggleSave = async () => {
-    const nextSaved = !isSaved;
+    const targetId = String(rawId || itemId || poojaContent.id);
+    const user = await StorageService.getStoredUser();
+    const userId = user?.id ? Number(user.id) : undefined;
+    const itemToBookmark = {
+      id: targetId,
+      rawId: rawId ? String(rawId) : undefined,
+      title: displayTitle || poojaContent.overview?.heading || 'Pooja Vidhanam',
+      category: 'pooja',
+      subtitle: poojaContent.overview?.description ? poojaContent.overview.description.slice(0, 80) : undefined,
+      savedAt: new Date().toISOString(),
+    };
+    const nextSaved = await StorageService.toggleBookmark(itemToBookmark, userId);
     setIsSaved(nextSaved);
-    try {
-      await AsyncStorage.setItem(
-        `@ayyappa_pooja_saved_${poojaContent.id}`,
-        nextSaved ? 'true' : 'false'
-      );
-      Alert.alert(
-        nextSaved ? '🙏 Swamiye Saranam Ayyappa' : 'Information',
-        nextSaved ? ui.bookmarkAdded : ui.bookmarkRemoved,
-        [{ text: 'OK' }]
-      );
-    } catch (e) {
-      // ignore
-    }
+    Alert.alert(
+      nextSaved ? '🙏 Swamiye Saranam Ayyappa' : 'Information',
+      nextSaved ? ui.bookmarkAdded : ui.bookmarkRemoved,
+      [{ text: 'OK' }]
+    );
   };
 
   const handleDownloadPdf = () => {

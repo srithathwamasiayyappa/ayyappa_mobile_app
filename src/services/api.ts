@@ -1196,10 +1196,12 @@ export const ApiService = {
   },
 
   // 17c. Devotee Bookmarks: Dynamic Fetch from DB via API response
-  async getUserBookmarks(userId: number): Promise<BookmarkItem[]> {
+  async getUserBookmarks(userId?: number): Promise<BookmarkItem[]> {
+    const activeBase = getApiBaseUrl();
+    const uid = userId ? Number(userId) : 1;
     try {
-      const res = await fetch(`${API_BASE_URL}/users/me/bookmarks?userId=${userId}`, {
-        headers: { 'x-user-id': String(userId) },
+      const res = await fetch(`${activeBase}/users/me/bookmarks?userId=${uid}`, {
+        headers: { 'x-user-id': String(uid) },
       });
       if (res.ok) {
         const json = await res.json();
@@ -1213,16 +1215,66 @@ export const ApiService = {
     return [];
   },
 
-  // 17d. Devotee Bookmarks: Add Bookmark to DB
-  async addUserBookmark(userId: number, bookmark: { itemId: string; itemType: string; title: string; subtitle?: string; thumbnailUrl?: string }) {
+  // 17d. Devotee Bookmarks: Toggle Bookmark (Add/Remove) in DB via API
+  async toggleUserBookmark(
+    userId: number,
+    bookmark: { itemId: string; itemType: string; title: string; subtitle?: string; thumbnailUrl?: string }
+  ): Promise<{ success: boolean; isBookmarked: boolean; message?: string }> {
+    const activeBase = getApiBaseUrl();
+    const uid = userId ? Number(userId) : 1;
     try {
-      const res = await fetch(`${API_BASE_URL}/users/me/bookmarks?userId=${userId}`, {
+      const res = await fetch(`${activeBase}/users/me/bookmarks/toggle?userId=${uid}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-user-id': String(userId),
+          'x-user-id': String(uid),
         },
-        body: JSON.stringify(bookmark),
+        body: JSON.stringify({ ...bookmark, userId: uid }),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        return {
+          success: json.success ?? true,
+          isBookmarked: !!json.isBookmarked,
+          message: json.message,
+        };
+      }
+    } catch (e: any) {
+      console.warn('toggleUserBookmark error:', e?.message);
+    }
+    return { success: false, isBookmarked: false };
+  },
+
+  // 17e. Devotee Bookmarks: Check if item is bookmarked in DB via API
+  async checkUserBookmark(userId: number, itemId: string): Promise<boolean> {
+    const activeBase = getApiBaseUrl();
+    const uid = userId ? Number(userId) : 1;
+    try {
+      const res = await fetch(`${activeBase}/users/me/bookmarks/check?userId=${uid}&itemId=${encodeURIComponent(itemId)}`, {
+        headers: { 'x-user-id': String(uid) },
+      });
+      if (res.ok) {
+        const json = await res.json();
+        return !!json.isBookmarked;
+      }
+    } catch (e: any) {
+      console.warn('checkUserBookmark error:', e?.message);
+    }
+    return false;
+  },
+
+  // 17f. Devotee Bookmarks: Add Bookmark to DB
+  async addUserBookmark(userId: number, bookmark: { itemId: string; itemType: string; title: string; subtitle?: string; thumbnailUrl?: string }) {
+    const activeBase = getApiBaseUrl();
+    const uid = userId ? Number(userId) : 1;
+    try {
+      const res = await fetch(`${activeBase}/users/me/bookmarks?userId=${uid}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': String(uid),
+        },
+        body: JSON.stringify({ ...bookmark, userId: uid }),
       });
       return await res.json();
     } catch (e: any) {
@@ -1231,11 +1283,13 @@ export const ApiService = {
     }
   },
 
-  // 17e. Devotee Bookmarks: Remove Bookmark from DB
+  // 17g. Devotee Bookmarks: Remove Bookmark from DB
   async removeUserBookmark(userId: number, bookmarkId: string) {
+    const activeBase = getApiBaseUrl();
+    const uid = userId ? Number(userId) : 1;
     try {
-      const res = await fetch(`${API_BASE_URL}/users/me/bookmarks/delete?userId=${userId}&id=${encodeURIComponent(bookmarkId)}`, {
-        headers: { 'x-user-id': String(userId) },
+      const res = await fetch(`${activeBase}/users/me/bookmarks/delete?userId=${uid}&id=${encodeURIComponent(bookmarkId)}`, {
+        headers: { 'x-user-id': String(uid) },
       });
       return await res.json();
     } catch (e: any) {

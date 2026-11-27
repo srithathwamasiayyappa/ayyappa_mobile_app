@@ -294,6 +294,18 @@ const MenuDeleteAccountIcon = () => (
   </Svg>
 );
 
+const BookmarkTrashIcon = () => (
+  <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6"
+      stroke="#A32424"
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
 // --- DHARMA KARTHA (TRUSTEE) ICONS ---
 // Mandir / Temples Icon
 const MenuTemplesIcon = () => (
@@ -844,6 +856,7 @@ export const ProfileScreen: React.FC<Props> = ({
   const [legalModalVisible, setLegalModalVisible] = useState(false);
   const [bookmarks, setBookmarks] = useState<BookmarkItem[]>([]);
   const [bookmarksLoading, setBookmarksLoading] = useState<boolean>(false);
+  const [bookmarkCategoryFilter, setBookmarkCategoryFilter] = useState<'all' | 'pooja' | 'sloka' | 'stotra' | 'bhajan' | 'temple'>('all');
   const [availableLanguages, setAvailableLanguages] = useState<any[]>([]);
   const [loadingLanguages, setLoadingLanguages] = useState<boolean>(false);
   const [switchingLanguage, setSwitchingLanguage] = useState<boolean>(false);
@@ -1637,6 +1650,39 @@ export const ProfileScreen: React.FC<Props> = ({
     setBookmarksLoading(false);
   };
 
+  const handleRemoveBookmark = async (item: BookmarkItem) => {
+    const userId = currentUser?.id ? Number(currentUser.id) : undefined;
+    if (userId) {
+      try {
+        await ApiService.removeUserBookmark(userId, item.id);
+      } catch (e) {
+        console.warn('Failed to remove bookmark from DB API:', e);
+      }
+    }
+    const updated = bookmarks.filter((b) => b.id !== item.id);
+    setBookmarks(updated);
+    await StorageService.toggleBookmark(item, userId);
+  };
+
+  const displayedBookmarks = React.useMemo(() => {
+    if (bookmarkCategoryFilter === 'all') return bookmarks;
+    return bookmarks.filter((b) => {
+      const c = (b.category || '').toLowerCase();
+      if (bookmarkCategoryFilter === 'bhajan') return c === 'bhajan' || c === 'song';
+      return c === bookmarkCategoryFilter;
+    });
+  }, [bookmarks, bookmarkCategoryFilter]);
+
+  const getCategoryBadge = (cat?: string) => {
+    const c = (cat || '').toLowerCase();
+    if (c === 'pooja') return { label: 'Pooja Vidhanam', bg: '#FFF3E0', text: '#E65100', border: '#FFE0B2' };
+    if (c === 'sloka') return { label: 'Daily Sloka', bg: '#E8F5E9', text: '#2E7D32', border: '#C8E6C9' };
+    if (c === 'stotra') return { label: 'Divine Stotram', bg: '#F3E5F5', text: '#6A1B9A', border: '#E1BEE7' };
+    if (c === 'bhajan' || c === 'song') return { label: 'Bhajans & Songs', bg: '#E0F2F1', text: '#00695C', border: '#B2DFDB' };
+    if (c === 'temple') return { label: 'Holy Mandir', bg: '#FFF8E1', text: '#F57F17', border: '#FFECB3' };
+    return { label: 'Devotional', bg: '#ECEFF1', text: '#37474F', border: '#CFD8DC' };
+  };
+
   // Refresh Profile & Mandir Data dynamically from DB
   const handleRefreshProfile = async () => {
     setRefreshingProfile(true);
@@ -2350,7 +2396,7 @@ export const ProfileScreen: React.FC<Props> = ({
         </ImageBackground>
       </Modal>
 
-      {/* MODAL B: MY BOOKMARKS */}
+      {/* MODAL B: MY BOOKMARKS (Dynamically fetched from MariaDB via API) */}
       <Modal
         visible={bookmarksModalVisible}
         transparent
@@ -2369,39 +2415,109 @@ export const ProfileScreen: React.FC<Props> = ({
               </TouchableOpacity>
             </View>
 
+            {/* Category Filter Pills (All | Pooja | Slokas | Stotras | Bhajans | Temples) */}
+            <View style={styles.bookmarkFilterContainer}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.bookmarkFilterScroll}>
+                {[
+                  { id: 'all', label: 'All' },
+                  { id: 'pooja', label: 'Pooja Vidhanam' },
+                  { id: 'sloka', label: 'Daily Slokas' },
+                  { id: 'stotra', label: 'Divine Stotras' },
+                  { id: 'bhajan', label: 'Bhajans & Songs' },
+                  { id: 'temple', label: 'Holy Mandir' },
+                ].map((f) => {
+                  const isActive = bookmarkCategoryFilter === f.id;
+                  return (
+                    <TouchableOpacity
+                      key={f.id}
+                      onPress={() => setBookmarkCategoryFilter(f.id as any)}
+                      style={[styles.bookmarkFilterTab, isActive && styles.bookmarkFilterTabActive]}
+                    >
+                      <Text style={[styles.bookmarkFilterTabText, isActive && styles.bookmarkFilterTabTextActive]}>
+                        {f.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+
             <ScrollView showsVerticalScrollIndicator={false} style={styles.sheetBody}>
               {bookmarksLoading ? (
                 <View style={{ paddingVertical: 32, alignItems: 'center', justifyContent: 'center' }}>
                   <ActivityIndicator size="small" color="#DFA62E" />
                   <Text style={{ marginTop: 8, fontSize: 13, color: '#5A4A3A' }}>Loading saved bookmarks from database...</Text>
                 </View>
-              ) : bookmarks.length === 0 ? (
+              ) : displayedBookmarks.length === 0 ? (
                 <View style={styles.emptyBookmarksBox}>
                   <MenuBookmarksIcon />
-                  <Text style={styles.emptyBookmarksTitle}>No Saved Bookmarks Yet</Text>
+                  <Text style={styles.emptyBookmarksTitle}>
+                    {bookmarkCategoryFilter === 'all' ? 'No Saved Bookmarks Yet' : `No Saved ${bookmarkCategoryFilter.toUpperCase()} Bookmarks`}
+                  </Text>
                   <Text style={styles.emptyBookmarksSubtitle}>
-                    Tap the Save / Bookmark icon while reading Slokas, Poojas or viewing Temples to keep them easily accessible here.
+                    Tap the Save / Bookmark heart icon while viewing Poojas, Slokas, Stotras or Bhajans to save them directly to your profile.
                   </Text>
                 </View>
               ) : (
-                bookmarks.map((b) => (
-                  <TouchableOpacity
-                    key={b.id}
-                    style={styles.bookmarkItemCard}
-                    onPress={() => {
-                      setBookmarksModalVisible(false);
-                      if (onNavigateDestination) {
-                        onNavigateDestination(b.category === 'temple' ? 'temple_detail' : 'sloka_detail', { id: b.id, title: b.title });
-                      }
-                    }}
-                  >
-                    <View style={styles.bookmarkInfo}>
-                      <Text style={styles.bookmarkItemTitle}>{b.title}</Text>
-                      {b.subtitle && <Text style={styles.bookmarkItemSubtitle}>{b.subtitle}</Text>}
-                    </View>
-                    <ChevronRightIcon />
-                  </TouchableOpacity>
-                ))
+                displayedBookmarks.map((b) => {
+                  const badge = getCategoryBadge(b.category);
+                  return (
+                    <TouchableOpacity
+                      key={b.id}
+                      style={styles.bookmarkItemCard}
+                      activeOpacity={0.8}
+                      onPress={() => {
+                        setBookmarksModalVisible(false);
+                        if (onNavigateDestination) {
+                          let screen = 'sloka_detail';
+                          let catParam: string | undefined = undefined;
+                          const c = (b.category || '').toLowerCase();
+                          if (c === 'pooja') {
+                            screen = 'pooja_detail';
+                          } else if (c === 'temple') {
+                            screen = 'temple_detail';
+                          } else if (c === 'bhajan' || c === 'song') {
+                            screen = 'sloka_detail';
+                            catParam = 'bhajans';
+                          } else if (c === 'stotra') {
+                            screen = 'sloka_detail';
+                            catParam = 'stotras';
+                          } else {
+                            screen = 'sloka_detail';
+                          }
+
+                          onNavigateDestination(screen, {
+                            id: b.id,
+                            rawId: b.rawId,
+                            title: b.title,
+                            category: catParam,
+                          } as any);
+                        }
+                      }}
+                    >
+                      <View style={styles.bookmarkInfo}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                          <View style={[styles.bookmarkCategoryBadge, { backgroundColor: badge.bg, borderColor: badge.border }]}>
+                            <Text style={[styles.bookmarkCategoryBadgeText, { color: badge.text }]}>{badge.label}</Text>
+                          </View>
+                        </View>
+                        <Text style={styles.bookmarkItemTitle}>{b.title}</Text>
+                        {b.subtitle && (
+                          <Text style={styles.bookmarkItemSubtitle} numberOfLines={2}>
+                            {b.subtitle}
+                          </Text>
+                        )}
+                      </View>
+                      <TouchableOpacity
+                        style={styles.bookmarkRemoveBtn}
+                        onPress={() => handleRemoveBookmark(b)}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      >
+                        <BookmarkTrashIcon />
+                      </TouchableOpacity>
+                    </TouchableOpacity>
+                  );
+                })
               )}
             </ScrollView>
           </View>
@@ -4781,6 +4897,37 @@ const styles = StyleSheet.create({
   },
 
   // Bookmarks
+  bookmarkFilterContainer: {
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0E5D0',
+    backgroundColor: '#FCFAF5',
+  },
+  bookmarkFilterScroll: {
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  bookmarkFilterTab: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E6D8C0',
+  },
+  bookmarkFilterTabActive: {
+    backgroundColor: '#173D32',
+    borderColor: '#173D32',
+  },
+  bookmarkFilterTabText: {
+    fontSize: 12.5,
+    fontWeight: '600',
+    color: '#5C4A33',
+  },
+  bookmarkFilterTabTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
   emptyBookmarksBox: {
     alignItems: 'center',
     paddingVertical: 36,
@@ -4812,6 +4959,17 @@ const styles = StyleSheet.create({
   bookmarkInfo: {
     flex: 1,
   },
+  bookmarkCategoryBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  bookmarkCategoryBadgeText: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
   bookmarkItemTitle: {
     fontSize: 15,
     fontWeight: '700',
@@ -4821,6 +4979,12 @@ const styles = StyleSheet.create({
   bookmarkItemSubtitle: {
     fontSize: 12.5,
     color: '#215344',
+  },
+  bookmarkRemoveBtn: {
+    padding: 8,
+    marginLeft: 6,
+    borderRadius: 8,
+    backgroundColor: '#FDECEC',
   },
 
   // Preferences

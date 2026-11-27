@@ -1,6 +1,7 @@
 // Devotional Storage Service: Handles language selection, navigation state, and dynamic splash caching
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SupportedLanguage, DeityItem, NotificationPreferences, BookmarkItem } from '../types';
+import { ApiService } from './api';
 
 const STORAGE_KEYS = {
   LANGUAGE: '@ayyappa_user_language',
@@ -377,9 +378,16 @@ export const StorageService = {
     }
   },
 
-  // Bookmarks Persistence
-  async getBookmarks(): Promise<BookmarkItem[]> {
+  // Bookmarks Persistence (Synchronized with MariaDB API & Offline Storage)
+  async getBookmarks(userId?: number): Promise<BookmarkItem[]> {
     try {
+      if (userId) {
+        const fromApi = await ApiService.getUserBookmarks(userId);
+        if (Array.isArray(fromApi) && fromApi.length > 0) {
+          await AsyncStorage.setItem(STORAGE_KEYS.BOOKMARKS, JSON.stringify(fromApi));
+          return fromApi;
+        }
+      }
       const data = await AsyncStorage.getItem(STORAGE_KEYS.BOOKMARKS);
       return data ? JSON.parse(data) : [];
     } catch {
@@ -387,27 +395,50 @@ export const StorageService = {
     }
   },
 
-  async toggleBookmark(item: BookmarkItem): Promise<boolean> {
+  async toggleBookmark(item: BookmarkItem, userId?: number): Promise<boolean> {
     try {
+      let isSaved = false;
       const list = await this.getBookmarks();
       const existsIndex = list.findIndex((b) => b.id === item.id);
-      if (existsIndex >= 0) {
-        list.splice(existsIndex, 1);
-        await AsyncStorage.setItem(STORAGE_KEYS.BOOKMARKS, JSON.stringify(list));
-        return false; // Removed
+
+      if (userId) {
+        const apiRes = await ApiService.toggleUserBookmark(userId, {
+          itemId: item.id,
+          itemType: item.category,
+          title: item.title,
+          subtitle: item.subtitle,
+          thumbnailUrl: item.thumbnailUrl,
+        });
+        isSaved = apiRes.isBookmarked;
       } else {
-        list.unshift(item);
-        await AsyncStorage.setItem(STORAGE_KEYS.BOOKMARKS, JSON.stringify(list));
-        return true; // Added
+        isSaved = existsIndex < 0;
       }
+
+      if (isSaved) {
+        if (existsIndex >= 0) {
+          list[existsIndex] = item;
+        } else {
+          list.unshift(item);
+        }
+      } else {
+        if (existsIndex >= 0) {
+          list.splice(existsIndex, 1);
+        }
+      }
+      await AsyncStorage.setItem(STORAGE_KEYS.BOOKMARKS, JSON.stringify(list));
+      return isSaved;
     } catch (e) {
       console.warn('Failed to toggle bookmark', e);
       return false;
     }
   },
 
-  async isBookmarked(id: string): Promise<boolean> {
+  async isBookmarked(id: string, userId?: number): Promise<boolean> {
     try {
+      if (userId) {
+        const fromApi = await ApiService.checkUserBookmark(userId, id);
+        return fromApi;
+      }
       const list = await this.getBookmarks();
       return list.some((b) => b.id === id);
     } catch {

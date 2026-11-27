@@ -12,11 +12,13 @@ import {
   BackHandler,
   Image,
   Dimensions,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle, Polygon } from 'react-native-svg';
 import { SupportedLanguage } from '../../../types';
 import { ApiService, resolveMediaUrl } from '../../../services/api';
+import { StorageService } from '../../../services/storageService';
 
 const { width: WINDOW_WIDTH, height: WINDOW_HEIGHT } = Dimensions.get('window');
 const { width: SCREEN_WIDTH_FULL, height: SCREEN_HEIGHT_FULL } = Dimensions.get('screen');
@@ -74,6 +76,20 @@ const CardPlayTriangleIcon = () => (
   </Svg>
 );
 
+// Heart Icon for Save / Favorite
+const HeartFavoriteIcon = ({ isSaved }: { isSaved: boolean }) => (
+  <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+      stroke="#173D32"
+      strokeWidth={2.2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      fill={isSaved ? '#173D32' : 'none'}
+    />
+  </Svg>
+);
+
 // Helper to resolve deity medallion avatar from item id, deity id, or title
 const resolveMedallion = (item: any, defaultDeity: string = 'ayyappa') => {
   if (item?.imageUrl || item?.image) {
@@ -106,9 +122,47 @@ export const DetailScreen: React.FC<Props> = ({
   const [detailData, setDetailData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [history, setHistory] = useState<Array<{ id: string; title: string }>>([]);
+  const [isSaved, setIsSaved] = useState<boolean>(false);
 
   const currentItemId = history.length > 0 ? history[history.length - 1].id : (rawId || itemId);
   const currentTitle = history.length > 0 ? history[history.length - 1].title : title;
+
+  // Check saved bookmark state dynamically from MariaDB via API & Storage
+  useEffect(() => {
+    let isMounted = true;
+    async function checkSaved() {
+      try {
+        const targetId = String(currentItemId);
+        const user = await StorageService.getStoredUser();
+        const userId = user?.id ? Number(user.id) : undefined;
+        const saved = await StorageService.isBookmarked(targetId, userId);
+        if (isMounted) setIsSaved(saved);
+      } catch (_) {}
+    }
+    checkSaved();
+    return () => { isMounted = false; };
+  }, [currentItemId]);
+
+  const handleToggleSave = async () => {
+    const targetId = String(currentItemId);
+    const user = await StorageService.getStoredUser();
+    const userId = user?.id ? Number(user.id) : undefined;
+    const itemToBookmark = {
+      id: targetId,
+      rawId: rawId ? String(rawId) : undefined,
+      title: displayTitle || 'Divine Stotram',
+      category: 'stotra',
+      subtitle: typeof description === 'string' ? description.slice(0, 80) : undefined,
+      savedAt: new Date().toISOString(),
+    };
+    const nextSaved = await StorageService.toggleBookmark(itemToBookmark, userId);
+    setIsSaved(nextSaved);
+    Alert.alert(
+      nextSaved ? '🙏 Swamiye Saranam Ayyappa' : 'Information',
+      nextSaved ? 'Saved to your devotional favorites.' : 'Removed from favorites.',
+      [{ text: 'OK' }]
+    );
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -491,6 +545,13 @@ export const DetailScreen: React.FC<Props> = ({
                   {isAyyappa ? 'ఓం స్వామియే శరణమయ్యప్ప 🙏' : '|| శుభం భూయాత్ ||'}
                 </Text>
               </View>
+              <TouchableOpacity
+                style={styles.cardHeaderSaveBtn}
+                onPress={handleToggleSave}
+                activeOpacity={0.7}
+              >
+                <HeartFavoriteIcon isSaved={isSaved} />
+              </TouchableOpacity>
             </View>
 
             {/* Subtle Golden Divider */}
@@ -705,6 +766,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 10,
+  },
+  cardHeaderSaveBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#F7F3E9',
+    borderWidth: 1,
+    borderColor: '#E6C898',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
   },
   readingMedallionWrapper: {
     width: 52,

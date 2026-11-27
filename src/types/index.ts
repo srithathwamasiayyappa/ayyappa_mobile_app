@@ -258,10 +258,12 @@ export interface NotificationPreferences {
 
 export interface BookmarkItem {
   id: string;
+  rawId?: string;
   title: string;
-  category: 'pooja' | 'sloka' | 'bhajan' | 'temple';
+  category: 'pooja' | 'sloka' | 'stotra' | 'bhajan' | 'temple' | string;
   subtitle?: string;
-  savedAt: string;
+  thumbnailUrl?: string;
+  savedAt?: string;
 }
 
 export interface FestivalItem {
