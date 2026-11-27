@@ -123,20 +123,20 @@ export const THEME_FONTS = {
     default: 'Poppins_500Medium',
   }),
 
-  // Description & Information Font: Poppins Regular (400)
+  // Description & Information Font: Default to NTR for Indic, fallback to Poppins
   descFont: Platform.select({
-    ios: 'Poppins-Regular',
-    android: 'Poppins_400Regular',
-    web: 'Poppins, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif',
-    default: 'Poppins_400Regular',
+    ios: 'NTR-Regular',
+    android: 'NTR-Regular',
+    web: 'NTR, Poppins, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif',
+    default: 'NTR-Regular',
   }),
 
-  // Main font family used across the app
+  // Main font family used across the app: Default to NTR for Indic, fallback to Poppins
   fontFamily: Platform.select({
-    ios: 'Poppins-Regular',
-    android: 'Poppins_400Regular',
-    web: 'Poppins, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif',
-    default: 'Poppins_400Regular',
+    ios: 'NTR-Regular',
+    android: 'NTR-Regular',
+    web: 'NTR, Poppins, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif',
+    default: 'NTR-Regular',
   }),
 
   // Font family specifically for devotional & information texts

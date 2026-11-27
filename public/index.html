@@ -1,10 +1,27 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="te" data-lang="te">
   <head>
     <meta charset="utf-8" />
     <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
     <title>Ayyappa Aradhana</title>
+    <!-- Instant Synchronous Language Initializer (Eliminates 2-second font-shift on refresh) -->
+    <script>
+      (function() {
+        try {
+          var p = new URLSearchParams(window.location.search);
+          var l = p.get('lang') || localStorage.getItem('@ayyappa_user_language') || 'te';
+          if (!['te', 'kn', 'ta', 'hi', 'en', 'ml'].includes(l)) l = 'te';
+          document.documentElement.lang = l;
+          document.documentElement.setAttribute('data-lang', l);
+        } catch(e) {
+          document.documentElement.lang = 'te';
+          document.documentElement.setAttribute('data-lang', 'te');
+        }
+      })();
+    </script>
+    <!-- Preload NTR font directly for instant 0ms rendering -->
+    <link rel="preload" href="/fonts/NTR-Regular.ttf" as="font" type="font/ttf" crossorigin />
     <!-- Google Fonts for Multi-Language Typography: Poppins (English), NTR (Telugu, Kannada, Tamil, Hindi) -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=NTR&family=Poppins:wght@300;400;500;600;700;800;900&family=Noto+Sans+Kannada:wght@400;600;700&family=Noto+Sans+Tamil:wght@400;600;700&family=Noto+Sans+Devanagari:wght@400;600;700&display=swap">
     <!-- Google Identity Services (GSI) for Web Google Sign-In -->

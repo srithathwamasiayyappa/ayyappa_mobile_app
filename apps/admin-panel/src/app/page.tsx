@@ -768,7 +768,7 @@ export default function EnterpriseSuperAdminDashboard() {
         if (l) return l;
       } catch (_) { }
     }
-    return 'en';
+    return 'te';
   });
   const [tickerText, setTickerText] = useState('');
   const [appLogoUrl, setAppLogoUrl] = useState<string>('');

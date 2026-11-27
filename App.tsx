@@ -5,12 +5,12 @@ import { StatusBar } from 'expo-status-bar';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-// Global Poppins Typography Configuration for the entire application
+// Default Typography Configuration: Prioritize NTR for Telugu, Tamil, Kannada, Hindi and fallback to Poppins
 const defaultAppFont = Platform.select({
-  ios: 'Poppins-Regular',
-  android: 'Poppins_400Regular',
-  web: 'Poppins, NTR, sans-serif',
-  default: 'Poppins_400Regular',
+  ios: 'NTR-Regular',
+  android: 'NTR-Regular',
+  web: 'NTR, "Noto Sans Kannada", "Noto Sans Tamil", "Noto Sans Devanagari", Poppins, sans-serif',
+  default: 'NTR-Regular',
 });
 
 // Configure defaultProps so every <Text> and <TextInput> without explicit style uses Poppins
@@ -176,7 +176,16 @@ export default function App() {
 
   const [currentScreen, setCurrentScreen] = useState<MobileScreen>('splash');
   const [navHistory, setNavHistory] = useState<NavHistoryEntry[]>([]);
-  const [selectedLanguage, setSelectedLanguage] = useState<SupportedLanguage>('en');
+  const [selectedLanguage, setSelectedLanguage] = useState<SupportedLanguage>(() => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      try {
+        const p = new URLSearchParams(window.location.search);
+        const l = p.get('lang') || localStorage.getItem('@ayyappa_user_language');
+        if (l && ['te', 'kn', 'ta', 'hi', 'en', 'ml'].includes(l)) return l as SupportedLanguage;
+      } catch (_) {}
+    }
+    return 'te';
+  });
   const [currentDeity, setCurrentDeity] = useState<any>(null);
   const [activeDetail, setActiveDetail] = useState<DetailState | null>(null);
   const [activeTempleData, setActiveTempleData] = useState<TempleItem | null>(null);
