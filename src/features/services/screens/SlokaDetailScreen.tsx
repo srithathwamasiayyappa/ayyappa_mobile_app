@@ -37,6 +37,7 @@ interface Props {
   itemId: string;
   rawId?: string;
   title?: string;
+  category?: string;
   currentLanguage: SupportedLanguage;
   onBack: () => void;
 }
@@ -232,6 +233,7 @@ export const SlokaDetailScreen: React.FC<Props> = ({
   itemId,
   rawId,
   title,
+  category,
   currentLanguage,
   onBack,
 }) => {
@@ -337,6 +339,39 @@ export const SlokaDetailScreen: React.FC<Props> = ({
       audioTrack: raw.audioTrack || (raw.isAudio ? { title: cleanTitle, duration: '05:00' } : null),
     };
   }, [liveRecord, itemId, title]);
+
+  const isBhajanOrSong = React.useMemo(() => {
+    const cat = String(category || '').toLowerCase();
+    const id = String(itemId || '').toLowerCase();
+    const pSlug = String(liveRecord?.parentSlug || liveRecord?.category || '').toLowerCase();
+    const rId = String(rawId || liveRecord?.parentId || '');
+    const t = String(title || resolvedContent.title || '').toLowerCase();
+
+    return (
+      cat.includes('bhajan') ||
+      cat.includes('song') ||
+      cat.includes('harathi') ||
+      cat.includes('keerthana') ||
+      (category && (category.includes('భజన') || category.includes('పాట') || category.includes('కీర్తన'))) ||
+      id.includes('bhajan') ||
+      id.includes('song') ||
+      id.includes('harathi') ||
+      id.includes('keerthana') ||
+      id.includes('paata') ||
+      pSlug.includes('bhajan') ||
+      pSlug.includes('song') ||
+      rId === '116' ||
+      rId === '11' ||
+      rId === '93' ||
+      t.includes('భజన') ||
+      t.includes('హారతి') ||
+      t.includes('కీర్తన') ||
+      t.includes('పాట') ||
+      t.includes('bhajan') ||
+      t.includes('song') ||
+      t.includes('harathi')
+    );
+  }, [category, itemId, rawId, liveRecord, title, resolvedContent.title]);
 
   // 3. Load subcategories/children dynamically if present
   const loadSubItems = useCallback(async (isRefresh = false) => {
@@ -791,15 +826,17 @@ export const SlokaDetailScreen: React.FC<Props> = ({
                   </View>
                 ) : null}
 
-                {/* Download PDF Action Button */}
-                <TouchableOpacity
-                  style={styles.downloadPdfButton}
-                  onPress={handleDownloadPdf}
-                  activeOpacity={0.8}
-                >
-                  <DownloadTrayIcon />
-                  <Text style={styles.downloadPdfText}>{ui.downloadPdf}</Text>
-                </TouchableOpacity>
+                {/* Download PDF Action Button (Hidden for Bhajans & Songs) */}
+                {!isBhajanOrSong && (
+                  <TouchableOpacity
+                    style={styles.downloadPdfButton}
+                    onPress={handleDownloadPdf}
+                    activeOpacity={0.8}
+                  >
+                    <DownloadTrayIcon />
+                    <Text style={styles.downloadPdfText}>{ui.downloadPdf}</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             )}
           </View>
@@ -1002,15 +1039,17 @@ export const SlokaDetailScreen: React.FC<Props> = ({
                 </View>
               ) : null}
 
-              {/* Download PDF Button */}
-              <TouchableOpacity
-                style={styles.downloadPdfButton}
-                onPress={handleDownloadPdf}
-                activeOpacity={0.8}
-              >
-                <DownloadTrayIcon />
-                <Text style={styles.downloadPdfText}>{ui.downloadPdf}</Text>
-              </TouchableOpacity>
+              {/* Download PDF Button (Hidden for Bhajans & Songs) */}
+              {!isBhajanOrSong && (
+                <TouchableOpacity
+                  style={styles.downloadPdfButton}
+                  onPress={handleDownloadPdf}
+                  activeOpacity={0.8}
+                >
+                  <DownloadTrayIcon />
+                  <Text style={styles.downloadPdfText}>{ui.downloadPdf}</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         ) : (

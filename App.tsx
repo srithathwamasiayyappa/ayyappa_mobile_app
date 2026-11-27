@@ -90,6 +90,7 @@ interface DetailState {
   deity?: string;
   rawId?: string;
   parentTitle?: string;
+  category?: string;
 }
 
 interface NavHistoryEntry {
@@ -1022,7 +1023,7 @@ export default function App() {
                 id.includes('keerthana') ||
                 id.includes('song')
               ) {
-                navigateTo('sloka_detail', { id, title, rawId });
+                navigateTo('sloka_detail', { id, title, rawId, category: 'bhajans', parentTitle: activeDetail.title });
               } else if (
                 activeDetail.id === 'slokas' ||
                 activeDetail.id === 'astothrams' ||
@@ -1156,6 +1157,7 @@ export default function App() {
               itemId={activeDetail.id}
               rawId={activeDetail.rawId}
               title={activeDetail.title}
+              category={activeDetail.category || activeDetail.parentTitle}
               currentLanguage={selectedLanguage}
               onBack={handleGoBack}
             />
