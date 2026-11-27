@@ -1431,12 +1431,21 @@ export const ApiService = {
   },
 
   async getBottomTabs(lang: SupportedLanguage = 'en'): Promise<Array<{ key: MainTab; label: string; icon: string; order: number }>> {
+    const tabNames: Record<string, Record<string, string>> = {
+      te: { home: 'సన్నిధి', services: 'సేవలు', temples: 'ఆలయాలు', panchangam: 'పంచాంగం', profile: 'ప్రొఫైల్' },
+      kn: { home: 'ಸನ್ನಿಧಿ', services: 'ಸೇವೆಗಳು', temples: 'ದೇವಾಲಯಗಳು', panchangam: 'ಪಂಚಾಂಗ', profile: 'ಪ್ರೊಫೈಲ್' },
+      ta: { home: 'சந்நிதி', services: 'சேவைகள்', temples: 'கோவில்கள்', panchangam: 'பஞ்சாங்கம்', profile: 'சுயவிவரம்' },
+      hi: { home: 'सन्निधि', services: 'सेवाएं', temples: 'मंदिर', panchangam: 'पंचांग', profile: 'प्रोफ़ाइल' },
+      ml: { home: 'സന്നിധി', services: 'സേവകൾ', temples: 'ക്ഷേത്രങ്ങൾ', panchangam: 'പഞ്ചാംഗം', profile: 'പ്രൊഫൈൽ' },
+      en: { home: 'Sannidhi', services: 'Services', temples: 'Temples', panchangam: 'Panchangam', profile: 'Profile' },
+    };
+    const l = tabNames[lang] || tabNames.en;
     const fallbackTabs: Array<{ key: MainTab; label: string; icon: string; order: number }> = [
-      { key: 'home', label: 'Sannidhi', icon: 'home', order: 1 },
-      { key: 'services', label: 'Services', icon: 'services', order: 2 },
-      { key: 'temples', label: 'Temples', icon: 'temples', order: 3 },
-      { key: 'panchangam', label: 'Panchangam', icon: 'panchangam', order: 4 },
-      { key: 'profile', label: 'Profile', icon: 'profile', order: 5 },
+      { key: 'home', label: l.home, icon: 'home', order: 1 },
+      { key: 'services', label: l.services, icon: 'services', order: 2 },
+      { key: 'temples', label: l.temples, icon: 'temples', order: 3 },
+      { key: 'panchangam', label: l.panchangam, icon: 'panchangam', order: 4 },
+      { key: 'profile', label: l.profile, icon: 'profile', order: 5 },
     ];
 
     // 1. Primary: Try active local API_BASE_URL
@@ -1445,7 +1454,7 @@ export const ApiService = {
       if (res.ok) {
         const json = await res.json();
         if (json?.success && Array.isArray(json.tabs) && json.tabs.length > 0) {
-          return json.tabs.map((t: any) => t.key === 'home' ? { ...t, label: 'Sannidhi' } : t);
+          return json.tabs.map((t: any) => ({ ...t, label: l[t.key] || t.label }));
         }
       }
     } catch {
@@ -1458,7 +1467,7 @@ export const ApiService = {
       if (res.ok) {
         const json = await res.json();
         if (json?.success && Array.isArray(json.tabs) && json.tabs.length > 0) {
-          return json.tabs.map((t: any) => t.key === 'home' ? { ...t, label: 'Sannidhi' } : t);
+          return json.tabs.map((t: any) => ({ ...t, label: l[t.key] || t.label }));
         }
       }
     } catch {
