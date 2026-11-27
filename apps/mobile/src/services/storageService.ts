@@ -381,13 +381,14 @@ export const StorageService = {
   // Bookmarks Persistence (Synchronized with MariaDB API & Offline Storage)
   async getBookmarks(userId?: number): Promise<BookmarkItem[]> {
     try {
-      if (userId) {
-        const fromApi = await ApiService.getUserBookmarks(userId);
+      const effectiveUserId = userId || 1;
+      try {
+        const fromApi = await ApiService.getUserBookmarks(effectiveUserId);
         if (Array.isArray(fromApi) && fromApi.length > 0) {
           await AsyncStorage.setItem(STORAGE_KEYS.BOOKMARKS, JSON.stringify(fromApi));
           return fromApi;
         }
-      }
+      } catch {}
       const data = await AsyncStorage.getItem(STORAGE_KEYS.BOOKMARKS);
       return data ? JSON.parse(data) : [];
     } catch {
@@ -397,11 +398,19 @@ export const StorageService = {
 
   async toggleBookmark(item: BookmarkItem, userId?: number): Promise<boolean> {
     try {
-      let isSaved = false;
-      const list = await this.getBookmarks();
-      const existsIndex = list.findIndex((b) => b.id === item.id);
-
       const effectiveUserId = userId || 1;
+      const list = await this.getBookmarks(effectiveUserId);
+      const existsIndex = list.findIndex(
+        (b) => b.id === item.id ||
+               (item.rawId && b.rawId === item.rawId) ||
+               (item.rawId && b.id === item.rawId) ||
+               (item.id && b.rawId === item.id)
+      );
+
+      // Desired state: toggle current state
+      const shouldSave = existsIndex < 0;
+      let isSaved = shouldSave;
+
       try {
         const apiRes = await ApiService.toggleUserBookmark(effectiveUserId, {
           itemId: item.id,
@@ -410,13 +419,11 @@ export const StorageService = {
           subtitle: item.subtitle,
           thumbnailUrl: item.thumbnailUrl,
         });
-        if (apiRes && typeof apiRes.isBookmarked === 'boolean') {
+        if (apiRes && apiRes.success && typeof apiRes.isBookmarked === 'boolean') {
           isSaved = apiRes.isBookmarked;
-        } else {
-          isSaved = existsIndex < 0;
         }
-      } catch {
-        isSaved = existsIndex < 0;
+      } catch (e) {
+        console.warn('Failed to sync toggle bookmark to DB API:', e);
       }
 
       if (isSaved) {
@@ -441,14 +448,17 @@ export const StorageService = {
   async isBookmarked(id: string, userId?: number): Promise<boolean> {
     try {
       const effectiveUserId = userId || 1;
+      const list = await this.getBookmarks(effectiveUserId);
+      const isLocallySaved = list.some((b) => b.id === id || (b.rawId && b.rawId === id));
+
       try {
         const fromApi = await ApiService.checkUserBookmark(effectiveUserId, id);
-        if (typeof fromApi === 'boolean') {
-          return fromApi;
+        if (fromApi && fromApi.success && typeof fromApi.isBookmarked === 'boolean') {
+          return fromApi.isBookmarked;
         }
       } catch {}
-      const list = await this.getBookmarks();
-      return list.some((b) => b.id === id);
+
+      return isLocallySaved;
     } catch {
       return false;
     }

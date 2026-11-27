@@ -127,14 +127,14 @@ const DownloadTrayIcon = () => (
 
 // Heart Icon for Save / Favorite
 const HeartFavoriteIcon = ({ isSaved }: { isSaved: boolean }) => (
-  <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+  <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
     <Path
       d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
-      stroke="#173D32"
+      stroke={isSaved ? '#E11D48' : '#78350F'}
       strokeWidth={2.2}
       strokeLinecap="round"
       strokeLinejoin="round"
-      fill={isSaved ? '#173D32' : 'none'}
+      fill={isSaved ? '#E11D48' : 'none'}
     />
   </Svg>
 );
@@ -1021,7 +1021,7 @@ export const PoojaDetailScreen: React.FC<Props> = ({
                 {ui.materials} ({checkedCount}/{totalMaterials} {ui.checked})
               </Text>
               <TouchableOpacity
-                style={styles.saveHeaderBtn}
+                style={[styles.saveHeaderBtn, isSaved && styles.saveHeaderBtnActive]}
                 onPress={handleToggleSave}
                 activeOpacity={0.7}
               >
@@ -1674,7 +1674,19 @@ const styles = StyleSheet.create({
     color: '#173D32',
   },
   saveHeaderBtn: {
-    padding: 4,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#FAF5EA',
+    borderWidth: 1.2,
+    borderColor: '#DFC48D',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+  },
+  saveHeaderBtnActive: {
+    backgroundColor: '#FFF0F2',
+    borderColor: '#FDA4AF',
   },
   materialRow: {
     flexDirection: 'row',

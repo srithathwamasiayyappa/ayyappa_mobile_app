@@ -1219,7 +1219,7 @@ export const ApiService = {
   async toggleUserBookmark(
     userId: number,
     bookmark: { itemId: string; itemType: string; title: string; subtitle?: string; thumbnailUrl?: string }
-  ): Promise<{ success: boolean; isBookmarked: boolean; message?: string }> {
+  ): Promise<{ success: boolean; isBookmarked: boolean; message?: string } | null> {
     const activeBase = getApiBaseUrl();
     const uid = userId ? Number(userId) : 1;
     try {
@@ -1234,7 +1234,7 @@ export const ApiService = {
       if (res.ok) {
         const json = await res.json();
         return {
-          success: json.success ?? true,
+          success: true,
           isBookmarked: !!json.isBookmarked,
           message: json.message,
         };
@@ -1242,11 +1242,11 @@ export const ApiService = {
     } catch (e: any) {
       console.warn('toggleUserBookmark error:', e?.message);
     }
-    return { success: false, isBookmarked: false };
+    return null;
   },
 
   // 17e. Devotee Bookmarks: Check if item is bookmarked in DB via API
-  async checkUserBookmark(userId: number, itemId: string): Promise<boolean> {
+  async checkUserBookmark(userId: number, itemId: string): Promise<{ success: boolean; isBookmarked: boolean } | null> {
     const activeBase = getApiBaseUrl();
     const uid = userId ? Number(userId) : 1;
     try {
@@ -1255,12 +1255,15 @@ export const ApiService = {
       });
       if (res.ok) {
         const json = await res.json();
-        return !!json.isBookmarked;
+        return {
+          success: true,
+          isBookmarked: !!json.isBookmarked,
+        };
       }
     } catch (e: any) {
       console.warn('checkUserBookmark error:', e?.message);
     }
-    return false;
+    return null;
   },
 
   // 17f. Devotee Bookmarks: Add Bookmark to DB
