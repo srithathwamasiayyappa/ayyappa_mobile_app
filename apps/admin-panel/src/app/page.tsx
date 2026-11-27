@@ -136,6 +136,8 @@ interface SubcategoryItem {
   description: string;
   displayOrder?: number;
   isAudio?: boolean;
+  status?: string;
+  isActive?: boolean;
   imageUrl?: string;
   deityId?: string;
   deityName?: string;
@@ -159,6 +161,8 @@ interface FullCategoryDetail {
   isSubcategory?: boolean;
   isType?: boolean;
   isPublished?: boolean;
+  status?: string;
+  isActive?: boolean;
   sacredText?: string | null;
   meaning?: string | null;
   parentId?: number | string | null;
@@ -339,6 +343,32 @@ const renderServiceIcon = (iconName: string) => {
     case 'hearthandshake': return <HeartHandshake className="w-5 h-5 text-rose-400" />;
     default: return <Sparkles className="w-5 h-5 text-amber-400" />;
   }
+};
+
+const renderStatusBadge = (status: string | undefined, isActive?: boolean) => {
+  const effective = status || (isActive !== false ? 'active' : 'inactive');
+  if (effective === 'active') {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-950/70 border border-emerald-800/50 text-emerald-300">
+        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+        <span>Active</span>
+      </span>
+    );
+  }
+  if (effective === 'coming_soon') {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-950/70 border border-amber-700/60 text-amber-300">
+        <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+        <span>Coming Soon</span>
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-gray-800/60 border border-gray-700/50 text-gray-400">
+      <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
+      <span>Inactive</span>
+    </span>
+  );
 };
 
 const VALID_ADMIN_TABS = new Set([
@@ -631,6 +661,10 @@ export default function EnterpriseSuperAdminDashboard() {
   const [selectedSubcategoryIds, setSelectedSubcategoryIds] = useState<string[]>([]);
   const [selectedTypeIds, setSelectedTypeIds] = useState<number[]>([]);
   const [selectedParentCategoryFilter, setSelectedParentCategoryFilter] = useState<string>('all');
+  const [subcategoryStatusFilter, setSubcategoryStatusFilter] = useState<string>('all');
+  const [subFormStatus, setSubFormStatus] = useState<string>('active');
+  const [typeFormStatus, setTypeFormStatus] = useState<string>('active');
+  const [typeStatusFilter, setTypeStatusFilter] = useState<string>('all');
   const [selectedSubcategoryForTypes, setSelectedSubcategoryForTypes] = useState<string>('all');
   const [parentLookupList, setParentLookupList] = useState<ParentLookupItem[]>([]);
   const parentLookupListRef = useRef<ParentLookupItem[]>([]);
@@ -757,7 +791,7 @@ export default function EnterpriseSuperAdminDashboard() {
   const [devotionalServices, setDevotionalServices] = useState<any[]>([]);
   const [loadingServices, setLoadingServices] = useState<boolean>(false);
   const [serviceSearch, setServiceSearch] = useState<string>('');
-  const [serviceStatusFilter, setServiceStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [serviceStatusFilter, setServiceStatusFilter] = useState<'all' | 'active' | 'coming_soon' | 'inactive'>('all');
   const [servicePage, setServicePage] = useState<number>(1);
   const [serviceLimit, setServiceLimit] = useState<number>(10);
   const [serviceTotalPages, setServiceTotalPages] = useState<number>(1);
@@ -1492,7 +1526,7 @@ export default function EnterpriseSuperAdminDashboard() {
     return found ? String(found.id) : keyOrId;
   }, [parentLookupList]);
 
-  const loadSubcategories = useCallback((pageNum = 1, search = '', lang = selectedLang, parentId = selectedParentCategoryFilter, currentLimit = subLimit) => {
+  const loadSubcategories = useCallback((pageNum = 1, search = '', lang = selectedLang, parentId = selectedParentCategoryFilter, currentLimit = subLimit, status = subcategoryStatusFilter) => {
     setLoading(true);
     const url = new URL(`${API_BASE_URL}/admin/subcategories`);
     url.searchParams.set('page', String(pageNum));
@@ -1502,6 +1536,9 @@ export default function EnterpriseSuperAdminDashboard() {
     if (parentId && parentId !== 'all') {
       const resolved = resolveParentId(parentId);
       url.searchParams.set('parentId', resolved);
+    }
+    if (status && status !== 'all') {
+      url.searchParams.set('status', status);
     }
 
     fetch(url.toString())
@@ -1522,16 +1559,17 @@ export default function EnterpriseSuperAdminDashboard() {
       })
       .catch(() => { })
       .finally(() => setLoading(false));
-  }, [selectedLang, selectedParentCategoryFilter, resolveParentId, subLimit]);
+  }, [selectedLang, selectedParentCategoryFilter, resolveParentId, subLimit, subcategoryStatusFilter]);
 
   // 3. Load Devotional Content (Subcategory Types)
-  const loadDevotionalContent = useCallback((pageNum = 1, search = '', catId = selectedSubcategoryForTypes, currentLimit = typeLimit) => {
+  const loadDevotionalContent = useCallback((pageNum = 1, search = '', catId = selectedSubcategoryForTypes, currentLimit = typeLimit, status = typeStatusFilter) => {
     setLoading(true);
     const url = new URL(`${API_BASE_URL}/admin/content`);
     url.searchParams.set('page', String(pageNum));
     url.searchParams.set('limit', String(currentLimit));
     if (search && search.trim() !== '') url.searchParams.set('search', search.trim());
     if (catId && catId !== 'all') url.searchParams.set('categoryId', String(catId));
+    if (status && status !== 'all') url.searchParams.set('status', status);
 
     fetch(url.toString())
       .then(res => res.json())
@@ -1551,7 +1589,7 @@ export default function EnterpriseSuperAdminDashboard() {
       })
       .catch(() => { })
       .finally(() => setLoading(false));
-  }, [selectedSubcategoryForTypes, typeLimit]);
+  }, [selectedSubcategoryForTypes, typeLimit, typeStatusFilter]);
 
   // 4. Load Festivals & Live Panchangam
   const loadPanchangam = useCallback((city = 'Hyderabad', lang = 'en') => {
@@ -2752,6 +2790,7 @@ export default function EnterpriseSuperAdminDashboard() {
     } else {
       setSubFormDeityId('ayyappa');
     }
+    setSubFormStatus('active');
   };
 
   const handleOpenEditSubcategory = async (item: SubcategoryItem) => {
@@ -2760,6 +2799,7 @@ export default function EnterpriseSuperAdminDashboard() {
     setSubFormSlug(item.slug);
     setSubFormParentId(item.parentId);
     setSubFormDeityId((item as any).deityId || (item as any).deity || 'ayyappa');
+    setSubFormStatus((item as any).status || (item.isActive !== false ? 'active' : 'inactive'));
     setSubFormDescription(item.description || '');
     setSubFormImageUrl(item.imageUrl || '');
     setIsSubModalOpen(true);
@@ -2776,6 +2816,9 @@ export default function EnterpriseSuperAdminDashboard() {
         const d = json.data;
         setViewDetail(d);
         setActiveViewTypeTab('all');
+        if (d.status) {
+          setSubFormStatus(d.status);
+        }
         if (d.deityId || d.deity) {
           setSubFormDeityId(d.deityId || d.deity);
         }
@@ -2816,7 +2859,9 @@ export default function EnterpriseSuperAdminDashboard() {
           lang: selectedLang || 'te',
           imageUrl: subFormImageUrl.trim(),
           deityId: subFormDeityId,
-          deity: subFormDeityId
+          deity: subFormDeityId,
+          status: subFormStatus,
+          isActive: subFormStatus === 'active'
         };
         const res = await fetch(`${API_BASE_URL}/admin/categories`, {
           method: 'POST',
@@ -2956,7 +3001,9 @@ export default function EnterpriseSuperAdminDashboard() {
       lang: selectedLang,
       imageUrl: subFormImageUrl.trim(),
       deityId: subFormDeityId,
-      deity: subFormDeityId
+      deity: subFormDeityId,
+      status: subFormStatus,
+      isActive: subFormStatus === 'active'
     };
 
     try {
@@ -3107,6 +3154,7 @@ export default function EnterpriseSuperAdminDashboard() {
     setTypeFormSacredText('');
     setTypeFormMeaning('');
     setTypeFormDisplayOrder(devotionalContent.length + 1);
+    setTypeFormStatus('active');
     setTypeFormIsPublished(true);
     setPageMode('EDIT_TYPE');
   };
@@ -3130,7 +3178,9 @@ export default function EnterpriseSuperAdminDashboard() {
     setTypeFormSacredText(item.sacredText || '');
     setTypeFormMeaning(item.meaning || '');
     setTypeFormDisplayOrder(item.displayOrder || 1);
-    setTypeFormIsPublished(item.isPublished !== false);
+    const effStatus = (item as any).status || (item.isPublished !== false ? 'active' : 'inactive');
+    setTypeFormStatus(effStatus);
+    setTypeFormIsPublished(effStatus === 'active');
     setPageMode('EDIT_TYPE');
 
     // Dynamically fetch translation for currently active language directly from DB
@@ -3139,6 +3189,10 @@ export default function EnterpriseSuperAdminDashboard() {
       const json = await res.json();
       if (json && json.data) {
         const d = json.data;
+        if (d.status) {
+          setTypeFormStatus(d.status);
+          setTypeFormIsPublished(d.status === 'active');
+        }
         if (d.hasExactTranslation) {
           setTypeFormTitle(d.exactTitle || d.title || '');
           setTypeFormSacredText(d.exactSacredText || d.sacredText || '');
@@ -3177,7 +3231,8 @@ export default function EnterpriseSuperAdminDashboard() {
       sacredText: typeFormSacredText.trim(),
       meaning: typeFormMeaning.trim(),
       displayOrder: Number(typeFormDisplayOrder) || 1,
-      isPublished: typeFormIsPublished,
+      status: typeFormStatus,
+      isPublished: typeFormStatus === 'active',
       lang: selectedLang
     };
 
@@ -3436,6 +3491,7 @@ export default function EnterpriseSuperAdminDashboard() {
       url: '/',
       artwork: '',
       displayOrder: (devotionalServices.length + 1),
+      status: 'active',
       isActive: true
     });
     setIsServiceEditModalOpen(true);
@@ -3443,7 +3499,12 @@ export default function EnterpriseSuperAdminDashboard() {
 
   const handleOpenEditService = (service: any, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    setEditingCategoryService({ ...service });
+    const effectiveStatus = service.status || (service.isActive !== false ? 'active' : 'inactive');
+    setEditingCategoryService({
+      ...service,
+      status: effectiveStatus,
+      isActive: effectiveStatus === 'active'
+    });
     setIsServiceEditModalOpen(true);
   };
 
@@ -4957,6 +5018,19 @@ export default function EnterpriseSuperAdminDashboard() {
                       <button
                         type="button"
                         onClick={() => {
+                          setServiceStatusFilter('coming_soon');
+                          loadCategoryServices(1, serviceSearch, 'coming_soon', serviceLimit);
+                        }}
+                        className={`px-3 py-1 rounded text-xs font-semibold transition ${serviceStatusFilter === 'coming_soon'
+                          ? 'bg-amber-600 text-white shadow'
+                          : 'text-gray-400 hover:text-gray-200'
+                          }`}
+                      >
+                        Coming Soon
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
                           setServiceStatusFilter('inactive');
                           loadCategoryServices(1, serviceSearch, 'inactive', serviceLimit);
                         }}
@@ -5129,18 +5203,7 @@ export default function EnterpriseSuperAdminDashboard() {
 
                               {/* Status */}
                               <td className="py-3 px-4 text-center">
-                                <span
-                                  className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium ${service.isActive !== false
-                                    ? 'bg-emerald-950/60 border border-emerald-800/50 text-emerald-300'
-                                    : 'bg-gray-800/60 border border-gray-700/50 text-gray-400'
-                                    }`}
-                                >
-                                  <span
-                                    className={`w-1.5 h-1.5 rounded-full ${service.isActive !== false ? 'bg-emerald-400 animate-pulse' : 'bg-gray-500'
-                                      }`}
-                                  />
-                                  {service.isActive !== false ? 'Active' : 'Inactive'}
-                                </span>
+                                {renderStatusBadge(service.status, service.isActive)}
                               </td>
 
                               {/* Actions */}
@@ -5312,10 +5375,7 @@ export default function EnterpriseSuperAdminDashboard() {
                       </div>
                       <div className="bg-[#141414] p-3 rounded-lg border border-[#2C2C2C]">
                         <span className="text-[10px] uppercase tracking-wider text-gray-400 block font-semibold mb-1">Portal Status</span>
-                        <span className={`inline-flex items-center gap-1 font-semibold ${selectedViewService.isActive !== false ? 'text-emerald-400' : 'text-gray-400'}`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${selectedViewService.isActive !== false ? 'bg-emerald-400 animate-pulse' : 'bg-gray-400'}`} />
-                          {selectedViewService.isActive !== false ? 'Active & Published' : 'Draft / Inactive'}
-                        </span>
+                        {renderStatusBadge(selectedViewService.status, selectedViewService.isActive)}
                       </div>
                     </div>
 
@@ -5509,18 +5569,27 @@ export default function EnterpriseSuperAdminDashboard() {
                         </div>
                       </div>
 
-                      {/* Active Status Checkbox */}
-                      <div className="flex items-center gap-2 pt-1">
-                        <input
-                          type="checkbox"
-                          id="serviceActiveToggle"
-                          checked={editingCategoryService.isActive !== false}
-                          onChange={(e) => setEditingCategoryService({ ...editingCategoryService, isActive: e.target.checked })}
-                          className="w-4 h-4 rounded border-[#333] text-amber-500 focus:ring-amber-400 focus:ring-offset-0 bg-[#141414]"
-                        />
-                        <label htmlFor="serviceActiveToggle" className="text-xs text-gray-200 font-medium cursor-pointer">
-                          Publish this Devotional Service on Website & Mobile App
+                      {/* Service Status Selector */}
+                      <div className="bg-[#141414] p-3 rounded-lg border border-[#2C2C2C]">
+                        <label className="text-[10px] uppercase font-bold text-gray-400 tracking-wider block mb-1">
+                          Service Status
                         </label>
+                        <select
+                          value={editingCategoryService.status || (editingCategoryService.isActive !== false ? 'active' : 'inactive')}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setEditingCategoryService({
+                              ...editingCategoryService,
+                              status: val,
+                              isActive: val === 'active'
+                            });
+                          }}
+                          className="w-full bg-[#1E1E1E] border border-[#2C2C2C] rounded px-2.5 py-1.5 text-xs text-[#FFB300] font-semibold focus:outline-none focus:border-[#FFB300]"
+                        >
+                          <option value="active">Active (Visible & Published on Website & App)</option>
+                          <option value="coming_soon">Coming Soon (Upcoming Preview)</option>
+                          <option value="inactive">Inactive (Hidden / Draft)</option>
+                        </select>
                       </div>
 
                       {/* Modal Buttons */}
@@ -6255,6 +6324,10 @@ export default function EnterpriseSuperAdminDashboard() {
                         <span className="text-emerald-400 font-medium">
                           {viewDetail.isAudio ? '🎵 Audio Chanting' : '📜 Vidhanam Text'}
                         </span>
+                      </div>
+                      <div className="bg-[#061A13] p-3 rounded-lg border border-[#16422F] col-span-2 flex items-center justify-between">
+                        <span className="text-[10px] text-gray-400 uppercase font-semibold">Subcategory Status</span>
+                        <div>{renderStatusBadge(viewDetail.status, viewDetail.isActive)}</div>
                       </div>
                     </div>
 
@@ -7052,6 +7125,22 @@ export default function EnterpriseSuperAdminDashboard() {
                         </div>
                       </div>
 
+                      {/* Subcategory Status */}
+                      <div className="bg-[#061A13] p-3 rounded-lg border border-[#16422F]">
+                        <label className="text-[10px] text-gray-400 uppercase block font-semibold mb-1">
+                          Subcategory Status
+                        </label>
+                        <select
+                          value={subFormStatus}
+                          onChange={(e) => setSubFormStatus(e.target.value)}
+                          className="w-full bg-[#071C14] border border-[#1E5C41] rounded px-2.5 py-1.5 text-xs text-[#FFB300] font-semibold focus:outline-none focus:border-[#FFB300]"
+                        >
+                          <option value="active">Active (Visible & Published)</option>
+                          <option value="coming_soon">Coming Soon (Upcoming Preview)</option>
+                          <option value="inactive">Inactive (Hidden / Draft)</option>
+                        </select>
+                      </div>
+
                       {/* Sanctum Artwork */}
                       <div className="bg-[#061A13] border border-[#16422F] rounded-lg p-3 flex flex-col sm:flex-row items-center gap-3">
                         <div className="w-14 h-14 rounded-lg overflow-hidden border border-[#D4AF37]/50 flex-shrink-0 bg-neutral-900 flex items-center justify-center">
@@ -7492,17 +7581,21 @@ export default function EnterpriseSuperAdminDashboard() {
                         className="w-full bg-[#061A13] border border-[#1E5C41] rounded-lg px-3 py-2 text-gray-100 focus:outline-none focus:border-[#FFB300]"
                       />
                     </div>
-                    <div className="flex items-center gap-2 pt-6">
-                      <input
-                        type="checkbox"
-                        id="typeFormPublished"
-                        checked={typeFormIsPublished}
-                        onChange={(e) => setTypeFormIsPublished(e.target.checked)}
-                        className="w-4 h-4 rounded bg-[#061A13] border-[#1E5C41] text-[#FFB300] focus:ring-[#FFB300]"
-                      />
-                      <label htmlFor="typeFormPublished" className="text-gray-300 font-semibold cursor-pointer">
-                        Published and Active in Devotional App
-                      </label>
+                    <div>
+                      <label className="block font-bold text-gray-300 uppercase mb-1">Status</label>
+                      <select
+                        value={typeFormStatus}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setTypeFormStatus(val);
+                          setTypeFormIsPublished(val === 'active');
+                        }}
+                        className="w-full bg-[#061A13] border border-[#1E5C41] rounded-lg px-3 py-2 text-[#FFB300] font-semibold focus:outline-none focus:border-[#FFB300]"
+                      >
+                        <option value="active">Active (Published &amp; Visible in App)</option>
+                        <option value="coming_soon">Coming Soon (Upcoming Preview)</option>
+                        <option value="inactive">Inactive (Hidden / Draft)</option>
+                      </select>
                     </div>
                   </div>
 
@@ -7651,10 +7744,8 @@ export default function EnterpriseSuperAdminDashboard() {
                         <span className="text-[#FFB300] font-mono truncate block">/{typeFormSlug || 'slug'}</span>
                       </div>
                       <div className="bg-[#061A13] p-2.5 rounded-lg border border-[#16422F]">
-                        <span className="text-[9px] text-gray-400 uppercase block font-semibold">Status</span>
-                        <span className={`font-semibold block ${typeFormIsPublished ? 'text-emerald-400' : 'text-amber-400'}`}>
-                          {typeFormIsPublished ? '✓ Published' : 'Draft'}
-                        </span>
+                        <span className="text-[9px] text-gray-400 uppercase block font-semibold mb-1">Status</span>
+                        {renderStatusBadge(typeFormStatus, typeFormIsPublished)}
                       </div>
                     </div>
                   </div>
@@ -7965,6 +8056,20 @@ export default function EnterpriseSuperAdminDashboard() {
                       </div>
                       <div className="flex items-center gap-3 w-full md:w-auto">
                         <select
+                          value={subcategoryStatusFilter}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setSubcategoryStatusFilter(val);
+                            loadSubcategories(1, searchQuery, selectedLang, selectedParentCategoryFilter, subLimit, val);
+                          }}
+                          className="bg-[#141414] border border-[#2C2C2C] rounded-lg px-3 py-1.5 text-xs text-amber-400 focus:outline-none focus:border-[#FFB300]"
+                        >
+                          <option value="all">All Statuses</option>
+                          <option value="active">Active</option>
+                          <option value="coming_soon">Coming Soon</option>
+                          <option value="inactive">Inactive</option>
+                        </select>
+                        <select
                           value={selectedLang}
                           onChange={(e) => {
                             setSelectedLang(e.target.value);
@@ -8182,6 +8287,7 @@ export default function EnterpriseSuperAdminDashboard() {
                                 <th className="px-5 py-3">Parent Category</th>
                                 <th className="px-5 py-3">Type / Format</th>
                                 <th className="px-5 py-3">Order</th>
+                                <th className="px-5 py-3 text-center">Status</th>
                                 <th className="px-5 py-3 text-right">Actions</th>
                               </tr>
                             </thead>
@@ -8274,6 +8380,10 @@ export default function EnterpriseSuperAdminDashboard() {
 
                                     <td className="px-5 py-3 whitespace-nowrap font-mono text-gray-400">
                                       #{sub.displayOrder ?? sub.id}
+                                    </td>
+
+                                    <td className="px-5 py-3 text-center whitespace-nowrap">
+                                      {renderStatusBadge(sub.status, sub.isActive)}
                                     </td>
 
                                     <td className="px-5 py-3 text-right whitespace-nowrap">
@@ -8396,6 +8506,24 @@ export default function EnterpriseSuperAdminDashboard() {
                     </div>
 
                     <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs text-gray-400">Status:</span>
+                        <select
+                          value={typeStatusFilter}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setTypeStatusFilter(val);
+                            loadDevotionalContent(1, searchQuery, selectedSubcategoryForTypes, typeLimit, val);
+                          }}
+                          className="bg-[#141414] border border-[#2C2C2C] rounded-lg px-2.5 py-2 text-xs text-amber-400 focus:outline-none focus:border-[#FFB300]"
+                        >
+                          <option value="all">All Statuses</option>
+                          <option value="active">Active (Published)</option>
+                          <option value="coming_soon">Coming Soon</option>
+                          <option value="inactive">Inactive</option>
+                        </select>
+                      </div>
+
                       <div className="flex items-center gap-1.5">
                         <span className="text-xs text-gray-400">Subcategory:</span>
                         <select
@@ -8522,9 +8650,7 @@ export default function EnterpriseSuperAdminDashboard() {
                                 </span>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
-                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${item.isPublished !== false ? 'bg-emerald-950/70 text-emerald-300 border border-emerald-800/50' : 'bg-amber-950/70 text-amber-300 border border-amber-800/50'}`}>
-                                  {item.isPublished !== false ? 'Published' : 'Draft'}
-                                </span>
+                                {renderStatusBadge((item as any).status, item.isPublished)}
                               </td>
                               <td className="px-6 py-4 font-mono text-amber-300 max-w-xs truncate">{item.sacredText || '—'}</td>
                               <td className="px-6 py-4 text-gray-400 max-w-xs truncate">{item.meaning || '—'}</td>
