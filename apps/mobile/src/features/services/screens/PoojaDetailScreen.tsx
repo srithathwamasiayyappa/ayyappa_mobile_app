@@ -22,6 +22,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SupportedLanguage } from '../../../types';
 import { ApiService, resolveMediaUrl } from '../../../services/api';
 import { StorageService } from '../../../services/storageService';
+import { DevotionalDialog, DevotionalDialogType } from '../../../components/common/DevotionalDialog';
 
 const { width: WINDOW_WIDTH, height: WINDOW_HEIGHT } = Dimensions.get('window');
 const { width: SCREEN_WIDTH_FULL, height: SCREEN_HEIGHT_FULL } = Dimensions.get('screen');
@@ -352,6 +353,17 @@ export const PoojaDetailScreen: React.FC<Props> = ({
   const [activeTab, setActiveTab] = useState<'procedure' | 'materials'>('procedure');
   const [checkedMaterials, setCheckedMaterials] = useState<Record<string, boolean>>({});
   const [isSaved, setIsSaved] = useState<boolean>(false);
+  const [devotionalDialog, setDevotionalDialog] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    type?: DevotionalDialogType;
+    confirmText?: string;
+  }>({
+    visible: false,
+    title: '',
+    message: '',
+  });
   const [isVideoModalOpen, setIsVideoModalOpen] = useState<boolean>(false);
 
   // Check if Ayyappa Padi Pooja (9 sacred items screen)
@@ -625,11 +637,21 @@ export const PoojaDetailScreen: React.FC<Props> = ({
     };
     const nextSaved = await StorageService.toggleBookmark(itemToBookmark, userId);
     setIsSaved(nextSaved);
-    Alert.alert(
-      nextSaved ? '🙏 Swamiye Saranam Ayyappa' : 'Information',
-      nextSaved ? ui.bookmarkAdded : ui.bookmarkRemoved,
-      [{ text: 'OK' }]
-    );
+
+    const isTe = currentLanguage === 'te';
+    const dialogTitle = nextSaved
+      ? (isTe ? '🙏 స్వామియే శరణం అయ్యప్ప' : '🙏 Swamiye Saranam Ayyappa')
+      : (isTe ? 'భక్తి సేవలు (Favorites)' : 'Devotional Favorites');
+    const dialogMsg = nextSaved ? ui.bookmarkAdded : ui.bookmarkRemoved;
+    const confirmTxt = isTe ? 'సరే' : 'OK';
+
+    setDevotionalDialog({
+      visible: true,
+      title: dialogTitle,
+      message: dialogMsg,
+      type: nextSaved ? 'favorite' : 'unfavorite',
+      confirmText: confirmTxt,
+    });
   };
 
   const handleDownloadPdf = () => {
@@ -885,6 +907,16 @@ export const PoojaDetailScreen: React.FC<Props> = ({
             )}
           </View>
         </ScrollView>
+        <DevotionalDialog
+          visible={devotionalDialog.visible}
+          title={devotionalDialog.title}
+          message={devotionalDialog.message}
+          type={devotionalDialog.type}
+          confirmText={devotionalDialog.confirmText}
+          autoCloseAfterMs={2500}
+          onConfirm={() => setDevotionalDialog((prev) => ({ ...prev, visible: false }))}
+          onCancel={() => setDevotionalDialog((prev) => ({ ...prev, visible: false }))}
+        />
       </SafeAreaView>
     );
   }
@@ -1264,6 +1296,16 @@ export const PoojaDetailScreen: React.FC<Props> = ({
           )}
         </ScrollView>
       )}
+      <DevotionalDialog
+        visible={devotionalDialog.visible}
+        title={devotionalDialog.title}
+        message={devotionalDialog.message}
+        type={devotionalDialog.type}
+        confirmText={devotionalDialog.confirmText}
+        autoCloseAfterMs={2500}
+        onConfirm={() => setDevotionalDialog((prev) => ({ ...prev, visible: false }))}
+        onCancel={() => setDevotionalDialog((prev) => ({ ...prev, visible: false }))}
+      />
     </SafeAreaView>
   );
 };

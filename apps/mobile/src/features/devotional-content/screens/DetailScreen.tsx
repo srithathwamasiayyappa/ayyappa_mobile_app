@@ -19,6 +19,7 @@ import Svg, { Path, Circle, Polygon } from 'react-native-svg';
 import { SupportedLanguage } from '../../../types';
 import { ApiService, resolveMediaUrl } from '../../../services/api';
 import { StorageService } from '../../../services/storageService';
+import { DevotionalDialog, DevotionalDialogType } from '../../../components/common/DevotionalDialog';
 
 const { width: WINDOW_WIDTH, height: WINDOW_HEIGHT } = Dimensions.get('window');
 const { width: SCREEN_WIDTH_FULL, height: SCREEN_HEIGHT_FULL } = Dimensions.get('screen');
@@ -123,6 +124,17 @@ export const DetailScreen: React.FC<Props> = ({
   const [loading, setLoading] = useState(true);
   const [history, setHistory] = useState<Array<{ id: string; title: string }>>([]);
   const [isSaved, setIsSaved] = useState<boolean>(false);
+  const [devotionalDialog, setDevotionalDialog] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    type?: DevotionalDialogType;
+    confirmText?: string;
+  }>({
+    visible: false,
+    title: '',
+    message: '',
+  });
 
   const currentItemId = history.length > 0 ? history[history.length - 1].id : (rawId || itemId);
   const currentTitle = history.length > 0 ? history[history.length - 1].title : title;
@@ -167,15 +179,21 @@ export const DetailScreen: React.FC<Props> = ({
     setIsSaved(nextSaved);
 
     const isTe = currentLanguage === 'te';
+    const dialogTitle = nextSaved
+      ? (isTe ? '🙏 స్వామియే శరణం అయ్యప్ప' : '🙏 Swamiye Saranam Ayyappa')
+      : (isTe ? 'భక్తి సేవలు (Favorites)' : 'Devotional Favorites');
     const msg = nextSaved
       ? (isTe ? 'మీ భక్తి సేవ్ జాబితాలో చేర్చబడింది.' : 'Saved to your devotional favorites.')
       : (isTe ? 'జాబితా నుండి తొలగించబడింది.' : 'Removed from favorites.');
+    const confirmTxt = isTe ? 'సరే' : 'OK';
 
-    Alert.alert(
-      nextSaved ? '🙏 Swamiye Saranam Ayyappa' : 'Information',
-      msg,
-      [{ text: 'OK' }]
-    );
+    setDevotionalDialog({
+      visible: true,
+      title: dialogTitle,
+      message: msg,
+      type: nextSaved ? 'favorite' : 'unfavorite',
+      confirmText: confirmTxt,
+    });
   };
 
   useEffect(() => {
@@ -701,6 +719,16 @@ export const DetailScreen: React.FC<Props> = ({
           </View>
         )}
       </ScrollView>
+      <DevotionalDialog
+        visible={devotionalDialog.visible}
+        title={devotionalDialog.title}
+        message={devotionalDialog.message}
+        type={devotionalDialog.type}
+        confirmText={devotionalDialog.confirmText}
+        autoCloseAfterMs={2500}
+        onConfirm={() => setDevotionalDialog((prev) => ({ ...prev, visible: false }))}
+        onCancel={() => setDevotionalDialog((prev) => ({ ...prev, visible: false }))}
+      />
     </SafeAreaView>
   );
 };

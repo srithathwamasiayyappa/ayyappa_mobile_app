@@ -14,7 +14,7 @@ import Svg, { Path, Circle } from 'react-native-svg';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-export type DevotionalDialogType = 'success' | 'warning' | 'error' | 'info';
+export type DevotionalDialogType = 'success' | 'warning' | 'error' | 'info' | 'favorite' | 'unfavorite';
 
 export interface DevotionalDialogProps {
   visible: boolean;
@@ -26,6 +26,7 @@ export interface DevotionalDialogProps {
   onConfirm?: () => void;
   onCancel?: () => void;
   isDestructive?: boolean;
+  autoCloseAfterMs?: number;
 }
 
 // Sacred Gopuram / Temple Motif at Card Header
@@ -85,6 +86,30 @@ const InfoEmblem = () => (
   </View>
 );
 
+const FavoriteEmblem = () => (
+  <View style={styles.iconCircleFavorite}>
+    <Svg width={28} height={28} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
+        fill="#E11D48"
+      />
+    </Svg>
+  </View>
+);
+
+const UnfavoriteEmblem = () => (
+  <View style={styles.iconCircleUnfavorite}>
+    <Svg width={28} height={28} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
+        stroke="#854D0E"
+        strokeWidth="2"
+        fill="rgba(245, 158, 11, 0.12)"
+      />
+    </Svg>
+  </View>
+);
+
 export const DevotionalDialog: React.FC<DevotionalDialogProps> = ({
   visible,
   title,
@@ -95,9 +120,20 @@ export const DevotionalDialog: React.FC<DevotionalDialogProps> = ({
   onConfirm,
   onCancel,
   isDestructive = false,
+  autoCloseAfterMs,
 }) => {
   const scaleAnim = useRef(new Animated.Value(0.85)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (visible && autoCloseAfterMs && autoCloseAfterMs > 0) {
+      const timer = setTimeout(() => {
+        if (onConfirm) onConfirm();
+        else if (onCancel) onCancel();
+      }, autoCloseAfterMs);
+      return () => clearTimeout(timer);
+    }
+  }, [visible, autoCloseAfterMs, onConfirm, onCancel]);
 
   useEffect(() => {
     if (visible) {
@@ -130,6 +166,10 @@ export const DevotionalDialog: React.FC<DevotionalDialogProps> = ({
         return <ErrorEmblem />;
       case 'info':
         return <InfoEmblem />;
+      case 'favorite':
+        return <FavoriteEmblem />;
+      case 'unfavorite':
+        return <UnfavoriteEmblem />;
       case 'success':
       default:
         return <SuccessEmblem />;
@@ -300,6 +340,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1.5,
     borderColor: '#7DD3FC',
+  },
+  iconCircleFavorite: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#FFF1F2',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#FDA4AF',
+  },
+  iconCircleUnfavorite: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#FEFCE8',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#FDE047',
   },
   title: {
     fontSize: 18,
