@@ -1030,15 +1030,7 @@ export const PoojaDetailScreen: React.FC<Props> = ({
               </View>
             ) : null}
 
-            {/* Download PDF Button */}
-            <TouchableOpacity
-              style={styles.downloadPdfButton}
-              onPress={handleDownloadPdf}
-              activeOpacity={0.8}
-            >
-              <DownloadTrayIcon />
-              <Text style={styles.downloadPdfText}>{ui.downloadPdf}</Text>
-            </TouchableOpacity>
+
           </View>
         </ScrollView>
       ) : (

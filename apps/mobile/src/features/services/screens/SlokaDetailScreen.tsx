@@ -848,17 +848,7 @@ export const SlokaDetailScreen: React.FC<Props> = ({
                   </View>
                 ) : null}
 
-                {/* Download PDF Action Button (Hidden for Bhajans & Songs) */}
-                {!isBhajanOrSong && (
-                  <TouchableOpacity
-                    style={styles.downloadPdfButton}
-                    onPress={handleDownloadPdf}
-                    activeOpacity={0.8}
-                  >
-                    <DownloadTrayIcon />
-                    <Text style={styles.downloadPdfText}>{ui.downloadPdf}</Text>
-                  </TouchableOpacity>
-                )}
+
               </View>
             )}
           </View>
@@ -1061,17 +1051,7 @@ export const SlokaDetailScreen: React.FC<Props> = ({
                 </View>
               ) : null}
 
-              {/* Download PDF Button (Hidden for Bhajans & Songs) */}
-              {!isBhajanOrSong && (
-                <TouchableOpacity
-                  style={styles.downloadPdfButton}
-                  onPress={handleDownloadPdf}
-                  activeOpacity={0.8}
-                >
-                  <DownloadTrayIcon />
-                  <Text style={styles.downloadPdfText}>{ui.downloadPdf}</Text>
-                </TouchableOpacity>
-              )}
+
             </View>
           </View>
         ) : (
