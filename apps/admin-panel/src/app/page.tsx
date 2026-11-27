@@ -66,7 +66,9 @@ import {
   Info,
   Phone,
   Mail,
-  LogIn
+  LogIn,
+  Table,
+  LayoutGrid
 } from 'lucide-react';
 import { SplashScreenManager } from './components/SplashScreenManager';
 import { RichTextEditor } from './components/RichTextEditor';
@@ -75,7 +77,10 @@ import { TranslationModal, FieldDefinition } from './components/TranslationModal
 
 interface DeityItem {
   id: string;
+  slug?: string;
   name: string;
+  englishName?: string;
+  teluguName?: string;
   alternateName?: string;
   category: 'God' | 'Goddess' | 'Avatar' | 'Cosmic Form' | string;
   vahana?: string;
@@ -132,6 +137,8 @@ interface SubcategoryItem {
   displayOrder?: number;
   isAudio?: boolean;
   imageUrl?: string;
+  deityId?: string;
+  deityName?: string;
 }
 
 interface ParentLookupItem {
@@ -305,7 +312,7 @@ const categoryArtworkMap: Record<string, string> = {
   'live-streams': '/images/categories/art-live-trans.png',
   live: '/images/categories/art-live-trans.png',
   panchangam: '/images/categories/art-panchangam-trans.png',
-  festivals: '/images/categories/art-stotras-trans.png',
+  festivals: '/images/categories/art-festivals-trans.png',
   temples: '/images/categories/art-temples-trans.png',
   donations: '/images/categories/art-donations-trans.png',
 };
@@ -332,6 +339,50 @@ const renderServiceIcon = (iconName: string) => {
     case 'hearthandshake': return <HeartHandshake className="w-5 h-5 text-rose-400" />;
     default: return <Sparkles className="w-5 h-5 text-amber-400" />;
   }
+};
+
+const VALID_ADMIN_TABS = new Set([
+  'dashboard',
+  'cms',
+  'users',
+  'devotional_services',
+  'subcategories',
+  'content',
+  'temples',
+  'categories',
+  'gods',
+  'audio',
+  'temple_types',
+  'tickets',
+  'settings',
+  'soft_deleted_users',
+  'panchangam',
+  'festivals',
+  'splash',
+  'languages',
+  'audit',
+  'profile'
+]);
+
+const getStoredTab = (): string => {
+  if (typeof window === 'undefined') return 'dashboard';
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const urlTab = params.get('tab');
+    if (urlTab && VALID_ADMIN_TABS.has(urlTab)) return urlTab;
+    const localTab = localStorage.getItem('ayyappa_admin_active_tab');
+    if (localTab && VALID_ADMIN_TABS.has(localTab)) return localTab;
+  } catch (_) { }
+  return 'dashboard';
+};
+
+const getStoredExpandedSection = (tab: string): 'cms' | 'users' | 'categories' | 'vidhanam' | 'audio' | null => {
+  if (tab === 'cms') return 'cms';
+  if (tab === 'users' || tab === 'soft_deleted_users') return 'users';
+  if (tab === 'categories' || tab === 'devotional_services' || tab === 'subcategories' || tab === 'temples') return 'categories';
+  if (tab === 'content' || tab === 'gods') return 'vidhanam';
+  if (tab === 'audio') return 'audio';
+  return null;
 };
 
 export default function EnterpriseSuperAdminDashboard() {
@@ -366,6 +417,13 @@ export default function EnterpriseSuperAdminDashboard() {
 
   // Check auth synchronously on client mount before rendering anything
   useEffect(() => {
+    try {
+      const storedLogo = localStorage.getItem('ayyappa_admin_logo');
+      if (storedLogo) {
+        setAppLogoUrl(storedLogo);
+        setCustomLogoInput(storedLogo);
+      }
+    } catch (_) { }
     loadAppLogo();
     try {
       const token = localStorage.getItem('ayyappa_admin_token');
@@ -380,6 +438,15 @@ export default function EnterpriseSuperAdminDashboard() {
           } catch { }
         }
         loadAdminProfile();
+
+        const storedTab = getStoredTab();
+        if (storedTab && storedTab !== activeTab) {
+          setActiveTab(storedTab);
+        }
+        const storedSection = getStoredExpandedSection(storedTab);
+        if (storedSection) {
+          setExpandedSection(storedSection);
+        }
       } else {
         localStorage.removeItem('ayyappa_admin_token');
         localStorage.removeItem('ayyappa_admin_profile');
@@ -417,8 +484,10 @@ export default function EnterpriseSuperAdminDashboard() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
-  // Active Navigation Tab
-  const [activeTab, setActiveTab] = useState<string>('dashboard');
+  // Active Navigation Tab (Persisted across reloads via URL query & localStorage)
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    return getStoredTab();
+  });
 
   // =========================================================
   // GODS & GODDESSES (DEITIES) MANAGEMENT STATE & HANDLERS
@@ -429,21 +498,22 @@ export default function EnterpriseSuperAdminDashboard() {
   const [editingDeity, setEditingDeity] = useState<Partial<DeityItem> | null>(null);
   const [isDeityModalOpen, setIsDeityModalOpen] = useState<boolean>(false);
 
-  const loadDeities = useCallback(async () => {
+  const loadDeities = useCallback(async (lang?: string) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/admin/deities`);
+      const targetLang = lang || 'te';
+      const res = await fetch(`${API_BASE_URL}/admin/deities?lang=${targetLang}`);
       if (res.ok) {
         const data = await res.json();
-        if (data && data.data && Array.isArray(data.data)) {
-          setDeities(data.data);
-          return;
-        }
+        const list = (data && Array.isArray(data.data)) ? data.data : (Array.isArray(data) ? data : []);
+        setDeities(list);
+        return list;
       }
       setDeities([]);
     } catch (err) {
       console.error('Failed to load deities from DB:', err);
       setDeities([]);
     }
+    return [];
   }, []);
 
   const handleOpenCreateDeity = () => {
@@ -564,11 +634,29 @@ export default function EnterpriseSuperAdminDashboard() {
   const [selectedSubcategoryForTypes, setSelectedSubcategoryForTypes] = useState<string>('all');
   const [parentLookupList, setParentLookupList] = useState<ParentLookupItem[]>([]);
   const parentLookupListRef = useRef<ParentLookupItem[]>([]);
+  const [parentCategoryCounts, setParentCategoryCounts] = useState<{ [key: string]: number }>({
+    'pooja': 76,
+    'pooja-vidhanam': 76,
+    'stotras': 43,
+    'divine-stotras': 43,
+    'slokas': 11,
+    'daily-slokas': 11,
+    'songs': 27,
+    'bhajans': 27,
+    'live-streams': 0,
+    'darshan': 0,
+    'panchangam': 0,
+    'festivals': 0,
+    'temples': 0,
+    'donations': 0,
+    'annadanam': 0
+  });
   const [isSubModalOpen, setIsSubModalOpen] = useState(false);
   const [editingSubId, setEditingSubId] = useState<string | null>(null);
   const [subFormTitle, setSubFormTitle] = useState('');
   const [subFormSlug, setSubFormSlug] = useState('');
-  const [subFormParentId, setSubFormParentId] = useState<number | string | ''>('');
+  const [subFormParentId, setSubFormParentId] = useState<number | ''>('');
+  const [subFormDeityId, setSubFormDeityId] = useState<string>('ayyappa');
   const [subFormDescription, setSubFormDescription] = useState('');
   const [subFormImageUrl, setSubFormImageUrl] = useState('');
 
@@ -619,16 +707,18 @@ export default function EnterpriseSuperAdminDashboard() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
-  const [selectedLang, setSelectedLang] = useState('en');
-  const [tickerText, setTickerText] = useState('');
-  const [appLogoUrl, setAppLogoUrl] = useState<string>(() => {
+  const [selectedLang, setSelectedLang] = useState<string>(() => {
     if (typeof window !== 'undefined') {
       try {
-        return localStorage.getItem('ayyappa_admin_logo') || '';
-      } catch { }
+        const p = new URLSearchParams(window.location.search);
+        const l = p.get('lang') || localStorage.getItem('ayyappa_admin_lang');
+        if (l) return l;
+      } catch (_) { }
     }
-    return '';
+    return 'en';
   });
+  const [tickerText, setTickerText] = useState('');
+  const [appLogoUrl, setAppLogoUrl] = useState<string>('');
   const [customLogoInput, setCustomLogoInput] = useState('');
   const [isUpdatingLogo, setIsUpdatingLogo] = useState(false);
 
@@ -663,10 +753,15 @@ export default function EnterpriseSuperAdminDashboard() {
   const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
   const [isUpdatingTicket, setIsUpdatingTicket] = useState(false);
 
-  // Devotional Services State (strictly fetched from DB via API, zero mock/fake data)
+  // Devotional Services State (strictly fetched from DB via API with server-side search, filter, pagination)
   const [devotionalServices, setDevotionalServices] = useState<any[]>([]);
   const [loadingServices, setLoadingServices] = useState<boolean>(false);
   const [serviceSearch, setServiceSearch] = useState<string>('');
+  const [serviceStatusFilter, setServiceStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [servicePage, setServicePage] = useState<number>(1);
+  const [serviceLimit, setServiceLimit] = useState<number>(10);
+  const [serviceTotalPages, setServiceTotalPages] = useState<number>(1);
+  const [serviceTotalCount, setServiceTotalCount] = useState<number>(9);
   const [selectedViewService, setSelectedViewService] = useState<any | null>(null);
   const [isViewServiceModalOpen, setIsViewServiceModalOpen] = useState(false);
   const [editingCategoryService, setEditingCategoryService] = useState<any | null>(null);
@@ -761,20 +856,135 @@ export default function EnterpriseSuperAdminDashboard() {
   const [formDescription, setFormDescription] = useState('');
 
   // CMS Editor State
-  const [selectedCmsKey, setSelectedCmsKey] = useState<string>('about_us');
+  const [selectedCmsKey, setSelectedCmsKey] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const p = new URLSearchParams(window.location.search);
+        return p.get('cms_key') || localStorage.getItem('ayyappa_admin_cms_key') || 'about_us';
+      } catch (_) { }
+    }
+    return 'about_us';
+  });
   const [cmsEditTitle, setCmsEditTitle] = useState('');
   const [cmsEditContent, setCmsEditContent] = useState('');
   const [isSavingCms, setIsSavingCms] = useState(false);
 
   // Accordion State: Only one section can be expanded at a time
-  const [expandedSection, setExpandedSection] = useState<'cms' | 'users' | 'categories' | 'vidhanam' | 'audio' | null>('cms');
+  const [expandedSection, setExpandedSection] = useState<'cms' | 'users' | 'categories' | 'vidhanam' | 'audio' | null>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const tab = getStoredTab();
+        const section = getStoredExpandedSection(tab);
+        if (section) return section;
+      } catch (_) { }
+    }
+    return 'cms';
+  });
 
   // Sidebar Subtitle States
-  const [selectedUserSubtitle, setSelectedUserSubtitle] = useState<'devotees' | 'dharma_karthas'>('devotees');
-  const [selectedCategorySubtitle, setSelectedCategorySubtitle] = useState<'devotional_services' | 'subcategories' | 'temples' | 'poojas' | 'events'>('devotional_services');
-  const [selectedVidhanamSubtitle, setSelectedVidhanamSubtitle] = useState<'gods' | 'slokas' | 'astothrams' | 'stotras'>('gods');
-  const [selectedMusicSubtitle, setSelectedMusicSubtitle] = useState<'bhajans' | 'slogans' | 'aarti'>('bhajans');
+  const [selectedUserSubtitle, setSelectedUserSubtitle] = useState<'devotees' | 'dharma_karthas'>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const p = new URLSearchParams(window.location.search);
+        const val = p.get('user_subtitle') || localStorage.getItem('ayyappa_admin_user_subtitle');
+        if (val === 'devotees' || val === 'dharma_karthas') return val;
+      } catch (_) { }
+    }
+    return 'devotees';
+  });
+
+  const [selectedCategorySubtitle, setSelectedCategorySubtitle] = useState<'devotional_services' | 'subcategories' | 'temples' | 'poojas' | 'events'>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const p = new URLSearchParams(window.location.search);
+        const val = p.get('category_subtitle') || localStorage.getItem('ayyappa_admin_category_subtitle');
+        if (val === 'devotional_services' || val === 'subcategories' || val === 'temples' || val === 'poojas' || val === 'events') return val;
+      } catch (_) { }
+    }
+    return 'devotional_services';
+  });
+
+  const [selectedVidhanamSubtitle, setSelectedVidhanamSubtitle] = useState<'gods' | 'slokas' | 'astothrams' | 'stotras'>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const p = new URLSearchParams(window.location.search);
+        const val = p.get('vidhanam_subtitle') || localStorage.getItem('ayyappa_admin_vidhanam_subtitle');
+        if (val === 'gods' || val === 'slokas' || val === 'astothrams' || val === 'stotras') return val;
+      } catch (_) { }
+    }
+    return 'gods';
+  });
+
+  const [selectedMusicSubtitle, setSelectedMusicSubtitle] = useState<'bhajans' | 'slogans' | 'aarti'>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const p = new URLSearchParams(window.location.search);
+        const val = p.get('music_subtitle') || localStorage.getItem('ayyappa_admin_music_subtitle');
+        if (val === 'bhajans' || val === 'slogans' || val === 'aarti') return val;
+      } catch (_) { }
+    }
+    return 'bhajans';
+  });
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+
+  // Synchronize current page and tab to URL query & localStorage so page refresh stays on current page
+  useEffect(() => {
+    if (typeof window === 'undefined' || !isAuthenticated) return;
+    try {
+      localStorage.setItem('ayyappa_admin_active_tab', activeTab);
+      localStorage.setItem('ayyappa_admin_lang', selectedLang);
+
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', activeTab);
+      url.searchParams.set('lang', selectedLang);
+
+      if (activeTab === 'cms' && selectedCmsKey) {
+        url.searchParams.set('cms_key', selectedCmsKey);
+        localStorage.setItem('ayyappa_admin_cms_key', selectedCmsKey);
+      } else {
+        url.searchParams.delete('cms_key');
+      }
+
+      if (activeTab === 'categories' && selectedCategorySubtitle) {
+        url.searchParams.set('category_subtitle', selectedCategorySubtitle);
+        localStorage.setItem('ayyappa_admin_category_subtitle', selectedCategorySubtitle);
+      } else {
+        url.searchParams.delete('category_subtitle');
+      }
+
+      if (activeTab === 'content' && selectedVidhanamSubtitle) {
+        url.searchParams.set('vidhanam_subtitle', selectedVidhanamSubtitle);
+        localStorage.setItem('ayyappa_admin_vidhanam_subtitle', selectedVidhanamSubtitle);
+      } else {
+        url.searchParams.delete('vidhanam_subtitle');
+      }
+
+      if (activeTab === 'users' && selectedUserSubtitle) {
+        url.searchParams.set('user_subtitle', selectedUserSubtitle);
+        localStorage.setItem('ayyappa_admin_user_subtitle', selectedUserSubtitle);
+      } else {
+        url.searchParams.delete('user_subtitle');
+      }
+
+      if (activeTab === 'audio' && selectedMusicSubtitle) {
+        url.searchParams.set('music_subtitle', selectedMusicSubtitle);
+        localStorage.setItem('ayyappa_admin_music_subtitle', selectedMusicSubtitle);
+      } else {
+        url.searchParams.delete('music_subtitle');
+      }
+
+      window.history.replaceState(null, '', url.toString());
+    } catch (_) { }
+  }, [
+    activeTab,
+    selectedLang,
+    selectedCmsKey,
+    selectedCategorySubtitle,
+    selectedVidhanamSubtitle,
+    selectedUserSubtitle,
+    selectedMusicSubtitle,
+    isAuthenticated
+  ]);
 
   // Sync CMS Editor fields when active tab or selected key changes
   useEffect(() => {
@@ -977,9 +1187,21 @@ export default function EnterpriseSuperAdminDashboard() {
     }
     setIsAuthenticated(false);
     setLoginPassword('');
+    setActiveTab('dashboard');
     if (typeof window !== 'undefined') {
       localStorage.removeItem('ayyappa_admin_token');
       localStorage.removeItem('ayyappa_admin_profile');
+      localStorage.removeItem('ayyappa_admin_active_tab');
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('tab');
+        url.searchParams.delete('cms_key');
+        url.searchParams.delete('category_subtitle');
+        url.searchParams.delete('vidhanam_subtitle');
+        url.searchParams.delete('user_subtitle');
+        url.searchParams.delete('music_subtitle');
+        window.history.replaceState(null, '', url.toString());
+      } catch (_) { }
     }
     setNotification('You have logged out securely. Backend session revoked.');
   };
@@ -1058,29 +1280,166 @@ export default function EnterpriseSuperAdminDashboard() {
       .finally(() => setLoading(false));
   }, []);
 
-  // 2. Load Subcategories & Category Lookup
-  const loadParentLookup = useCallback((lang = 'en') => {
-    fetch(`${API_BASE_URL}/admin/categories?limit=100&lang=${lang}`)
+  // 2. Load Subcategories & Category Lookup (Strictly 9 Sanctum Parent Categories)
+  const sanitizeParentCategories = useCallback((rawList: any[]) => {
+    const CANONICAL_GROUP: { [k: string]: string } = {
+      'pooja': 'pooja', 'pooja-vidhanam': 'pooja',
+      'stotras': 'stotras', 'divine-stotras': 'stotras',
+      'slokas': 'slokas', 'daily-slokas': 'slokas',
+      'songs': 'songs', 'bhajans': 'songs',
+      'live-streams': 'live-streams', 'live-darshan': 'live-streams', 'darshan': 'live-streams',
+      'panchangam': 'panchangam',
+      'festivals': 'festivals', 'temple-festivals': 'festivals',
+      'temples': 'temples', 'sacred-temples': 'temples',
+      'donations': 'donations', 'annadanam': 'donations', 'annadanam-seva': 'donations'
+    };
+
+    const seen = new Set<string>();
+    const sanitized: any[] = [];
+
+    for (const item of rawList) {
+      const slug = (item.slug || '').toLowerCase().trim();
+      const title = (item.title || '').toLowerCase().trim();
+      // Exclude calendar dates / non-canonical entries
+      if (slug.includes('dates') || slug.includes('nakshatra') || slug.includes('opening')) continue;
+      if (title.includes('dates') || title.includes('nakshatra') || title.includes('opening')) continue;
+
+      const matchedKey = Object.keys(CANONICAL_GROUP).find(k => slug === k || slug.includes(k) || title.includes(k));
+      const group = matchedKey ? CANONICAL_GROUP[matchedKey] : null;
+      if (group) {
+        if (seen.has(group)) continue;
+        seen.add(group);
+        sanitized.push(item);
+      }
+    }
+
+    return sanitized.length > 0 ? sanitized : rawList;
+  }, []);
+
+  const computeDynamicCategoryCounts = useCallback((subList: any[]) => {
+    const counts: { [k: string]: number } = {
+      'pooja': 0,
+      'pooja-vidhanam': 0,
+      'stotras': 0,
+      'divine-stotras': 0,
+      'slokas': 0,
+      'daily-slokas': 0,
+      'songs': 0,
+      'bhajans': 0,
+      'live-streams': 0,
+      'darshan': 0,
+      'panchangam': 0,
+      'festivals': 0,
+      'temples': 0,
+      'donations': 0,
+      'annadanam': 0
+    };
+
+    const rootFamilyMap: { [id: number]: string } = {
+      113: 'pooja', 25: 'pooja', 120: 'pooja', 130: 'pooja', 26: 'pooja', 27: 'pooja', 28: 'pooja', 3: 'pooja', 117: 'pooja', 7: 'pooja', 6: 'pooja', 122: 'pooja', 229: 'pooja',
+      114: 'stotras', 21: 'stotras', 52: 'stotras', 4: 'stotras',
+      115: 'slokas',
+      116: 'songs', 2311: 'songs', 11: 'songs', 93: 'songs',
+      2312: 'live-streams',
+      2313: 'festivals',
+      2314: 'temples',
+      2315: 'donations'
+    };
+
+    for (const item of subList) {
+      const pid = Number(item.parentId);
+      const pslug = (item.parentSlug || '').toLowerCase();
+      const slug = (item.slug || '').toLowerCase();
+
+      if (rootFamilyMap[pid]) {
+        counts[rootFamilyMap[pid]]++;
+      } else if (pid === 113 || pslug.includes('pooja') || pslug.includes('vratha') || slug.includes('pooja') || slug.includes('vratham')) {
+        counts['pooja']++;
+      } else if (pid === 114 || pslug.includes('stotra') || slug.includes('stotra') || pslug.includes('ashtottar') || slug.includes('ashtottar')) {
+        counts['stotras']++;
+      } else if (pid === 115 || pslug.includes('sloka') || slug.includes('sloka')) {
+        counts['slokas']++;
+      } else if (pid === 116 || pid === 2311 || pslug.includes('song') || pslug.includes('bhajan') || pslug.includes('gosha') || pslug.includes('harathi') || slug.includes('bhajan') || slug.includes('song')) {
+        counts['songs']++;
+      } else if (pid === 2312 || pslug.includes('darshan') || pslug.includes('stream')) {
+        counts['live-streams']++;
+      } else if (pid === 6 || pslug.includes('panchang')) {
+        counts['panchangam']++;
+      } else if (pid === 2313 || pslug.includes('festiv')) {
+        counts['festivals']++;
+      } else if (pid === 2314 || pslug.includes('temple')) {
+        counts['temples']++;
+      } else if (pid === 2315 || pslug.includes('annadan') || pslug.includes('donat')) {
+        counts['donations']++;
+      }
+    }
+
+    counts['bhajans'] = counts['songs'];
+    counts['darshan'] = counts['live-streams'];
+    counts['annadanam'] = counts['donations'];
+    counts['pooja-vidhanam'] = counts['pooja'];
+    counts['divine-stotras'] = counts['stotras'];
+    counts['daily-slokas'] = counts['slokas'];
+
+    return counts;
+  }, []);
+
+  const loadParentLookup = useCallback((lang = 'te') => {
+    fetch(`${API_BASE_URL}/admin/categories/parents?lang=${lang}`)
       .then(res => res.json())
       .then(res => {
-        const list = (res && Array.isArray(res.data)) ? res.data : (Array.isArray(res) ? res : []);
+        const raw = (res && Array.isArray(res.data)) ? res.data : (Array.isArray(res) ? res : []);
+        const list = sanitizeParentCategories(raw);
         if (list.length > 0) {
           parentLookupListRef.current = list;
           setParentLookupList(list);
+
+          const countMap: { [k: string]: number } = {};
+          for (const item of list) {
+            if (item.subcategoriesCount !== undefined && item.subcategoriesCount > 0) {
+              const k = (item.slug || '').toLowerCase();
+              if (k.includes('pooja')) countMap['pooja'] = item.subcategoriesCount;
+              else if (k.includes('stotra')) countMap['stotras'] = item.subcategoriesCount;
+              else if (k.includes('sloka')) countMap['slokas'] = item.subcategoriesCount;
+              else if (k.includes('song') || k.includes('bhajan')) countMap['songs'] = item.subcategoriesCount;
+              else if (k.includes('darshan') || k.includes('stream')) countMap['live-streams'] = item.subcategoriesCount;
+              else if (k.includes('panchang')) countMap['panchangam'] = item.subcategoriesCount;
+              else if (k.includes('festiv')) countMap['festivals'] = item.subcategoriesCount;
+              else if (k.includes('temple')) countMap['temples'] = item.subcategoriesCount;
+              else if (k.includes('annadan') || k.includes('donat')) countMap['donations'] = item.subcategoriesCount;
+            }
+          }
+          if (Object.keys(countMap).length > 0) {
+            setParentCategoryCounts(prev => ({ ...prev, ...countMap }));
+          }
         }
       })
       .catch(() => {
-        fetch(`${API_BASE_URL}/admin/categories/parents?lang=${lang}`)
+        fetch(`${API_BASE_URL}/admin/categories?limit=100&lang=${lang}`)
           .then(r => r.json())
           .then(data => {
-            if (Array.isArray(data) && data.length > 0) {
-              parentLookupListRef.current = data;
-              setParentLookupList(data);
+            const raw = (data && Array.isArray(data.data)) ? data.data : (Array.isArray(data) ? data : []);
+            const list = sanitizeParentCategories(raw);
+            if (list.length > 0) {
+              parentLookupListRef.current = list;
+              setParentLookupList(list);
             }
           })
           .catch(() => { });
       });
-  }, []);
+
+    // Also fetch full subcategories list to guarantee dynamic counts
+    fetch(`${API_BASE_URL}/admin/subcategories?limit=500&lang=${lang}`)
+      .then(r => r.json())
+      .then(data => {
+        const items = data && Array.isArray(data.data) ? data.data : (Array.isArray(data) ? data : []);
+        if (items.length > 0) {
+          const counts = computeDynamicCategoryCounts(items);
+          setParentCategoryCounts(counts);
+        }
+      })
+      .catch(() => { });
+  }, [sanitizeParentCategories, computeDynamicCategoryCounts]);
 
   const loadAllSubcategoriesList = useCallback((lang = 'en') => {
     fetch(`${API_BASE_URL}/admin/subcategories?limit=500&lang=${lang}`)
@@ -1089,10 +1448,12 @@ export default function EnterpriseSuperAdminDashboard() {
         const list = res && Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : []);
         if (list.length > 0) {
           setAllSubcategoriesList(list);
+          const counts = computeDynamicCategoryCounts(list);
+          setParentCategoryCounts(counts);
         }
       })
       .catch(() => { });
-  }, []);
+  }, [computeDynamicCategoryCounts]);
 
   const resolveParentId = useCallback((keyOrId: string): string => {
     if (!keyOrId || keyOrId === 'all') return 'all';
@@ -1336,34 +1697,77 @@ export default function EnterpriseSuperAdminDashboard() {
       .finally(() => setLoading(false));
   }, []);
 
-  // Load Devotional Services directly from /categories/services API
-  const loadCategoryServices = useCallback(async () => {
+  // Load Devotional Services directly from API with server-side pagination, search, status filter
+  const loadCategoryServices = useCallback(async (
+    pageNum = 1,
+    search = serviceSearch,
+    status = serviceStatusFilter,
+    currentLimit = serviceLimit
+  ) => {
     setLoadingServices(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/categories/services`);
-      if (res.ok) {
-        const json = await res.json();
-        if (json?.data && Array.isArray(json.data) && json.data.length > 0) {
-          setDevotionalServices(json.data);
-          return;
-        }
-      }
-      const adminRes = await fetch(`${API_BASE_URL}/admin/category-services`);
+      // 1. Try admin endpoint first with query params
+      const adminUrl = new URL(`${API_BASE_URL}/admin/category-services`);
+      adminUrl.searchParams.set('page', String(pageNum));
+      adminUrl.searchParams.set('limit', String(currentLimit));
+      if (search && search.trim() !== '') adminUrl.searchParams.set('search', search.trim());
+      if (status && status !== 'all') adminUrl.searchParams.set('status', status);
+
+      const adminRes = await fetch(adminUrl.toString());
       if (adminRes.ok) {
         const adminJson = await adminRes.json();
-        if (adminJson?.data && Array.isArray(adminJson.data) && adminJson.data.length > 0) {
+        if (adminJson?.data && Array.isArray(adminJson.data)) {
           setDevotionalServices(adminJson.data);
+          if (adminJson.meta) {
+            setServiceTotalCount(adminJson.meta.totalRecords ?? adminJson.total ?? adminJson.data.length);
+            setServiceTotalPages(adminJson.meta.totalPages ?? 1);
+            setServicePage(adminJson.meta.page ?? pageNum);
+          } else {
+            setServiceTotalCount(adminJson.total ?? adminJson.data.length);
+            setServiceTotalPages(Math.ceil((adminJson.total ?? adminJson.data.length) / currentLimit) || 1);
+            setServicePage(pageNum);
+          }
           return;
         }
       }
+
+      // 2. Try categories/services endpoint
+      const url = new URL(`${API_BASE_URL}/categories/services`);
+      url.searchParams.set('page', String(pageNum));
+      url.searchParams.set('limit', String(currentLimit));
+      url.searchParams.set('lang', selectedLang);
+      if (search && search.trim() !== '') url.searchParams.set('search', search.trim());
+      if (status && status !== 'all') url.searchParams.set('status', status);
+
+      const res = await fetch(url.toString());
+      if (res.ok) {
+        const json = await res.json();
+        if (json?.data && Array.isArray(json.data)) {
+          setDevotionalServices(json.data);
+          if (json.meta) {
+            setServiceTotalCount(json.meta.totalRecords ?? json.count ?? json.data.length);
+            setServiceTotalPages(json.meta.totalPages ?? 1);
+            setServicePage(json.meta.page ?? pageNum);
+          } else {
+            setServiceTotalCount(json.count ?? json.total ?? json.data.length);
+            setServiceTotalPages(Math.ceil((json.count ?? json.total ?? json.data.length) / currentLimit) || 1);
+            setServicePage(pageNum);
+          }
+          return;
+        }
+      }
+
       setDevotionalServices([]);
+      setServiceTotalCount(0);
+      setServiceTotalPages(1);
+      setServicePage(1);
     } catch (e) {
       console.warn('Notice loading category services:', e);
       setDevotionalServices([]);
     } finally {
       setLoadingServices(false);
     }
-  }, []);
+  }, [serviceSearch, serviceStatusFilter, serviceLimit, selectedLang]);
 
   // 5. Load Audio
   const loadAudio = useCallback(() => {
@@ -1890,6 +2294,7 @@ export default function EnterpriseSuperAdminDashboard() {
     loadStats();
     loadParentLookup(selectedLang);
     loadAllSubcategoriesList(selectedLang);
+    loadDeities(selectedLang);
     loadLanguages();
     loadAppLogo();
     loadTicker();
@@ -1906,8 +2311,13 @@ export default function EnterpriseSuperAdminDashboard() {
       loadCategories(page, searchQuery, selectedLang, isAudioFilter);
     } else if (activeTab === 'subcategories') {
       loadSubcategories(1, searchQuery, selectedLang, selectedParentCategoryFilter);
+      loadParentLookup(selectedLang);
+      loadAllSubcategoriesList(selectedLang);
+      loadDeities(selectedLang);
     } else if (activeTab === 'devotional_services') {
       loadCategoryServices();
+      loadAllSubcategoriesList(selectedLang);
+      loadParentLookup(selectedLang);
     } else if (activeTab === 'temples' || (activeTab === 'categories' && selectedCategorySubtitle === 'temples')) {
       loadAdminTemples();
     } else if (activeTab === 'content') {
@@ -2058,6 +2468,8 @@ export default function EnterpriseSuperAdminDashboard() {
   // Dynamic Language Switcher for Edit Subcategory (Fetches translation from DB via API; no mock fallback)
   const handleEditSubcategoryChangeLang = async (langCode: string) => {
     setSelectedLang(langCode);
+    loadParentLookup(langCode);
+    loadDeities(langCode);
     if (!editingSubId) return;
     setLoading(true);
     try {
@@ -2289,23 +2701,57 @@ export default function EnterpriseSuperAdminDashboard() {
   };
 
   // SUBCATEGORY & CHAPTER ACTIONS (Full Page Mode)
-  const handleOpenCreateSubcategory = (preselectedParentId?: any) => {
+  const handleOpenCreateSubcategory = async (preselectedParentId?: any) => {
     setEditingSubId(null);
     setSubFormTitle('');
     setSubFormSlug('');
-    let targetParent = preselectedParentId;
-    if (!targetParent && selectedParentCategoryFilter !== 'all') {
-      const match = parentLookupList.find(p => p.slug === selectedParentCategoryFilter || String(p.id) === String(selectedParentCategoryFilter));
-      if (match) targetParent = match.id;
-    }
-    if (!targetParent && parentLookupList.length > 0) {
-      targetParent = parentLookupList[0].id;
-    }
-    setSubFormParentId(targetParent || '');
     setSubFormDescription('');
     setSubFormImageUrl('');
     setIsSubModalOpen(true);
     setPageMode('EDIT_SUBCATEGORY');
+
+    let availableParents = parentLookupList;
+    let availableDeities = deities;
+
+    // Dynamically fetch latest Parent Categories & Gods / Goddesses directly from DB via API
+    try {
+      const [parentsRes, deitiesRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/admin/categories/parents?lang=${selectedLang}`).then(r => r.json()).catch(() => null),
+        fetch(`${API_BASE_URL}/admin/deities?lang=${selectedLang}`).then(r => r.json()).catch(() => null)
+      ]);
+
+      if (parentsRes) {
+        const raw = Array.isArray(parentsRes.data) ? parentsRes.data : (Array.isArray(parentsRes) ? parentsRes : []);
+        const sanitized = sanitizeParentCategories(raw);
+        if (sanitized.length > 0) {
+          availableParents = sanitized;
+          setParentLookupList(sanitized);
+          parentLookupListRef.current = sanitized;
+        }
+      }
+      if (deitiesRes && Array.isArray(deitiesRes.data) && deitiesRes.data.length > 0) {
+        availableDeities = deitiesRes.data;
+        setDeities(deitiesRes.data);
+      }
+    } catch (err) {
+      console.error('Failed to dynamically fetch parents or deities:', err);
+    }
+
+    let targetParent = preselectedParentId;
+    if (!targetParent && selectedParentCategoryFilter !== 'all') {
+      const match = availableParents.find(p => p.slug === selectedParentCategoryFilter || String(p.id) === String(selectedParentCategoryFilter));
+      if (match) targetParent = match.id;
+    }
+    if (!targetParent && availableParents.length > 0) {
+      targetParent = availableParents[0].id;
+    }
+    setSubFormParentId(targetParent || '');
+
+    if (availableDeities.length > 0) {
+      setSubFormDeityId(availableDeities[0].slug || availableDeities[0].id || 'ayyappa');
+    } else {
+      setSubFormDeityId('ayyappa');
+    }
   };
 
   const handleOpenEditSubcategory = async (item: SubcategoryItem) => {
@@ -2313,12 +2759,16 @@ export default function EnterpriseSuperAdminDashboard() {
     setSubFormTitle(item.title);
     setSubFormSlug(item.slug);
     setSubFormParentId(item.parentId);
+    setSubFormDeityId((item as any).deityId || (item as any).deity || 'ayyappa');
     setSubFormDescription(item.description || '');
     setSubFormImageUrl(item.imageUrl || '');
     setIsSubModalOpen(true);
     setPageMode('EDIT_SUBCATEGORY');
 
-    // Dynamically fetch translation for currently active language directly from DB
+    // Dynamically refresh Parent Categories, Deities, and Subcategory detail from DB via API
+    loadParentLookup(selectedLang);
+    loadDeities(selectedLang);
+
     try {
       const res = await fetch(`${API_BASE_URL}/admin/subcategories/${item.id}?lang=${selectedLang}`);
       const json = await res.json();
@@ -2326,6 +2776,9 @@ export default function EnterpriseSuperAdminDashboard() {
         const d = json.data;
         setViewDetail(d);
         setActiveViewTypeTab('all');
+        if (d.deityId || d.deity) {
+          setSubFormDeityId(d.deityId || d.deity);
+        }
         const exact = d.translations?.find((t: any) => t.code === selectedLang);
         if (exact) {
           setSubFormTitle(exact.title || '');
@@ -2336,6 +2789,75 @@ export default function EnterpriseSuperAdminDashboard() {
         }
       }
     } catch { }
+  };
+
+  const handleOpenSubcategoryTranslation = async () => {
+    if (!subFormTitle.trim()) {
+      alert('Please enter the Subcategory Title in Telugu first before translating.');
+      return;
+    }
+    if (!subFormParentId) {
+      alert('Please select a Parent Category first.');
+      return;
+    }
+
+    let targetId = editingSubId;
+
+    // If new subcategory (not saved in MySQL yet), create master record first so a permanent ID exists for translations
+    if (!targetId) {
+      setLoading(true);
+      try {
+        const payload = {
+          title: subFormTitle.trim(),
+          slug: subFormSlug.trim() || `sub-${Date.now()}`,
+          parentId: Number(subFormParentId),
+          isAudio: false,
+          description: subFormDescription.trim(),
+          lang: selectedLang || 'te',
+          imageUrl: subFormImageUrl.trim(),
+          deityId: subFormDeityId,
+          deity: subFormDeityId
+        };
+        const res = await fetch(`${API_BASE_URL}/admin/categories`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const created = await res.json();
+        if (created && created.data && created.data.id) {
+          targetId = String(created.data.id);
+          setEditingSubId(targetId);
+          setNotification(`Master subcategory created (#${targetId}). Opening multi-language translator...`);
+          loadSubcategories(1, '', selectedLang);
+        } else {
+          throw new Error('Failed to create master subcategory record.');
+        }
+      } catch (err: any) {
+        alert('Could not save master record: ' + err.message);
+        setLoading(false);
+        return;
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    openTranslationModal('categories', targetId, [
+      { key: 'title', label: 'Subcategory Title', value: subFormTitle },
+      { key: 'description', label: 'Sacred Notes', value: subFormDescription, isHtml: true }
+    ], async (trans, lang) => {
+      if (trans.title) setSubFormTitle(trans.title);
+      if (trans.description) setSubFormDescription(trans.description);
+      if (lang) {
+        setSelectedLang(lang);
+      }
+      if (targetId) {
+        try {
+          const r = await fetch(`${API_BASE_URL}/admin/subcategories/${targetId}?lang=${lang || selectedLang}`);
+          const d = await r.json();
+          if (d && d.data) setViewDetail(d.data);
+        } catch (_) { }
+      }
+    });
   };
 
   const handleSubcategoryImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -2404,7 +2926,6 @@ export default function EnterpriseSuperAdminDashboard() {
         if (res.ok) {
           setNotification('Devotional service artwork updated successfully!');
           loadCategoryServices();
-        loadParentLookup(selectedLang);
         } else {
           const errData = await res.json();
           alert('Upload failed: ' + (errData.message || res.statusText));
@@ -2426,17 +2947,16 @@ export default function EnterpriseSuperAdminDashboard() {
       return;
     }
 
-    const resolvedParent = resolveParentId(String(subFormParentId));
-    const targetParentNum = !isNaN(Number(resolvedParent)) ? Number(resolvedParent) : (!isNaN(Number(subFormParentId)) ? Number(subFormParentId) : subFormParentId);
-
     const payload = {
       title: subFormTitle.trim(),
       slug: subFormSlug.trim() || `sub-${Date.now()}`,
-      parentId: targetParentNum,
+      parentId: Number(subFormParentId),
       isAudio: false,
       description: subFormDescription.trim(),
       lang: selectedLang,
-      imageUrl: subFormImageUrl.trim()
+      imageUrl: subFormImageUrl.trim(),
+      deityId: subFormDeityId,
+      deity: subFormDeityId
     };
 
     try {
@@ -2992,7 +3512,6 @@ export default function EnterpriseSuperAdminDashboard() {
         setIsServiceEditModalOpen(false);
         setEditingCategoryService(null);
         loadCategoryServices();
-        loadParentLookup(selectedLang);
       } else {
         const errJson = await res.json().catch(() => ({}));
         alert(errJson.message || 'Failed to save devotional service.');
@@ -3019,7 +3538,6 @@ export default function EnterpriseSuperAdminDashboard() {
           setSelectedViewService(null);
         }
         loadCategoryServices();
-        loadParentLookup(selectedLang);
       } else {
         const errJson = await res.json().catch(() => ({}));
         alert(errJson.message || 'Failed to delete devotional service.');
@@ -3503,6 +4021,7 @@ export default function EnterpriseSuperAdminDashboard() {
           }}
         >
           <img
+            suppressHydrationWarning
             src={resolveLogoDisplayUrl(appLogoUrl)}
             alt="Saranam Ayyappa Logo"
             style={{
@@ -3574,6 +4093,7 @@ export default function EnterpriseSuperAdminDashboard() {
             <div className="text-center space-y-2.5">
               <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl border-2 border-[#D4AF37] bg-[#030F0A] flex items-center justify-center p-2 mx-auto shadow-[0_10px_25px_rgba(0,0,0,0.8),0_0_20px_rgba(212,175,55,0.25)] relative overflow-hidden group">
                 <img
+                  suppressHydrationWarning
                   src={resolveLogoDisplayUrl(appLogoUrl)}
                   alt="Saranam Ayyappa Official Emblem"
                   className="w-full h-full object-contain filter drop-shadow-[0_2px_8px_rgba(255,179,0,0.3)] transition transform group-hover:scale-105 duration-300"
@@ -3848,19 +4368,17 @@ export default function EnterpriseSuperAdminDashboard() {
         setSelectedCategorySubtitle('devotional_services');
         setExpandedSection(prev => prev === 'categories' ? null : 'categories');
         loadCategoryServices();
-        loadParentLookup(selectedLang);
       },
       isActive: activeTab === 'categories' || activeTab === 'devotional_services' || activeTab === 'subcategories' || activeTab === 'temples',
       isExpanded: expandedSection === 'categories',
       subtitles: [
         {
           key: 'devotional_services',
-          label: `Devotional Services (${devotionalServices.length || 9})`,
+          label: 'Devotional Services (9)',
           onClick: () => {
             setActiveTab('devotional_services');
             setSelectedCategorySubtitle('devotional_services');
             loadCategoryServices();
-        loadParentLookup(selectedLang);
           },
           isActive: activeTab === 'devotional_services',
         },
@@ -4061,7 +4579,7 @@ export default function EnterpriseSuperAdminDashboard() {
     if (activeTab === 'dashboard') return 'Dashboard';
     if (activeTab === 'cms') return 'Website / App CMS Management';
     if (activeTab === 'users') return `User Management — ${selectedUserSubtitle === 'dharma_karthas' ? 'Dharma Karthas' : 'Devotees'}`;
-    if (activeTab === 'devotional_services') return `Categories — Devotional Services (${devotionalServices.length || 9})`;
+    if (activeTab === 'devotional_services') return 'Categories — Devotional Services (9)';
     if (activeTab === 'subcategories') return `Categories — Devotional Subcategories (${stats?.activeSubcategories ?? (subTotalCount || subcategories.length || 134)})`;
     if (activeTab === 'temples' || (activeTab === 'categories' && selectedCategorySubtitle === 'temples')) return `Categories — Sacred Temples (${templesList.length})`;
     if (activeTab === 'categories') return `Categories — ${selectedCategorySubtitle.toUpperCase()}`;
@@ -4141,6 +4659,7 @@ export default function EnterpriseSuperAdminDashboard() {
         <div className="flex flex-col h-full">
           <div className="p-4 border-b border-[#2C2C2C] flex items-center justify-center">
             <img
+              suppressHydrationWarning
               src={resolveLogoDisplayUrl(appLogoUrl)}
               alt="Saranam Ayyappa — Thathwamasi"
               className="w-full max-h-24 object-contain rounded-xl shadow-lg border border-[var(--admin-gold)]/40 hover:border-[var(--admin-gold)] transition"
@@ -4360,7 +4879,7 @@ export default function EnterpriseSuperAdminDashboard() {
                   <div>
                     <h2 className="text-base font-bold text-[#FFB300] flex items-center gap-2">
                       <FolderTree className="w-5 h-5 text-orange-400" />
-                      <span>Devotional Services Management ({devotionalServices.length || 9} Categories)</span>
+                      <span>Devotional Services Management (9 Sanctum Categories)</span>
                     </h2>
                     <p className="text-xs text-gray-400 mt-1 max-w-2xl leading-relaxed">
                       Authoritative devotional services and sacred categories dynamically fetched from MySQL DB via API (<code className="text-amber-400">/api/v1/categories/services</code>). Devotees and Dharma Karthas access these services on the Saranam Ayyappa website and mobile app.
@@ -4369,7 +4888,7 @@ export default function EnterpriseSuperAdminDashboard() {
 
                   <div className="flex flex-wrap items-center gap-3">
                     <button
-                      onClick={loadCategoryServices}
+                      onClick={() => loadCategoryServices()}
                       disabled={loadingServices}
                       className="px-3 py-1.5 bg-[#141414] hover:bg-[#252525] border border-[#2C2C2C] rounded-lg text-xs font-semibold flex items-center gap-1.5 text-gray-300 transition"
                     >
@@ -4389,17 +4908,78 @@ export default function EnterpriseSuperAdminDashboard() {
                   </div>
                 </div>
 
-                {/* Search Bar */}
-                <div className="mt-5 pt-4 border-t border-[#2C2C2C]">
-                  <div className="relative max-w-md">
+                {/* Search Bar & Server-Side Filters */}
+                <div className="mt-5 pt-4 border-t border-[#2C2C2C] flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+                  <div className="relative flex-1 max-w-md">
                     <Search className="w-4 h-4 absolute left-3 top-2.5 text-gray-400" />
                     <input
                       type="text"
-                      placeholder="Search devotional services by title, subtitle, or route..."
+                      placeholder="Search services server-side by title, subtitle, or route..."
                       value={serviceSearch}
-                      onChange={(e) => setServiceSearch(e.target.value)}
-                      className="w-full bg-[#141414] border border-[#2C2C2C] rounded-lg pl-9 pr-4 py-2 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-[#FFB300]"
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setServiceSearch(val);
+                        loadCategoryServices(1, val, serviceStatusFilter, serviceLimit);
+                      }}
+                      className="w-full bg-[#141414] border border-[#2C2C2C] rounded-lg pl-9 pr-8 py-2 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-[#FFB300]"
                     />
+                    {serviceSearch && (
+                      <button
+                        onClick={() => {
+                          setServiceSearch('');
+                          loadCategoryServices(1, '', serviceStatusFilter, serviceLimit);
+                        }}
+                        className="absolute right-2.5 top-2.5 text-gray-400 hover:text-gray-200 text-xs"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Server-Side Status Filter */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-400 font-medium">Status:</span>
+                    <div className="flex items-center bg-[#141414] border border-[#2C2C2C] rounded-lg p-0.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setServiceStatusFilter('all');
+                          loadCategoryServices(1, serviceSearch, 'all', serviceLimit);
+                        }}
+                        className={`px-3 py-1 rounded text-xs font-semibold transition ${serviceStatusFilter === 'all'
+                          ? 'bg-[#FFB300] text-black shadow'
+                          : 'text-gray-400 hover:text-gray-200'
+                          }`}
+                      >
+                        All
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setServiceStatusFilter('active');
+                          loadCategoryServices(1, serviceSearch, 'active', serviceLimit);
+                        }}
+                        className={`px-3 py-1 rounded text-xs font-semibold transition ${serviceStatusFilter === 'active'
+                          ? 'bg-emerald-600 text-white shadow'
+                          : 'text-gray-400 hover:text-gray-200'
+                          }`}
+                      >
+                        Active
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setServiceStatusFilter('inactive');
+                          loadCategoryServices(1, serviceSearch, 'inactive', serviceLimit);
+                        }}
+                        className={`px-3 py-1 rounded text-xs font-semibold transition ${serviceStatusFilter === 'inactive'
+                          ? 'bg-rose-600 text-white shadow'
+                          : 'text-gray-400 hover:text-gray-200'
+                          }`}
+                      >
+                        Inactive
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -4419,7 +4999,7 @@ export default function EnterpriseSuperAdminDashboard() {
                   </p>
                   <div className="flex items-center gap-3 mt-4">
                     <button
-                      onClick={loadCategoryServices}
+                      onClick={() => loadCategoryServices()}
                       className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-black font-bold text-xs rounded-lg transition"
                     >
                       Reload from API
@@ -4433,174 +5013,237 @@ export default function EnterpriseSuperAdminDashboard() {
                   </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                  {devotionalServices
-                    .filter((s) => {
-                      if (!serviceSearch.trim()) return true;
-                      const q = serviceSearch.toLowerCase();
-                      const matchTitle = s.title?.toLowerCase().includes(q);
-                      const matchSub = s.sub?.toLowerCase().includes(q);
-                      const matchId = (s.serviceId || s.id)?.toLowerCase().includes(q);
-                      return matchTitle || matchSub || matchId;
-                    })
-                    .map((service, index) => {
-                      const sKey = service.serviceId || service.id;
-                      const artworkSrc = service.artwork || categoryArtworkMap[sKey] || categoryArtworkMap[service.id];
-                      return (
-                        <div
-                          key={service.id || service.serviceId || index}
-                          onClick={() => handleOpenViewService(service)}
-                          className="bg-[#1E1E1E] hover:bg-[#252525] rounded-2xl border border-[#2C2C2C] hover:border-[#FFB300]/50 p-4 transition-all duration-200 hover:shadow-2xl flex flex-col justify-between gap-3 group cursor-pointer relative overflow-hidden"
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            {/* 1. Left Medallion Icon with Divine Glyph */}
-                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#2A2A2A] to-[#141414] border border-[#3A3A3A] group-hover:border-[#FFB300]/40 flex items-center justify-center flex-shrink-0 shadow-inner">
-                              {renderServiceIcon(service.icon || service.id)}
-                            </div>
-
-                            {/* 2. Middle Information (Title + Subtitle) */}
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <h3 className="font-bold text-sm text-gray-100 group-hover:text-[#FFB300] transition truncate">
-                                  {service.title}
-                                </h3>
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-neutral-800 text-gray-400 font-mono">
+                /* Devotional Services Clean Table Format */
+                <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] overflow-hidden shadow-2xl">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="bg-[#151515] border-b border-[#2C2C2C] text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                          <th className="py-3 px-4 w-14 text-center">#</th>
+                          <th className="py-3 px-4 w-28">Icon & Art</th>
+                          <th className="py-3 px-4 min-w-[220px]">Devotional Service</th>
+                          <th className="py-3 px-4 w-32">Canonical Key</th>
+                          <th className="py-3 px-4 w-32">Route Path</th>
+                          <th className="py-3 px-4 w-36 text-center">Subcategories</th>
+                          <th className="py-3 px-4 w-28 text-center">Status</th>
+                          <th className="py-3 px-4 min-w-[220px] text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#282828]">
+                        {devotionalServices.map((service, index) => {
+                          const sKey = (service.serviceId || service.id || '').toLowerCase();
+                          const artworkSrc = service.artwork || categoryArtworkMap[sKey] || categoryArtworkMap[service.id];
+                          const subCount = service.subcategoriesCount !== undefined
+                            ? service.subcategoriesCount
+                            : (parentCategoryCounts[sKey] ??
+                              (sKey === 'bhajans' ? parentCategoryCounts['songs'] : undefined) ??
+                              (sKey === 'songs' ? parentCategoryCounts['bhajans'] : undefined) ??
+                              (sKey === 'darshan' ? parentCategoryCounts['live-streams'] : undefined) ??
+                              (sKey === 'live-streams' ? parentCategoryCounts['darshan'] : undefined) ??
+                              (sKey === 'annadanam' ? parentCategoryCounts['donations'] : undefined) ??
+                              (sKey === 'donations' ? parentCategoryCounts['annadanam'] : undefined) ??
+                              0);
+                          return (
+                            <tr
+                              key={service.id || service.serviceId || index}
+                              onClick={() => handleOpenViewService(service)}
+                              className="hover:bg-neutral-800/40 transition-colors group cursor-pointer"
+                            >
+                              {/* # Order */}
+                              <td className="py-3 px-4 text-center">
+                                <span className="text-[11px] px-2 py-0.5 rounded bg-neutral-800/80 border border-neutral-700/60 text-amber-400 font-mono font-bold">
                                   #{service.displayOrder || index + 1}
                                 </span>
-                              </div>
-                              <p className="text-xs text-gray-400 truncate mt-0.5 font-medium">
-                                {service.sub || 'Step-by-step sacred rituals'}
-                              </p>
-                              <div className="flex items-center gap-2 mt-1.5">
-                                <span className="text-[10px] text-gray-500 font-mono bg-[#141414] px-1.5 py-0.5 rounded border border-[#2C2C2C]">
+                              </td>
+
+                              {/* Icon & Art */}
+                              <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
+                                <div className="flex items-center gap-2">
+                                  <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[#2A2A2A] to-[#141414] border border-[#3A3A3A] group-hover:border-[#FFB300]/40 flex items-center justify-center flex-shrink-0 shadow-inner">
+                                    {renderServiceIcon(service.icon || service.id)}
+                                  </div>
+                                  {artworkSrc ? (
+                                    <div className="relative group/art w-9 h-9 rounded-lg bg-neutral-900 border border-neutral-800 overflow-hidden flex items-center justify-center flex-shrink-0">
+                                      <img
+                                        src={resolveArtworkUrl(artworkSrc)}
+                                        alt={service.title}
+                                        className="w-7 h-7 object-contain opacity-90 group-hover/art:opacity-100 transition"
+                                        onError={(e: any) => { e.currentTarget.style.display = 'none'; }}
+                                      />
+                                      <label
+                                        className="absolute inset-0 bg-black/75 opacity-0 group-hover/art:opacity-100 flex items-center justify-center cursor-pointer transition"
+                                        title="Upload / Change Image"
+                                      >
+                                        <Upload className="w-3.5 h-3.5 text-amber-400" />
+                                        <input
+                                          type="file"
+                                          accept="image/png, image/jpeg, image/webp"
+                                          onChange={(e) => handleQuickServiceArtworkUpload(service.id || service.serviceId, e)}
+                                          className="hidden"
+                                        />
+                                      </label>
+                                    </div>
+                                  ) : (
+                                    <label
+                                      className="w-9 h-9 rounded-lg bg-neutral-900 border border-dashed border-neutral-700 hover:border-amber-400 text-gray-500 hover:text-amber-400 flex items-center justify-center cursor-pointer transition flex-shrink-0"
+                                      title="Upload Image"
+                                    >
+                                      <Upload className="w-3.5 h-3.5" />
+                                      <input
+                                        type="file"
+                                        accept="image/png, image/jpeg, image/webp"
+                                        onChange={(e) => handleQuickServiceArtworkUpload(service.id || service.serviceId, e)}
+                                        className="hidden"
+                                      />
+                                    </label>
+                                  )}
+                                </div>
+                              </td>
+
+                              {/* Devotional Service Title & Sub */}
+                              <td className="py-3 px-4">
+                                <div className="flex flex-col">
+                                  <span className="font-bold text-gray-100 group-hover:text-[#FFB300] transition text-sm">
+                                    {service.title}
+                                  </span>
+                                  <span className="text-[11px] text-gray-400 mt-0.5 line-clamp-1">
+                                    {service.sub || 'Step-by-step sacred rituals'}
+                                  </span>
+                                </div>
+                              </td>
+
+                              {/* Canonical Key */}
+                              <td className="py-3 px-4">
+                                <span className="text-[11px] font-mono px-2 py-0.5 bg-[#141414] border border-[#2C2C2C] text-amber-400/90 rounded">
+                                  {sKey}
+                                </span>
+                              </td>
+
+                              {/* Route */}
+                              <td className="py-3 px-4">
+                                <span className="text-[11px] font-mono px-2 py-0.5 bg-[#141414] border border-[#2C2C2C] text-gray-400 rounded">
                                   {service.url}
                                 </span>
-                                <span className={`text-[10px] font-medium flex items-center gap-1 ${service.isActive !== false ? 'text-emerald-400' : 'text-gray-400'}`}>
-                                  <span className={`w-1.5 h-1.5 rounded-full ${service.isActive !== false ? 'bg-emerald-400 animate-pulse' : 'bg-gray-500'}`} />
+                              </td>
+
+                              {/* Subcategories count & link */}
+                              <td className="py-3 px-4 text-center" onClick={(e) => e.stopPropagation()}>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedParentCategoryFilter(sKey);
+                                    loadSubcategories(1, '', selectedLang, sKey);
+                                    setActiveTab('subcategories');
+                                  }}
+                                  title="View subcategories in this category"
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 rounded-full font-semibold text-[11px] transition shadow-sm hover:scale-105"
+                                >
+                                  <Layers className="w-3 h-3 text-amber-400" />
+                                  <span className="font-bold">{subCount}</span>
+                                </button>
+                              </td>
+
+                              {/* Status */}
+                              <td className="py-3 px-4 text-center">
+                                <span
+                                  className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium ${service.isActive !== false
+                                    ? 'bg-emerald-950/60 border border-emerald-800/50 text-emerald-300'
+                                    : 'bg-gray-800/60 border border-gray-700/50 text-gray-400'
+                                    }`}
+                                >
+                                  <span
+                                    className={`w-1.5 h-1.5 rounded-full ${service.isActive !== false ? 'bg-emerald-400 animate-pulse' : 'bg-gray-500'
+                                      }`}
+                                  />
                                   {service.isActive !== false ? 'Active' : 'Inactive'}
                                 </span>
-                              </div>
-                            </div>
+                              </td>
 
-                            {/* 3. Devotional Line Artwork & Arrow */}
-                            <div className="flex items-center gap-2 flex-shrink-0">
-                              {artworkSrc ? (
-                                <div className="relative group/art w-12 h-12 flex items-center justify-center rounded-xl overflow-hidden bg-neutral-900 border border-neutral-800">
-                                  <img
-                                    src={resolveArtworkUrl(artworkSrc)}
-                                    alt={service.title}
-                                    className="w-10 h-10 object-contain opacity-85 group-hover:opacity-100 transition transform group-hover:scale-105"
-                                    onError={(e: any) => { e.currentTarget.style.display = 'none'; }}
-                                  />
-                                  <label
-                                    onClick={(e) => e.stopPropagation()}
-                                    className="absolute inset-0 bg-black/70 opacity-0 group-hover/art:opacity-100 flex items-center justify-center cursor-pointer transition rounded-xl"
-                                    title="Upload / Change Category Image"
+                              {/* Actions */}
+                              <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
+                                <div className="flex items-center justify-end gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => handleOpenViewService(service, e)}
+                                    title="View Details by ID"
+                                    className="px-2 py-1 bg-[#141414] hover:bg-[#252525] text-gray-300 hover:text-white rounded border border-[#2C2C2C] flex items-center gap-1 text-[11px] font-semibold transition"
                                   >
-                                    <Upload className="w-4 h-4 text-amber-400" />
-                                    <input
-                                      type="file"
-                                      accept="image/png, image/jpeg, image/webp"
-                                      onChange={(e) => handleQuickServiceArtworkUpload(service.id || service.serviceId, e)}
-                                      className="hidden"
-                                    />
-                                  </label>
+                                    <Eye className="w-3 h-3 text-sky-400" />
+                                    <span>View</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => handleOpenEditService(service, e)}
+                                    title="Edit Devotional Service"
+                                    className="px-2 py-1 bg-[#141414] hover:bg-[#252525] text-gray-300 hover:text-amber-400 rounded border border-[#2C2C2C] flex items-center gap-1 text-[11px] font-semibold transition"
+                                  >
+                                    <Edit3 className="w-3 h-3 text-amber-400" />
+                                    <span>Edit</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => handleDeleteCategoryService(service, e)}
+                                    title="Delete Devotional Service"
+                                    className="px-2 py-1 bg-[#141414] hover:bg-rose-950/40 text-gray-300 hover:text-red-400 rounded border border-[#2C2C2C] hover:border-red-900/40 flex items-center gap-1 text-[11px] font-semibold transition"
+                                  >
+                                    <Trash2 className="w-3 h-3 text-red-400" />
+                                    <span>Delete</span>
+                                  </button>
                                 </div>
-                              ) : (
-                                <label
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="w-12 h-12 flex items-center justify-center rounded-xl bg-neutral-900 border border-dashed border-neutral-700 hover:border-amber-400 text-gray-500 hover:text-amber-400 cursor-pointer transition"
-                                  title="Upload Category Image"
-                                >
-                                  <Upload className="w-4 h-4" />
-                                  <input
-                                    type="file"
-                                    accept="image/png, image/jpeg, image/webp"
-                                    onChange={(e) => handleQuickServiceArtworkUpload(service.id || service.serviceId, e)}
-                                    className="hidden"
-                                  />
-                                </label>
-                              )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
 
-                              <div className="w-7 h-7 rounded-full border border-[#3A3A3A] bg-[#141414] flex items-center justify-center text-gray-400 group-hover:text-[#FFB300] group-hover:border-[#FFB300]/50 transition">
-                                <ArrowRight className="w-3.5 h-3.5" />
-                              </div>
-                            </div>
-                          </div>
+                  {/* Server-Side Pagination Footer */}
+                  <div className="p-4 border-t border-[#2C2C2C] flex flex-col sm:flex-row items-center justify-between gap-3 bg-[#151515]">
+                    <div className="flex items-center gap-3 text-xs text-gray-400">
+                      <span>
+                        Showing page <strong className="text-gray-200">{servicePage}</strong> of <strong className="text-gray-200">{serviceTotalPages}</strong> (Total <strong className="text-gray-200">{serviceTotalCount}</strong> devotional services)
+                      </span>
+                      <span className="text-neutral-600">|</span>
+                      <div className="flex items-center gap-1.5">
+                        <span>Rows per page:</span>
+                        <select
+                          value={serviceLimit}
+                          onChange={(e) => {
+                            const newLim = Number(e.target.value);
+                            setServiceLimit(newLim);
+                            loadCategoryServices(1, serviceSearch, serviceStatusFilter, newLim);
+                          }}
+                          className="bg-[#1E1E1E] border border-[#2C2C2C] rounded px-2 py-1 text-xs text-gray-200 focus:outline-none focus:border-amber-500"
+                        >
+                          <option value={5}>5</option>
+                          <option value={10}>10</option>
+                          <option value={25}>25</option>
+                          <option value={50}>50</option>
+                        </select>
+                      </div>
+                    </div>
 
-                          {/* Card Footer Action Bar */}
-                          <div className="pt-2.5 border-t border-[#2A2A2A] space-y-2">
-                            {/* Top Bar: ID and Subcategories */}
-                            <div className="flex items-center justify-between gap-2 text-xs">
-                              <span className="text-[11px] text-gray-400 font-mono flex items-center gap-1.5 flex-shrink-0">
-                                <span className="text-gray-500">ID:</span>
-                                <span className="text-amber-400/90 font-semibold bg-[#141414] px-1.5 py-0.5 rounded border border-[#2A2A2A]">{sKey}</span>
-                              </span>
-
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const sKey = service.serviceId || service.id;
-                                  setSelectedParentCategoryFilter(sKey);
-                                  loadSubcategories(1, '', selectedLang, sKey);
-                                  setActiveTab('subcategories');
-                                }}
-                                title="Manage Subcategories under this Category"
-                                className="px-2.5 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded-lg border border-amber-500/30 flex items-center gap-1.5 text-[11px] font-semibold transition"
-                              >
-                                <Layers className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
-                                <span>Subcategories</span>
-                              </button>
-                            </div>
-
-                            {/* Bottom Bar: 4-Column Action Grid */}
-                            <div className="grid grid-cols-4 gap-1.5 w-full" onClick={(e) => e.stopPropagation()}>
-                              <label
-                                title="Upload / Replace Category Image"
-                                className="py-1 px-1 bg-[#141414] hover:bg-[#252525] text-gray-300 hover:text-emerald-400 rounded-lg border border-[#2C2C2C] flex items-center justify-center gap-1 text-[11px] font-medium transition cursor-pointer text-center"
-                              >
-                                <Upload className="w-3 h-3 text-emerald-400 flex-shrink-0" />
-                                <span>Image</span>
-                                <input
-                                  type="file"
-                                  accept="image/png, image/jpeg, image/webp"
-                                  onChange={(e) => handleQuickServiceArtworkUpload(service.id || service.serviceId, e)}
-                                  className="hidden"
-                                />
-                              </label>
-                              <button
-                                type="button"
-                                onClick={(e) => handleOpenViewService(service, e)}
-                                title="View Details by ID"
-                                className="py-1 px-1 bg-[#141414] hover:bg-[#252525] text-gray-300 hover:text-white rounded-lg border border-[#2C2C2C] flex items-center justify-center gap-1 text-[11px] font-medium transition text-center"
-                              >
-                                <Eye className="w-3 h-3 text-sky-400 flex-shrink-0" />
-                                <span>View</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={(e) => handleOpenEditService(service, e)}
-                                title="Edit Devotional Service"
-                                className="py-1 px-1 bg-[#141414] hover:bg-[#252525] text-gray-300 hover:text-amber-400 rounded-lg border border-[#2C2C2C] flex items-center justify-center gap-1 text-[11px] font-medium transition text-center"
-                              >
-                                <Edit3 className="w-3 h-3 text-amber-400 flex-shrink-0" />
-                                <span>Edit</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={(e) => handleDeleteCategoryService(service, e)}
-                                title="Delete Devotional Service"
-                                className="py-1 px-1 bg-[#141414] hover:bg-rose-950/40 text-gray-300 hover:text-red-400 rounded-lg border border-[#2C2C2C] hover:border-red-900/40 flex items-center justify-center gap-1 text-[11px] font-medium transition text-center"
-                              >
-                                <Trash2 className="w-3 h-3 text-red-400 flex-shrink-0" />
-                                <span>Delete</span>
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
+                    <div className="flex items-center gap-2">
+                      <button
+                        disabled={servicePage <= 1}
+                        onClick={() => loadCategoryServices(servicePage - 1, serviceSearch, serviceStatusFilter, serviceLimit)}
+                        className="px-3 py-1.5 bg-[#1E1E1E] border border-[#2C2C2C] rounded-lg disabled:opacity-40 hover:bg-neutral-800 text-xs text-gray-300 transition flex items-center gap-1"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                        <span>Prev</span>
+                      </button>
+                      <span className="text-xs font-semibold px-2 text-amber-400">{servicePage} / {serviceTotalPages}</span>
+                      <button
+                        disabled={servicePage >= serviceTotalPages}
+                        onClick={() => loadCategoryServices(servicePage + 1, serviceSearch, serviceStatusFilter, serviceLimit)}
+                        className="px-3 py-1.5 bg-[#1E1E1E] border border-[#2C2C2C] rounded-lg disabled:opacity-40 hover:bg-neutral-800 text-xs text-gray-300 transition flex items-center gap-1"
+                      >
+                        <span>Next</span>
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -5220,40 +5863,42 @@ export default function EnterpriseSuperAdminDashboard() {
 
           {/* IN-PAGE NORMAL PAGE MODE: VIEW DETAILS (SANCTUM GREEN & GOLD SACRED PREVIEW) */}
           {pageMode === 'VIEW_CATEGORY' && viewDetail && (
-            <div className="space-y-6 animate-in fade-in duration-200">
+            <div className="space-y-4 animate-in fade-in duration-200">
+              {/* Top Navigation: Back to List on top of the card */}
+              <div className="flex items-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPageMode('LIST');
+                    setViewDetail(null);
+                  }}
+                  className="px-3.5 py-1.5 rounded-lg bg-[#0D2E21] hover:bg-[#133F2E] text-gray-200 hover:text-white text-xs font-semibold transition inline-flex items-center gap-2 border border-[#1E5C41] shadow hover:border-[#FFB300]/50"
+                >
+                  <ArrowLeft className="w-4 h-4 text-[#FFB300]" />
+                  <span>Back to List</span>
+                </button>
+              </div>
+
               {/* In-page Header: Logo Colors Sanctum Green & Divine Gold */}
               <div className="bg-[#071C14] rounded-xl border border-[#1A4E38] p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xl">
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPageMode('LIST');
-                      setViewDetail(null);
-                    }}
-                    className="px-3 py-1.5 rounded-lg bg-[#0D2E21] hover:bg-[#133F2E] text-gray-200 text-xs font-semibold transition flex items-center gap-1.5 border border-[#1E5C41] shadow"
-                  >
-                    <ArrowLeft className="w-4 h-4 text-[#FFB300]" />
-                    <span>Back to List</span>
-                  </button>
-                  <div>
-                    <h3 className="text-base font-bold text-[#FFB300] flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-[#FFB300]" />
-                      <span>
-                        {viewDetail.isType
-                          ? 'Devotional Subcategory Type / Sacred Verse'
-                          : viewDetail.isSubcategory || viewDetail.parentId
-                            ? 'Devotional Subcategory Sanctum Details'
-                            : 'Devotional Master Category'}
-                      </span>
-                    </h3>
-                    <p className="text-xs text-emerald-400/80">
+                <div>
+                  <h3 className="text-base font-bold text-[#FFB300] flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-[#FFB300]" />
+                    <span>
                       {viewDetail.isType
-                        ? `Type DB Record #${viewDetail.id} — Linked to Subcategory`
+                        ? 'Devotional Subcategory Type / Sacred Verse'
                         : viewDetail.isSubcategory || viewDetail.parentId
-                          ? `Subcategory Record #${viewDetail.id} — Live Sanctum Worship Flow`
-                          : `Master Category Record #${viewDetail.id}`}
-                    </p>
-                  </div>
+                          ? 'Devotional Subcategory Sanctum Details'
+                          : 'Devotional Master Category'}
+                    </span>
+                  </h3>
+                  <p className="text-xs text-emerald-400/80">
+                    {viewDetail.isType
+                      ? `Type DB Record #${viewDetail.id} — Linked to Subcategory`
+                      : viewDetail.isSubcategory || viewDetail.parentId
+                        ? `Subcategory Record #${viewDetail.id} — Live Sanctum Worship Flow`
+                        : `Master Category Record #${viewDetail.id}`}
+                  </p>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2.5">
@@ -5280,64 +5925,89 @@ export default function EnterpriseSuperAdminDashboard() {
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (viewDetail.isType) {
-                        const match = devotionalContent.find(c => String(c.id) === String(viewDetail.id));
-                        if (match) {
-                          handleOpenEditType(match);
-                        } else {
-                          handleOpenEditType({
-                            id: Number(viewDetail.id),
-                            categoryId: Number(viewDetail.parentId),
+                  {/* Action Buttons: Edit and Delete Side by Side */}
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (viewDetail.isType) {
+                          const match = devotionalContent.find(c => String(c.id) === String(viewDetail.id));
+                          if (match) {
+                            handleOpenEditType(match);
+                          } else {
+                            handleOpenEditType({
+                              id: Number(viewDetail.id),
+                              categoryId: Number(viewDetail.parentId),
+                              title: viewDetail.title,
+                              slug: viewDetail.slug,
+                              sacredText: viewDetail.sacredText,
+                              meaning: viewDetail.meaning,
+                              isPublished: viewDetail.isPublished !== false
+                            });
+                          }
+                        } else if (viewDetail.isSubcategory || viewDetail.parentId) {
+                          handleOpenEditSubcategory({
+                            id: String(viewDetail.id),
                             title: viewDetail.title,
                             slug: viewDetail.slug,
-                            sacredText: viewDetail.sacredText,
-                            meaning: viewDetail.meaning,
-                            isPublished: viewDetail.isPublished !== false
+                            parentId: Number(viewDetail.parentId) || 1,
+                            description: viewDetail.description || '',
+                            displayOrder: viewDetail.displayOrder || 1,
+                            imageUrl: viewDetail.imageUrl || '',
+                            parentTitle: viewDetail.parentTitle || 'Pooja Vidhanam',
                           });
-                        }
-                      } else if (viewDetail.isSubcategory || viewDetail.parentId) {
-                        handleOpenEditSubcategory({
-                          id: String(viewDetail.id),
-                          title: viewDetail.title,
-                          slug: viewDetail.slug,
-                          parentId: Number(viewDetail.parentId) || 1,
-                          description: viewDetail.description || '',
-                          displayOrder: viewDetail.displayOrder || 1,
-                          imageUrl: viewDetail.imageUrl || '',
-                          parentTitle: viewDetail.parentTitle || 'Pooja Vidhanam',
-                        });
-                      } else {
-                        const matchingCat = categories.find(c => String(c.id) === String(viewDetail.id));
-                        if (matchingCat) {
-                          handleOpenEditCategory(matchingCat);
                         } else {
-                          setEditingId(viewDetail.id);
-                          setFormTitle(viewDetail.title);
-                          setFormSlug(viewDetail.slug);
-                          setFormIsAudio(viewDetail.isAudio);
-                          setFormDescription(viewDetail.description || '');
-                          setPageMode('EDIT_CATEGORY');
+                          const matchingCat = categories.find(c => String(c.id) === String(viewDetail.id));
+                          if (matchingCat) {
+                            handleOpenEditCategory(matchingCat);
+                          } else {
+                            setEditingId(viewDetail.id);
+                            setFormTitle(viewDetail.title);
+                            setFormSlug(viewDetail.slug);
+                            setFormIsAudio(viewDetail.isAudio);
+                            setFormDescription(viewDetail.description || '');
+                            setPageMode('EDIT_CATEGORY');
+                          }
                         }
-                      }
-                    }}
-                    className="flex items-center gap-1.5 px-4 py-2 bg-[#FFB300] hover:bg-[#FFA000] text-[#071C14] font-bold text-xs rounded-lg transition shadow-lg shadow-amber-500/20"
-                  >
-                    <Edit3 className="w-3.5 h-3.5" />
-                    <span>Edit This Record</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPageMode('LIST');
-                      setViewDetail(null);
-                    }}
-                    className="px-4 py-2 bg-[#0D2E21] hover:bg-[#133F2E] border border-[#1E5C41] rounded-lg text-gray-200 font-semibold text-xs transition"
-                  >
-                    Close
-                  </button>
+                      }}
+                      className="flex items-center gap-1.5 px-3.5 py-2 bg-[#FFB300] hover:bg-[#FFA000] text-[#071C14] font-bold text-xs rounded-lg transition shadow-lg shadow-amber-500/20"
+                      title="Edit this record"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                      <span>Edit</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (viewDetail.isType) {
+                          if (confirm(`Archive type / sacred verse "${viewDetail.title}" (#${viewDetail.id})?`)) {
+                            await handleDeleteContent(Number(viewDetail.id), viewDetail.title);
+                            setPageMode('LIST');
+                            setViewDetail(null);
+                          }
+                        } else if (viewDetail.isSubcategory || viewDetail.parentId) {
+                          if (confirm(`Archive subcategory "${viewDetail.title}" (#${viewDetail.id})?`)) {
+                            await handleDeleteSubcategory(String(viewDetail.id), viewDetail.title);
+                            setPageMode('LIST');
+                            setViewDetail(null);
+                          }
+                        } else {
+                          if (confirm(`Archive category "${viewDetail.title}" (#${viewDetail.id})?`)) {
+                            await handleDeleteCategory(viewDetail.id, viewDetail.title);
+                            setPageMode('LIST');
+                            setViewDetail(null);
+                          }
+                        }
+                      }}
+                      className="flex items-center gap-1.5 px-3.5 py-2 bg-red-950/60 hover:bg-red-900/80 border border-red-700/60 text-red-300 hover:text-white font-bold text-xs rounded-lg transition shadow-lg shadow-red-900/20"
+                      title="Delete this record"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                      <span>Delete</span>
+                    </button>
+                  </div>
+
                 </div>
               </div>
 
@@ -5653,6 +6323,89 @@ export default function EnterpriseSuperAdminDashboard() {
                         </div>
                       </div>
                     )}
+
+                    {/* Quick Action Buttons: Edit and Delete Side by Side */}
+                    <div className="pt-3 border-t border-[#16422F] flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (viewDetail.isType) {
+                            const match = devotionalContent.find(c => String(c.id) === String(viewDetail.id));
+                            if (match) {
+                              handleOpenEditType(match);
+                            } else {
+                              handleOpenEditType({
+                                id: Number(viewDetail.id),
+                                categoryId: Number(viewDetail.parentId),
+                                title: viewDetail.title,
+                                slug: viewDetail.slug,
+                                sacredText: viewDetail.sacredText,
+                                meaning: viewDetail.meaning,
+                                isPublished: viewDetail.isPublished !== false
+                              });
+                            }
+                          } else if (viewDetail.isSubcategory || viewDetail.parentId) {
+                            handleOpenEditSubcategory({
+                              id: String(viewDetail.id),
+                              title: viewDetail.title,
+                              slug: viewDetail.slug,
+                              parentId: Number(viewDetail.parentId) || 1,
+                              description: viewDetail.description || '',
+                              displayOrder: viewDetail.displayOrder || 1,
+                              imageUrl: viewDetail.imageUrl || '',
+                              parentTitle: viewDetail.parentTitle || 'Pooja Vidhanam',
+                            });
+                          } else {
+                            const matchingCat = categories.find(c => String(c.id) === String(viewDetail.id));
+                            if (matchingCat) {
+                              handleOpenEditCategory(matchingCat);
+                            } else {
+                              setEditingId(viewDetail.id);
+                              setFormTitle(viewDetail.title);
+                              setFormSlug(viewDetail.slug);
+                              setFormIsAudio(viewDetail.isAudio);
+                              setFormDescription(viewDetail.description || '');
+                              setPageMode('EDIT_CATEGORY');
+                            }
+                          }
+                        }}
+                        className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-[#FFB300] hover:bg-[#FFA000] text-[#071C14] font-bold text-xs rounded-lg transition shadow"
+                        title="Edit this record"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                        <span>Edit</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (viewDetail.isType) {
+                            if (confirm(`Archive type / sacred verse "${viewDetail.title}" (#${viewDetail.id})?`)) {
+                              await handleDeleteContent(Number(viewDetail.id), viewDetail.title);
+                              setPageMode('LIST');
+                              setViewDetail(null);
+                            }
+                          } else if (viewDetail.isSubcategory || viewDetail.parentId) {
+                            if (confirm(`Archive subcategory "${viewDetail.title}" (#${viewDetail.id})?`)) {
+                              await handleDeleteSubcategory(String(viewDetail.id), viewDetail.title);
+                              setPageMode('LIST');
+                              setViewDetail(null);
+                            }
+                          } else {
+                            if (confirm(`Archive category "${viewDetail.title}" (#${viewDetail.id})?`)) {
+                              await handleDeleteCategory(viewDetail.id, viewDetail.title);
+                              setPageMode('LIST');
+                              setViewDetail(null);
+                            }
+                          }
+                        }}
+                        className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-red-950/60 hover:bg-red-900/80 border border-red-700/60 text-red-300 hover:text-white font-bold text-xs rounded-lg transition shadow"
+                        title="Delete this record"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                        <span>Delete</span>
+                      </button>
+                    </div>
                   </div>
 
                   {/* Multi-Language Database Translations */}
@@ -5731,59 +6484,7 @@ export default function EnterpriseSuperAdminDashboard() {
                     </div>
                   )}
 
-                  {/* Chanting Steps Sequence (Ordered) */}
-                  <div className="bg-[#082219] border border-[#1A4E38] rounded-xl p-5 shadow-xl space-y-3">
-                    <div className="flex items-center justify-between pb-2 border-b border-[#16422F]">
-                      <span className="text-xs font-bold text-gray-200 uppercase tracking-wide">
-                        Chanting Sequence &amp; Steps
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleOpenCreateType(viewDetail.id)}
-                        className="px-2.5 py-1 bg-[#FFB300] hover:bg-[#FFA000] text-[#071C14] rounded-lg text-xs font-bold transition flex items-center gap-1 shadow"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>Add Step</span>
-                      </button>
-                    </div>
 
-                    {viewDetail.contents && viewDetail.contents.length > 0 ? (
-                      <div className="space-y-2 max-h-[380px] overflow-y-auto pr-1 text-xs">
-                        {viewDetail.contents.map((step, idx) => (
-                          <div
-                            key={step.id || idx}
-                            className="bg-[#061A13] p-3 rounded-lg border border-[#16422F] hover:border-[#FFB300]/40 transition flex items-center justify-between gap-3 group"
-                          >
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-2">
-                                <span className="font-mono text-[#FFB300] font-bold text-[10px]">#{idx + 1}</span>
-                                <span className="font-semibold text-gray-100 truncate">{step.title}</span>
-                              </div>
-                              {step.sacredText && (
-                                <p className="text-gray-400 text-[11px] truncate mt-0.5">{step.sacredText}</p>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-1 flex-shrink-0">
-                              <button
-                                type="button"
-                                onClick={() => handleOpenEditType(step as any)}
-                                className="p-1.5 hover:bg-[#0E2F23] rounded text-[#FFB300] transition"
-                                title="Edit this Step / Verse"
-                              >
-                                <Edit3 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="p-6 text-center text-xs text-gray-400 bg-[#061A13] rounded-lg border border-[#16422F]">
-                        <BookOpen className="w-6 h-6 mx-auto mb-2 text-[#FFB300] opacity-60" />
-                        <p className="font-semibold text-gray-300">No subcategory types / verses attached yet.</p>
-                        <p className="text-[11px] text-gray-400 mt-1">Click &quot;+ Add Step&quot; above to create worship steps and recitations under this subcategory.</p>
-                      </div>
-                    )}
-                  </div>
 
                 </div>
 
@@ -5794,27 +6495,29 @@ export default function EnterpriseSuperAdminDashboard() {
 
           {/* IN-PAGE NORMAL PAGE MODE: CREATE / EDIT CATEGORY (SANCTUM GREEN & GOLD LAYOUT MATCHING VIEW DETAILED) */}
           {pageMode === 'EDIT_CATEGORY' && (
-            <div className="space-y-6 animate-in fade-in duration-200">
+            <div className="space-y-4 animate-in fade-in duration-200">
+              {/* Top Navigation: Back to List on top of the card */}
+              <div className="flex items-center">
+                <button
+                  type="button"
+                  onClick={() => setPageMode('LIST')}
+                  className="px-3.5 py-1.5 rounded-lg bg-[#0D2E21] hover:bg-[#133F2E] text-gray-200 hover:text-white text-xs font-semibold transition inline-flex items-center gap-2 border border-[#1E5C41] shadow hover:border-[#FFB300]/50"
+                >
+                  <ArrowLeft className="w-4 h-4 text-[#FFB300]" />
+                  <span>Back to List</span>
+                </button>
+              </div>
+
               {/* Header: Sanctum Green & Divine Gold */}
               <div className="bg-[#071C14] rounded-xl border border-[#1A4E38] p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xl">
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setPageMode('LIST')}
-                    className="px-3 py-1.5 rounded-lg bg-[#0D2E21] hover:bg-[#133F2E] text-gray-200 text-xs font-semibold transition flex items-center gap-1.5 border border-[#1E5C41] shadow"
-                  >
-                    <ArrowLeft className="w-4 h-4 text-[#FFB300]" />
-                    <span>Back to Categories</span>
-                  </button>
-                  <div>
-                    <h3 className="text-base font-bold text-[#FFB300] flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-[#FFB300]" />
-                      <span>{editingId ? 'Edit Devotional Category' : 'Create New Devotional Category'}</span>
-                    </h3>
-                    <p className="text-xs text-emerald-400/80">
-                      {editingId ? `Master Category Record #${editingId} — Sanctum Pillar` : 'New Master Category Record'}
-                    </p>
-                  </div>
+                <div>
+                  <h3 className="text-base font-bold text-[#FFB300] flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-[#FFB300]" />
+                    <span>{editingId ? 'Edit Devotional Category' : 'Create New Devotional Category'}</span>
+                  </h3>
+                  <p className="text-xs text-emerald-400/80">
+                    {editingId ? `Master Category Record #${editingId} — Sanctum Pillar` : 'New Master Category Record'}
+                  </p>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2.5">
@@ -6054,30 +6757,33 @@ export default function EnterpriseSuperAdminDashboard() {
 
           {/* IN-PAGE NORMAL PAGE MODE: CREATE / EDIT SUBCATEGORY (SANCTUM GREEN & GOLD LAYOUT MATCHING VIEW DETAILED) */}
           {pageMode === 'EDIT_SUBCATEGORY' && (
-            <div className="space-y-6 animate-in fade-in duration-200">
+            <div className="space-y-4 animate-in fade-in duration-200">
+              {/* Top Navigation: Back to List on top of the card */}
+              <div className="flex items-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPageMode('LIST');
+                    setEditingSubId(null);
+                    setViewDetail(null);
+                  }}
+                  className="px-3.5 py-1.5 rounded-lg bg-[#0D2E21] hover:bg-[#133F2E] text-gray-200 hover:text-white text-xs font-semibold transition inline-flex items-center gap-2 border border-[#1E5C41] shadow hover:border-[#FFB300]/50"
+                >
+                  <ArrowLeft className="w-4 h-4 text-[#FFB300]" />
+                  <span>Back to List</span>
+                </button>
+              </div>
+
               {/* Header: Sanctum Green & Divine Gold */}
               <div className="bg-[#071C14] rounded-xl border border-[#1A4E38] p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xl">
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPageMode('LIST');
-                      setViewDetail(null);
-                    }}
-                    className="px-3 py-1.5 rounded-lg bg-[#0D2E21] hover:bg-[#133F2E] text-gray-200 text-xs font-semibold transition flex items-center gap-1.5 border border-[#1E5C41] shadow"
-                  >
-                    <ArrowLeft className="w-4 h-4 text-[#FFB300]" />
-                    <span>Back to List</span>
-                  </button>
-                  <div>
-                    <h3 className="text-base font-bold text-[#FFB300] flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-[#FFB300]" />
-                      <span>{editingSubId ? 'Edit Devotional Subcategory Sanctum Details' : 'Create Devotional Subcategory'}</span>
-                    </h3>
-                    <p className="text-xs text-emerald-400/80">
-                      {editingSubId ? `Subcategory Record #${editingSubId} — Live Sanctum Worship Flow` : 'New Sacred Subcategory Record'}
-                    </p>
-                  </div>
+                <div>
+                  <h3 className="text-base font-bold text-[#FFB300] flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-[#FFB300]" />
+                    <span>{editingSubId ? 'Edit Devotional Subcategory Sanctum Details' : 'Create Devotional Subcategory'}</span>
+                  </h3>
+                  <p className="text-xs text-emerald-400/80">
+                    {editingSubId ? `Subcategory Record #${editingSubId} — Live Sanctum Worship Flow` : 'New Sacred Subcategory Record'}
+                  </p>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2.5">
@@ -6106,21 +6812,11 @@ export default function EnterpriseSuperAdminDashboard() {
 
                   <button
                     type="button"
-                    onClick={() => {
-                      setPageMode('LIST');
-                      setViewDetail(null);
-                    }}
-                    className="px-4 py-2 bg-[#0D2E21] hover:bg-[#133F2E] border border-[#1E5C41] rounded-lg text-gray-200 font-semibold text-xs transition"
-                  >
-                    Close
-                  </button>
-                  <button
-                    type="button"
                     onClick={handleSaveSubcategory}
                     className="flex items-center gap-1.5 px-5 py-2 bg-[#FFB300] hover:bg-[#FFA000] text-[#071C14] font-bold text-xs rounded-lg transition shadow-lg shadow-amber-500/20"
                   >
                     <Save className="w-3.5 h-3.5" />
-                    <span>Save Subcategory to MySQL</span>
+                    <span>Save</span>
                   </button>
                 </div>
               </div>
@@ -6316,39 +7012,60 @@ export default function EnterpriseSuperAdminDashboard() {
                     </div>
 
                     <div className="space-y-3 text-xs">
-                      {/* Parent Category & Total Steps */}
-                      <div className="grid grid-cols-2 gap-3">
+                      {/* Parent Category & God / Goddess (Deity) Selection - Pure DB-driven from API */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div className="bg-[#061A13] p-3 rounded-lg border border-[#16422F]">
-                          <label className="text-[10px] text-gray-400 uppercase block font-semibold mb-1">Parent Category *</label>
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="text-[10px] text-gray-400 uppercase font-semibold">Parent Category *</label>
+                            <span className="text-[9px] text-emerald-400 font-mono">
+                              {parentLookupList.length > 0 ? `${parentLookupList.length} in DB` : 'Fetching...'}
+                            </span>
+                          </div>
                           <select
                             value={subFormParentId}
-                            onChange={(e) => setSubFormParentId(e.target.value)}
+                            onChange={(e) => setSubFormParentId(Number(e.target.value))}
                             className="w-full bg-[#071C14] border border-[#1E5C41] rounded px-2.5 py-1.5 text-xs text-[#FEF08A] font-medium focus:outline-none focus:border-[#FFB300]"
                           >
-                            <option value="">-- Choose Parent --</option>
-                            {parentLookupList.map(p => (
+                            <option value="">-- Select Parent Category from DB --</option>
+                            {parentLookupList.map((p: any) => (
                               <option key={p.id} value={p.id}>
                                 {p.parentId ? `└── ${p.title}` : p.title}
                               </option>
                             ))}
-                            {/* Any category from Devotional Services not yet in parentLookupList */}
-                            {devotionalServices
-                              .filter(s => {
-                                const sId = (s.serviceId || s.id || '').toLowerCase();
-                                return !parentLookupList.some(p => p.slug?.toLowerCase() === sId || String(p.id) === sId);
-                              })
-                              .map(s => (
-                                <option key={s.id || s.serviceId} value={s.id || s.serviceId}>
-                                  {s.title}
-                                </option>
-                              ))}
                           </select>
                         </div>
+
                         <div className="bg-[#061A13] p-3 rounded-lg border border-[#16422F]">
-                          <span className="text-[10px] text-gray-400 uppercase block font-semibold mb-1">Total Steps / Types</span>
-                          <span className="text-[#FFB300] font-bold text-xs block pt-1.5">
-                            {viewDetail?.contents?.length || 0} Sacred Steps
-                          </span>
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="text-[10px] text-[#FFB300] uppercase font-semibold flex items-center gap-1">
+                              <span>🕉️</span>
+                              <span>God / Goddess (Deity) *</span>
+                            </label>
+                            <span className="text-[9px] text-emerald-400 font-mono">
+                              {deities.length > 0 ? `${deities.length} in DB` : 'Fetching...'}
+                            </span>
+                          </div>
+                          <select
+                            value={subFormDeityId}
+                            onChange={(e) => setSubFormDeityId(e.target.value)}
+                            className="w-full bg-[#071C14] border border-[#1E5C41] rounded px-2.5 py-1.5 text-xs text-[#FEF08A] font-semibold focus:outline-none focus:border-[#FFB300]"
+                          >
+                            {deities.length === 0 ? (
+                              <option value="">Loading Deities from DB...</option>
+                            ) : (
+                              deities.map((d: any) => {
+                                const dId = d.slug || d.id;
+                                const dName = d.name || d.englishName || d.id;
+                                const dAlt = (d.teluguName && d.teluguName !== dName) ? d.teluguName : (d.alternateName || '');
+                                return (
+                                  <option key={dId} value={dId}>
+                                    🕉️ {dName}{dAlt ? ` (${dAlt})` : ''}
+                                  </option>
+                                );
+                              })
+                            )}
+                          </select>
+
                         </div>
                       </div>
 
@@ -6444,7 +7161,7 @@ export default function EnterpriseSuperAdminDashboard() {
                           className="px-4 py-1.5 bg-[#FFB300] hover:bg-[#FFA000] text-[#071C14] rounded-lg text-xs font-bold transition shadow-lg shadow-amber-500/20 flex items-center gap-1.5"
                         >
                           <Save className="w-3.5 h-3.5" />
-                          <span>Save Subcategory to MySQL</span>
+                          <span>Save</span>
                         </button>
                       </div>
                     </div>
@@ -6458,19 +7175,27 @@ export default function EnterpriseSuperAdminDashboard() {
                       </span>
                       <button
                         type="button"
-                        onClick={() => openTranslationModal('categories', editingSubId || undefined, [
-                          { key: 'title', label: 'Subcategory Title', value: subFormTitle },
-                          { key: 'description', label: 'Sacred Notes', value: subFormDescription, isHtml: true }
-                        ], (trans, lang) => {
-                          if (trans.title) setSubFormTitle(trans.title);
-                          if (trans.description) setSubFormDescription(trans.description);
-                          if (lang) setSelectedLang(lang);
-                        })}
-                        className="bg-[#FFB300]/15 hover:bg-[#FFB300]/25 text-[#FFB300] border border-[#FFB300]/40 px-2.5 py-1 rounded text-[11px] font-semibold transition flex items-center gap-1"
+                        onClick={handleOpenSubcategoryTranslation}
+                        className="bg-[#FFB300]/15 hover:bg-[#FFB300]/25 text-[#FFB300] border border-[#FFB300]/40 px-2.5 py-1 rounded text-[11px] font-semibold transition flex items-center gap-1 shadow-sm"
+                        title="Auto-translate into English, Tamil, Kannada, & Hindi"
                       >
                         <Sparkles className="w-3 h-3 text-[#FFB300]" />
                         <span>✨ Translate (v3)</span>
                       </button>
+                    </div>
+
+                    {/* Dual Workflow Guidance Banner */}
+                    <div className="bg-[#061A13] border border-[#16422F] rounded-lg p-2.5 text-[11px] text-gray-300 space-y-1">
+                      <div className="flex items-center gap-1.5 font-bold text-amber-300 text-xs">
+                        <span>🌐</span>
+                        <span>Multi-Language Workflow</span>
+                      </div>
+                      <p className="text-gray-400">
+                        <strong className="text-amber-300/90">Way 1 (Auto):</strong> Click <span className="text-[#FFB300] font-semibold">&quot;✨ Translate (v3)&quot;</span> to select target languages and automatically translate &amp; save to MySQL.
+                      </p>
+                      <p className="text-gray-400">
+                        <strong className="text-amber-300/90">Way 2 (Manual):</strong> Click any DB Lang button (<span className="text-[#FFB300] font-mono">TE, EN, TA, KN, HI</span>) above to enter or paste custom text and save.
+                      </p>
                     </div>
 
                     {viewDetail?.translations && viewDetail.translations.length > 0 ? (
@@ -6562,59 +7287,7 @@ export default function EnterpriseSuperAdminDashboard() {
                     </div>
                   )}
 
-                  {/* Card 4: Chanting Sequence & Steps (Ordered) */}
-                  <div className="bg-[#082219] border border-[#1A4E38] rounded-xl p-5 shadow-xl space-y-3">
-                    <div className="flex items-center justify-between pb-2 border-b border-[#16422F]">
-                      <span className="text-xs font-bold text-gray-200 uppercase tracking-wide">
-                        Chanting Sequence &amp; Steps
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleOpenCreateType(editingSubId || viewDetail?.id)}
-                        className="px-2.5 py-1 bg-[#FFB300] hover:bg-[#FFA000] text-[#071C14] rounded-lg text-xs font-bold transition flex items-center gap-1 shadow"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>Add Step</span>
-                      </button>
-                    </div>
 
-                    {viewDetail?.contents && viewDetail.contents.length > 0 ? (
-                      <div className="space-y-2 max-h-[380px] overflow-y-auto pr-1 text-xs">
-                        {viewDetail.contents.map((step, idx) => (
-                          <div
-                            key={step.id || idx}
-                            className="bg-[#061A13] p-3 rounded-lg border border-[#16422F] hover:border-[#FFB300]/40 transition flex items-center justify-between gap-3 group"
-                          >
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-2">
-                                <span className="font-mono text-[#FFB300] font-bold text-[10px]">#{idx + 1}</span>
-                                <span className="font-semibold text-gray-100 truncate">{step.title}</span>
-                              </div>
-                              {step.sacredText && (
-                                <p className="text-gray-400 text-[11px] truncate mt-0.5">{step.sacredText}</p>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-1 flex-shrink-0">
-                              <button
-                                type="button"
-                                onClick={() => handleOpenEditType(step as any)}
-                                className="p-1.5 hover:bg-[#0E2F23] rounded text-[#FFB300] transition"
-                                title="Edit this Step / Verse"
-                              >
-                                <Edit3 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="p-6 text-center text-xs text-gray-400 bg-[#061A13] rounded-lg border border-[#16422F]">
-                        <BookOpen className="w-6 h-6 mx-auto mb-2 text-[#FFB300] opacity-60" />
-                        <p className="font-semibold text-gray-300">No subcategory types / verses attached yet.</p>
-                        <p className="text-[11px] text-gray-400 mt-1">Click &quot;+ Add Step&quot; above to create worship steps and recitations under this subcategory.</p>
-                      </div>
-                    )}
-                  </div>
 
                 </div>
               </div>
@@ -6623,27 +7296,29 @@ export default function EnterpriseSuperAdminDashboard() {
 
           {/* IN-PAGE NORMAL PAGE MODE: CREATE / EDIT SUBCATEGORY TYPE (SANCTUM GREEN & GOLD LAYOUT MATCHING VIEW DETAILED) */}
           {pageMode === 'EDIT_TYPE' && (
-            <div className="space-y-6 animate-in fade-in duration-200">
+            <div className="space-y-4 animate-in fade-in duration-200">
+              {/* Top Navigation: Back to List on top of the card */}
+              <div className="flex items-center">
+                <button
+                  type="button"
+                  onClick={() => setPageMode('LIST')}
+                  className="px-3.5 py-1.5 rounded-lg bg-[#0D2E21] hover:bg-[#133F2E] text-gray-200 hover:text-white text-xs font-semibold transition inline-flex items-center gap-2 border border-[#1E5C41] shadow hover:border-[#FFB300]/50"
+                >
+                  <ArrowLeft className="w-4 h-4 text-[#FFB300]" />
+                  <span>Back to List</span>
+                </button>
+              </div>
+
               {/* Header: Sanctum Green & Divine Gold */}
               <div className="bg-[#071C14] rounded-xl border border-[#1A4E38] p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xl">
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setPageMode('LIST')}
-                    className="px-3 py-1.5 rounded-lg bg-[#0D2E21] hover:bg-[#133F2E] text-gray-200 text-xs font-semibold transition flex items-center gap-1.5 border border-[#1E5C41] shadow"
-                  >
-                    <ArrowLeft className="w-4 h-4 text-[#FFB300]" />
-                    <span>Back to Types</span>
-                  </button>
-                  <div>
-                    <h3 className="text-base font-bold text-[#FFB300] flex items-center gap-2">
-                      <BookOpen className="w-4 h-4 text-[#FFB300]" />
-                      <span>{editingTypeId ? 'Edit Subcategory Type / Sacred Verse' : 'Create Subcategory Type / Sacred Verse'}</span>
-                    </h3>
-                    <p className="text-xs text-emerald-400/80">
-                      {editingTypeId ? `Type DB Record #${editingTypeId} — Chanting Verse &amp; Spiritual Meaning` : 'New Sacred Chanting Verse Record'}
-                    </p>
-                  </div>
+                <div>
+                  <h3 className="text-base font-bold text-[#FFB300] flex items-center gap-2">
+                    <BookOpen className="w-4 h-4 text-[#FFB300]" />
+                    <span>{editingTypeId ? 'Edit Subcategory Type / Sacred Verse' : 'Create Subcategory Type / Sacred Verse'}</span>
+                  </h3>
+                  <p className="text-xs text-emerald-400/80">
+                    {editingTypeId ? `Type DB Record #${editingTypeId} — Chanting Verse &amp; Spiritual Meaning` : 'New Sacred Chanting Verse Record'}
+                  </p>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2.5">
@@ -7224,7 +7899,7 @@ export default function EnterpriseSuperAdminDashboard() {
                                       title="View subcategories under this category"
                                     >
                                       <Layers className="w-3.5 h-3.5" />
-                                      <span>{item.subcategoriesCount || 0} subcategories</span>
+                                      <span className="font-bold">{item.subcategoriesCount || 0}</span>
                                     </button>
                                   </td>
                                   <td className="px-6 py-4">
@@ -7362,7 +8037,7 @@ export default function EnterpriseSuperAdminDashboard() {
                     {/* Filter Pills with Bulletproof Category Matching */}
                     <div className="pt-4">
                       <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block mb-2.5">
-                        Filter by Parent Category ({Math.max(parentLookupList.length, devotionalServices.length, 9)} Categories):
+                        Filter by Parent Category (9 Categories):
                       </span>
                       <div className="flex flex-wrap items-center gap-2">
                         {/* All Categories Button */}
@@ -7379,7 +8054,9 @@ export default function EnterpriseSuperAdminDashboard() {
                         >
                           <span>All Categories</span>
                           <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${selectedParentCategoryFilter === 'all' ? 'bg-black/30 text-black' : 'bg-neutral-800 text-gray-400'}`}>
-                            {selectedParentCategoryFilter === 'all' ? subTotalCount || subcategories.length : (parentLookupList.reduce((acc, p) => acc + (p.subcategoriesCount || 0), 0) || subcategories.length)}
+                            {selectedParentCategoryFilter === 'all'
+                              ? subTotalCount || subcategories.length
+                              : (Object.values(parentCategoryCounts).reduce((acc, c) => acc + c, 0) || subTotalCount || subcategories.length)}
                           </span>
                         </button>
 
@@ -7412,7 +8089,14 @@ export default function EnterpriseSuperAdminDashboard() {
                           }
 
                           const targetId = matchedParent ? String(matchedParent.id) : (cat.exactId ? String(cat.exactId) : cat.key);
-                          const count = matchedParent?.subcategoriesCount ?? 0;
+                          const count = (matchedParent && matchedParent.subcategoriesCount !== undefined && matchedParent.subcategoriesCount > 0)
+                            ? matchedParent.subcategoriesCount
+                            : (parentCategoryCounts[cat.key] ??
+                              (cat.key === 'songs' ? parentCategoryCounts['bhajans'] : undefined) ??
+                              (cat.key === 'bhajans' ? parentCategoryCounts['songs'] : undefined) ??
+                              (cat.key === 'live-streams' ? parentCategoryCounts['darshan'] : undefined) ??
+                              (cat.key === 'donations' ? parentCategoryCounts['annadanam'] : undefined) ??
+                              0);
                           const isSelected = selectedParentCategoryFilter === targetId || selectedParentCategoryFilter === cat.key || (matchedParent && (selectedParentCategoryFilter === matchedParent.slug || String(selectedParentCategoryFilter) === String(matchedParent.id)));
 
                           return (
@@ -7436,85 +8120,6 @@ export default function EnterpriseSuperAdminDashboard() {
                             </button>
                           );
                         })}
-
-                        {/* Custom & Dynamic Parent Categories from DB (e.g. Vinod, etc.) */}
-                        {parentLookupList
-                          .filter(p => !p.parentId)
-                          .filter(p => {
-                            const pSlug = (p.slug || '').toLowerCase();
-                            const pId = String(p.id);
-                            return ![
-                              '113', '114', '115', '116', '117', '14', '15',
-                              'pooja', 'pooja-vidhanam', 'poojalu-vrathaalu',
-                              'stotras', 'divine-stotras', 'stotramulu', 'slogans-of-sri-ayyappa-swami',
-                              'slokas', 'daily-slokas',
-                              'songs', 'bhajans', 'bhajana-keerthanalu',
-                              'live-streams', 'live-darshan', 'darshan',
-                              'panchangam',
-                              'festivals', 'temple-festivals',
-                              'temples', 'sacred-temples',
-                              'donations', 'annadanam', 'annadanam-seva',
-                              '2026-uthara-nakshatra-dates', 'shabarimala-temple-opening-dates'
-                            ].includes(pSlug) && !['113', '114', '115', '116', '117', '14', '15'].includes(pId);
-                          })
-                          .map(cat => {
-                            const targetId = String(cat.id);
-                            const count = cat.subcategoriesCount ?? 0;
-                            const isSelected = selectedParentCategoryFilter === targetId || selectedParentCategoryFilter === cat.slug;
-                            return (
-                              <button
-                                key={cat.id || cat.slug}
-                                type="button"
-                                onClick={() => {
-                                  setSelectedParentCategoryFilter(targetId);
-                                  loadSubcategories(1, searchQuery, selectedLang, targetId);
-                                }}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${isSelected
-                                  ? 'bg-[#FFB300] text-black shadow-lg shadow-amber-500/20 font-bold'
-                                  : 'bg-[#141414] text-gray-300 hover:text-white border border-[#2C2C2C]'
-                                  }`}
-                              >
-                                <span>✨</span>
-                                <span>{cat.title}</span>
-                                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${isSelected ? 'bg-black/30 text-black' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}`}>
-                                  {count}
-                                </span>
-                              </button>
-                            );
-                          })}
-
-                        {/* Any Devotional Service not yet in parentLookupList (e.g. instant UI reflection) */}
-                        {devotionalServices
-                          .filter(s => {
-                            const sId = (s.serviceId || s.id || '').toLowerCase();
-                            const isStd = ['pooja', 'stotras', 'slokas', 'songs', 'bhajans', 'darshan', 'live-darshan', 'panchangam', 'festivals', 'temples', 'annadanam'].includes(sId);
-                            if (isStd) return false;
-                            return !parentLookupList.some(p => p.slug?.toLowerCase() === sId || String(p.id) === sId);
-                          })
-                          .map(s => {
-                            const targetKey = s.serviceId || s.id;
-                            const isSelected = selectedParentCategoryFilter === targetKey;
-                            return (
-                              <button
-                                key={targetKey}
-                                type="button"
-                                onClick={() => {
-                                  setSelectedParentCategoryFilter(targetKey);
-                                  loadSubcategories(1, searchQuery, selectedLang, targetKey);
-                                }}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${isSelected
-                                  ? 'bg-[#FFB300] text-black shadow-lg shadow-amber-500/20 font-bold'
-                                  : 'bg-[#141414] text-gray-300 hover:text-white border border-[#2C2C2C]'
-                                  }`}
-                              >
-                                <span>✨</span>
-                                <span>{s.title}</span>
-                                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${isSelected ? 'bg-black/30 text-black' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}`}>
-                                  0
-                                </span>
-                              </button>
-                            );
-                          })}
                       </div>
                     </div>
                   </div>
@@ -7695,6 +8300,12 @@ export default function EnterpriseSuperAdminDashboard() {
                                         <span>📁</span>
                                         <span>{sub.parentTitle || pSlug}</span>
                                       </span>
+                                      {sub.deityId && (
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 mt-1 rounded text-[10px] font-medium bg-emerald-950/50 text-emerald-300 border border-emerald-800/40">
+                                          <span>🕉️</span>
+                                          <span className="capitalize">{sub.deityId.replace('-', ' ')}</span>
+                                        </span>
+                                      )}
                                     </td>
 
                                     <td className="px-5 py-3 whitespace-nowrap">
@@ -10146,7 +10757,7 @@ export default function EnterpriseSuperAdminDashboard() {
                   </div>
                   <div className="flex items-center gap-3">
                     <button
-                      onClick={loadDeities}
+                      onClick={() => loadDeities()}
                       className="px-3.5 py-2 bg-[#141414] hover:bg-[#252525] border border-[#2C2C2C] rounded-lg text-xs font-semibold flex items-center gap-1.5 text-gray-300 transition"
                     >
                       <RefreshCw className="w-3.5 h-3.5 text-amber-400" />
@@ -10775,6 +11386,7 @@ export default function EnterpriseSuperAdminDashboard() {
                     </span>
                     <div className="relative group w-44 h-44 rounded-2xl bg-black/60 border-2 border-[var(--admin-gold)]/60 flex items-center justify-center p-3 shadow-2xl overflow-hidden">
                       <img
+                        suppressHydrationWarning
                         src={resolveLogoDisplayUrl(appLogoUrl)}
                         alt="Active Saranam Ayyappa Logo"
                         className="max-w-full max-h-full object-contain drop-shadow-[0_4px_12px_rgba(255,179,0,0.25)] transition duration-300 group-hover:scale-105"
