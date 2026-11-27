@@ -107,7 +107,19 @@ export const DetailScreen: React.FC<Props> = ({
       setLoading(true);
       try {
         const data = await ApiService.getCategoryDetail(currentItemId, currentLanguage);
-        if (isMounted) setDetailData(data);
+        if (isMounted && data) {
+          if (currentLanguage !== 'te' && (!data.description || data.description.length < 150) && !data.lyrics) {
+            try {
+              const teData = await ApiService.getCategoryDetail(currentItemId, 'te');
+              if (isMounted && teData && (teData.description || teData.fullScriptureText)) {
+                data.lyrics = teData.fullScriptureText || teData.description;
+                data.descriptionTelugu = teData.fullScriptureText || teData.description;
+                if (!data.titleTelugu) data.titleTelugu = teData.title;
+              }
+            } catch (_) {}
+          }
+          setDetailData(data);
+        }
       } catch (err) {
         console.log('Error loading record detail from DB API:', err);
       } finally {
@@ -143,7 +155,10 @@ export const DetailScreen: React.FC<Props> = ({
   };
 
   const displayTitle = detailData?.title || currentTitle;
-  const description = detailData?.fullScriptureText || detailData?.description || detailData?.overview || detailData?.content || '';
+  let description = detailData?.lyrics || detailData?.descriptionTelugu || detailData?.fullScriptureText || detailData?.description || detailData?.overview || detailData?.content || '';
+  if ((!description || description.length < 150) && (detailData?.lyrics || detailData?.descriptionTelugu)) {
+    description = detailData.lyrics || detailData.descriptionTelugu;
+  }
   const instructionNote = detailData?.instructionNote || '';
   const contents = Array.isArray(detailData?.contents) && detailData.contents.length > 0
     ? detailData.contents

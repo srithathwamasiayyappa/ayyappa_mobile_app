@@ -260,9 +260,21 @@ export const SlokaDetailScreen: React.FC<Props> = ({
     const idToFetch = rawId || itemId;
 
     ApiService.getCategoryDetail(String(idToFetch), currentLanguage)
-      .then((res) => {
-        if (isMounted && res) {
-          setLiveRecord(res);
+      .then(async (res) => {
+        if (!isMounted) return;
+        if (res) {
+          // If the returned description is short (< 150 chars) and not in Telugu, also fetch Telugu record to retrieve authentic sacred lyrics
+          if (currentLanguage !== 'te' && (!res.description || res.description.length < 150) && !res.lyrics) {
+            try {
+              const teRes = await ApiService.getCategoryDetail(String(idToFetch), 'te');
+              if (isMounted && teRes && (teRes.description || teRes.fullScriptureText)) {
+                res.lyrics = teRes.fullScriptureText || teRes.description;
+                res.descriptionTelugu = teRes.fullScriptureText || teRes.description;
+                if (!res.titleTelugu) res.titleTelugu = teRes.title;
+              }
+            } catch (_) {}
+          }
+          if (isMounted) setLiveRecord(res);
         }
       })
       .catch((e) => console.warn('Sloka/Stotra detail load notice:', e))
@@ -300,11 +312,16 @@ export const SlokaDetailScreen: React.FC<Props> = ({
       ? raw.contents
       : (Array.isArray(raw.devotionalContents) ? raw.devotionalContents : []);
 
-    const benefitsList = Array.isArray(raw.benefits) && raw.benefits.length > 0
-      ? raw.benefits
-      : [];
+    const benefitsList = (Array.isArray(raw.benefits) ? raw.benefits : []).filter((b: any) => {
+      const str = String(typeof b === 'string' ? b : (b.title || b.description || '')).toLowerCase();
+      return !str.includes('profound peace') && !str.includes('spiritual strength') && !str.includes('planetary doshams') && !str.includes('negative vibrations') && !str.includes('divine protection of the presiding deity');
+    });
 
-    const fullText = raw.fullScriptureText || raw.description || raw.overview || '';
+    // Prefer full lyrics / scripture text from DB
+    let fullText = raw.lyrics || raw.descriptionTelugu || raw.fullScriptureText || raw.description || raw.overview || '';
+    if ((!fullText || fullText.length < 150) && (raw.lyrics || raw.descriptionTelugu)) {
+      fullText = raw.lyrics || raw.descriptionTelugu;
+    }
 
     return {
       id: raw.slug || itemId,
@@ -378,6 +395,19 @@ export const SlokaDetailScreen: React.FC<Props> = ({
         currentLanguage
       );
       if (detail) {
+        if (currentLanguage !== 'te' && (!detail.description || detail.description.length < 150) && !detail.lyrics) {
+          try {
+            const teDetail = await ApiService.getCategoryDetail(
+              String(subItem.id || subItem.slug || subItem.rawId),
+              'te'
+            );
+            if (teDetail && (teDetail.description || teDetail.fullScriptureText)) {
+              detail.lyrics = teDetail.fullScriptureText || teDetail.description;
+              detail.descriptionTelugu = teDetail.fullScriptureText || teDetail.description;
+              if (!detail.titleTelugu) detail.titleTelugu = teDetail.title;
+            }
+          } catch (_) {}
+        }
         setSubItemDetail(detail);
       }
     } catch (e) {
@@ -539,15 +569,22 @@ export const SlokaDetailScreen: React.FC<Props> = ({
   // =========================================================================
   if (selectedSubItem) {
     const currentTitle = selectedSubItem.title || resolvedContent.title;
-    const currentDesc =
+    let currentDesc =
+      subItemDetail?.lyrics ||
+      subItemDetail?.descriptionTelugu ||
       subItemDetail?.fullScriptureText ||
       subItemDetail?.description ||
       subItemDetail?.content ||
       subItemDetail?.overview ||
+      selectedSubItem.lyrics ||
+      selectedSubItem.descriptionTelugu ||
       selectedSubItem.fullScriptureText ||
       selectedSubItem.description ||
       selectedSubItem.content ||
       '';
+    if ((!currentDesc || currentDesc.length < 150) && (subItemDetail?.lyrics || subItemDetail?.descriptionTelugu)) {
+      currentDesc = subItemDetail.lyrics || subItemDetail.descriptionTelugu;
+    }
     const currentInstruction = subItemDetail?.instructionNote || selectedSubItem?.instructionNote || '';
     const mantrasList = Array.isArray(subItemDetail?.mantras) && subItemDetail.mantras.length > 0
       ? subItemDetail.mantras
@@ -558,9 +595,12 @@ export const SlokaDetailScreen: React.FC<Props> = ({
     const contentsList = Array.isArray(subItemDetail?.contents) && subItemDetail.contents.length > 0
       ? subItemDetail.contents
       : (Array.isArray(subItemDetail?.devotionalContents) ? subItemDetail.devotionalContents : []);
-    const benefitsList = Array.isArray(subItemDetail?.benefits) && subItemDetail.benefits.length > 0
+    const benefitsList = (Array.isArray(subItemDetail?.benefits) && subItemDetail.benefits.length > 0
       ? subItemDetail.benefits
-      : (Array.isArray(selectedSubItem?.benefits) ? selectedSubItem.benefits : []);
+      : (Array.isArray(selectedSubItem?.benefits) ? selectedSubItem.benefits : [])).filter((b: any) => {
+        const s = String(typeof b === 'string' ? b : (b.title || b.description || '')).toLowerCase();
+        return !s.includes('profound peace') && !s.includes('spiritual strength') && !s.includes('planetary doshams') && !s.includes('negative vibrations') && !s.includes('divine protection of the presiding deity');
+      });
 
     return (
       <SafeAreaView style={styles.screenContainer}>
