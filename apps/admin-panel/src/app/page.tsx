@@ -138,7 +138,9 @@ interface SubcategoryItem {
   isAudio?: boolean;
   status?: string;
   isActive?: boolean;
+  typesCount?: number;
   imageUrl?: string;
+  image?: string;
   deityId?: string;
   deityName?: string;
 }
@@ -163,6 +165,7 @@ interface FullCategoryDetail {
   isPublished?: boolean;
   status?: string;
   isActive?: boolean;
+  typesCount?: number;
   sacredText?: string | null;
   meaning?: string | null;
   parentId?: number | string | null;
@@ -662,6 +665,7 @@ export default function EnterpriseSuperAdminDashboard() {
   const [selectedTypeIds, setSelectedTypeIds] = useState<number[]>([]);
   const [selectedParentCategoryFilter, setSelectedParentCategoryFilter] = useState<string>('all');
   const [subcategoryStatusFilter, setSubcategoryStatusFilter] = useState<string>('all');
+  const [subSearch, setSubSearch] = useState<string>('');
   const [subFormStatus, setSubFormStatus] = useState<string>('active');
   const [typeFormStatus, setTypeFormStatus] = useState<string>('active');
   const [typeStatusFilter, setTypeStatusFilter] = useState<string>('all');
@@ -1526,7 +1530,7 @@ export default function EnterpriseSuperAdminDashboard() {
     return found ? String(found.id) : keyOrId;
   }, [parentLookupList]);
 
-  const loadSubcategories = useCallback((pageNum = 1, search = '', lang = selectedLang, parentId = selectedParentCategoryFilter, currentLimit = subLimit, status = subcategoryStatusFilter) => {
+  const loadSubcategories = useCallback((pageNum = 1, search = subSearch, lang = selectedLang, parentId = selectedParentCategoryFilter, currentLimit = subLimit, status = subcategoryStatusFilter) => {
     setLoading(true);
     const url = new URL(`${API_BASE_URL}/admin/subcategories`);
     url.searchParams.set('page', String(pageNum));
@@ -1559,7 +1563,7 @@ export default function EnterpriseSuperAdminDashboard() {
       })
       .catch(() => { })
       .finally(() => setLoading(false));
-  }, [selectedLang, selectedParentCategoryFilter, resolveParentId, subLimit, subcategoryStatusFilter]);
+  }, [selectedLang, selectedParentCategoryFilter, resolveParentId, subLimit, subcategoryStatusFilter, subSearch]);
 
   // 3. Load Devotional Content (Subcategory Types)
   const loadDevotionalContent = useCallback((pageNum = 1, search = '', catId = selectedSubcategoryForTypes, currentLimit = typeLimit, status = typeStatusFilter) => {
@@ -8042,60 +8046,142 @@ export default function EnterpriseSuperAdminDashboard() {
               {/* TAB 2: SUBCATEGORIES */}
               {activeTab === 'subcategories' && (
                 <div className="space-y-6">
-                  {/* Category Filter & Subcategory Header */}
-                  <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] p-5 shadow-xl">
-                    <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-[#2C2C2C] pb-4">
+                  {/* Category Filter & Subcategory Header Card (Matching Category Style) */}
+                  <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] p-6 shadow-xl">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                       <div>
-                        <h2 className="text-base font-bold text-gray-100 flex items-center gap-2">
+                        <h2 className="text-base font-bold text-[#FFB300] flex items-center gap-2">
                           <Layers className="w-5 h-5 text-orange-400" />
-                          <span>Category-Based Subcategories Management</span>
+                          <span>Devotional Subcategories Management</span>
                         </h2>
-                        <p className="text-xs text-gray-400 mt-0.5">
-                          Organize and manage sanctum rituals, stotras, prayers, bhajans, darshan, and seva under their respective parent categories.
+                        <p className="text-xs text-gray-400 mt-1 max-w-2xl leading-relaxed">
+                          Authoritative devotional subcategories, chapters, stotras, prayers, and bhajans fetched dynamically from MySQL DB with server-side pagination, search, and status filters.
                         </p>
                       </div>
-                      <div className="flex items-center gap-3 w-full md:w-auto">
-                        <select
-                          value={subcategoryStatusFilter}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setSubcategoryStatusFilter(val);
-                            loadSubcategories(1, searchQuery, selectedLang, selectedParentCategoryFilter, subLimit, val);
-                          }}
-                          className="bg-[#141414] border border-[#2C2C2C] rounded-lg px-3 py-1.5 text-xs text-amber-400 focus:outline-none focus:border-[#FFB300]"
-                        >
-                          <option value="all">All Statuses</option>
-                          <option value="active">Active</option>
-                          <option value="coming_soon">Coming Soon</option>
-                          <option value="inactive">Inactive</option>
-                        </select>
-                        <select
-                          value={selectedLang}
-                          onChange={(e) => {
-                            setSelectedLang(e.target.value);
-                            loadSubcategories(1, searchQuery, e.target.value, selectedParentCategoryFilter);
-                            loadParentLookup(e.target.value);
-                          }}
-                          className="bg-[#141414] border border-[#2C2C2C] rounded-lg px-3 py-1.5 text-xs text-amber-400 focus:outline-none focus:border-[#FFB300]"
-                        >
-                          <option value="en">English (English)</option>
-                          <option value="te">Telugu (తెలుగు)</option>
-                          <option value="kn">Kannada (ಕನ್ನಡ)</option>
-                          <option value="ta">Tamil (தமிழ்)</option>
-                          <option value="hi">Hindi (हिन्दी)</option>
-                        </select>
+
+                      <div className="flex flex-wrap items-center gap-3">
+                        {/* Language Selector */}
+                        <div className="flex items-center gap-1.5 bg-[#141414] border border-[#2C2C2C] rounded-lg px-2.5 py-1.5">
+                          <Globe className="w-3.5 h-3.5 text-amber-400" />
+                          <select
+                            value={selectedLang}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setSelectedLang(val);
+                              loadSubcategories(1, subSearch, val, selectedParentCategoryFilter, subLimit, subcategoryStatusFilter);
+                              loadParentLookup(val);
+                            }}
+                            className="bg-transparent text-xs text-amber-400 font-semibold focus:outline-none cursor-pointer"
+                          >
+                            <option value="en" className="bg-[#1E1E1E] text-gray-200">English (EN)</option>
+                            <option value="te" className="bg-[#1E1E1E] text-gray-200">Telugu (తెలుగు)</option>
+                            <option value="kn" className="bg-[#1E1E1E] text-gray-200">Kannada (ಕನ್ನಡ)</option>
+                            <option value="ta" className="bg-[#1E1E1E] text-gray-200">Tamil (தமிழ்)</option>
+                            <option value="hi" className="bg-[#1E1E1E] text-gray-200">Hindi (हिन्दी)</option>
+                          </select>
+                        </div>
+
+                        {/* Add Subcategory Button */}
                         <button
                           onClick={() => handleOpenCreateSubcategory(selectedParentCategoryFilter !== 'all' ? selectedParentCategoryFilter : undefined)}
-                          className="flex items-center justify-center gap-2 bg-[#D84315] hover:bg-[#BF360C] text-white px-4 py-1.5 rounded-lg text-xs font-bold transition shadow-md shadow-orange-950 flex-shrink-0"
+                          className="px-3.5 py-1.5 bg-[#FFB300] hover:bg-[#FFA000] text-black rounded-lg text-xs font-bold flex items-center gap-1.5 transition shadow-lg shadow-amber-500/20"
                         >
-                          <Plus className="w-4 h-4" />
+                          <Plus className="w-3.5 h-3.5" />
                           <span>Add Subcategory</span>
                         </button>
                       </div>
                     </div>
 
+                    {/* Server-Side Search Bar & Status Filters (Matching Category Style) */}
+                    <div className="mt-5 pt-4 border-t border-[#2C2C2C] flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+                      <div className="relative flex-1 max-w-md">
+                        <Search className="w-4 h-4 absolute left-3 top-2.5 text-gray-400" />
+                        <input
+                          type="text"
+                          placeholder="Search subcategories server-side by title or slug..."
+                          value={subSearch}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setSubSearch(val);
+                            loadSubcategories(1, val, selectedLang, selectedParentCategoryFilter, subLimit, subcategoryStatusFilter);
+                          }}
+                          className="w-full bg-[#141414] border border-[#2C2C2C] rounded-lg pl-9 pr-8 py-2 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-[#FFB300]"
+                        />
+                        {subSearch && (
+                          <button
+                            onClick={() => {
+                              setSubSearch('');
+                              loadSubcategories(1, '', selectedLang, selectedParentCategoryFilter, subLimit, subcategoryStatusFilter);
+                            }}
+                            className="absolute right-2.5 top-2.5 text-gray-400 hover:text-gray-200 text-xs"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Server-Side Status Filter Buttons */}
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-400 font-medium">Status:</span>
+                        <div className="flex items-center bg-[#141414] border border-[#2C2C2C] rounded-lg p-0.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSubcategoryStatusFilter('all');
+                              loadSubcategories(1, subSearch, selectedLang, selectedParentCategoryFilter, subLimit, 'all');
+                            }}
+                            className={`px-3 py-1 rounded text-xs font-semibold transition ${subcategoryStatusFilter === 'all'
+                              ? 'bg-[#FFB300] text-black shadow'
+                              : 'text-gray-400 hover:text-gray-200'
+                              }`}
+                          >
+                            All
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSubcategoryStatusFilter('active');
+                              loadSubcategories(1, subSearch, selectedLang, selectedParentCategoryFilter, subLimit, 'active');
+                            }}
+                            className={`px-3 py-1 rounded text-xs font-semibold transition ${subcategoryStatusFilter === 'active'
+                              ? 'bg-emerald-600 text-white shadow'
+                              : 'text-gray-400 hover:text-gray-200'
+                              }`}
+                          >
+                            Active
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSubcategoryStatusFilter('coming_soon');
+                              loadSubcategories(1, subSearch, selectedLang, selectedParentCategoryFilter, subLimit, 'coming_soon');
+                            }}
+                            className={`px-3 py-1 rounded text-xs font-semibold transition ${subcategoryStatusFilter === 'coming_soon'
+                              ? 'bg-amber-600 text-white shadow'
+                              : 'text-gray-400 hover:text-gray-200'
+                              }`}
+                          >
+                            Coming Soon
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSubcategoryStatusFilter('inactive');
+                              loadSubcategories(1, subSearch, selectedLang, selectedParentCategoryFilter, subLimit, 'inactive');
+                            }}
+                            className={`px-3 py-1 rounded text-xs font-semibold transition ${subcategoryStatusFilter === 'inactive'
+                              ? 'bg-rose-600 text-white shadow'
+                              : 'text-gray-400 hover:text-gray-200'
+                              }`}
+                          >
+                            Inactive
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
                     {/* Filter Pills with Bulletproof Category Matching */}
-                    <div className="pt-4">
+                    <div className="pt-4 border-t border-[#2C2C2C] mt-4">
                       <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block mb-2.5">
                         Filter by Parent Category (9 Categories):
                       </span>
@@ -8105,7 +8191,7 @@ export default function EnterpriseSuperAdminDashboard() {
                           type="button"
                           onClick={() => {
                             setSelectedParentCategoryFilter('all');
-                            loadSubcategories(1, searchQuery, selectedLang, 'all');
+                            loadSubcategories(1, subSearch, selectedLang, 'all', subLimit, subcategoryStatusFilter);
                           }}
                           className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${selectedParentCategoryFilter === 'all'
                             ? 'bg-[#FFB300] text-black shadow-lg shadow-amber-500/20 font-bold'
@@ -8165,7 +8251,7 @@ export default function EnterpriseSuperAdminDashboard() {
                               type="button"
                               onClick={() => {
                                 setSelectedParentCategoryFilter(targetId);
-                                loadSubcategories(1, searchQuery, selectedLang, targetId);
+                                loadSubcategories(1, subSearch, selectedLang, targetId, subLimit, subcategoryStatusFilter);
                               }}
                               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${isSelected
                                 ? 'bg-[#FFB300] text-black shadow-lg shadow-amber-500/20 font-bold'
@@ -8184,7 +8270,7 @@ export default function EnterpriseSuperAdminDashboard() {
                     </div>
                   </div>
 
-                  {/* Subcategories Table Container */}
+                  {/* Subcategories Table Container (Matching Category Style) */}
                   <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] overflow-hidden shadow-2xl">
                     <div className="p-4 border-b border-[#2C2C2C] flex items-center justify-between bg-[#181818]">
                       <span className="text-xs font-bold text-gray-200 uppercase tracking-wider flex items-center gap-2">
@@ -8200,7 +8286,7 @@ export default function EnterpriseSuperAdminDashboard() {
                         </span>
                       </span>
                       <button
-                        onClick={() => loadSubcategories(subPage, searchQuery, selectedLang, resolveParentId(selectedParentCategoryFilter))}
+                        onClick={() => loadSubcategories(subPage, subSearch, selectedLang, resolveParentId(selectedParentCategoryFilter), subLimit, subcategoryStatusFilter)}
                         className="text-xs text-gray-400 hover:text-amber-400 flex items-center gap-1 transition"
                       >
                         <RefreshCw className="w-3.5 h-3.5" />
@@ -8236,104 +8322,113 @@ export default function EnterpriseSuperAdminDashboard() {
                     )}
 
                     <div className="overflow-x-auto min-h-[300px]">
-                      {(() => {
-                        const displayed = subcategories.filter(sub => {
-                          if (!searchQuery || searchQuery.trim() === '') return true;
-                          const q = searchQuery.toLowerCase().trim();
-                          const title = (sub.title || '').toLowerCase();
-                          const slug = (sub.slug || '').toLowerCase();
-                          const desc = (sub.description || '').toLowerCase();
-                          return title.includes(q) || slug.includes(q) || desc.includes(q);
-                        });
+                      {subcategories.length === 0 ? (
+                        <div className="p-12 text-center text-xs text-gray-400">
+                          <Layers className="w-8 h-8 mx-auto mb-2 text-gray-600 opacity-60" />
+                          <p className="font-semibold text-gray-300">
+                            No subcategories found {subSearch ? `matching "${subSearch}"` : ''} {selectedParentCategoryFilter !== 'all' ? `under "${selectedParentCategoryFilter}"` : ''}.
+                          </p>
+                          <button
+                            onClick={() => handleOpenCreateSubcategory(selectedParentCategoryFilter !== 'all' ? selectedParentCategoryFilter : undefined)}
+                            className="mt-3 px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-amber-400 border border-neutral-700 rounded text-xs font-semibold transition"
+                          >
+                            + Add Subcategory
+                          </button>
+                        </div>
+                      ) : (
+                        <table className="w-full text-left text-xs border-collapse">
+                          <thead>
+                            <tr className="bg-[#151515] border-b border-[#2C2C2C] text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                              <th className="py-3 px-4 w-12 text-center">
+                                <input
+                                  type="checkbox"
+                                  checked={subcategories.length > 0 && subcategories.every((s: any) => selectedSubcategoryIds.includes(String(s.id)))}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setSelectedSubcategoryIds(Array.from(new Set([...selectedSubcategoryIds, ...subcategories.map((s: any) => String(s.id))])));
+                                    } else {
+                                      const pageIds = new Set(subcategories.map((s: any) => String(s.id)));
+                                      setSelectedSubcategoryIds(selectedSubcategoryIds.filter(id => !pageIds.has(id)));
+                                    }
+                                  }}
+                                  className="rounded bg-[#121212] border-[#3A3A3A] text-amber-500 focus:ring-amber-500 cursor-pointer"
+                                />
+                              </th>
+                              <th className="py-3 px-4 w-14 text-center">#</th>
+                              <th className="py-3 px-4 w-20 text-center">Artwork</th>
+                              <th className="py-3 px-4 min-w-[240px]">Devotional Subcategory</th>
+                              <th className="py-3 px-4 w-40">Parent Category</th>
+                              <th className="py-3 px-4 w-28 text-center">Types</th>
+                              <th className="py-3 px-4 w-28 text-center">Status</th>
+                              <th className="py-3 px-4 min-w-[200px] text-right">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-[#282828]">
+                            {subcategories.map((sub: any, index: number) => {
+                              const pSlug = sub.parentSlug || sub.parentKey || 'pooja';
+                              const rawImg = sub.imageUrl || sub.image || '';
+                              const cleanImg = rawImg && !rawImg.includes('.webp') ? rawImg : '';
+                              const countNum = sub.typesCount !== undefined ? sub.typesCount : 0;
 
-                        if (displayed.length === 0) {
-                          return (
-                            <div className="p-12 text-center text-xs text-gray-400">
-                              <Layers className="w-8 h-8 mx-auto mb-2 text-gray-600 opacity-60" />
-                              <p className="font-semibold text-gray-300">
-                                No subcategories found {selectedParentCategoryFilter !== 'all' ? `under "${selectedParentCategoryFilter}"` : ''}.
-                              </p>
-                              <button
-                                onClick={() => handleOpenCreateSubcategory(selectedParentCategoryFilter !== 'all' ? selectedParentCategoryFilter : undefined)}
-                                className="mt-3 px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-amber-400 border border-neutral-700 rounded text-xs font-semibold transition"
-                              >
-                                + Add Subcategory under this Category
-                              </button>
-                            </div>
-                          );
-                        }
+                              return (
+                                <tr
+                                  key={sub.id}
+                                  onClick={() => handleOpenViewSubcategory(sub.id)}
+                                  className="hover:bg-neutral-800/40 transition-colors group cursor-pointer"
+                                >
+                                  {/* Checkbox */}
+                                  <td className="py-3 px-4 text-center" onClick={(e) => e.stopPropagation()}>
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedSubcategoryIds.includes(String(sub.id))}
+                                      onChange={(e) => {
+                                        if (e.target.checked) {
+                                          setSelectedSubcategoryIds(prev => [...prev, String(sub.id)]);
+                                        } else {
+                                          setSelectedSubcategoryIds(prev => prev.filter(id => id !== String(sub.id)));
+                                        }
+                                      }}
+                                      className="rounded bg-[#121212] border-[#3A3A3A] text-amber-500 focus:ring-amber-500 cursor-pointer"
+                                    />
+                                  </td>
 
-                        return (
-                          <table className="w-full text-left text-xs text-gray-300">
-                            <thead className="bg-[#151515] uppercase text-[11px] text-gray-400 border-b border-[#2C2C2C]">
-                              <tr>
-                                <th className="px-4 py-3 w-10 text-center">
-                                  <input
-                                    type="checkbox"
-                                    checked={displayed.length > 0 && displayed.every((s: any) => selectedSubcategoryIds.includes(String(s.id)))}
-                                    onChange={(e) => {
-                                      if (e.target.checked) {
-                                        setSelectedSubcategoryIds(Array.from(new Set([...selectedSubcategoryIds, ...displayed.map((s: any) => String(s.id))])));
-                                      } else {
-                                        const pageIds = new Set(displayed.map((s: any) => String(s.id)));
-                                        setSelectedSubcategoryIds(selectedSubcategoryIds.filter(id => !pageIds.has(id)));
-                                      }
-                                    }}
-                                    className="rounded bg-[#121212] border-[#3A3A3A] text-amber-500 focus:ring-amber-500 cursor-pointer"
-                                  />
-                                </th>
-                                <th className="px-4 py-3">Image</th>
-                                <th className="px-5 py-3">Subcategory Title &amp; Slug</th>
-                                <th className="px-5 py-3">Parent Category</th>
-                                <th className="px-5 py-3">Type / Format</th>
-                                <th className="px-5 py-3">Order</th>
-                                <th className="px-5 py-3 text-center">Status</th>
-                                <th className="px-5 py-3 text-right">Actions</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-[#2C2C2C]">
-                              {displayed.map((sub: any) => {
-                                const pSlug = sub.parentSlug || sub.parentKey || 'pooja';
-                                const rawImg = sub.imageUrl || sub.image || '';
-                                const cleanImg = rawImg && !rawImg.includes('.webp') ? rawImg : '';
-                                return (
-                                  <tr key={sub.id} className="hover:bg-neutral-800/40 transition">
-                                    <td className="px-4 py-3 text-center">
-                                      <input
-                                        type="checkbox"
-                                        checked={selectedSubcategoryIds.includes(String(sub.id))}
-                                        onChange={(e) => {
-                                          if (e.target.checked) {
-                                            setSelectedSubcategoryIds(prev => [...prev, String(sub.id)]);
-                                          } else {
-                                            setSelectedSubcategoryIds(prev => prev.filter(id => id !== String(sub.id)));
-                                          }
-                                        }}
-                                        className="rounded bg-[#121212] border-[#3A3A3A] text-amber-500 focus:ring-amber-500 cursor-pointer"
-                                      />
-                                    </td>
-                                    <td className="px-4 py-3 whitespace-nowrap">
-                                      <div className="relative group/subthumb w-10 h-10 rounded-lg bg-[#141414] border border-[#2C2C2C] overflow-hidden flex items-center justify-center flex-shrink-0">
-                                        {cleanImg ? (
+                                  {/* # Order */}
+                                  <td className="py-3 px-4 text-center">
+                                    <span className="text-[11px] px-2 py-0.5 rounded bg-neutral-800/80 border border-neutral-700/60 text-amber-400 font-mono font-bold">
+                                      #{sub.displayOrder ?? index + 1}
+                                    </span>
+                                  </td>
+
+                                  {/* Artwork */}
+                                  <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
+                                    <div className="flex items-center justify-center">
+                                      {cleanImg ? (
+                                        <div className="relative group/art w-9 h-9 rounded-lg bg-neutral-900 border border-neutral-800 overflow-hidden flex items-center justify-center flex-shrink-0">
                                           <img
                                             src={cleanImg.startsWith('http') || cleanImg.startsWith('data:') ? cleanImg : `${API_ORIGIN}${cleanImg.startsWith('/') ? '' : '/'}${cleanImg}`}
                                             alt={sub.title}
-                                            className="w-full h-full object-cover"
-                                            onError={(e: any) => {
-                                              e.currentTarget.style.display = 'none';
-                                              if (e.currentTarget.parentElement) {
-                                                e.currentTarget.parentElement.innerHTML = '<span class="text-xs">🪔</span>';
-                                              }
-                                            }}
+                                            className="w-full h-full object-cover opacity-90 group-hover/art:opacity-100 transition"
+                                            onError={(e: any) => { e.currentTarget.style.display = 'none'; }}
                                           />
-                                        ) : (
-                                          <span className="text-xs">🪔</span>
-                                        )}
+                                          <label
+                                            className="absolute inset-0 bg-black/75 opacity-0 group-hover/art:opacity-100 flex items-center justify-center cursor-pointer transition rounded-lg"
+                                            title="Upload / Change Image"
+                                          >
+                                            <Upload className="w-3.5 h-3.5 text-amber-400" />
+                                            <input
+                                              type="file"
+                                              accept="image/png, image/jpeg, image/webp"
+                                              onChange={(e) => handleQuickSubcategoryImageUpload(sub.id, e)}
+                                              className="hidden"
+                                            />
+                                          </label>
+                                        </div>
+                                      ) : (
                                         <label
-                                          className="absolute inset-0 bg-black/75 opacity-0 group-hover/subthumb:opacity-100 flex items-center justify-center cursor-pointer transition rounded-lg"
-                                          title="Upload / Change Image"
+                                          className="w-9 h-9 rounded-lg bg-neutral-900 border border-dashed border-neutral-700 hover:border-amber-400 text-gray-500 hover:text-amber-400 flex items-center justify-center cursor-pointer transition flex-shrink-0"
+                                          title="Upload Image"
                                         >
-                                          <Upload className="w-3.5 h-3.5 text-amber-400" />
+                                          <Upload className="w-3.5 h-3.5" />
                                           <input
                                             type="file"
                                             accept="image/png, image/jpeg, image/webp"
@@ -8341,97 +8436,101 @@ export default function EnterpriseSuperAdminDashboard() {
                                             className="hidden"
                                           />
                                         </label>
-                                      </div>
-                                    </td>
-
-                                    <td className="px-5 py-3">
-                                      <p className="font-bold text-gray-100 flex items-center gap-1.5">
-                                        <span>{sub.title && sub.title !== sub.slug ? sub.title : sub.slug.replace(/-/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}</span>
-                                      </p>
-                                      <p className="font-mono text-[11px] text-amber-400/90 mt-0.5">/{sub.slug}</p>
-                                      {sub.description && (
-                                        <p className="text-gray-400 text-[11px] truncate max-w-xs mt-0.5" title={sub.description}>
-                                          {sub.description}
-                                        </p>
                                       )}
-                                    </td>
+                                    </div>
+                                  </td>
 
-                                    <td className="px-5 py-3 whitespace-nowrap">
-                                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-orange-950/50 text-orange-300 border border-orange-800/40">
-                                        <span>📁</span>
-                                        <span>{sub.parentTitle || pSlug}</span>
-                                      </span>
-                                      {sub.deityId && (
-                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 mt-1 rounded text-[10px] font-medium bg-emerald-950/50 text-emerald-300 border border-emerald-800/40">
-                                          <span>🕉️</span>
-                                          <span className="capitalize">{sub.deityId.replace('-', ' ')}</span>
+                                  {/* Subcategory Title */}
+                                  <td className="py-3 px-4">
+                                    <div className="flex flex-col">
+                                      <div className="flex items-center gap-1.5 flex-wrap">
+                                        <span className="font-bold text-gray-100 group-hover:text-[#FFB300] transition text-sm">
+                                          {sub.title && sub.title !== sub.slug ? sub.title : sub.slug.replace(/-/g, ' ').replace(/\w/g, (l: string) => l.toUpperCase())}
                                         </span>
-                                      )}
-                                    </td>
-
-                                    <td className="px-5 py-3 whitespace-nowrap">
-                                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${sub.isAudio
-                                        ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
-                                        : 'bg-sky-500/10 text-sky-400 border border-sky-500/30'
-                                        }`}>
-                                        {sub.isAudio ? '🎵 Audio Track' : '📜 Vidhanam / Stotra'}
-                                      </span>
-                                    </td>
-
-                                    <td className="px-5 py-3 whitespace-nowrap font-mono text-gray-400">
-                                      #{sub.displayOrder ?? sub.id}
-                                    </td>
-
-                                    <td className="px-5 py-3 text-center whitespace-nowrap">
-                                      {renderStatusBadge(sub.status, sub.isActive)}
-                                    </td>
-
-                                    <td className="px-5 py-3 text-right whitespace-nowrap">
-                                      <div className="flex items-center justify-end gap-1.5">
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            setSelectedSubcategoryForTypes(String(sub.id));
-                                            setActiveTab('content');
-                                            setPageMode('LIST');
-                                            loadDevotionalContent(1, '', String(sub.id));
-                                          }}
-                                          className="p-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded text-amber-300 transition flex items-center gap-1"
-                                          title="Manage Types & Verses under this Subcategory"
-                                        >
-                                          <BookOpen className="w-3.5 h-3.5" />
-                                          <span className="text-[11px] font-semibold">Types</span>
-                                        </button>
-                                        <button
-                                          onClick={() => handleOpenViewSubcategory(sub.id)}
-                                          className="p-1.5 bg-[#252525] hover:bg-[#303030] border border-[#3A3A3A] rounded text-sky-400 transition"
-                                          title="View Subcategory Details"
-                                        >
-                                          <Eye className="w-3.5 h-3.5" />
-                                        </button>
-                                        <button
-                                          onClick={() => handleOpenEditSubcategory(sub)}
-                                          className="p-1.5 bg-[#252525] hover:bg-[#303030] border border-[#3A3A3A] rounded text-amber-400 transition"
-                                          title="Edit Subcategory"
-                                        >
-                                          <Edit3 className="w-3.5 h-3.5" />
-                                        </button>
-                                        <button
-                                          onClick={() => handleDeleteSubcategory(sub.id, sub.title)}
-                                          className="p-1.5 bg-red-950/40 hover:bg-red-900/60 border border-red-800/40 rounded text-red-400 transition"
-                                          title="Delete Subcategory"
-                                        >
-                                          <Trash2 className="w-3.5 h-3.5" />
-                                        </button>
+                                        {sub.deityId && (
+                                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-950/60 text-emerald-300 border border-emerald-800/40">
+                                            <span>🕉️</span>
+                                            <span className="capitalize">{sub.deityId.replace(/-/g, ' ')}</span>
+                                          </span>
+                                        )}
                                       </div>
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        );
-                      })()}
+                                      <div className="flex items-center gap-2 mt-0.5">
+                                        <span className="text-[11px] font-mono text-amber-400/80">/{sub.slug}</span>
+                                        {sub.description && (
+                                          <span className="text-[11px] text-gray-400 line-clamp-1 max-w-sm" title={sub.description}>· {sub.description}</span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </td>
+
+                                  {/* Parent Category */}
+                                  <td className="py-3 px-4 whitespace-nowrap">
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[#141414] border border-[#2C2C2C] text-orange-300 text-[11px] font-semibold">
+                                      <span>📁</span>
+                                      <span>{sub.parentTitle || pSlug}</span>
+                                    </span>
+                                  </td>
+
+                                  {/* Types Count & Link (Replacing Type / Format) */}
+                                  <td className="py-3 px-4 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setSelectedSubcategoryForTypes(String(sub.id));
+                                        setActiveTab('content');
+                                        setPageMode('LIST');
+                                        loadDevotionalContent(1, '', String(sub.id));
+                                      }}
+                                      title="View and manage worship types under this subcategory"
+                                      className="inline-flex items-center justify-center min-w-[2.2rem] px-2.5 py-0.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 rounded-full font-bold font-mono text-xs transition shadow-sm hover:scale-105"
+                                    >
+                                      <span>{countNum}</span>
+                                    </button>
+                                  </td>
+
+                                  {/* Status */}
+                                  <td className="py-3 px-4 text-center whitespace-nowrap">
+                                    {renderStatusBadge(sub.status, sub.isActive)}
+                                  </td>
+
+                                  {/* Actions */}
+                                  <td className="py-3 px-4 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                                    <div className="flex items-center justify-end gap-1.5">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleOpenViewSubcategory(sub.id)}
+                                        title="View Subcategory Details"
+                                        className="px-2 py-1 bg-[#141414] hover:bg-[#252525] text-gray-300 hover:text-white rounded border border-[#2C2C2C] flex items-center gap-1 text-[11px] font-semibold transition"
+                                      >
+                                        <Eye className="w-3 h-3 text-sky-400" />
+                                        <span>View</span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleOpenEditSubcategory(sub)}
+                                        title="Edit Subcategory Details"
+                                        className="px-2 py-1 bg-[#141414] hover:bg-[#252525] text-gray-300 hover:text-amber-400 rounded border border-[#2C2C2C] flex items-center gap-1 text-[11px] font-semibold transition"
+                                      >
+                                        <Edit3 className="w-3 h-3 text-amber-400" />
+                                        <span>Edit</span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDeleteSubcategory(sub.id, sub.title)}
+                                        title="Delete Subcategory"
+                                        className="px-2 py-1 bg-[#141414] hover:bg-rose-950/40 text-gray-300 hover:text-red-400 rounded border border-[#2C2C2C] hover:border-red-900/40 flex items-center gap-1 text-[11px] font-semibold transition"
+                                      >
+                                        <Trash2 className="w-3 h-3 text-red-400" />
+                                        <span>Delete</span>
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      )}
                     </div>
 
                     {/* Subcategories Pagination Bar */}
@@ -8448,7 +8547,7 @@ export default function EnterpriseSuperAdminDashboard() {
                             onChange={(e) => {
                               const newLim = Number(e.target.value);
                               setSubLimit(newLim);
-                              loadSubcategories(1, searchQuery, selectedLang, selectedParentCategoryFilter, newLim);
+                              loadSubcategories(1, subSearch, selectedLang, selectedParentCategoryFilter, newLim, subcategoryStatusFilter);
                             }}
                             className="bg-[#121212] border border-[#2C2C2C] rounded px-2 py-1 text-xs text-gray-200"
                           >
@@ -8463,7 +8562,7 @@ export default function EnterpriseSuperAdminDashboard() {
                       <div className="flex items-center gap-2">
                         <button
                           disabled={subPage <= 1}
-                          onClick={() => loadSubcategories(subPage - 1, searchQuery, selectedLang, selectedParentCategoryFilter, subLimit)}
+                          onClick={() => loadSubcategories(subPage - 1, subSearch, selectedLang, selectedParentCategoryFilter, subLimit, subcategoryStatusFilter)}
                           className="px-3 py-1.5 bg-[#1E1E1E] border border-[#2C2C2C] rounded-lg disabled:opacity-40 hover:bg-neutral-800 text-xs text-gray-300 transition flex items-center gap-1"
                         >
                           <ChevronLeft className="w-4 h-4" />
@@ -8472,7 +8571,7 @@ export default function EnterpriseSuperAdminDashboard() {
                         <span className="text-xs font-semibold px-2 text-amber-400">{subPage} / {subTotalPages}</span>
                         <button
                           disabled={subPage >= subTotalPages}
-                          onClick={() => loadSubcategories(subPage + 1, searchQuery, selectedLang, selectedParentCategoryFilter, subLimit)}
+                          onClick={() => loadSubcategories(subPage + 1, subSearch, selectedLang, selectedParentCategoryFilter, subLimit, subcategoryStatusFilter)}
                           className="px-3 py-1.5 bg-[#1E1E1E] border border-[#2C2C2C] rounded-lg disabled:opacity-40 hover:bg-neutral-800 text-xs text-gray-300 transition flex items-center gap-1"
                         >
                           <span>Next</span>
@@ -8483,6 +8582,7 @@ export default function EnterpriseSuperAdminDashboard() {
                   </div>
                 </div>
               )}
+
 
               {/* TAB 3: SUBCATEGORY TYPES & SACRED VERSES */}
               {activeTab === 'content' && (
