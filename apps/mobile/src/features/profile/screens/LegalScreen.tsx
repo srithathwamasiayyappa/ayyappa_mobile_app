@@ -315,7 +315,7 @@ export const LegalScreen: React.FC<Props> = ({
   initialTab = 'terms',
   onBack,
 }) => {
-  const [activeTab, setActiveTab] = useState<'terms' | 'privacy' | 'refund'>(initialTab);
+  const activeTab = initialTab;
   const [cmsContent, setCmsContent] = useState<string | null>(null);
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [loadingCms, setLoadingCms] = useState<boolean>(true);
@@ -413,6 +413,13 @@ export const LegalScreen: React.FC<Props> = ({
     return list;
   }, [parsedSections, selectedSectionId, searchQuery]);
 
+  const activeHeaderTitle =
+    activeTab === 'terms'
+      ? t('termsTab')
+      : activeTab === 'privacy'
+      ? t('privacyTab')
+      : t('refundTab');
+
   const activeDocTitle =
     activeTab === 'terms'
       ? t('termsTitle')
@@ -457,7 +464,7 @@ export const LegalScreen: React.FC<Props> = ({
           </TouchableOpacity>
 
           <View style={styles.headerTitleBox}>
-            <Text style={styles.headerTitle}>{t('headerTitle')}</Text>
+            <Text style={styles.headerTitle} numberOfLines={1}>{activeHeaderTitle}</Text>
           </View>
 
           <View style={styles.headerSpacer} />
@@ -479,49 +486,6 @@ export const LegalScreen: React.FC<Props> = ({
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Segmented Legal Tabs (Terms | Privacy | Refund) */}
-        <View style={styles.tabContainer}>
-          <TouchableOpacity
-            style={[styles.tabButton, activeTab === 'terms' && styles.tabButtonActive]}
-            activeOpacity={0.85}
-            onPress={() => setActiveTab('terms')}
-          >
-            <Text style={[styles.tabButtonText, activeTab === 'terms' && styles.tabButtonTextActive]}>
-              {t('termsTab')}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.tabButton, activeTab === 'privacy' && styles.tabButtonActive]}
-            activeOpacity={0.85}
-            onPress={() => setActiveTab('privacy')}
-          >
-            <Text
-              style={[
-                styles.tabButtonText,
-                activeTab === 'privacy' && styles.tabButtonTextActive,
-              ]}
-            >
-              {t('privacyTab')}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.tabButton, activeTab === 'refund' && styles.tabButtonActive]}
-            activeOpacity={0.85}
-            onPress={() => setActiveTab('refund')}
-          >
-            <Text
-              style={[
-                styles.tabButtonText,
-                activeTab === 'refund' && styles.tabButtonTextActive,
-              ]}
-            >
-              {t('refundTab')}
-            </Text>
-          </TouchableOpacity>
-        </View>
-
         {/* Search Bar & Document Summary Bar */}
         <View style={styles.searchBoxContainer}>
           <View style={styles.searchIconWrap}>
