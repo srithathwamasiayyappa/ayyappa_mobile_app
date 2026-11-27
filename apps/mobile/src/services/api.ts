@@ -700,8 +700,9 @@ export const ApiService = {
 
   // 7. Auth: Send OTP
   async sendOtp(phoneNumber: string, type: 'login' | 'register' | 'delete_account' = 'login') {
+    const activeBase = getApiBaseUrl();
     return safeFetchJson(
-      `${API_BASE_URL}/auth/send-otp`,
+      `${activeBase}/auth/send-otp`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1181,8 +1182,9 @@ export const ApiService = {
 
   // 17b. Devotee Profile: Request Account Deletion with Verified OTP
   async requestAccountDeletion(userId: number, otp: string, reason?: string) {
+    const activeBase = getApiBaseUrl();
     return safeFetchJson(
-      `${API_BASE_URL}/users/me/request-deletion`,
+      `${activeBase}/users/me/request-deletion`,
       {
         method: 'POST',
         headers: {
