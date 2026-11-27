@@ -1,0 +1,336 @@
+import { SupportedLanguage } from '../../../types';
+
+export interface AuthStrings {
+  appName: string;
+  mantra: string;
+  portalSubtitle: string;
+  welcomeDevotee: string;
+  welcomeSubtitle: string;
+  continueWithMobile: string;
+  continueWithGoogle: string;
+  continueWithApple: string;
+  skipForNow: string;
+  verifyYourMobile: string;
+  enterOtpSentTo: string;
+  verifyAndContinue: string;
+  resendOtpIn: string;
+  didntReceiveCode: string;
+  verifying: string;
+  editNumber: string;
+  loginTab: string;
+  registerTab: string;
+  mobileNumberLabel: string;
+  mobilePlaceholder: string;
+  sendLoginOtp: string;
+  fullNameLabel: string;
+  fullNamePlaceholder: string;
+  regInfoBanner: string;
+  sendVerificationOtp: string;
+  orContinueWith: string;
+  orContinueWithGmail: string;
+  signInWithGoogle: string;
+  verifyTitle: string;
+  verifySubtitle: string;
+  enterOtpLabel: string;
+  resendOtp: string;
+  resendCooldownPrefix: string;
+  verifyAndSignIn: string;
+  verifyAndRegister: string;
+  editPhone: string;
+  invalidPhoneError: string;
+  enterNameError: string;
+  enterFullOtpError: string;
+  loginSuccess: string;
+  regSuccess: string;
+  skipExplore: string;
+  // Exact Image 1 Reference Strings
+  registerTitle: string;
+  registerSubtitle: string;
+  termsConsentText: string;
+  termsLink: string;
+  andText: string;
+  privacyLink: string;
+  continueButton: string;
+  alreadyHaveAccount: string;
+  loginLink: string;
+  googleRegistrationLabel: string;
+  consentRequiredError: string;
+}
+
+export const AUTH_TRANSLATIONS: Record<SupportedLanguage, AuthStrings> = {
+  te: {
+    appName: 'Saranam Ayyappa',
+    mantra: 'స్వామియే శరణం అయ్యప్ప',
+    portalSubtitle: 'భక్త పోర్టల్ • మొబైల్ ధృవీకరణ',
+    welcomeDevotee: 'స్వాగతం భక్తులారా',
+    welcomeSubtitle: 'మీ భక్తి యాత్రను కొనసాగించడానికి లాగిన్ లేదా నమోదు చేసుకోండి',
+    continueWithMobile: 'మొబైల్ (OTP)తో కొనసాగించండి',
+    continueWithGoogle: 'Continue with Google',
+    continueWithApple: 'Continue with Apple',
+    skipForNow: 'ఇప్పుడే దాటవేయండి',
+    verifyYourMobile: 'మొబైల్ నంబర్ ధృవీకరణ',
+    enterOtpSentTo: 'ఈ నంబర్‌కు పంపిన 6-అంకెల OTPని నమోదు చేయండి',
+    verifyAndContinue: 'ధృవీకరించి కొనసాగించండి',
+    resendOtpIn: 'మళ్ళీ పంపడానికి సమయం',
+    didntReceiveCode: 'కోడ్ రాలేదా? మళ్ళీ OTP పంపండి',
+    verifying: 'ధృవీకరిస్తోంది...',
+    editNumber: 'సవరించు',
+    loginTab: 'OTPతో లాగిన్',
+    registerTab: 'OTPతో నమోదు',
+    mobileNumberLabel: 'మొబైల్ నంబర్',
+    mobilePlaceholder: 'Enter Mobile Number',
+    sendLoginOtp: 'లాగిన్ OTP పంపండి',
+    fullNameLabel: 'భక్తుని పూర్తి పేరు',
+    fullNamePlaceholder: 'Enter Full Name',
+    regInfoBanner: 'దయచేసి OTP అభ్యర్థించే ముందు మీ పూర్తి పేరు నమోదు చేయండి.',
+    sendVerificationOtp: 'సత్యాపన OTP పంపండి',
+    orContinueWith: 'or continue with',
+    orContinueWithGmail: 'or continue with',
+    signInWithGoogle: 'Googleతో లాగిన్',
+    verifyTitle: 'మొబైల్ నంబర్ ధృవీకరణ',
+    verifySubtitle: 'మీ నమోదిత మొబైల్ నంబర్‌కు పంపిన 6-అంకెల కోడ్‌ను నమోదు చేయండి.',
+    enterOtpLabel: '6-అంకెల OTP కోడ్',
+    resendOtp: 'మళ్ళీ OTP పంపండి',
+    resendCooldownPrefix: 'మళ్ళీ పంపడానికి సమయం',
+    verifyAndSignIn: 'ధృవీకరించి లాగిన్ చేయండి ➔',
+    verifyAndRegister: 'ధృవీకరించి నమోదు చేయండి ➔',
+    editPhone: 'సవరించు ✎',
+    invalidPhoneError: 'దయచేసి సరైన 10-అంకెల మొబైల్ నంబర్ నమోదు చేయండి.',
+    enterNameError: 'దయచేసి మీ పూర్తి పేరు నమోదు చేయండి.',
+    enterFullOtpError: 'దయచేసి మొత్తం 6-అంకెల OTP కోడ్‌ను నమోదు చేయండి.',
+    loginSuccess: 'Login successfully',
+    regSuccess: 'Registration successfully completed',
+    skipExplore: 'ఇప్పుడే అన్వేషించండి →',
+    registerTitle: 'Register',
+    registerSubtitle: 'create your devotional account to continue your spiritual journey',
+    termsConsentText: 'I agree to the ',
+    termsLink: 'Terms & Conditions',
+    andText: ' and ',
+    privacyLink: 'Privacy Policy.',
+    continueButton: 'Continue',
+    alreadyHaveAccount: 'Already have an account? ',
+    loginLink: 'Login',
+    googleRegistrationLabel: 'Google Registration',
+    consentRequiredError: 'Please agree to the Terms & Conditions and Privacy Policy to continue.',
+  },
+  en: {
+    appName: 'Saranam Ayyappa',
+    mantra: 'Swamiye Saranam Ayyappa',
+    portalSubtitle: 'Devotee Portal • Mobile Verification',
+    welcomeDevotee: 'Welcome Devotee',
+    welcomeSubtitle: 'Login or Register to continue your devotional journey',
+    continueWithMobile: 'Continue with Mobile (OTP)',
+    continueWithGoogle: 'Continue with Google',
+    continueWithApple: 'Continue with Apple',
+    skipForNow: 'Skip for Now',
+    verifyYourMobile: 'Mobile Number Verification',
+    enterOtpSentTo: 'Enter the 6-digit code sent to',
+    verifyAndContinue: 'Verify & Continue',
+    resendOtpIn: 'Resend OTP in',
+    didntReceiveCode: "Didn't receive the code? Resend OTP",
+    verifying: 'Verifying...',
+    editNumber: 'Edit',
+    loginTab: 'Login with OTP',
+    registerTab: 'Register with OTP',
+    mobileNumberLabel: 'Mobile Number',
+    mobilePlaceholder: 'Enter Mobile Number',
+    sendLoginOtp: 'Send Login OTP',
+    fullNameLabel: 'Devotee Full Name',
+    fullNamePlaceholder: 'Enter Full Name',
+    regInfoBanner: 'Please enter your full name before requesting verification OTP.',
+    sendVerificationOtp: 'Send Verification OTP',
+    orContinueWith: 'or continue with',
+    orContinueWithGmail: 'or continue with',
+    signInWithGoogle: 'Sign in with Google',
+    verifyTitle: 'Mobile Verification',
+    verifySubtitle: 'Enter the 6-digit code sent to your registered mobile number.',
+    enterOtpLabel: '6-Digit OTP Code',
+    resendOtp: 'Resend OTP',
+    resendCooldownPrefix: 'Resend OTP in',
+    verifyAndSignIn: 'Verify & Sign In ➔',
+    verifyAndRegister: 'Verify & Register ➔',
+    editPhone: 'Edit ✎',
+    invalidPhoneError: 'Please enter a valid 10-digit mobile number.',
+    enterNameError: 'Please enter your full name.',
+    enterFullOtpError: 'Please enter all 6 digits of the OTP code.',
+    loginSuccess: 'Login successfully',
+    regSuccess: 'Registration successfully completed',
+    skipExplore: 'Explore as Guest →',
+    registerTitle: 'Register',
+    registerSubtitle: 'create your devotional account to continue your spiritual journey',
+    termsConsentText: 'I agree to the ',
+    termsLink: 'Terms & Conditions',
+    andText: ' and ',
+    privacyLink: 'Privacy Policy.',
+    continueButton: 'Continue',
+    alreadyHaveAccount: 'Already have an account? ',
+    loginLink: 'Login',
+    googleRegistrationLabel: 'Google Registration',
+    consentRequiredError: 'Please agree to the Terms & Conditions and Privacy Policy to continue.',
+  },
+  kn: {
+    appName: 'Saranam Ayyappa',
+    mantra: 'ಸ್ವಾಮಿಯೇ ಶರಣಂ ಅಯ್ಯಪ್ಪ',
+    portalSubtitle: 'ಭಕ್ತ ಪೋರ್ಟಲ್ • ಮೊಬೈಲ್ ಪರಿಶೀಲನೆ',
+    welcomeDevotee: 'ಸ್ವಾಗತ ಭಕ್ತರೇ',
+    welcomeSubtitle: 'ನಿಮ್ಮ ಭಕ್ತಿ ಪ್ರಯಾಣವನ್ನು ಮುಂದುವರಿಸಲು ಲಾಗಿನ್ ಅಥವಾ ನೋಂದಣಿ ಮಾಡಿ',
+    continueWithMobile: 'ಮೊಬೈಲ್ (OTP) ಮೂಲಕ ಮುಂದುವರಿಯಿರಿ',
+    continueWithGoogle: 'Continue with Google',
+    continueWithApple: 'Continue with Apple',
+    skipForNow: 'ಈಗಲೇ ಬಿಟ್ಟುಬಿಡಿ',
+    verifyYourMobile: 'ಮೊಬೈಲ್ ಪರಿಶೀಲನೆ',
+    enterOtpSentTo: 'ಈ ಸಂಖ್ಯೆಗೆ ಕಳುಹಿಸಲಾದ 6-ಅಂಕಿಯ OTP ನಮೂದಿಸಿ',
+    verifyAndContinue: 'ಪರಿಶೀಲಿಸಿ & ಮುಂದುವರಿಯಿರಿ',
+    resendOtpIn: 'ಮರುಕಳುಹಿಸುವ ಸಮಯ',
+    didntReceiveCode: 'ಕೋಡ್ ಬಂದಿಲ್ಲವೇ? ಮರುಕಳುಹಿಸಿ',
+    verifying: 'ಪರಿಶೀಲಿಸಲಾಗುತ್ತಿದೆ...',
+    editNumber: 'ಬದಲಾಯಿಸಿ',
+    loginTab: 'OTP ಯೊಂದಿಗೆ ಲಾಗಿನ್',
+    registerTab: 'OTP ಯೊಂದಿಗೆ ನೋಂದಣಿ',
+    mobileNumberLabel: 'ಮೊಬೈಲ್ ಸಂಖ್ಯೆ',
+    mobilePlaceholder: 'Enter Mobile Number',
+    sendLoginOtp: 'ಲಾಗಿನ್ OTP ಕಳುಹಿಸಿ',
+    fullNameLabel: 'ಭಕ್ತನ ಪೂರ್ಣ ಹೆಸರು',
+    fullNamePlaceholder: 'Enter Full Name',
+    regInfoBanner: 'ದಯವಿಟ್ಟು OTP ವಿನಂತಿಸುವ ಮೊದಲು ನಿಮ್ಮ ಪೂರ್ಣ ಹೆಸರನ್ನು ನಮೂದಿಸಿ.',
+    sendVerificationOtp: 'ಪರಿಶೀಲನಾ OTP ಕಳುಹಿಸಿ',
+    orContinueWith: 'or continue with',
+    orContinueWithGmail: 'or continue with',
+    signInWithGoogle: 'Google ನೊಂದಿಗೆ ಲಾಗಿನ್',
+    verifyTitle: 'ಮೊಬೈಲ್ ಸಂಖ್ಯೆ ಪರಿಶೀಲನೆ',
+    verifySubtitle: 'ನಿಮ್ಮ ನೋಂದಾಯಿತ ಮೊಬೈಲ್ ಸಂಖ್ಯೆಗೆ ಕಳುಹಿಸಲಾದ 6-ಅಂಕಿಯ ಕೋಡ್ ನಮೂದಿಸಿ.',
+    enterOtpLabel: '6-ಅಂಕಿಯ OTP ಕೋಡ್',
+    resendOtp: 'ಮತ್ತೆ OTP ಕಳುಹಿಸಿ',
+    resendCooldownPrefix: 'ಮತ್ತೆ ಕಳುಹಿಸುವ ಸಮಯ',
+    verifyAndSignIn: 'ಪರಿಶೀಲಿಸಿ ಮತ್ತು ಲಾಗಿನ್ ಮಾಡಿ ➔',
+    verifyAndRegister: 'ಪರಿಶೀಲಿಸಿ ಮತ್ತು ನೋಂದಣಿ ಮಾಡಿ ➔',
+    editPhone: 'ತಿದ್ದು ✎',
+    invalidPhoneError: 'ದಯವಿಟ್ಟು ಮಾನ್ಯವಾದ 10-ಅಂಕಿಯ ಮೊಬೈಲ್ ಸಂಖ್ಯೆಯನ್ನು ನಮೂದಿಸಿ.',
+    enterNameError: 'ದಯವಿಟ್ಟು ನಿಮ್ಮ ಪೂರ್ಣ ಹೆಸರನ್ನು ನಮೂದಿಸಿ.',
+    enterFullOtpError: 'ದಯವಿಟ್ಟು ಪೂರ್ಣ 6-ಅಂಕಿಯ OTP ಕೋಡ್ ಅನ್ನು ನಮೂದಿಸಿ.',
+    loginSuccess: 'Login successfully',
+    regSuccess: 'Registration successfully completed',
+    skipExplore: 'ಅನ್ವೇಷಿಸಿ →',
+    registerTitle: 'Register',
+    registerSubtitle: 'create your devotional account to continue your spiritual journey',
+    termsConsentText: 'I agree to the ',
+    termsLink: 'Terms & Conditions',
+    andText: ' and ',
+    privacyLink: 'Privacy Policy.',
+    continueButton: 'Continue',
+    alreadyHaveAccount: 'Already have an account? ',
+    loginLink: 'Login',
+    googleRegistrationLabel: 'Google Registration',
+    consentRequiredError: 'Please agree to the Terms & Conditions and Privacy Policy to continue.',
+  },
+  ta: {
+    appName: 'Saranam Ayyappa',
+    mantra: 'சுவாமியே சரணம் ஐயப்பா',
+    portalSubtitle: 'பக்தர் போர்டல் • மொபைல் சரிபார்ப்பு',
+    welcomeDevotee: 'பக்தர்களே வருக',
+    welcomeSubtitle: 'உங்கள் பக்திப் பயணத்தைத் தொடர உள்நுழையவும் அல்லது பதிவு செய்யவும்',
+    continueWithMobile: 'மொபைல் (OTP) மூலம் தொடரவும்',
+    continueWithGoogle: 'Continue with Google',
+    continueWithApple: 'Continue with Apple',
+    skipForNow: 'இப்போதைக்கு தவிர்',
+    verifyYourMobile: 'மொபைல் சரிபார்ப்பு',
+    enterOtpSentTo: 'இந்த எண்ணிற்கு அனுப்பப்பட்ட 6-இலக்க OTP-ஐ உள்ளிடவும்',
+    verifyAndContinue: 'சரிபார்த்து தொடரவும்',
+    resendOtpIn: 'மீண்டும் அனுப்ப நேரம்',
+    didntReceiveCode: 'குறியீடு வரவில்லையா? மீண்டும் அனுப்பவும்',
+    verifying: 'சரிபார்க்கிறது...',
+    editNumber: 'மாற்று',
+    loginTab: 'OTP உடன் உள்நுழைக',
+    registerTab: 'OTP உடன் பதிவு செய்க',
+    mobileNumberLabel: 'கைபேசி எண்',
+    mobilePlaceholder: 'Enter Mobile Number',
+    sendLoginOtp: 'உள்நுழைவு OTP அனுப்புக',
+    fullNameLabel: 'பக்தரின் முழுப் பெயர்',
+    fullNamePlaceholder: 'Enter Full Name',
+    regInfoBanner: 'சரிபார்ப்பு OTP-ஐ கோருவதற்கு முன் உங்கள் முழுப் பெயரை உள்ளிடவும்.',
+    sendVerificationOtp: 'சரிபார்ப்பு OTP அனுப்புக',
+    orContinueWith: 'or continue with',
+    orContinueWithGmail: 'or continue with',
+    signInWithGoogle: 'Google மூலம் உள்நுழைக',
+    verifyTitle: 'மொபைல் சரிபார்ப்பு',
+    verifySubtitle: 'உங்கள் பதிவு செய்யப்பட்ட மொபைல் எண்ணிற்கு அனுப்பப்பட்ட 6-இலக்க குறியீட்டை உள்ளிடவும்.',
+    enterOtpLabel: '6-இலக்க OTP குறியீடு',
+    resendOtp: 'மீண்டும் OTP அனுப்புக',
+    resendCooldownPrefix: 'மீண்டும் அனுப்ப நேரம்',
+    verifyAndSignIn: 'சரிபார்த்து உள்நுழைக ➔',
+    verifyAndRegister: 'சரிபார்த்து பதிவு செய்க ➔',
+    editPhone: 'திருத்து ✎',
+    invalidPhoneError: 'சரியான 10-இலக்க மொபைல் எண்ணை உள்ளிடவும்.',
+    enterNameError: 'உங்கள் முழுப் பெயரை உள்ளிடவும்.',
+    enterFullOtpError: 'முழுமையான 6-இலக்க OTP குறியீட்டை உள்ளிடவும்.',
+    loginSuccess: 'Login successfully',
+    regSuccess: 'Registration successfully completed',
+    skipExplore: 'ஆராய்ந்து பார் →',
+    registerTitle: 'Register',
+    registerSubtitle: 'create your devotional account to continue your spiritual journey',
+    termsConsentText: 'I agree to the ',
+    termsLink: 'Terms & Conditions',
+    andText: ' and ',
+    privacyLink: 'Privacy Policy.',
+    continueButton: 'Continue',
+    alreadyHaveAccount: 'Already have an account? ',
+    loginLink: 'Login',
+    googleRegistrationLabel: 'Google Registration',
+    consentRequiredError: 'Please agree to the Terms & Conditions and Privacy Policy to continue.',
+  },
+  hi: {
+    appName: 'Saranam Ayyappa',
+    mantra: 'स्वामीये शरणम अय्यप्पा',
+    portalSubtitle: 'भक्त पोर्टल • मोबाइल सत्यापन',
+    welcomeDevotee: 'स्वागत है भक्तों',
+    welcomeSubtitle: 'अपनी भक्ति यात्रा जारी रखने के लिए लॉगिन या पंजीकरण करें',
+    continueWithMobile: 'मोबाइल (OTP) से जारी रखें',
+    continueWithGoogle: 'Continue with Google',
+    continueWithApple: 'Continue with Apple',
+    skipForNow: 'अभी छोड़ें',
+    verifyYourMobile: 'मोबाइल सत्यापन',
+    enterOtpSentTo: 'इस नंबर पर भेजा गया 6-अंकीय OTP दर्ज करें',
+    verifyAndContinue: 'सत्यापित करें और जारी रखें',
+    resendOtpIn: 'पुनः भेजने का समय',
+    didntReceiveCode: 'कोड नहीं मिला? पुनः OTP भेजें',
+    verifying: 'सत्यापित हो रहा है...',
+    editNumber: 'बदलें',
+    loginTab: 'OTP से लॉगिन',
+    registerTab: 'OTP से पंजीकरण',
+    mobileNumberLabel: 'मोबाइल नंबर',
+    mobilePlaceholder: 'Enter Mobile Number',
+    sendLoginOtp: 'लॉगिन OTP भेजें',
+    fullNameLabel: 'भक्त का पूरा नाम',
+    fullNamePlaceholder: 'Enter Full Name',
+    regInfoBanner: 'कृपया OTP अनुरोध करने से पहले अपना पूरा नाम दर्ज करें।',
+    sendVerificationOtp: 'सत्यापन OTP भेजें',
+    orContinueWith: 'or continue with',
+    orContinueWithGmail: 'or continue with',
+    signInWithGoogle: 'Google से लॉगिन',
+    verifyTitle: 'मोबाइल नंबर सत्यापन',
+    verifySubtitle: 'अपने पंजीकृत मोबाइल नंबर पर भेजा गया 6-अंकीय कोड दर्ज करें।',
+    enterOtpLabel: '6-अंकीय OTP कोड',
+    resendOtp: 'पुनः OTP भेजें',
+    resendCooldownPrefix: 'पुनः भेजने का समय',
+    verifyAndSignIn: 'सत्यापित करें और लॉगिन करें ➔',
+    verifyAndRegister: 'सत्यापित करें और पंजीकरण करें ➔',
+    editPhone: 'संपादित करें ✎',
+    invalidPhoneError: 'कृपया मान्य 10-अंकीय मोबाइल नंबर दर्ज करें।',
+    enterNameError: 'कृपया अपना पूरा नाम दर्ज करें।',
+    enterFullOtpError: 'कृपया पूरा 6-अंकीय OTP कोड दर्ज करें।',
+    loginSuccess: 'Login successfully',
+    regSuccess: 'Registration successfully completed',
+    skipExplore: 'अभी देखें →',
+    registerTitle: 'Register',
+    registerSubtitle: 'create your devotional account to continue your spiritual journey',
+    termsConsentText: 'I agree to the ',
+    termsLink: 'Terms & Conditions',
+    andText: ' and ',
+    privacyLink: 'Privacy Policy.',
+    continueButton: 'Continue',
+    alreadyHaveAccount: 'Already have an account? ',
+    loginLink: 'Login',
+    googleRegistrationLabel: 'Google Registration',
+    consentRequiredError: 'Please agree to the Terms & Conditions and Privacy Policy to continue.',
+  },
+};
