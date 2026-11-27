@@ -1068,10 +1068,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#FAF5EB',
   },
   padiHeaderBar: {
-    height: 54,
+    minHeight: 56 + ANDROID_STATUS_BAR_HEIGHT,
+    paddingTop: ANDROID_STATUS_BAR_HEIGHT + 6,
+    paddingBottom: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     position: 'relative',
     borderBottomWidth: 1.2,
     borderBottomColor: '#DFA62E',
@@ -1113,7 +1115,7 @@ const styles = StyleSheet.create({
   headerFiligreeWrapper: {
     position: 'absolute',
     right: 0,
-    top: 0,
+    top: ANDROID_STATUS_BAR_HEIGHT,
     bottom: 0,
     justifyContent: 'center',
     opacity: 0.85,

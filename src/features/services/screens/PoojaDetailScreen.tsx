@@ -1288,8 +1288,9 @@ const styles = StyleSheet.create({
     opacity: 0.07,
   },
   padiHeaderBar: {
-    height: 54 + ANDROID_STATUS_BAR_HEIGHT,
-    paddingTop: ANDROID_STATUS_BAR_HEIGHT,
+    minHeight: 56 + ANDROID_STATUS_BAR_HEIGHT,
+    paddingTop: ANDROID_STATUS_BAR_HEIGHT + 6,
+    paddingBottom: 8,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,

@@ -18,7 +18,16 @@ import Svg, { Path, Circle, Polygon } from 'react-native-svg';
 import { SupportedLanguage } from '../../../types';
 import { ApiService, resolveMediaUrl } from '../../../services/api';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: WINDOW_WIDTH, height: WINDOW_HEIGHT } = Dimensions.get('window');
+const { width: SCREEN_WIDTH_FULL, height: SCREEN_HEIGHT_FULL } = Dimensions.get('screen');
+const SCREEN_WIDTH = Math.min(WINDOW_WIDTH, SCREEN_WIDTH_FULL);
+const SCREEN_HEIGHT = Math.max(WINDOW_HEIGHT, SCREEN_HEIGHT_FULL);
+const isLargeOrTallScreen = SCREEN_HEIGHT >= 800 || (SCREEN_HEIGHT / SCREEN_WIDTH) >= 1.95;
+
+// Dynamic status bar height for Android
+const ANDROID_STATUS_BAR_HEIGHT = Platform.OS === 'android'
+  ? Math.max(StatusBar.currentHeight || 0, isLargeOrTallScreen ? 44 : 36)
+  : 0;
 
 // Pre-bundled deity artworks matching sacred card medallions
 const DEITY_IMAGES: Record<string, any> = {
@@ -627,11 +636,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#FAF5EB',
   },
   headerBar: {
+    minHeight: 56 + ANDROID_STATUS_BAR_HEIGHT,
+    paddingTop: ANDROID_STATUS_BAR_HEIGHT + 6,
+    paddingBottom: 10,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 28) + 8 : 12,
-    paddingBottom: 14,
     borderBottomWidth: 1.5,
     borderBottomColor: 'rgba(223, 166, 46, 0.4)',
     elevation: 4,
