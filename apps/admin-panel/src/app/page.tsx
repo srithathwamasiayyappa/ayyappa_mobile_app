@@ -66,7 +66,9 @@ import {
   Info,
   Phone,
   Mail,
-  LogIn
+  LogIn,
+  Table,
+  LayoutGrid
 } from 'lucide-react';
 import { SplashScreenManager } from './components/SplashScreenManager';
 import { RichTextEditor } from './components/RichTextEditor';
@@ -75,7 +77,10 @@ import { TranslationModal, FieldDefinition } from './components/TranslationModal
 
 interface DeityItem {
   id: string;
+  slug?: string;
   name: string;
+  englishName?: string;
+  teluguName?: string;
   alternateName?: string;
   category: 'God' | 'Goddess' | 'Avatar' | 'Cosmic Form' | string;
   vahana?: string;
@@ -131,7 +136,13 @@ interface SubcategoryItem {
   description: string;
   displayOrder?: number;
   isAudio?: boolean;
+  status?: string;
+  isActive?: boolean;
+  typesCount?: number;
   imageUrl?: string;
+  image?: string;
+  deityId?: string;
+  deityName?: string;
 }
 
 interface ParentLookupItem {
@@ -152,6 +163,9 @@ interface FullCategoryDetail {
   isSubcategory?: boolean;
   isType?: boolean;
   isPublished?: boolean;
+  status?: string;
+  isActive?: boolean;
+  typesCount?: number;
   sacredText?: string | null;
   meaning?: string | null;
   parentId?: number | string | null;
@@ -305,7 +319,7 @@ const categoryArtworkMap: Record<string, string> = {
   'live-streams': '/images/categories/art-live-trans.png',
   live: '/images/categories/art-live-trans.png',
   panchangam: '/images/categories/art-panchangam-trans.png',
-  festivals: '/images/categories/art-stotras-trans.png',
+  festivals: '/images/categories/art-festivals-trans.png',
   temples: '/images/categories/art-temples-trans.png',
   donations: '/images/categories/art-donations-trans.png',
 };
@@ -332,6 +346,76 @@ const renderServiceIcon = (iconName: string) => {
     case 'hearthandshake': return <HeartHandshake className="w-5 h-5 text-rose-400" />;
     default: return <Sparkles className="w-5 h-5 text-amber-400" />;
   }
+};
+
+const renderStatusBadge = (status: string | undefined, isActive?: boolean) => {
+  const effective = status || (isActive !== false ? 'active' : 'inactive');
+  if (effective === 'active') {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-950/70 border border-emerald-800/50 text-emerald-300">
+        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+        <span>Active</span>
+      </span>
+    );
+  }
+  if (effective === 'coming_soon') {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-950/70 border border-amber-700/60 text-amber-300">
+        <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+        <span>Coming Soon</span>
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-gray-800/60 border border-gray-700/50 text-gray-400">
+      <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
+      <span>Inactive</span>
+    </span>
+  );
+};
+
+const VALID_ADMIN_TABS = new Set([
+  'dashboard',
+  'cms',
+  'users',
+  'devotional_services',
+  'subcategories',
+  'content',
+  'temples',
+  'categories',
+  'gods',
+  'audio',
+  'temple_types',
+  'tickets',
+  'settings',
+  'soft_deleted_users',
+  'panchangam',
+  'festivals',
+  'splash',
+  'languages',
+  'audit',
+  'profile'
+]);
+
+const getStoredTab = (): string => {
+  if (typeof window === 'undefined') return 'dashboard';
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const urlTab = params.get('tab');
+    if (urlTab && VALID_ADMIN_TABS.has(urlTab)) return urlTab;
+    const localTab = localStorage.getItem('ayyappa_admin_active_tab');
+    if (localTab && VALID_ADMIN_TABS.has(localTab)) return localTab;
+  } catch (_) { }
+  return 'dashboard';
+};
+
+const getStoredExpandedSection = (tab: string): 'cms' | 'users' | 'categories' | 'vidhanam' | 'audio' | null => {
+  if (tab === 'cms') return 'cms';
+  if (tab === 'users' || tab === 'soft_deleted_users') return 'users';
+  if (tab === 'categories' || tab === 'devotional_services' || tab === 'subcategories' || tab === 'temples') return 'categories';
+  if (tab === 'content' || tab === 'gods') return 'vidhanam';
+  if (tab === 'audio') return 'audio';
+  return null;
 };
 
 export default function EnterpriseSuperAdminDashboard() {
@@ -366,6 +450,13 @@ export default function EnterpriseSuperAdminDashboard() {
 
   // Check auth synchronously on client mount before rendering anything
   useEffect(() => {
+    try {
+      const storedLogo = localStorage.getItem('ayyappa_admin_logo');
+      if (storedLogo) {
+        setAppLogoUrl(storedLogo);
+        setCustomLogoInput(storedLogo);
+      }
+    } catch (_) { }
     loadAppLogo();
     try {
       const token = localStorage.getItem('ayyappa_admin_token');
@@ -380,6 +471,15 @@ export default function EnterpriseSuperAdminDashboard() {
           } catch { }
         }
         loadAdminProfile();
+
+        const storedTab = getStoredTab();
+        if (storedTab && storedTab !== activeTab) {
+          setActiveTab(storedTab);
+        }
+        const storedSection = getStoredExpandedSection(storedTab);
+        if (storedSection) {
+          setExpandedSection(storedSection);
+        }
       } else {
         localStorage.removeItem('ayyappa_admin_token');
         localStorage.removeItem('ayyappa_admin_profile');
@@ -417,8 +517,10 @@ export default function EnterpriseSuperAdminDashboard() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
-  // Active Navigation Tab
-  const [activeTab, setActiveTab] = useState<string>('dashboard');
+  // Active Navigation Tab (Persisted across reloads via URL query & localStorage)
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    return getStoredTab();
+  });
 
   // =========================================================
   // GODS & GODDESSES (DEITIES) MANAGEMENT STATE & HANDLERS
@@ -429,21 +531,22 @@ export default function EnterpriseSuperAdminDashboard() {
   const [editingDeity, setEditingDeity] = useState<Partial<DeityItem> | null>(null);
   const [isDeityModalOpen, setIsDeityModalOpen] = useState<boolean>(false);
 
-  const loadDeities = useCallback(async () => {
+  const loadDeities = useCallback(async (lang?: string) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/admin/deities`);
+      const targetLang = lang || 'te';
+      const res = await fetch(`${API_BASE_URL}/admin/deities?lang=${targetLang}`);
       if (res.ok) {
         const data = await res.json();
-        if (data && data.data && Array.isArray(data.data)) {
-          setDeities(data.data);
-          return;
-        }
+        const list = (data && Array.isArray(data.data)) ? data.data : (Array.isArray(data) ? data : []);
+        setDeities(list);
+        return list;
       }
       setDeities([]);
     } catch (err) {
       console.error('Failed to load deities from DB:', err);
       setDeities([]);
     }
+    return [];
   }, []);
 
   const handleOpenCreateDeity = () => {
@@ -561,14 +664,38 @@ export default function EnterpriseSuperAdminDashboard() {
   const [selectedSubcategoryIds, setSelectedSubcategoryIds] = useState<string[]>([]);
   const [selectedTypeIds, setSelectedTypeIds] = useState<number[]>([]);
   const [selectedParentCategoryFilter, setSelectedParentCategoryFilter] = useState<string>('all');
+  const [subcategoryStatusFilter, setSubcategoryStatusFilter] = useState<string>('all');
+  const [subSearch, setSubSearch] = useState<string>('');
+  const [subFormStatus, setSubFormStatus] = useState<string>('active');
+  const [typeFormStatus, setTypeFormStatus] = useState<string>('active');
+  const [typeStatusFilter, setTypeStatusFilter] = useState<string>('all');
   const [selectedSubcategoryForTypes, setSelectedSubcategoryForTypes] = useState<string>('all');
+  const [subcategoriesTypeCounts, setSubcategoriesTypeCounts] = useState<{ [key: string]: number }>({});
   const [parentLookupList, setParentLookupList] = useState<ParentLookupItem[]>([]);
   const parentLookupListRef = useRef<ParentLookupItem[]>([]);
+  const [parentCategoryCounts, setParentCategoryCounts] = useState<{ [key: string]: number }>({
+    'pooja': 76,
+    'pooja-vidhanam': 76,
+    'stotras': 43,
+    'divine-stotras': 43,
+    'slokas': 11,
+    'daily-slokas': 11,
+    'songs': 27,
+    'bhajans': 27,
+    'live-streams': 0,
+    'darshan': 0,
+    'panchangam': 0,
+    'festivals': 0,
+    'temples': 0,
+    'donations': 0,
+    'annadanam': 0
+  });
   const [isSubModalOpen, setIsSubModalOpen] = useState(false);
   const [editingSubId, setEditingSubId] = useState<string | null>(null);
   const [subFormTitle, setSubFormTitle] = useState('');
   const [subFormSlug, setSubFormSlug] = useState('');
-  const [subFormParentId, setSubFormParentId] = useState<number | string | ''>('');
+  const [subFormParentId, setSubFormParentId] = useState<number | ''>('');
+  const [subFormDeityId, setSubFormDeityId] = useState<string>('ayyappa');
   const [subFormDescription, setSubFormDescription] = useState('');
   const [subFormImageUrl, setSubFormImageUrl] = useState('');
 
@@ -619,16 +746,18 @@ export default function EnterpriseSuperAdminDashboard() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
-  const [selectedLang, setSelectedLang] = useState('en');
-  const [tickerText, setTickerText] = useState('');
-  const [appLogoUrl, setAppLogoUrl] = useState<string>(() => {
+  const [selectedLang, setSelectedLang] = useState<string>(() => {
     if (typeof window !== 'undefined') {
       try {
-        return localStorage.getItem('ayyappa_admin_logo') || '';
-      } catch { }
+        const p = new URLSearchParams(window.location.search);
+        const l = p.get('lang') || localStorage.getItem('ayyappa_admin_lang');
+        if (l) return l;
+      } catch (_) { }
     }
-    return '';
+    return 'en';
   });
+  const [tickerText, setTickerText] = useState('');
+  const [appLogoUrl, setAppLogoUrl] = useState<string>('');
   const [customLogoInput, setCustomLogoInput] = useState('');
   const [isUpdatingLogo, setIsUpdatingLogo] = useState(false);
 
@@ -663,10 +792,15 @@ export default function EnterpriseSuperAdminDashboard() {
   const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
   const [isUpdatingTicket, setIsUpdatingTicket] = useState(false);
 
-  // Devotional Services State (strictly fetched from DB via API, zero mock/fake data)
+  // Devotional Services State (strictly fetched from DB via API with server-side search, filter, pagination)
   const [devotionalServices, setDevotionalServices] = useState<any[]>([]);
   const [loadingServices, setLoadingServices] = useState<boolean>(false);
   const [serviceSearch, setServiceSearch] = useState<string>('');
+  const [serviceStatusFilter, setServiceStatusFilter] = useState<'all' | 'active' | 'coming_soon' | 'inactive'>('all');
+  const [servicePage, setServicePage] = useState<number>(1);
+  const [serviceLimit, setServiceLimit] = useState<number>(10);
+  const [serviceTotalPages, setServiceTotalPages] = useState<number>(1);
+  const [serviceTotalCount, setServiceTotalCount] = useState<number>(9);
   const [selectedViewService, setSelectedViewService] = useState<any | null>(null);
   const [isViewServiceModalOpen, setIsViewServiceModalOpen] = useState(false);
   const [editingCategoryService, setEditingCategoryService] = useState<any | null>(null);
@@ -761,20 +895,135 @@ export default function EnterpriseSuperAdminDashboard() {
   const [formDescription, setFormDescription] = useState('');
 
   // CMS Editor State
-  const [selectedCmsKey, setSelectedCmsKey] = useState<string>('about_us');
+  const [selectedCmsKey, setSelectedCmsKey] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const p = new URLSearchParams(window.location.search);
+        return p.get('cms_key') || localStorage.getItem('ayyappa_admin_cms_key') || 'about_us';
+      } catch (_) { }
+    }
+    return 'about_us';
+  });
   const [cmsEditTitle, setCmsEditTitle] = useState('');
   const [cmsEditContent, setCmsEditContent] = useState('');
   const [isSavingCms, setIsSavingCms] = useState(false);
 
   // Accordion State: Only one section can be expanded at a time
-  const [expandedSection, setExpandedSection] = useState<'cms' | 'users' | 'categories' | 'vidhanam' | 'audio' | null>('cms');
+  const [expandedSection, setExpandedSection] = useState<'cms' | 'users' | 'categories' | 'vidhanam' | 'audio' | null>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const tab = getStoredTab();
+        const section = getStoredExpandedSection(tab);
+        if (section) return section;
+      } catch (_) { }
+    }
+    return 'cms';
+  });
 
   // Sidebar Subtitle States
-  const [selectedUserSubtitle, setSelectedUserSubtitle] = useState<'devotees' | 'dharma_karthas'>('devotees');
-  const [selectedCategorySubtitle, setSelectedCategorySubtitle] = useState<'devotional_services' | 'subcategories' | 'temples' | 'poojas' | 'events'>('devotional_services');
-  const [selectedVidhanamSubtitle, setSelectedVidhanamSubtitle] = useState<'gods' | 'slokas' | 'astothrams' | 'stotras'>('gods');
-  const [selectedMusicSubtitle, setSelectedMusicSubtitle] = useState<'bhajans' | 'slogans' | 'aarti'>('bhajans');
+  const [selectedUserSubtitle, setSelectedUserSubtitle] = useState<'devotees' | 'dharma_karthas'>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const p = new URLSearchParams(window.location.search);
+        const val = p.get('user_subtitle') || localStorage.getItem('ayyappa_admin_user_subtitle');
+        if (val === 'devotees' || val === 'dharma_karthas') return val;
+      } catch (_) { }
+    }
+    return 'devotees';
+  });
+
+  const [selectedCategorySubtitle, setSelectedCategorySubtitle] = useState<'devotional_services' | 'subcategories' | 'temples' | 'poojas' | 'events'>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const p = new URLSearchParams(window.location.search);
+        const val = p.get('category_subtitle') || localStorage.getItem('ayyappa_admin_category_subtitle');
+        if (val === 'devotional_services' || val === 'subcategories' || val === 'temples' || val === 'poojas' || val === 'events') return val;
+      } catch (_) { }
+    }
+    return 'devotional_services';
+  });
+
+  const [selectedVidhanamSubtitle, setSelectedVidhanamSubtitle] = useState<'gods' | 'slokas' | 'astothrams' | 'stotras'>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const p = new URLSearchParams(window.location.search);
+        const val = p.get('vidhanam_subtitle') || localStorage.getItem('ayyappa_admin_vidhanam_subtitle');
+        if (val === 'gods' || val === 'slokas' || val === 'astothrams' || val === 'stotras') return val;
+      } catch (_) { }
+    }
+    return 'gods';
+  });
+
+  const [selectedMusicSubtitle, setSelectedMusicSubtitle] = useState<'bhajans' | 'slogans' | 'aarti'>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const p = new URLSearchParams(window.location.search);
+        const val = p.get('music_subtitle') || localStorage.getItem('ayyappa_admin_music_subtitle');
+        if (val === 'bhajans' || val === 'slogans' || val === 'aarti') return val;
+      } catch (_) { }
+    }
+    return 'bhajans';
+  });
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+
+  // Synchronize current page and tab to URL query & localStorage so page refresh stays on current page
+  useEffect(() => {
+    if (typeof window === 'undefined' || !isAuthenticated) return;
+    try {
+      localStorage.setItem('ayyappa_admin_active_tab', activeTab);
+      localStorage.setItem('ayyappa_admin_lang', selectedLang);
+
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', activeTab);
+      url.searchParams.set('lang', selectedLang);
+
+      if (activeTab === 'cms' && selectedCmsKey) {
+        url.searchParams.set('cms_key', selectedCmsKey);
+        localStorage.setItem('ayyappa_admin_cms_key', selectedCmsKey);
+      } else {
+        url.searchParams.delete('cms_key');
+      }
+
+      if (activeTab === 'categories' && selectedCategorySubtitle) {
+        url.searchParams.set('category_subtitle', selectedCategorySubtitle);
+        localStorage.setItem('ayyappa_admin_category_subtitle', selectedCategorySubtitle);
+      } else {
+        url.searchParams.delete('category_subtitle');
+      }
+
+      if (activeTab === 'content' && selectedVidhanamSubtitle) {
+        url.searchParams.set('vidhanam_subtitle', selectedVidhanamSubtitle);
+        localStorage.setItem('ayyappa_admin_vidhanam_subtitle', selectedVidhanamSubtitle);
+      } else {
+        url.searchParams.delete('vidhanam_subtitle');
+      }
+
+      if (activeTab === 'users' && selectedUserSubtitle) {
+        url.searchParams.set('user_subtitle', selectedUserSubtitle);
+        localStorage.setItem('ayyappa_admin_user_subtitle', selectedUserSubtitle);
+      } else {
+        url.searchParams.delete('user_subtitle');
+      }
+
+      if (activeTab === 'audio' && selectedMusicSubtitle) {
+        url.searchParams.set('music_subtitle', selectedMusicSubtitle);
+        localStorage.setItem('ayyappa_admin_music_subtitle', selectedMusicSubtitle);
+      } else {
+        url.searchParams.delete('music_subtitle');
+      }
+
+      window.history.replaceState(null, '', url.toString());
+    } catch (_) { }
+  }, [
+    activeTab,
+    selectedLang,
+    selectedCmsKey,
+    selectedCategorySubtitle,
+    selectedVidhanamSubtitle,
+    selectedUserSubtitle,
+    selectedMusicSubtitle,
+    isAuthenticated
+  ]);
 
   // Sync CMS Editor fields when active tab or selected key changes
   useEffect(() => {
@@ -977,9 +1226,21 @@ export default function EnterpriseSuperAdminDashboard() {
     }
     setIsAuthenticated(false);
     setLoginPassword('');
+    setActiveTab('dashboard');
     if (typeof window !== 'undefined') {
       localStorage.removeItem('ayyappa_admin_token');
       localStorage.removeItem('ayyappa_admin_profile');
+      localStorage.removeItem('ayyappa_admin_active_tab');
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('tab');
+        url.searchParams.delete('cms_key');
+        url.searchParams.delete('category_subtitle');
+        url.searchParams.delete('vidhanam_subtitle');
+        url.searchParams.delete('user_subtitle');
+        url.searchParams.delete('music_subtitle');
+        window.history.replaceState(null, '', url.toString());
+      } catch (_) { }
     }
     setNotification('You have logged out securely. Backend session revoked.');
   };
@@ -1058,29 +1319,166 @@ export default function EnterpriseSuperAdminDashboard() {
       .finally(() => setLoading(false));
   }, []);
 
-  // 2. Load Subcategories & Category Lookup
-  const loadParentLookup = useCallback((lang = 'en') => {
-    fetch(`${API_BASE_URL}/admin/categories?limit=100&lang=${lang}`)
+  // 2. Load Subcategories & Category Lookup (Strictly 9 Sanctum Parent Categories)
+  const sanitizeParentCategories = useCallback((rawList: any[]) => {
+    const CANONICAL_GROUP: { [k: string]: string } = {
+      'pooja': 'pooja', 'pooja-vidhanam': 'pooja',
+      'stotras': 'stotras', 'divine-stotras': 'stotras',
+      'slokas': 'slokas', 'daily-slokas': 'slokas',
+      'songs': 'songs', 'bhajans': 'songs',
+      'live-streams': 'live-streams', 'live-darshan': 'live-streams', 'darshan': 'live-streams',
+      'panchangam': 'panchangam',
+      'festivals': 'festivals', 'temple-festivals': 'festivals',
+      'temples': 'temples', 'sacred-temples': 'temples',
+      'donations': 'donations', 'annadanam': 'donations', 'annadanam-seva': 'donations'
+    };
+
+    const seen = new Set<string>();
+    const sanitized: any[] = [];
+
+    for (const item of rawList) {
+      const slug = (item.slug || '').toLowerCase().trim();
+      const title = (item.title || '').toLowerCase().trim();
+      // Exclude calendar dates / non-canonical entries
+      if (slug.includes('dates') || slug.includes('nakshatra') || slug.includes('opening')) continue;
+      if (title.includes('dates') || title.includes('nakshatra') || title.includes('opening')) continue;
+
+      const matchedKey = Object.keys(CANONICAL_GROUP).find(k => slug === k || slug.includes(k) || title.includes(k));
+      const group = matchedKey ? CANONICAL_GROUP[matchedKey] : null;
+      if (group) {
+        if (seen.has(group)) continue;
+        seen.add(group);
+        sanitized.push(item);
+      }
+    }
+
+    return sanitized.length > 0 ? sanitized : rawList;
+  }, []);
+
+  const computeDynamicCategoryCounts = useCallback((subList: any[]) => {
+    const counts: { [k: string]: number } = {
+      'pooja': 0,
+      'pooja-vidhanam': 0,
+      'stotras': 0,
+      'divine-stotras': 0,
+      'slokas': 0,
+      'daily-slokas': 0,
+      'songs': 0,
+      'bhajans': 0,
+      'live-streams': 0,
+      'darshan': 0,
+      'panchangam': 0,
+      'festivals': 0,
+      'temples': 0,
+      'donations': 0,
+      'annadanam': 0
+    };
+
+    const rootFamilyMap: { [id: number]: string } = {
+      113: 'pooja', 25: 'pooja', 120: 'pooja', 130: 'pooja', 26: 'pooja', 27: 'pooja', 28: 'pooja', 3: 'pooja', 117: 'pooja', 7: 'pooja', 6: 'pooja', 122: 'pooja', 229: 'pooja',
+      114: 'stotras', 21: 'stotras', 52: 'stotras', 4: 'stotras',
+      115: 'slokas',
+      116: 'songs', 2311: 'songs', 11: 'songs', 93: 'songs',
+      2312: 'live-streams',
+      2313: 'festivals',
+      2314: 'temples',
+      2315: 'donations'
+    };
+
+    for (const item of subList) {
+      const pid = Number(item.parentId);
+      const pslug = (item.parentSlug || '').toLowerCase();
+      const slug = (item.slug || '').toLowerCase();
+
+      if (rootFamilyMap[pid]) {
+        counts[rootFamilyMap[pid]]++;
+      } else if (pid === 113 || pslug.includes('pooja') || pslug.includes('vratha') || slug.includes('pooja') || slug.includes('vratham')) {
+        counts['pooja']++;
+      } else if (pid === 114 || pslug.includes('stotra') || slug.includes('stotra') || pslug.includes('ashtottar') || slug.includes('ashtottar')) {
+        counts['stotras']++;
+      } else if (pid === 115 || pslug.includes('sloka') || slug.includes('sloka')) {
+        counts['slokas']++;
+      } else if (pid === 116 || pid === 2311 || pslug.includes('song') || pslug.includes('bhajan') || pslug.includes('gosha') || pslug.includes('harathi') || slug.includes('bhajan') || slug.includes('song')) {
+        counts['songs']++;
+      } else if (pid === 2312 || pslug.includes('darshan') || pslug.includes('stream')) {
+        counts['live-streams']++;
+      } else if (pid === 6 || pslug.includes('panchang')) {
+        counts['panchangam']++;
+      } else if (pid === 2313 || pslug.includes('festiv')) {
+        counts['festivals']++;
+      } else if (pid === 2314 || pslug.includes('temple')) {
+        counts['temples']++;
+      } else if (pid === 2315 || pslug.includes('annadan') || pslug.includes('donat')) {
+        counts['donations']++;
+      }
+    }
+
+    counts['bhajans'] = counts['songs'];
+    counts['darshan'] = counts['live-streams'];
+    counts['annadanam'] = counts['donations'];
+    counts['pooja-vidhanam'] = counts['pooja'];
+    counts['divine-stotras'] = counts['stotras'];
+    counts['daily-slokas'] = counts['slokas'];
+
+    return counts;
+  }, []);
+
+  const loadParentLookup = useCallback((lang = 'te') => {
+    fetch(`${API_BASE_URL}/admin/categories/parents?lang=${lang}`)
       .then(res => res.json())
       .then(res => {
-        const list = (res && Array.isArray(res.data)) ? res.data : (Array.isArray(res) ? res : []);
+        const raw = (res && Array.isArray(res.data)) ? res.data : (Array.isArray(res) ? res : []);
+        const list = sanitizeParentCategories(raw);
         if (list.length > 0) {
           parentLookupListRef.current = list;
           setParentLookupList(list);
+
+          const countMap: { [k: string]: number } = {};
+          for (const item of list) {
+            if (item.subcategoriesCount !== undefined && item.subcategoriesCount > 0) {
+              const k = (item.slug || '').toLowerCase();
+              if (k.includes('pooja')) countMap['pooja'] = item.subcategoriesCount;
+              else if (k.includes('stotra')) countMap['stotras'] = item.subcategoriesCount;
+              else if (k.includes('sloka')) countMap['slokas'] = item.subcategoriesCount;
+              else if (k.includes('song') || k.includes('bhajan')) countMap['songs'] = item.subcategoriesCount;
+              else if (k.includes('darshan') || k.includes('stream')) countMap['live-streams'] = item.subcategoriesCount;
+              else if (k.includes('panchang')) countMap['panchangam'] = item.subcategoriesCount;
+              else if (k.includes('festiv')) countMap['festivals'] = item.subcategoriesCount;
+              else if (k.includes('temple')) countMap['temples'] = item.subcategoriesCount;
+              else if (k.includes('annadan') || k.includes('donat')) countMap['donations'] = item.subcategoriesCount;
+            }
+          }
+          if (Object.keys(countMap).length > 0) {
+            setParentCategoryCounts(prev => ({ ...prev, ...countMap }));
+          }
         }
       })
       .catch(() => {
-        fetch(`${API_BASE_URL}/admin/categories/parents?lang=${lang}`)
+        fetch(`${API_BASE_URL}/admin/categories?limit=100&lang=${lang}`)
           .then(r => r.json())
           .then(data => {
-            if (Array.isArray(data) && data.length > 0) {
-              parentLookupListRef.current = data;
-              setParentLookupList(data);
+            const raw = (data && Array.isArray(data.data)) ? data.data : (Array.isArray(data) ? data : []);
+            const list = sanitizeParentCategories(raw);
+            if (list.length > 0) {
+              parentLookupListRef.current = list;
+              setParentLookupList(list);
             }
           })
           .catch(() => { });
       });
-  }, []);
+
+    // Also fetch full subcategories list to guarantee dynamic counts
+    fetch(`${API_BASE_URL}/admin/subcategories?limit=500&lang=${lang}`)
+      .then(r => r.json())
+      .then(data => {
+        const items = data && Array.isArray(data.data) ? data.data : (Array.isArray(data) ? data : []);
+        if (items.length > 0) {
+          const counts = computeDynamicCategoryCounts(items);
+          setParentCategoryCounts(counts);
+        }
+      })
+      .catch(() => { });
+  }, [sanitizeParentCategories, computeDynamicCategoryCounts]);
 
   const loadAllSubcategoriesList = useCallback((lang = 'en') => {
     fetch(`${API_BASE_URL}/admin/subcategories?limit=500&lang=${lang}`)
@@ -1089,10 +1487,12 @@ export default function EnterpriseSuperAdminDashboard() {
         const list = res && Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : []);
         if (list.length > 0) {
           setAllSubcategoriesList(list);
+          const counts = computeDynamicCategoryCounts(list);
+          setParentCategoryCounts(counts);
         }
       })
       .catch(() => { });
-  }, []);
+  }, [computeDynamicCategoryCounts]);
 
   const resolveParentId = useCallback((keyOrId: string): string => {
     if (!keyOrId || keyOrId === 'all') return 'all';
@@ -1131,8 +1531,26 @@ export default function EnterpriseSuperAdminDashboard() {
     return found ? String(found.id) : keyOrId;
   }, [parentLookupList]);
 
-  const loadSubcategories = useCallback((pageNum = 1, search = '', lang = selectedLang, parentId = selectedParentCategoryFilter, currentLimit = subLimit) => {
+  // Dynamically compute and cache real-time Types counts for every Subcategory from DB
+  const loadSubcategoriesTypeCounts = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/content?limit=2000`);
+      const json = await res.json();
+      const items = json && Array.isArray(json.data) ? json.data : (Array.isArray(json) ? json : []);
+      const counts: Record<string, number> = {};
+      items.forEach((item: any) => {
+        if (item.categoryId) {
+          const key = String(item.categoryId);
+          counts[key] = (counts[key] || 0) + 1;
+        }
+      });
+      setSubcategoriesTypeCounts(counts);
+    } catch (_) { }
+  }, []);
+
+  const loadSubcategories = useCallback((pageNum = 1, search = subSearch, lang = selectedLang, parentId = selectedParentCategoryFilter, currentLimit = subLimit, status = subcategoryStatusFilter) => {
     setLoading(true);
+    loadSubcategoriesTypeCounts();
     const url = new URL(`${API_BASE_URL}/admin/subcategories`);
     url.searchParams.set('page', String(pageNum));
     url.searchParams.set('limit', String(currentLimit));
@@ -1141,6 +1559,9 @@ export default function EnterpriseSuperAdminDashboard() {
     if (parentId && parentId !== 'all') {
       const resolved = resolveParentId(parentId);
       url.searchParams.set('parentId', resolved);
+    }
+    if (status && status !== 'all') {
+      url.searchParams.set('status', status);
     }
 
     fetch(url.toString())
@@ -1161,16 +1582,17 @@ export default function EnterpriseSuperAdminDashboard() {
       })
       .catch(() => { })
       .finally(() => setLoading(false));
-  }, [selectedLang, selectedParentCategoryFilter, resolveParentId, subLimit]);
+  }, [selectedLang, selectedParentCategoryFilter, resolveParentId, subLimit, subcategoryStatusFilter, subSearch]);
 
   // 3. Load Devotional Content (Subcategory Types)
-  const loadDevotionalContent = useCallback((pageNum = 1, search = '', catId = selectedSubcategoryForTypes, currentLimit = typeLimit) => {
+  const loadDevotionalContent = useCallback((pageNum = 1, search = '', catId = selectedSubcategoryForTypes, currentLimit = typeLimit, status = typeStatusFilter) => {
     setLoading(true);
     const url = new URL(`${API_BASE_URL}/admin/content`);
     url.searchParams.set('page', String(pageNum));
     url.searchParams.set('limit', String(currentLimit));
     if (search && search.trim() !== '') url.searchParams.set('search', search.trim());
     if (catId && catId !== 'all') url.searchParams.set('categoryId', String(catId));
+    if (status && status !== 'all') url.searchParams.set('status', status);
 
     fetch(url.toString())
       .then(res => res.json())
@@ -1190,7 +1612,7 @@ export default function EnterpriseSuperAdminDashboard() {
       })
       .catch(() => { })
       .finally(() => setLoading(false));
-  }, [selectedSubcategoryForTypes, typeLimit]);
+  }, [selectedSubcategoryForTypes, typeLimit, typeStatusFilter]);
 
   // 4. Load Festivals & Live Panchangam
   const loadPanchangam = useCallback((city = 'Hyderabad', lang = 'en') => {
@@ -1336,34 +1758,77 @@ export default function EnterpriseSuperAdminDashboard() {
       .finally(() => setLoading(false));
   }, []);
 
-  // Load Devotional Services directly from /categories/services API
-  const loadCategoryServices = useCallback(async () => {
+  // Load Devotional Services directly from API with server-side pagination, search, status filter
+  const loadCategoryServices = useCallback(async (
+    pageNum = 1,
+    search = serviceSearch,
+    status = serviceStatusFilter,
+    currentLimit = serviceLimit
+  ) => {
     setLoadingServices(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/categories/services`);
-      if (res.ok) {
-        const json = await res.json();
-        if (json?.data && Array.isArray(json.data) && json.data.length > 0) {
-          setDevotionalServices(json.data);
-          return;
-        }
-      }
-      const adminRes = await fetch(`${API_BASE_URL}/admin/category-services`);
+      // 1. Try admin endpoint first with query params
+      const adminUrl = new URL(`${API_BASE_URL}/admin/category-services`);
+      adminUrl.searchParams.set('page', String(pageNum));
+      adminUrl.searchParams.set('limit', String(currentLimit));
+      if (search && search.trim() !== '') adminUrl.searchParams.set('search', search.trim());
+      if (status && status !== 'all') adminUrl.searchParams.set('status', status);
+
+      const adminRes = await fetch(adminUrl.toString());
       if (adminRes.ok) {
         const adminJson = await adminRes.json();
-        if (adminJson?.data && Array.isArray(adminJson.data) && adminJson.data.length > 0) {
+        if (adminJson?.data && Array.isArray(adminJson.data)) {
           setDevotionalServices(adminJson.data);
+          if (adminJson.meta) {
+            setServiceTotalCount(adminJson.meta.totalRecords ?? adminJson.total ?? adminJson.data.length);
+            setServiceTotalPages(adminJson.meta.totalPages ?? 1);
+            setServicePage(adminJson.meta.page ?? pageNum);
+          } else {
+            setServiceTotalCount(adminJson.total ?? adminJson.data.length);
+            setServiceTotalPages(Math.ceil((adminJson.total ?? adminJson.data.length) / currentLimit) || 1);
+            setServicePage(pageNum);
+          }
           return;
         }
       }
+
+      // 2. Try categories/services endpoint
+      const url = new URL(`${API_BASE_URL}/categories/services`);
+      url.searchParams.set('page', String(pageNum));
+      url.searchParams.set('limit', String(currentLimit));
+      url.searchParams.set('lang', selectedLang);
+      if (search && search.trim() !== '') url.searchParams.set('search', search.trim());
+      if (status && status !== 'all') url.searchParams.set('status', status);
+
+      const res = await fetch(url.toString());
+      if (res.ok) {
+        const json = await res.json();
+        if (json?.data && Array.isArray(json.data)) {
+          setDevotionalServices(json.data);
+          if (json.meta) {
+            setServiceTotalCount(json.meta.totalRecords ?? json.count ?? json.data.length);
+            setServiceTotalPages(json.meta.totalPages ?? 1);
+            setServicePage(json.meta.page ?? pageNum);
+          } else {
+            setServiceTotalCount(json.count ?? json.total ?? json.data.length);
+            setServiceTotalPages(Math.ceil((json.count ?? json.total ?? json.data.length) / currentLimit) || 1);
+            setServicePage(pageNum);
+          }
+          return;
+        }
+      }
+
       setDevotionalServices([]);
+      setServiceTotalCount(0);
+      setServiceTotalPages(1);
+      setServicePage(1);
     } catch (e) {
       console.warn('Notice loading category services:', e);
       setDevotionalServices([]);
     } finally {
       setLoadingServices(false);
     }
-  }, []);
+  }, [serviceSearch, serviceStatusFilter, serviceLimit, selectedLang]);
 
   // 5. Load Audio
   const loadAudio = useCallback(() => {
@@ -1890,6 +2355,7 @@ export default function EnterpriseSuperAdminDashboard() {
     loadStats();
     loadParentLookup(selectedLang);
     loadAllSubcategoriesList(selectedLang);
+    loadDeities(selectedLang);
     loadLanguages();
     loadAppLogo();
     loadTicker();
@@ -1906,14 +2372,21 @@ export default function EnterpriseSuperAdminDashboard() {
       loadCategories(page, searchQuery, selectedLang, isAudioFilter);
     } else if (activeTab === 'subcategories') {
       loadSubcategories(1, searchQuery, selectedLang, selectedParentCategoryFilter);
+      loadParentLookup(selectedLang);
+      loadAllSubcategoriesList(selectedLang);
+      loadDeities(selectedLang);
+      loadSubcategoriesTypeCounts();
     } else if (activeTab === 'devotional_services') {
       loadCategoryServices();
+      loadAllSubcategoriesList(selectedLang);
+      loadParentLookup(selectedLang);
     } else if (activeTab === 'temples' || (activeTab === 'categories' && selectedCategorySubtitle === 'temples')) {
       loadAdminTemples();
     } else if (activeTab === 'content') {
       loadDevotionalContent(1, searchQuery);
       loadAllSubcategoriesList(selectedLang);
       loadParentLookup(selectedLang);
+      loadSubcategoriesTypeCounts();
     } else if (activeTab === 'festivals') {
       loadFestivals(1, searchQuery);
     } else if (activeTab === 'panchangam') {
@@ -2058,6 +2531,8 @@ export default function EnterpriseSuperAdminDashboard() {
   // Dynamic Language Switcher for Edit Subcategory (Fetches translation from DB via API; no mock fallback)
   const handleEditSubcategoryChangeLang = async (langCode: string) => {
     setSelectedLang(langCode);
+    loadParentLookup(langCode);
+    loadDeities(langCode);
     if (!editingSubId) return;
     setLoading(true);
     try {
@@ -2289,23 +2764,58 @@ export default function EnterpriseSuperAdminDashboard() {
   };
 
   // SUBCATEGORY & CHAPTER ACTIONS (Full Page Mode)
-  const handleOpenCreateSubcategory = (preselectedParentId?: any) => {
+  const handleOpenCreateSubcategory = async (preselectedParentId?: any) => {
     setEditingSubId(null);
     setSubFormTitle('');
     setSubFormSlug('');
-    let targetParent = preselectedParentId;
-    if (!targetParent && selectedParentCategoryFilter !== 'all') {
-      const match = parentLookupList.find(p => p.slug === selectedParentCategoryFilter || String(p.id) === String(selectedParentCategoryFilter));
-      if (match) targetParent = match.id;
-    }
-    if (!targetParent && parentLookupList.length > 0) {
-      targetParent = parentLookupList[0].id;
-    }
-    setSubFormParentId(targetParent || '');
     setSubFormDescription('');
     setSubFormImageUrl('');
     setIsSubModalOpen(true);
     setPageMode('EDIT_SUBCATEGORY');
+
+    let availableParents = parentLookupList;
+    let availableDeities = deities;
+
+    // Dynamically fetch latest Parent Categories & Gods / Goddesses directly from DB via API
+    try {
+      const [parentsRes, deitiesRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/admin/categories/parents?lang=${selectedLang}`).then(r => r.json()).catch(() => null),
+        fetch(`${API_BASE_URL}/admin/deities?lang=${selectedLang}`).then(r => r.json()).catch(() => null)
+      ]);
+
+      if (parentsRes) {
+        const raw = Array.isArray(parentsRes.data) ? parentsRes.data : (Array.isArray(parentsRes) ? parentsRes : []);
+        const sanitized = sanitizeParentCategories(raw);
+        if (sanitized.length > 0) {
+          availableParents = sanitized;
+          setParentLookupList(sanitized);
+          parentLookupListRef.current = sanitized;
+        }
+      }
+      if (deitiesRes && Array.isArray(deitiesRes.data) && deitiesRes.data.length > 0) {
+        availableDeities = deitiesRes.data;
+        setDeities(deitiesRes.data);
+      }
+    } catch (err) {
+      console.error('Failed to dynamically fetch parents or deities:', err);
+    }
+
+    let targetParent = preselectedParentId;
+    if (!targetParent && selectedParentCategoryFilter !== 'all') {
+      const match = availableParents.find(p => p.slug === selectedParentCategoryFilter || String(p.id) === String(selectedParentCategoryFilter));
+      if (match) targetParent = match.id;
+    }
+    if (!targetParent && availableParents.length > 0) {
+      targetParent = availableParents[0].id;
+    }
+    setSubFormParentId(targetParent || '');
+
+    if (availableDeities.length > 0) {
+      setSubFormDeityId(availableDeities[0].slug || availableDeities[0].id || 'ayyappa');
+    } else {
+      setSubFormDeityId('ayyappa');
+    }
+    setSubFormStatus('active');
   };
 
   const handleOpenEditSubcategory = async (item: SubcategoryItem) => {
@@ -2313,12 +2823,17 @@ export default function EnterpriseSuperAdminDashboard() {
     setSubFormTitle(item.title);
     setSubFormSlug(item.slug);
     setSubFormParentId(item.parentId);
+    setSubFormDeityId((item as any).deityId || (item as any).deity || 'ayyappa');
+    setSubFormStatus((item as any).status || (item.isActive !== false ? 'active' : 'inactive'));
     setSubFormDescription(item.description || '');
     setSubFormImageUrl(item.imageUrl || '');
     setIsSubModalOpen(true);
     setPageMode('EDIT_SUBCATEGORY');
 
-    // Dynamically fetch translation for currently active language directly from DB
+    // Dynamically refresh Parent Categories, Deities, and Subcategory detail from DB via API
+    loadParentLookup(selectedLang);
+    loadDeities(selectedLang);
+
     try {
       const res = await fetch(`${API_BASE_URL}/admin/subcategories/${item.id}?lang=${selectedLang}`);
       const json = await res.json();
@@ -2326,6 +2841,12 @@ export default function EnterpriseSuperAdminDashboard() {
         const d = json.data;
         setViewDetail(d);
         setActiveViewTypeTab('all');
+        if (d.status) {
+          setSubFormStatus(d.status);
+        }
+        if (d.deityId || d.deity) {
+          setSubFormDeityId(d.deityId || d.deity);
+        }
         const exact = d.translations?.find((t: any) => t.code === selectedLang);
         if (exact) {
           setSubFormTitle(exact.title || '');
@@ -2336,6 +2857,77 @@ export default function EnterpriseSuperAdminDashboard() {
         }
       }
     } catch { }
+  };
+
+  const handleOpenSubcategoryTranslation = async () => {
+    if (!subFormTitle.trim()) {
+      alert('Please enter the Subcategory Title in Telugu first before translating.');
+      return;
+    }
+    if (!subFormParentId) {
+      alert('Please select a Parent Category first.');
+      return;
+    }
+
+    let targetId = editingSubId;
+
+    // If new subcategory (not saved in MySQL yet), create master record first so a permanent ID exists for translations
+    if (!targetId) {
+      setLoading(true);
+      try {
+        const payload = {
+          title: subFormTitle.trim(),
+          slug: subFormSlug.trim() || `sub-${Date.now()}`,
+          parentId: Number(subFormParentId),
+          isAudio: false,
+          description: subFormDescription.trim(),
+          lang: selectedLang || 'te',
+          imageUrl: subFormImageUrl.trim(),
+          deityId: subFormDeityId,
+          deity: subFormDeityId,
+          status: subFormStatus,
+          isActive: subFormStatus === 'active'
+        };
+        const res = await fetch(`${API_BASE_URL}/admin/categories`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const created = await res.json();
+        if (created && created.data && created.data.id) {
+          targetId = String(created.data.id);
+          setEditingSubId(targetId);
+          setNotification(`Master subcategory created (#${targetId}). Opening multi-language translator...`);
+          loadSubcategories(1, '', selectedLang);
+        } else {
+          throw new Error('Failed to create master subcategory record.');
+        }
+      } catch (err: any) {
+        alert('Could not save master record: ' + err.message);
+        setLoading(false);
+        return;
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    openTranslationModal('categories', targetId, [
+      { key: 'title', label: 'Subcategory Title', value: subFormTitle },
+      { key: 'description', label: 'Sacred Notes', value: subFormDescription, isHtml: true }
+    ], async (trans, lang) => {
+      if (trans.title) setSubFormTitle(trans.title);
+      if (trans.description) setSubFormDescription(trans.description);
+      if (lang) {
+        setSelectedLang(lang);
+      }
+      if (targetId) {
+        try {
+          const r = await fetch(`${API_BASE_URL}/admin/subcategories/${targetId}?lang=${lang || selectedLang}`);
+          const d = await r.json();
+          if (d && d.data) setViewDetail(d.data);
+        } catch (_) { }
+      }
+    });
   };
 
   const handleSubcategoryImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -2404,7 +2996,6 @@ export default function EnterpriseSuperAdminDashboard() {
         if (res.ok) {
           setNotification('Devotional service artwork updated successfully!');
           loadCategoryServices();
-          loadParentLookup(selectedLang);
         } else {
           const errData = await res.json();
           alert('Upload failed: ' + (errData.message || res.statusText));
@@ -2426,17 +3017,18 @@ export default function EnterpriseSuperAdminDashboard() {
       return;
     }
 
-    const resolvedParent = resolveParentId(String(subFormParentId));
-    const targetParentNum = !isNaN(Number(resolvedParent)) ? Number(resolvedParent) : (!isNaN(Number(subFormParentId)) ? Number(subFormParentId) : subFormParentId);
-
     const payload = {
       title: subFormTitle.trim(),
       slug: subFormSlug.trim() || `sub-${Date.now()}`,
-      parentId: targetParentNum,
+      parentId: Number(subFormParentId),
       isAudio: false,
       description: subFormDescription.trim(),
       lang: selectedLang,
-      imageUrl: subFormImageUrl.trim()
+      imageUrl: subFormImageUrl.trim(),
+      deityId: subFormDeityId,
+      deity: subFormDeityId,
+      status: subFormStatus,
+      isActive: subFormStatus === 'active'
     };
 
     try {
@@ -2587,6 +3179,7 @@ export default function EnterpriseSuperAdminDashboard() {
     setTypeFormSacredText('');
     setTypeFormMeaning('');
     setTypeFormDisplayOrder(devotionalContent.length + 1);
+    setTypeFormStatus('active');
     setTypeFormIsPublished(true);
     setPageMode('EDIT_TYPE');
   };
@@ -2610,7 +3203,9 @@ export default function EnterpriseSuperAdminDashboard() {
     setTypeFormSacredText(item.sacredText || '');
     setTypeFormMeaning(item.meaning || '');
     setTypeFormDisplayOrder(item.displayOrder || 1);
-    setTypeFormIsPublished(item.isPublished !== false);
+    const effStatus = (item as any).status || (item.isPublished !== false ? 'active' : 'inactive');
+    setTypeFormStatus(effStatus);
+    setTypeFormIsPublished(effStatus === 'active');
     setPageMode('EDIT_TYPE');
 
     // Dynamically fetch translation for currently active language directly from DB
@@ -2619,6 +3214,10 @@ export default function EnterpriseSuperAdminDashboard() {
       const json = await res.json();
       if (json && json.data) {
         const d = json.data;
+        if (d.status) {
+          setTypeFormStatus(d.status);
+          setTypeFormIsPublished(d.status === 'active');
+        }
         if (d.hasExactTranslation) {
           setTypeFormTitle(d.exactTitle || d.title || '');
           setTypeFormSacredText(d.exactSacredText || d.sacredText || '');
@@ -2657,7 +3256,8 @@ export default function EnterpriseSuperAdminDashboard() {
       sacredText: typeFormSacredText.trim(),
       meaning: typeFormMeaning.trim(),
       displayOrder: Number(typeFormDisplayOrder) || 1,
-      isPublished: typeFormIsPublished,
+      status: typeFormStatus,
+      isPublished: typeFormStatus === 'active',
       lang: selectedLang
     };
 
@@ -2680,6 +3280,7 @@ export default function EnterpriseSuperAdminDashboard() {
       }
       setPageMode('LIST');
       loadDevotionalContent(1, searchQuery, String(typeFormCategoryId), typeLimit);
+      loadSubcategoriesTypeCounts();
     } catch (e: any) {
       alert('Error saving type: ' + e.message);
     } finally {
@@ -2695,6 +3296,7 @@ export default function EnterpriseSuperAdminDashboard() {
       if (res.ok) {
         showToast('Type Deleted', `"${title}" was removed.`);
         loadDevotionalContent(typePage, searchQuery, selectedSubcategoryForTypes, typeLimit);
+        loadSubcategoriesTypeCounts();
       } else {
         alert('Failed to delete type');
       }
@@ -2913,10 +3515,10 @@ export default function EnterpriseSuperAdminDashboard() {
       serviceId: '',
       title: '',
       sub: '',
-      icon: 'Sparkles',
       url: '/',
       artwork: '',
       displayOrder: (devotionalServices.length + 1),
+      status: 'active',
       isActive: true
     });
     setIsServiceEditModalOpen(true);
@@ -2924,7 +3526,12 @@ export default function EnterpriseSuperAdminDashboard() {
 
   const handleOpenEditService = (service: any, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    setEditingCategoryService({ ...service });
+    const effectiveStatus = service.status || (service.isActive !== false ? 'active' : 'inactive');
+    setEditingCategoryService({
+      ...service,
+      status: effectiveStatus,
+      isActive: effectiveStatus === 'active'
+    });
     setIsServiceEditModalOpen(true);
   };
 
@@ -2992,7 +3599,6 @@ export default function EnterpriseSuperAdminDashboard() {
         setIsServiceEditModalOpen(false);
         setEditingCategoryService(null);
         loadCategoryServices();
-        loadParentLookup(selectedLang);
       } else {
         const errJson = await res.json().catch(() => ({}));
         alert(errJson.message || 'Failed to save devotional service.');
@@ -3019,7 +3625,6 @@ export default function EnterpriseSuperAdminDashboard() {
           setSelectedViewService(null);
         }
         loadCategoryServices();
-        loadParentLookup(selectedLang);
       } else {
         const errJson = await res.json().catch(() => ({}));
         alert(errJson.message || 'Failed to delete devotional service.');
@@ -3503,6 +4108,7 @@ export default function EnterpriseSuperAdminDashboard() {
           }}
         >
           <img
+            suppressHydrationWarning
             src={resolveLogoDisplayUrl(appLogoUrl)}
             alt="Saranam Ayyappa Logo"
             style={{
@@ -3574,6 +4180,7 @@ export default function EnterpriseSuperAdminDashboard() {
             <div className="text-center space-y-2.5">
               <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl border-2 border-[#D4AF37] bg-[#030F0A] flex items-center justify-center p-2 mx-auto shadow-[0_10px_25px_rgba(0,0,0,0.8),0_0_20px_rgba(212,175,55,0.25)] relative overflow-hidden group">
                 <img
+                  suppressHydrationWarning
                   src={resolveLogoDisplayUrl(appLogoUrl)}
                   alt="Saranam Ayyappa Official Emblem"
                   className="w-full h-full object-contain filter drop-shadow-[0_2px_8px_rgba(255,179,0,0.3)] transition transform group-hover:scale-105 duration-300"
@@ -3848,19 +4455,17 @@ export default function EnterpriseSuperAdminDashboard() {
         setSelectedCategorySubtitle('devotional_services');
         setExpandedSection(prev => prev === 'categories' ? null : 'categories');
         loadCategoryServices();
-        loadParentLookup(selectedLang);
       },
       isActive: activeTab === 'categories' || activeTab === 'devotional_services' || activeTab === 'subcategories' || activeTab === 'temples',
       isExpanded: expandedSection === 'categories',
       subtitles: [
         {
           key: 'devotional_services',
-          label: `Devotional Services (${devotionalServices.length || 9})`,
+          label: 'Devotional Services (9)',
           onClick: () => {
             setActiveTab('devotional_services');
             setSelectedCategorySubtitle('devotional_services');
             loadCategoryServices();
-            loadParentLookup(selectedLang);
           },
           isActive: activeTab === 'devotional_services',
         },
@@ -4061,7 +4666,7 @@ export default function EnterpriseSuperAdminDashboard() {
     if (activeTab === 'dashboard') return 'Dashboard';
     if (activeTab === 'cms') return 'Website / App CMS Management';
     if (activeTab === 'users') return `User Management — ${selectedUserSubtitle === 'dharma_karthas' ? 'Dharma Karthas' : 'Devotees'}`;
-    if (activeTab === 'devotional_services') return `Categories — Devotional Services (${devotionalServices.length || 9})`;
+    if (activeTab === 'devotional_services') return 'Categories — Devotional Services (9)';
     if (activeTab === 'subcategories') return `Categories — Devotional Subcategories (${stats?.activeSubcategories ?? (subTotalCount || subcategories.length || 134)})`;
     if (activeTab === 'temples' || (activeTab === 'categories' && selectedCategorySubtitle === 'temples')) return `Categories — Sacred Temples (${templesList.length})`;
     if (activeTab === 'categories') return `Categories — ${selectedCategorySubtitle.toUpperCase()}`;
@@ -4141,6 +4746,7 @@ export default function EnterpriseSuperAdminDashboard() {
         <div className="flex flex-col h-full">
           <div className="p-4 border-b border-[#2C2C2C] flex items-center justify-center">
             <img
+              suppressHydrationWarning
               src={resolveLogoDisplayUrl(appLogoUrl)}
               alt="Saranam Ayyappa — Thathwamasi"
               className="w-full max-h-24 object-contain rounded-xl shadow-lg border border-[var(--admin-gold)]/40 hover:border-[var(--admin-gold)] transition"
@@ -4360,7 +4966,7 @@ export default function EnterpriseSuperAdminDashboard() {
                   <div>
                     <h2 className="text-base font-bold text-[#FFB300] flex items-center gap-2">
                       <FolderTree className="w-5 h-5 text-orange-400" />
-                      <span>Devotional Services Management ({devotionalServices.length || 9} Categories)</span>
+                      <span>Devotional Services Management (9 Sanctum Categories)</span>
                     </h2>
                     <p className="text-xs text-gray-400 mt-1 max-w-2xl leading-relaxed">
                       Authoritative devotional services and sacred categories dynamically fetched from MySQL DB via API (<code className="text-amber-400">/api/v1/categories/services</code>). Devotees and Dharma Karthas access these services on the Saranam Ayyappa website and mobile app.
@@ -4368,17 +4974,6 @@ export default function EnterpriseSuperAdminDashboard() {
                   </div>
 
                   <div className="flex flex-wrap items-center gap-3">
-                    <button
-                      onClick={loadCategoryServices}
-                      disabled={loadingServices}
-                      className="px-3 py-1.5 bg-[#141414] hover:bg-[#252525] border border-[#2C2C2C] rounded-lg text-xs font-semibold flex items-center gap-1.5 text-gray-300 transition"
-                    >
-                      <RefreshCw className={`w-3.5 h-3.5 ${loadingServices ? 'animate-spin text-amber-400' : ''}`} />
-                      <span>Refresh</span>
-                    </button>
-                    <span className="px-3 py-1 bg-emerald-950/70 border border-emerald-800/40 text-emerald-300 rounded-lg text-xs font-bold">
-                      {devotionalServices.length || 9} Active in Portal
-                    </span>
                     <button
                       onClick={handleOpenCreateService}
                       className="px-3.5 py-1.5 bg-[#FFB300] hover:bg-[#FFA000] text-black rounded-lg text-xs font-bold flex items-center gap-1.5 transition shadow-lg shadow-amber-500/20"
@@ -4389,17 +4984,91 @@ export default function EnterpriseSuperAdminDashboard() {
                   </div>
                 </div>
 
-                {/* Search Bar */}
-                <div className="mt-5 pt-4 border-t border-[#2C2C2C]">
-                  <div className="relative max-w-md">
+                {/* Search Bar & Server-Side Filters */}
+                <div className="mt-5 pt-4 border-t border-[#2C2C2C] flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+                  <div className="relative flex-1 max-w-md">
                     <Search className="w-4 h-4 absolute left-3 top-2.5 text-gray-400" />
                     <input
                       type="text"
-                      placeholder="Search devotional services by title, subtitle, or route..."
+                      placeholder="Search services server-side by title, subtitle, or route..."
                       value={serviceSearch}
-                      onChange={(e) => setServiceSearch(e.target.value)}
-                      className="w-full bg-[#141414] border border-[#2C2C2C] rounded-lg pl-9 pr-4 py-2 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-[#FFB300]"
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setServiceSearch(val);
+                        loadCategoryServices(1, val, serviceStatusFilter, serviceLimit);
+                      }}
+                      className="w-full bg-[#141414] border border-[#2C2C2C] rounded-lg pl-9 pr-8 py-2 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-[#FFB300]"
                     />
+                    {serviceSearch && (
+                      <button
+                        onClick={() => {
+                          setServiceSearch('');
+                          loadCategoryServices(1, '', serviceStatusFilter, serviceLimit);
+                        }}
+                        className="absolute right-2.5 top-2.5 text-gray-400 hover:text-gray-200 text-xs"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Server-Side Status Filter */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-400 font-medium">Status:</span>
+                    <div className="flex items-center bg-[#141414] border border-[#2C2C2C] rounded-lg p-0.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setServiceStatusFilter('all');
+                          loadCategoryServices(1, serviceSearch, 'all', serviceLimit);
+                        }}
+                        className={`px-3 py-1 rounded text-xs font-semibold transition ${serviceStatusFilter === 'all'
+                          ? 'bg-[#FFB300] text-black shadow'
+                          : 'text-gray-400 hover:text-gray-200'
+                          }`}
+                      >
+                        All
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setServiceStatusFilter('active');
+                          loadCategoryServices(1, serviceSearch, 'active', serviceLimit);
+                        }}
+                        className={`px-3 py-1 rounded text-xs font-semibold transition ${serviceStatusFilter === 'active'
+                          ? 'bg-emerald-600 text-white shadow'
+                          : 'text-gray-400 hover:text-gray-200'
+                          }`}
+                      >
+                        Active
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setServiceStatusFilter('coming_soon');
+                          loadCategoryServices(1, serviceSearch, 'coming_soon', serviceLimit);
+                        }}
+                        className={`px-3 py-1 rounded text-xs font-semibold transition ${serviceStatusFilter === 'coming_soon'
+                          ? 'bg-amber-600 text-white shadow'
+                          : 'text-gray-400 hover:text-gray-200'
+                          }`}
+                      >
+                        Coming Soon
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setServiceStatusFilter('inactive');
+                          loadCategoryServices(1, serviceSearch, 'inactive', serviceLimit);
+                        }}
+                        className={`px-3 py-1 rounded text-xs font-semibold transition ${serviceStatusFilter === 'inactive'
+                          ? 'bg-rose-600 text-white shadow'
+                          : 'text-gray-400 hover:text-gray-200'
+                          }`}
+                      >
+                        Inactive
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -4419,7 +5088,7 @@ export default function EnterpriseSuperAdminDashboard() {
                   </p>
                   <div className="flex items-center gap-3 mt-4">
                     <button
-                      onClick={loadCategoryServices}
+                      onClick={() => loadCategoryServices()}
                       className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-black font-bold text-xs rounded-lg transition"
                     >
                       Reload from API
@@ -4433,859 +5102,1268 @@ export default function EnterpriseSuperAdminDashboard() {
                   </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                  {devotionalServices
-                    .filter((s) => {
-                      if (!serviceSearch.trim()) return true;
-                      const q = serviceSearch.toLowerCase();
-                      const matchTitle = s.title?.toLowerCase().includes(q);
-                      const matchSub = s.sub?.toLowerCase().includes(q);
-                      const matchId = (s.serviceId || s.id)?.toLowerCase().includes(q);
-                      return matchTitle || matchSub || matchId;
-                    })
-                    .map((service, index) => {
-                      const sKey = service.serviceId || service.id;
-                      const artworkSrc = service.artwork || categoryArtworkMap[sKey] || categoryArtworkMap[service.id];
-                      return (
-                        <div
-                          key={service.id || service.serviceId || index}
-                          onClick={() => handleOpenViewService(service)}
-                          className="bg-[#1E1E1E] hover:bg-[#252525] rounded-2xl border border-[#2C2C2C] hover:border-[#FFB300]/50 p-4 transition-all duration-200 hover:shadow-2xl flex flex-col justify-between gap-3 group cursor-pointer relative overflow-hidden"
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            {/* 1. Left Medallion Icon with Divine Glyph */}
-                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#2A2A2A] to-[#141414] border border-[#3A3A3A] group-hover:border-[#FFB300]/40 flex items-center justify-center flex-shrink-0 shadow-inner">
-                              {renderServiceIcon(service.icon || service.id)}
-                            </div>
-
-                            {/* 2. Middle Information (Title + Subtitle) */}
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <h3 className="font-bold text-sm text-gray-100 group-hover:text-[#FFB300] transition truncate">
-                                  {service.title}
-                                </h3>
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-neutral-800 text-gray-400 font-mono">
+                /* Devotional Services Clean Table Format */
+                <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] overflow-hidden shadow-2xl">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="bg-[#151515] border-b border-[#2C2C2C] text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                          <th className="py-3 px-4 w-14 text-center">#</th>
+                          <th className="py-3 px-4 w-20 text-center">Artwork</th>
+                          <th className="py-3 px-4 min-w-[220px]">Devotional Service</th>
+                          <th className="py-3 px-4 w-32">Canonical Key</th>
+                          <th className="py-3 px-4 w-32">Route Path</th>
+                          <th className="py-3 px-4 w-36 text-center">Subcategories</th>
+                          <th className="py-3 px-4 w-28 text-center">Status</th>
+                          <th className="py-3 px-4 min-w-[220px] text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#282828]">
+                        {devotionalServices.map((service, index) => {
+                          const sKey = (service.serviceId || service.id || '').toLowerCase();
+                          const artworkSrc = service.artwork || categoryArtworkMap[sKey] || categoryArtworkMap[service.id];
+                          const subCount = service.subcategoriesCount !== undefined
+                            ? service.subcategoriesCount
+                            : (parentCategoryCounts[sKey] ??
+                              (sKey === 'bhajans' ? parentCategoryCounts['songs'] : undefined) ??
+                              (sKey === 'songs' ? parentCategoryCounts['bhajans'] : undefined) ??
+                              (sKey === 'darshan' ? parentCategoryCounts['live-streams'] : undefined) ??
+                              (sKey === 'live-streams' ? parentCategoryCounts['darshan'] : undefined) ??
+                              (sKey === 'annadanam' ? parentCategoryCounts['donations'] : undefined) ??
+                              (sKey === 'donations' ? parentCategoryCounts['annadanam'] : undefined) ??
+                              0);
+                          return (
+                            <tr
+                              key={service.id || service.serviceId || index}
+                              onClick={() => handleOpenViewService(service)}
+                              className="hover:bg-neutral-800/40 transition-colors group cursor-pointer"
+                            >
+                              {/* # Order */}
+                              <td className="py-3 px-4 text-center">
+                                <span className="text-[11px] px-2 py-0.5 rounded bg-neutral-800/80 border border-neutral-700/60 text-amber-400 font-mono font-bold">
                                   #{service.displayOrder || index + 1}
                                 </span>
-                              </div>
-                              <p className="text-xs text-gray-400 truncate mt-0.5 font-medium">
-                                {service.sub || 'Step-by-step sacred rituals'}
-                              </p>
-                              <div className="flex items-center gap-2 mt-1.5">
-                                <span className="text-[10px] text-gray-500 font-mono bg-[#141414] px-1.5 py-0.5 rounded border border-[#2C2C2C]">
+                              </td>
+
+                              {/* Artwork */}
+                              <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
+                                <div className="flex items-center justify-center">
+                                  {artworkSrc ? (
+                                    <div className="relative group/art w-9 h-9 rounded-lg bg-neutral-900 border border-neutral-800 overflow-hidden flex items-center justify-center flex-shrink-0">
+                                      <img
+                                        src={resolveArtworkUrl(artworkSrc)}
+                                        alt={service.title}
+                                        className="w-7 h-7 object-contain opacity-90 group-hover/art:opacity-100 transition"
+                                        onError={(e: any) => { e.currentTarget.style.display = 'none'; }}
+                                      />
+                                      <label
+                                        className="absolute inset-0 bg-black/75 opacity-0 group-hover/art:opacity-100 flex items-center justify-center cursor-pointer transition"
+                                        title="Upload / Change Image"
+                                      >
+                                        <Upload className="w-3.5 h-3.5 text-amber-400" />
+                                        <input
+                                          type="file"
+                                          accept="image/png, image/jpeg, image/webp"
+                                          onChange={(e) => handleQuickServiceArtworkUpload(service.id || service.serviceId, e)}
+                                          className="hidden"
+                                        />
+                                      </label>
+                                    </div>
+                                  ) : (
+                                    <label
+                                      className="w-9 h-9 rounded-lg bg-neutral-900 border border-dashed border-neutral-700 hover:border-amber-400 text-gray-500 hover:text-amber-400 flex items-center justify-center cursor-pointer transition flex-shrink-0"
+                                      title="Upload Image"
+                                    >
+                                      <Upload className="w-3.5 h-3.5" />
+                                      <input
+                                        type="file"
+                                        accept="image/png, image/jpeg, image/webp"
+                                        onChange={(e) => handleQuickServiceArtworkUpload(service.id || service.serviceId, e)}
+                                        className="hidden"
+                                      />
+                                    </label>
+                                  )}
+                                </div>
+                              </td>
+
+                              {/* Devotional Service Title & Sub */}
+                              <td className="py-3 px-4">
+                                <div className="flex flex-col">
+                                  <span className="font-bold text-gray-100 group-hover:text-[#FFB300] transition text-sm">
+                                    {service.title}
+                                  </span>
+                                  <span className="text-[11px] text-gray-400 mt-0.5 line-clamp-1">
+                                    {service.sub || 'Step-by-step sacred rituals'}
+                                  </span>
+                                </div>
+                              </td>
+
+                              {/* Canonical Key */}
+                              <td className="py-3 px-4">
+                                <span className="text-[11px] font-mono px-2 py-0.5 bg-[#141414] border border-[#2C2C2C] text-amber-400/90 rounded">
+                                  {sKey}
+                                </span>
+                              </td>
+
+                              {/* Route */}
+                              <td className="py-3 px-4">
+                                <span className="text-[11px] font-mono px-2 py-0.5 bg-[#141414] border border-[#2C2C2C] text-gray-400 rounded">
                                   {service.url}
                                 </span>
-                                <span className={`text-[10px] font-medium flex items-center gap-1 ${service.isActive !== false ? 'text-emerald-400' : 'text-gray-400'}`}>
-                                  <span className={`w-1.5 h-1.5 rounded-full ${service.isActive !== false ? 'bg-emerald-400 animate-pulse' : 'bg-gray-500'}`} />
-                                  {service.isActive !== false ? 'Active' : 'Inactive'}
-                                </span>
-                              </div>
-                            </div>
+                              </td>
 
-                            {/* 3. Devotional Line Artwork & Arrow */}
-                            {/* 3. Arrow indicator */}
-                            <div className="flex items-center gap-2 flex-shrink-0">
-                              {artworkSrc ? (
-                                <div className="relative group/art w-12 h-12 flex items-center justify-center rounded-xl overflow-hidden bg-neutral-900 border border-neutral-800">
-                                  <img
-                                    src={resolveArtworkUrl(artworkSrc)}
-                                    alt={service.title}
-                                    className="w-10 h-10 object-contain opacity-85 group-hover:opacity-100 transition transform group-hover:scale-105"
-                                    onError={(e: any) => { e.currentTarget.style.display = 'none'; }}
-                                  />
-                                  <label
-                                    onClick={(e) => e.stopPropagation()}
-                                    className="absolute inset-0 bg-black/70 opacity-0 group-hover/art:opacity-100 flex items-center justify-center cursor-pointer transition rounded-xl"
-                                    title="Upload / Change Category Image"
-                                  >
-                                    <Upload className="w-4 h-4 text-amber-400" />
-                                    <input
-                                      type="file"
-                                      accept="image/png, image/jpeg, image/webp"
-                                      onChange={(e) => handleQuickServiceArtworkUpload(service.id || service.serviceId, e)}
-                                      className="hidden"
-                                    />
-                                  </label>
-                                </div>
-                              ) : (
-                                <label
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="w-12 h-12 flex items-center justify-center rounded-xl bg-neutral-900 border border-dashed border-neutral-700 hover:border-amber-400 text-gray-500 hover:text-amber-400 cursor-pointer transition"
-                                  title="Upload Category Image"
+                              {/* Subcategories count & link */}
+                              <td className="py-3 px-4 text-center" onClick={(e) => e.stopPropagation()}>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedParentCategoryFilter(sKey);
+                                    loadSubcategories(1, '', selectedLang, sKey);
+                                    setActiveTab('subcategories');
+                                  }}
+                                  title="View subcategories in this category"
+                                  className="inline-flex items-center justify-center min-w-[2.2rem] px-2.5 py-0.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 rounded-full font-bold font-mono text-xs transition shadow-sm hover:scale-105"
                                 >
-                                  <Upload className="w-4 h-4" />
-                                  <input
-                                    type="file"
-                                    accept="image/png, image/jpeg, image/webp"
-                                    onChange={(e) => handleQuickServiceArtworkUpload(service.id || service.serviceId, e)}
-                                    className="hidden"
-                                  />
-                                </label>
-                              )}
+                                  <span>{subCount}</span>
+                                </button>
+                              </td>
 
-                              <div className="w-7 h-7 rounded-full border border-[#3A3A3A] bg-[#141414] flex items-center justify-center text-gray-400 group-hover:text-[#FFB300] group-hover:border-[#FFB300]/50 transition">
-                                <ArrowRight className="w-3.5 h-3.5" />
-                              </div>
-                            </div>
+                              {/* Status */}
+                              <td className="py-3 px-4 text-center">
+                                {renderStatusBadge(service.status, service.isActive)}
+                              </td>
+
+                              {/* Actions */}
+                              <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
+                                <div className="flex items-center justify-end gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => handleOpenViewService(service, e)}
+                                    title="View Details by ID"
+                                    className="px-2 py-1 bg-[#141414] hover:bg-[#252525] text-gray-300 hover:text-white rounded border border-[#2C2C2C] flex items-center gap-1 text-[11px] font-semibold transition"
+                                  >
+                                    <Eye className="w-3 h-3 text-sky-400" />
+                                    <span>View</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => handleOpenEditService(service, e)}
+                                    title="Edit Devotional Service"
+                                    className="px-2 py-1 bg-[#141414] hover:bg-[#252525] text-gray-300 hover:text-amber-400 rounded border border-[#2C2C2C] flex items-center gap-1 text-[11px] font-semibold transition"
+                                  >
+                                    <Edit3 className="w-3 h-3 text-amber-400" />
+                                    <span>Edit</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => handleDeleteCategoryService(service, e)}
+                                    title="Delete Devotional Service"
+                                    className="px-2 py-1 bg-[#141414] hover:bg-rose-950/40 text-gray-300 hover:text-red-400 rounded border border-[#2C2C2C] hover:border-red-900/40 flex items-center gap-1 text-[11px] font-semibold transition"
+                                  >
+                                    <Trash2 className="w-3 h-3 text-red-400" />
+                                    <span>Delete</span>
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Server-Side Pagination Footer */}
+                  <div className="p-4 border-t border-[#2C2C2C] flex flex-col sm:flex-row items-center justify-between gap-3 bg-[#151515]">
+                    <div className="flex items-center gap-3 text-xs text-gray-400">
+                      <span>
+                        Showing page <strong className="text-gray-200">{servicePage}</strong> of <strong className="text-gray-200">{serviceTotalPages}</strong> (Total <strong className="text-gray-200">{serviceTotalCount}</strong> devotional services)
+                      </span>
+                      <span className="text-neutral-600">|</span>
+                      <div className="flex items-center gap-1.5">
+                        <span>Rows per page:</span>
+                        <select
+                          value={serviceLimit}
+                          onChange={(e) => {
+                            const newLim = Number(e.target.value);
+                            setServiceLimit(newLim);
+                            loadCategoryServices(1, serviceSearch, serviceStatusFilter, newLim);
+                          }}
+                          className="bg-[#1E1E1E] border border-[#2C2C2C] rounded px-2 py-1 text-xs text-gray-200 focus:outline-none focus:border-amber-500"
+                        >
+                          <option value={5}>5</option>
+                          <option value={10}>10</option>
+                          <option value={25}>25</option>
+                          <option value={50}>50</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        disabled={servicePage <= 1}
+                        onClick={() => loadCategoryServices(servicePage - 1, serviceSearch, serviceStatusFilter, serviceLimit)}
+                        className="px-3 py-1.5 bg-[#1E1E1E] border border-[#2C2C2C] rounded-lg disabled:opacity-40 hover:bg-neutral-800 text-xs text-gray-300 transition flex items-center gap-1"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                        <span>Prev</span>
+                      </button>
+                      <span className="text-xs font-semibold px-2 text-amber-400">{servicePage} / {serviceTotalPages}</span>
+                      <button
+                        disabled={servicePage >= serviceTotalPages}
+                        onClick={() => loadCategoryServices(servicePage + 1, serviceSearch, serviceStatusFilter, serviceLimit)}
+                        className="px-3 py-1.5 bg-[#1E1E1E] border border-[#2C2C2C] rounded-lg disabled:opacity-40 hover:bg-neutral-800 text-xs text-gray-300 transition flex items-center gap-1"
+                      >
+                        <span>Next</span>
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Empty state if search has no matches */}
+              {devotionalServices.length > 0 &&
+                devotionalServices.filter((s) => {
+                  if (!serviceSearch.trim()) return true;
+                  const q = serviceSearch.toLowerCase();
+                  return s.title?.toLowerCase().includes(q) || s.sub?.toLowerCase().includes(q);
+                }).length === 0 && (
+                  <div className="p-12 text-center text-xs text-gray-400 bg-[#1E1E1E] rounded-xl border border-[#2C2C2C]">
+                    <Search className="w-6 h-6 mx-auto mb-2 text-gray-500" />
+                    No devotional services found matching "{serviceSearch}".
+                  </div>
+                )}
+
+              {/* MODAL: VIEW SERVICE BY ID */}
+              {isViewServiceModalOpen && selectedViewService && (
+                <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+                  <div className="bg-[#1E1E1E] border border-[#FFB300]/40 rounded-2xl w-full max-w-lg p-6 shadow-2xl space-y-5 my-8">
+                    {/* Header */}
+                    <div className="flex items-center justify-between border-b border-[#2C2C2C] pb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-lg bg-[#FFB300]/10 border border-[#FFB300]/30 flex items-center justify-center text-[#FFB300]">
+                          <FolderTree className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-sm text-[#FFB300]">
+                            Devotional Service Details (ID: {selectedViewService.id || selectedViewService.serviceId})
+                          </h3>
+                          <p className="text-[11px] text-gray-400">Dynamic category configuration retrieved via API from MySQL</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => { setIsViewServiceModalOpen(false); setSelectedViewService(null); }}
+                        className="text-gray-400 hover:text-white p-1 rounded-lg hover:bg-[#252525] transition"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    {/* Visual Card Banner */}
+                    <div className="bg-gradient-to-r from-[#241F14] to-[#1A1A1A] border border-[#3A3220] rounded-xl p-4 flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3">
+                        {(selectedViewService.artwork || categoryArtworkMap[selectedViewService.serviceId || selectedViewService.id]) ? (
+                          <div className="w-14 h-14 rounded-xl bg-neutral-900 border border-neutral-800 flex items-center justify-center flex-shrink-0 overflow-hidden shadow-lg p-1">
+                            <img
+                              src={resolveArtworkUrl(selectedViewService.artwork || categoryArtworkMap[selectedViewService.serviceId || selectedViewService.id])}
+                              alt={selectedViewService.title}
+                              className="w-full h-full object-contain opacity-90 drop-shadow"
+                              onError={(e: any) => { e.currentTarget.style.display = 'none'; }}
+                            />
+                          </div>
+                        ) : (
+                          <div className="w-14 h-14 rounded-xl bg-neutral-900 border border-neutral-800 flex items-center justify-center flex-shrink-0 shadow-lg text-gray-500">
+                            <ImageIcon className="w-6 h-6" />
+                          </div>
+                        )}
+                        <div>
+                          <h4 className="text-base font-bold text-gray-100">{selectedViewService.title}</h4>
+                          <p className="text-xs text-amber-300 font-medium">{selectedViewService.sub || 'Step-by-step sacred rituals'}</p>
+                          <span className="inline-block mt-1 text-[10px] text-gray-400 font-mono bg-black/40 px-2 py-0.5 rounded border border-[#333]">
+                            {selectedViewService.url}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Metadata Grid */}
+                    <div className="grid grid-cols-2 gap-3 text-xs">
+                      <div className="bg-[#141414] p-3 rounded-lg border border-[#2C2C2C]">
+                        <span className="text-[10px] uppercase tracking-wider text-gray-400 block font-semibold mb-1">Service Identifier</span>
+                        <span className="text-amber-400 font-mono font-bold">{selectedViewService.serviceId || selectedViewService.id}</span>
+                      </div>
+                      <div className="bg-[#141414] p-3 rounded-lg border border-[#2C2C2C]">
+                        <span className="text-[10px] uppercase tracking-wider text-gray-400 block font-semibold mb-1">Display Order</span>
+                        <span className="text-gray-200 font-mono font-bold">#{selectedViewService.displayOrder || 1}</span>
+                      </div>
+                      <div className="bg-[#141414] p-3 rounded-lg border border-[#2C2C2C]">
+                        <span className="text-[10px] uppercase tracking-wider text-gray-400 block font-semibold mb-1">Navigation Route</span>
+                        <span className="text-sky-400 font-mono">{selectedViewService.url}</span>
+                      </div>
+                      <div className="bg-[#141414] p-3 rounded-lg border border-[#2C2C2C]">
+                        <span className="text-[10px] uppercase tracking-wider text-gray-400 block font-semibold mb-1">Portal Status</span>
+                        {renderStatusBadge(selectedViewService.status, selectedViewService.isActive)}
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center justify-between pt-3 border-t border-[#2C2C2C]">
+                      <button
+                        onClick={() => handleDeleteCategoryService(selectedViewService)}
+                        className="px-3 py-1.5 bg-rose-950/40 hover:bg-rose-900/60 border border-rose-800/40 text-red-300 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Delete Service</span>
+                      </button>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => {
+                            const svc = { ...selectedViewService };
+                            setIsViewServiceModalOpen(false);
+                            handleOpenEditService(svc);
+                          }}
+                          className="px-3.5 py-1.5 bg-[#FFB300] hover:bg-[#FFA000] text-black rounded-lg text-xs font-bold flex items-center gap-1.5 transition shadow-lg shadow-amber-500/20"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                          <span>Edit This Service</span>
+                        </button>
+                        <button
+                          onClick={() => { setIsViewServiceModalOpen(false); setSelectedViewService(null); }}
+                          className="px-3.5 py-1.5 bg-[#141414] hover:bg-[#252525] border border-[#2C2C2C] rounded-lg text-xs font-semibold text-gray-300 transition"
+                        >
+                          Close
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* MODAL: CREATE / EDIT DEVOTIONAL SERVICE */}
+              {isServiceEditModalOpen && editingCategoryService && (
+                <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+                  <div className="bg-[#1E1E1E] border border-[#FFB300]/40 rounded-2xl w-full max-w-xl p-6 shadow-2xl space-y-4 my-8">
+                    {/* Header */}
+                    <div className="flex items-center justify-between border-b border-[#2C2C2C] pb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-lg bg-[#FFB300]/10 border border-[#FFB300]/30 flex items-center justify-center text-[#FFB300]">
+                          <FolderTree className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-sm text-[#FFB300]">
+                            {devotionalServices.some(s => (s.id === editingCategoryService.id || s.serviceId === editingCategoryService.serviceId))
+                              ? 'Edit Devotional Service'
+                              : 'Create New Devotional Service'}
+                          </h3>
+                          <p className="text-[11px] text-gray-400">Configure sacred category title, subtitle, icon glyph & artwork</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => { setIsServiceEditModalOpen(false); setEditingCategoryService(null); }}
+                        className="text-gray-400 hover:text-white p-1 rounded-lg hover:bg-[#252525] transition"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    {/* Form */}
+                    <form onSubmit={handleSaveCategoryService} className="space-y-4">
+                      {/* Title & Subtitle */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-xs font-semibold text-gray-300 block mb-1">
+                            Service Title <span className="text-amber-400">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            placeholder="e.g. Pooja Vidhanam"
+                            value={editingCategoryService.title || ''}
+                            onChange={(e) => setEditingCategoryService({ ...editingCategoryService, title: e.target.value })}
+                            className="w-full bg-[#141414] border border-[#2C2C2C] rounded-lg px-3 py-2 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-[#FFB300]"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold text-gray-300 block mb-1">
+                            Subtitle / Description
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="e.g. Step-by-step sacred rituals"
+                            value={editingCategoryService.sub || ''}
+                            onChange={(e) => setEditingCategoryService({ ...editingCategoryService, sub: e.target.value })}
+                            className="w-full bg-[#141414] border border-[#2C2C2C] rounded-lg px-3 py-2 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-[#FFB300]"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Service Slug ID & Route URL */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-xs font-semibold text-gray-300 block mb-1">
+                            Service Identifier / Slug
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="e.g. pooja, stotras, darshan"
+                            value={editingCategoryService.serviceId || editingCategoryService.id || ''}
+                            onChange={(e) => {
+                              const val = e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, '');
+                              setEditingCategoryService({ ...editingCategoryService, serviceId: val, id: val });
+                            }}
+                            className="w-full bg-[#141414] border border-[#2C2C2C] rounded-lg px-3 py-2 text-xs text-gray-200 font-mono placeholder-gray-500 focus:outline-none focus:border-[#FFB300]"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold text-gray-300 block mb-1">
+                            Target Route URL
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="e.g. /subcategories, /festivals"
+                            value={editingCategoryService.url || ''}
+                            onChange={(e) => setEditingCategoryService({ ...editingCategoryService, url: e.target.value })}
+                            className="w-full bg-[#141414] border border-[#2C2C2C] rounded-lg px-3 py-2 text-xs text-gray-200 font-mono placeholder-gray-500 focus:outline-none focus:border-[#FFB300]"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Display Order */}
+                      <div>
+                        <label className="text-xs font-semibold text-gray-300 block mb-1">
+                          Display Order
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          max="99"
+                          value={editingCategoryService.displayOrder || 1}
+                          onChange={(e) => setEditingCategoryService({ ...editingCategoryService, displayOrder: parseInt(e.target.value, 10) || 1 })}
+                          className="w-full bg-[#141414] border border-[#2C2C2C] rounded-lg px-3 py-2 text-xs text-gray-200 focus:outline-none focus:border-[#FFB300]"
+                        />
+                      </div>
+
+                      {/* Artwork Image Upload & URL */}
+                      <div className="space-y-2 bg-[#141414] p-3 rounded-lg border border-[#2C2C2C]">
+                        <label className="text-xs font-semibold text-gray-300 block">
+                          Devotional Artwork Image
+                        </label>
+                        <div className="flex items-center gap-3">
+                          <div className="w-16 h-16 rounded-xl bg-[#1E1E1E] border border-[#2C2C2C] flex items-center justify-center overflow-hidden flex-shrink-0">
+                            {editingCategoryService.artwork ? (
+                              <img
+                                src={resolveArtworkUrl(editingCategoryService.artwork)}
+                                alt="Preview"
+                                className="w-full h-full object-contain p-1"
+                                onError={(e: any) => { e.currentTarget.style.display = 'none'; }}
+                              />
+                            ) : (
+                              <ImageIcon className="w-6 h-6 text-gray-600" />
+                            )}
                           </div>
 
-                          {/* Card Footer Action Bar */}
-                          <div className="pt-2.5 border-t border-[#2A2A2A] space-y-2">
-                            {/* Top Bar: ID and Subcategories */}
-                            <div className="flex items-center justify-between gap-2 text-xs">
-                              <span className="text-[11px] text-gray-400 font-mono flex items-center gap-1.5 flex-shrink-0">
-                                <span className="text-gray-500">ID:</span>
-                                <span className="text-amber-400/90 font-semibold bg-[#141414] px-1.5 py-0.5 rounded border border-[#2A2A2A]">{sKey}</span>
-                              </span>
-
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const sKey = service.serviceId || service.id;
-                                  setSelectedParentCategoryFilter(sKey);
-                                  loadSubcategories(1, '', selectedLang, sKey);
-                                  setActiveTab('subcategories');
-                                }}
-                                title="Manage Subcategories under this Category"
-                                className="px-2.5 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded-lg border border-amber-500/30 flex items-center gap-1.5 text-[11px] font-semibold transition"
-                              >
-                                <Layers className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
-                                <span>Subcategories</span>
-                              </button>
-                            </div>
-
-                            {/* Bottom Bar: 4-Column Action Grid */}
-                            <div className="grid grid-cols-4 gap-1.5 w-full" onClick={(e) => e.stopPropagation()}>
-                              <label
-                                title="Upload / Replace Category Image"
-                                className="py-1 px-1 bg-[#141414] hover:bg-[#252525] text-gray-300 hover:text-emerald-400 rounded-lg border border-[#2C2C2C] flex items-center justify-center gap-1 text-[11px] font-medium transition cursor-pointer text-center"
-                              >
-                                <Upload className="w-3 h-3 text-emerald-400 flex-shrink-0" />
-                                <span>Image</span>
+                          <div className="flex-1 space-y-2">
+                            <div className="flex items-center gap-2">
+                              <label className="cursor-pointer px-3 py-1.5 bg-[#252525] hover:bg-[#333333] border border-[#3A3A3A] text-gray-200 rounded-lg text-xs font-medium flex items-center gap-1.5 transition">
+                                <Upload className="w-3.5 h-3.5 text-amber-400" />
+                                <span>Upload Image File</span>
                                 <input
                                   type="file"
                                   accept="image/png, image/jpeg, image/webp"
-                                  onChange={(e) => handleQuickServiceArtworkUpload(service.id || service.serviceId, e)}
+                                  onChange={handleServiceArtworkUpload}
                                   className="hidden"
                                 />
                               </label>
-                              {/* Bottom Bar: 3-Column Action Grid */}
-                              <div className="grid grid-cols-3 gap-1.5 w-full" onClick={(e) => e.stopPropagation()}>
+                              {editingCategoryService.artwork && (
                                 <button
                                   type="button"
-                                  onClick={(e) => handleOpenViewService(service, e)}
-                                  title="View Details by ID"
-                                  className="py-1 px-1 bg-[#141414] hover:bg-[#252525] text-gray-300 hover:text-white rounded-lg border border-[#2C2C2C] flex items-center justify-center gap-1 text-[11px] font-medium transition text-center"
+                                  onClick={() => setEditingCategoryService({ ...editingCategoryService, artwork: '' })}
+                                  className="px-2 py-1 bg-red-950/40 text-red-400 hover:text-red-300 rounded text-[11px] border border-red-900/30"
                                 >
-                                  <Eye className="w-3 h-3 text-sky-400 flex-shrink-0" />
-                                  <span>View</span>
+                                  Remove
                                 </button>
-                                <button
-                                  type="button"
-                                  onClick={(e) => handleOpenEditService(service, e)}
-                                  title="Edit Devotional Service"
-                                  className="py-1 px-1 bg-[#141414] hover:bg-[#252525] text-gray-300 hover:text-amber-400 rounded-lg border border-[#2C2C2C] flex items-center justify-center gap-1 text-[11px] font-medium transition text-center"
-                                >
-                                  <Edit3 className="w-3 h-3 text-amber-400 flex-shrink-0" />
-                                  <span>Edit</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={(e) => handleDeleteCategoryService(service, e)}
-                                  title="Delete Devotional Service"
-                                  className="py-1 px-1 bg-[#141414] hover:bg-rose-950/40 text-gray-300 hover:text-red-400 rounded-lg border border-[#2C2C2C] hover:border-red-900/40 flex items-center justify-center gap-1 text-[11px] font-medium transition text-center"
-                                >
-                                  <Trash2 className="w-3 h-3 text-red-400 flex-shrink-0" />
-                                  <span>Delete</span>
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                          );
-                    })}
-                        </div>
-                      )
-                    }
-
-              {/* Empty state if search has no matches */ }
-              {
-                        devotionalServices.length > 0 &&
-                          devotionalServices.filter((s) => {
-                            if (!serviceSearch.trim()) return true;
-                            const q = serviceSearch.toLowerCase();
-                            return s.title?.toLowerCase().includes(q) || s.sub?.toLowerCase().includes(q);
-                          }).length === 0 && (
-                            <div className="p-12 text-center text-xs text-gray-400 bg-[#1E1E1E] rounded-xl border border-[#2C2C2C]">
-                              <Search className="w-6 h-6 mx-auto mb-2 text-gray-500" />
-                              No devotional services found matching "{serviceSearch}".
-                            </div>
-                          )
-                      }
-
-              {/* MODAL: VIEW SERVICE BY ID */ }
-              { isViewServiceModalOpen && selectedViewService && (
-                        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-                          <div className="bg-[#1E1E1E] border border-[#FFB300]/40 rounded-2xl w-full max-w-lg p-6 shadow-2xl space-y-5 my-8">
-                            {/* Header */}
-                            <div className="flex items-center justify-between border-b border-[#2C2C2C] pb-3">
-                              <div className="flex items-center gap-2">
-                                <div className="w-8 h-8 rounded-lg bg-[#FFB300]/10 border border-[#FFB300]/30 flex items-center justify-center text-[#FFB300]">
-                                  <FolderTree className="w-4 h-4" />
-                                </div>
-                                <div>
-                                  <h3 className="font-bold text-sm text-[#FFB300]">
-                                    Devotional Service Details (ID: {selectedViewService.id || selectedViewService.serviceId})
-                                  </h3>
-                                  <p className="text-[11px] text-gray-400">Dynamic category configuration retrieved via API from MySQL</p>
-                                </div>
-                              </div>
-                              <button
-                                onClick={() => { setIsViewServiceModalOpen(false); setSelectedViewService(null); }}
-                                className="text-gray-400 hover:text-white p-1 rounded-lg hover:bg-[#252525] transition"
-                              >
-                                <X className="w-4 h-4" />
-                              </button>
-                            </div>
-
-                            {/* Visual Card Banner */}
-                            <div className="bg-gradient-to-r from-[#241F14] to-[#1A1A1A] border border-[#3A3220] rounded-xl p-4 flex items-center justify-between gap-4">
-                              <div className="flex items-center gap-3">
-                                <div className="w-14 h-14 rounded-xl bg-[#2A2A2A] border border-[#FFB300]/40 flex items-center justify-center flex-shrink-0 shadow-lg">
-                                  {renderServiceIcon(selectedViewService.icon || selectedViewService.id)}
-                                </div>
-                                <div>
-                                  <h4 className="text-base font-bold text-gray-100">{selectedViewService.title}</h4>
-                                  <p className="text-xs text-amber-300 font-medium">{selectedViewService.sub || 'Step-by-step sacred rituals'}</p>
-                                  <span className="inline-block mt-1 text-[10px] text-gray-400 font-mono bg-black/40 px-2 py-0.5 rounded border border-[#333]">
-                                    {selectedViewService.url}
-                                  </span>
-                                </div>
-                              </div>
-                              {(selectedViewService.artwork || categoryArtworkMap[selectedViewService.serviceId || selectedViewService.id]) && (
-                                <img
-                                  src={resolveArtworkUrl(selectedViewService.artwork || categoryArtworkMap[selectedViewService.serviceId || selectedViewService.id])}
-                                  alt={selectedViewService.title}
-                                  className="w-14 h-14 object-contain opacity-90 drop-shadow"
-                                  onError={(e: any) => { e.currentTarget.style.display = 'none'; }}
-                                />
                               )}
                             </div>
+                            <input
+                              type="text"
+                              placeholder="Or paste artwork URL (e.g. /images/categories/art-pooja-trans.png)"
+                              value={editingCategoryService.artwork || ''}
+                              onChange={(e) => setEditingCategoryService({ ...editingCategoryService, artwork: e.target.value })}
+                              className="w-full bg-[#1E1E1E] border border-[#2C2C2C] rounded-md px-2.5 py-1 text-[11px] text-gray-300 font-mono placeholder-gray-500 focus:outline-none focus:border-[#FFB300]"
+                            />
+                          </div>
+                        </div>
+                      </div>
 
-                            {/* Metadata Grid */}
-                            <div className="grid grid-cols-2 gap-3 text-xs">
-                              <div className="bg-[#141414] p-3 rounded-lg border border-[#2C2C2C]">
-                                <span className="text-[10px] uppercase tracking-wider text-gray-400 block font-semibold mb-1">Service Identifier</span>
-                                <span className="text-amber-400 font-mono font-bold">{selectedViewService.serviceId || selectedViewService.id}</span>
-                              </div>
-                              <div className="bg-[#141414] p-3 rounded-lg border border-[#2C2C2C]">
-                                <span className="text-[10px] uppercase tracking-wider text-gray-400 block font-semibold mb-1">Display Order</span>
-                                <span className="text-gray-200 font-mono font-bold">#{selectedViewService.displayOrder || 1}</span>
-                              </div>
-                              <div className="bg-[#141414] p-3 rounded-lg border border-[#2C2C2C]">
-                                <span className="text-[10px] uppercase tracking-wider text-gray-400 block font-semibold mb-1">Navigation Route</span>
-                                <span className="text-sky-400 font-mono">{selectedViewService.url}</span>
-                              </div>
-                              <div className="bg-[#141414] p-3 rounded-lg border border-[#2C2C2C]">
-                                <span className="text-[10px] uppercase tracking-wider text-gray-400 block font-semibold mb-1">Portal Status</span>
-                                <span className={`inline-flex items-center gap-1 font-semibold ${selectedViewService.isActive !== false ? 'text-emerald-400' : 'text-gray-400'}`}>
-                                  <span className={`w-1.5 h-1.5 rounded-full ${selectedViewService.isActive !== false ? 'bg-emerald-400 animate-pulse' : 'bg-gray-400'}`} />
-                                  {selectedViewService.isActive !== false ? 'Active & Published' : 'Draft / Inactive'}
-                                </span>
-                              </div>
-                              <div className="col-span-2 bg-[#141414] p-3 rounded-lg border border-[#2C2C2C]">
-                                <span className="text-[10px] uppercase tracking-wider text-gray-400 block font-semibold mb-1">Assigned Icon Glyph</span>
-                                <span className="text-gray-300 font-mono">{selectedViewService.icon || 'Sparkles'}</span>
-                              </div>
-                            </div>
+                      {/* Service Status Selector */}
+                      <div className="bg-[#141414] p-3 rounded-lg border border-[#2C2C2C]">
+                        <label className="text-[10px] uppercase font-bold text-gray-400 tracking-wider block mb-1">
+                          Service Status
+                        </label>
+                        <select
+                          value={editingCategoryService.status || (editingCategoryService.isActive !== false ? 'active' : 'inactive')}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setEditingCategoryService({
+                              ...editingCategoryService,
+                              status: val,
+                              isActive: val === 'active'
+                            });
+                          }}
+                          className="w-full bg-[#1E1E1E] border border-[#2C2C2C] rounded px-2.5 py-1.5 text-xs text-[#FFB300] font-semibold focus:outline-none focus:border-[#FFB300]"
+                        >
+                          <option value="active">Active (Visible & Published on Website & App)</option>
+                          <option value="coming_soon">Coming Soon (Upcoming Preview)</option>
+                          <option value="inactive">Inactive (Hidden / Draft)</option>
+                        </select>
+                      </div>
 
-                            {/* Actions */}
-                            <div className="flex items-center justify-between pt-3 border-t border-[#2C2C2C]">
-                              <button
-                                onClick={() => handleDeleteCategoryService(selectedViewService)}
-                                className="px-3 py-1.5 bg-rose-950/40 hover:bg-rose-900/60 border border-rose-800/40 text-red-300 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                                <span>Delete Service</span>
-                              </button>
+                      {/* Modal Buttons */}
+                      <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#2C2C2C]">
+                        <button
+                          type="button"
+                          onClick={() => { setIsServiceEditModalOpen(false); setEditingCategoryService(null); }}
+                          className="px-4 py-2 bg-[#141414] hover:bg-[#252525] border border-[#2C2C2C] rounded-lg text-xs font-semibold text-gray-300 transition"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={isSavingCategoryService}
+                          className="px-5 py-2 bg-[#FFB300] hover:bg-[#FFA000] text-black rounded-lg text-xs font-bold flex items-center gap-1.5 transition shadow-lg shadow-amber-500/20 disabled:opacity-50"
+                        >
+                          {isSavingCategoryService && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
+                          <span>Save Devotional Service</span>
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
-                              <div className="flex items-center gap-2">
-                                <button
-                                  onClick={() => {
-                                    const svc = { ...selectedViewService };
-                                    setIsViewServiceModalOpen(false);
-                                    handleOpenEditService(svc);
+          {/* TAB: SACRED TEMPLES MANAGEMENT (Dynamically fetched from DB via API) */}
+          {(activeTab === 'temples' || (activeTab === 'categories' && selectedCategorySubtitle === 'temples')) && (
+            <div className="space-y-6">
+              {/* Header Filter & Action Bar */}
+              <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] p-5 shadow-lg">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                  {/* Left Controls */}
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className="relative w-full sm:w-64">
+                      <Search className="w-4 h-4 absolute left-3 top-2.5 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder="Search temple, deity, city, state..."
+                        value={templeSearch}
+                        onChange={(e) => {
+                          setTempleSearch(e.target.value);
+                          loadAdminTemples(e.target.value, templeDeityFilter, templeStateFilter);
+                        }}
+                        className="w-full bg-[#141414] border border-[#2C2C2C] rounded-lg pl-9 pr-4 py-2 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-[#FFB300]"
+                      />
+                    </div>
+
+                    {/* Deity Filter */}
+                    <select
+                      value={templeDeityFilter}
+                      onChange={(e) => {
+                        setTempleDeityFilter(e.target.value);
+                        loadAdminTemples(templeSearch, e.target.value, templeStateFilter);
+                      }}
+                      className="bg-[#141414] border border-[#2C2C2C] rounded-lg px-3 py-2 text-xs text-amber-400 focus:outline-none focus:border-[#FFB300]"
+                    >
+                      <option value="ALL">All Deities</option>
+                      <option value="ayyappa">Lord Ayyappa</option>
+                      <option value="venkateswara">Lord Venkateswara</option>
+                      <option value="shiva">Lord Shiva</option>
+                      <option value="krishna">Lord Krishna</option>
+                      <option value="meenakshi">Goddess Meenakshi</option>
+                      <option value="durga">Goddess Durga</option>
+                      <option value="ganesha">Lord Ganesha</option>
+                      <option value="murugan">Lord Murugan</option>
+                    </select>
+
+                    {/* State Filter */}
+                    <select
+                      value={templeStateFilter}
+                      onChange={(e) => {
+                        setTempleStateFilter(e.target.value);
+                        loadAdminTemples(templeSearch, templeDeityFilter, e.target.value);
+                      }}
+                      className="bg-[#141414] border border-[#2C2C2C] rounded-lg px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-[#FFB300]"
+                    >
+                      <option value="ALL">All States</option>
+                      <option value="Kerala">Kerala</option>
+                      <option value="Andhra Pradesh">Andhra Pradesh</option>
+                      <option value="Tamil Nadu">Tamil Nadu</option>
+                      <option value="Karnataka">Karnataka</option>
+                      <option value="Telangana">Telangana</option>
+                      <option value="Uttar Pradesh">Uttar Pradesh</option>
+                      <option value="Maharashtra">Maharashtra</option>
+                    </select>
+
+                    {/* Language Selector */}
+                    <select
+                      value={selectedLang}
+                      onChange={(e) => {
+                        setSelectedLang(e.target.value);
+                      }}
+                      className="bg-[#141414] border border-[#2C2C2C] rounded-lg px-3 py-2 text-xs text-emerald-400 focus:outline-none focus:border-[#FFB300]"
+                    >
+                      <option value="en">English (English)</option>
+                      <option value="te">Telugu (తెలుగు)</option>
+                      <option value="kn">Kannada (ಕನ್ನಡ)</option>
+                      <option value="ta">Tamil (தமிழ்)</option>
+                      <option value="ml">Malayalam (മലയാളം)</option>
+                      <option value="hi">Hindi (हिन्दी)</option>
+                    </select>
+                  </div>
+
+                  {/* Right Actions */}
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-gray-400">
+                      Total: <strong className="text-amber-400 font-bold">{templesList.length}</strong> Sacred Temples
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => loadAdminTemples()}
+                      disabled={isTemplesLoading}
+                      title="Refresh from DB"
+                      className="p-2 rounded-lg bg-[#141414] border border-[#2C2C2C] hover:border-[#FFB300] text-gray-300 hover:text-amber-400 transition"
+                    >
+                      <RefreshCw className={`w-4 h-4 ${isTemplesLoading ? 'animate-spin text-amber-400' : ''}`} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleOpenCreateTemple}
+                      className="flex items-center gap-2 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white px-4 py-2 rounded-lg text-xs font-bold transition shadow-md shadow-orange-950/40"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>+ Create Sacred Temple</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Temples List Table */}
+              <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] overflow-hidden shadow-lg">
+                {isTemplesLoading ? (
+                  <div className="py-20 flex flex-col items-center justify-center text-center">
+                    <RefreshCw className="w-8 h-8 text-[#FFB300] animate-spin mb-3" />
+                    <p className="text-sm text-gray-300 font-medium">Fetching Sacred Temples from Database via API...</p>
+                    <p className="text-xs text-gray-500 mt-1">Connecting to MySQL temples directory</p>
+                  </div>
+                ) : templesList.length === 0 ? (
+                  <div className="py-16 text-center">
+                    <Landmark className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+                    <p className="text-base text-gray-300 font-semibold">No Sacred Temples Found</p>
+                    <p className="text-xs text-gray-500 mt-1">No temples match the search criteria or database table is empty.</p>
+                    <button
+                      type="button"
+                      onClick={handleOpenCreateTemple}
+                      className="mt-4 px-4 py-2 rounded-lg bg-[#FFB300] hover:bg-amber-400 text-black text-xs font-bold transition"
+                    >
+                      + Add First Sacred Temple
+                    </button>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="border-b border-[#2C2C2C] bg-[#141414] text-[11px] uppercase tracking-wider text-gray-400 font-semibold">
+                          <th className="py-3 px-4 w-12">#</th>
+                          <th className="py-3 px-4 w-20">Banner</th>
+                          <th className="py-3 px-4">Temple Name & Slug</th>
+                          <th className="py-3 px-4">Deity</th>
+                          <th className="py-3 px-4">Location</th>
+                          <th className="py-3 px-4">Darshan Timings</th>
+                          <th className="py-3 px-4">Live Darshan</th>
+                          <th className="py-3 px-4">Status</th>
+                          <th className="py-3 px-4 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#2C2C2C] text-xs">
+                        {templesList.map((t, idx) => (
+                          <tr key={t.id || t.slug || idx} className="hover:bg-[#252525]/60 transition">
+                            <td className="py-3 px-4 text-gray-500 font-mono text-[11px]">
+                              #{t.dbId || idx + 1}
+                            </td>
+                            <td className="py-3 px-4">
+                              <div className="w-14 h-10 rounded-md overflow-hidden bg-neutral-900 border border-[#2C2C2C] relative">
+                                <img
+                                  src={resolveTempleImageUrl(t.thumbnailUrl || t.heroImageUrl)}
+                                  alt={t.name}
+                                  className="w-full h-full object-cover"
+                                  onError={(e: any) => {
+                                    e.currentTarget.src = 'https://saranamayyappa.in/images/temples/banner-sabarimala-hd.png';
                                   }}
-                                  className="px-3.5 py-1.5 bg-[#FFB300] hover:bg-[#FFA000] text-black rounded-lg text-xs font-bold flex items-center gap-1.5 transition shadow-lg shadow-amber-500/20"
-                                >
-                                  <Edit3 className="w-3.5 h-3.5" />
-                                  <span>Edit This Service</span>
-                                </button>
-                                <button
-                                  onClick={() => { setIsViewServiceModalOpen(false); setSelectedViewService(null); }}
-                                  className="px-3.5 py-1.5 bg-[#141414] hover:bg-[#252525] border border-[#2C2C2C] rounded-lg text-xs font-semibold text-gray-300 transition"
-                                >
-                                  Close
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                  {/* MODAL: CREATE / EDIT DEVOTIONAL SERVICE */}
-                  {isServiceEditModalOpen && editingCategoryService && (
-                    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-                      <div className="bg-[#1E1E1E] border border-[#FFB300]/40 rounded-2xl w-full max-w-xl p-6 shadow-2xl space-y-4 my-8">
-                        {/* Header */}
-                        <div className="flex items-center justify-between border-b border-[#2C2C2C] pb-3">
-                          <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-lg bg-[#FFB300]/10 border border-[#FFB300]/30 flex items-center justify-center text-[#FFB300]">
-                              <FolderTree className="w-4 h-4" />
-                            </div>
-                            <div>
-                              <h3 className="font-bold text-sm text-[#FFB300]">
-                                {devotionalServices.some(s => (s.id === editingCategoryService.id || s.serviceId === editingCategoryService.serviceId))
-                                  ? 'Edit Devotional Service'
-                                  : 'Create New Devotional Service'}
-                              </h3>
-                              <p className="text-[11px] text-gray-400">Configure sacred category title, subtitle, icon glyph & artwork</p>
-                            </div>
-                          </div>
-                          <button
-                            onClick={() => { setIsServiceEditModalOpen(false); setEditingCategoryService(null); }}
-                            className="text-gray-400 hover:text-white p-1 rounded-lg hover:bg-[#252525] transition"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-
-                        {/* Form */}
-                        <form onSubmit={handleSaveCategoryService} className="space-y-4">
-                          {/* Title & Subtitle */}
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div>
-                              <label className="text-xs font-semibold text-gray-300 block mb-1">
-                                Service Title <span className="text-amber-400">*</span>
-                              </label>
-                              <input
-                                type="text"
-                                required
-                                placeholder="e.g. Pooja Vidhanam"
-                                value={editingCategoryService.title || ''}
-                                onChange={(e) => setEditingCategoryService({ ...editingCategoryService, title: e.target.value })}
-                                className="w-full bg-[#141414] border border-[#2C2C2C] rounded-lg px-3 py-2 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-[#FFB300]"
-                              />
-                            </div>
-                            <div>
-                              <label className="text-xs font-semibold text-gray-300 block mb-1">
-                                Subtitle / Description
-                              </label>
-                              <input
-                                type="text"
-                                placeholder="e.g. Step-by-step sacred rituals"
-                                value={editingCategoryService.sub || ''}
-                                onChange={(e) => setEditingCategoryService({ ...editingCategoryService, sub: e.target.value })}
-                                className="w-full bg-[#141414] border border-[#2C2C2C] rounded-lg px-3 py-2 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-[#FFB300]"
-                              />
-                            </div>
-                          </div>
-
-                          {/* Service Slug ID & Route URL */}
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div>
-                              <label className="text-xs font-semibold text-gray-300 block mb-1">
-                                Service Identifier / Slug
-                              </label>
-                              <input
-                                type="text"
-                                placeholder="e.g. pooja, stotras, darshan"
-                                value={editingCategoryService.serviceId || editingCategoryService.id || ''}
-                                onChange={(e) => {
-                                  const val = e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, '');
-                                  setEditingCategoryService({ ...editingCategoryService, serviceId: val, id: val });
-                                }}
-                                className="w-full bg-[#141414] border border-[#2C2C2C] rounded-lg px-3 py-2 text-xs text-gray-200 font-mono placeholder-gray-500 focus:outline-none focus:border-[#FFB300]"
-                              />
-                            </div>
-                            <div>
-                              <label className="text-xs font-semibold text-gray-300 block mb-1">
-                                Target Route URL
-                              </label>
-                              <input
-                                type="text"
-                                placeholder="e.g. /subcategories, /festivals"
-                                value={editingCategoryService.url || ''}
-                                onChange={(e) => setEditingCategoryService({ ...editingCategoryService, url: e.target.value })}
-                                className="w-full bg-[#141414] border border-[#2C2C2C] rounded-lg px-3 py-2 text-xs text-gray-200 font-mono placeholder-gray-500 focus:outline-none focus:border-[#FFB300]"
-                              />
-                            </div>
-                          </div>
-
-                          {/* Icon & Display Order */}
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div>
-                              <label className="text-xs font-semibold text-gray-300 block mb-1">
-                                Icon Glyph
-                              </label>
-                              <div className="flex items-center gap-2">
-                                <div className="w-8 h-8 rounded-lg bg-[#141414] border border-[#2C2C2C] flex items-center justify-center text-amber-400 flex-shrink-0">
-                                  {renderServiceIcon(editingCategoryService.icon || 'Sparkles')}
-                                </div>
-                                <select
-                                  value={editingCategoryService.icon || 'Sparkles'}
-                                  onChange={(e) => setEditingCategoryService({ ...editingCategoryService, icon: e.target.value })}
-                                  className="w-full bg-[#141414] border border-[#2C2C2C] rounded-lg px-3 py-2 text-xs text-gray-200 focus:outline-none focus:border-[#FFB300]"
-                                >
-                                  <option value="Flame">Flame (Pooja / Fire Rituals)</option>
-                                  <option value="BookOpen">BookOpen (Stotras / Sacred Books)</option>
-                                  <option value="Scroll">Scroll (Daily Slokas / Mantras)</option>
-                                  <option value="Music">Music (Bhajans & Songs)</option>
-                                  <option value="Tv">Tv (Live Darshan / Streaming)</option>
-                                  <option value="Calendar">Calendar (Panchangam / Timings)</option>
-                                  <option value="Sparkles">Sparkles (Festivals / Celebrations)</option>
-                                  <option value="Landmark">Landmark (Temples / Shrines)</option>
-                                  <option value="HeartHandshake">HeartHandshake (Annadanam / Seva)</option>
-                                </select>
-                              </div>
-                            </div>
-
-                            <div>
-                              <label className="text-xs font-semibold text-gray-300 block mb-1">
-                                Display Order
-                              </label>
-                              <input
-                                type="number"
-                                min="1"
-                                max="99"
-                                value={editingCategoryService.displayOrder || 1}
-                                onChange={(e) => setEditingCategoryService({ ...editingCategoryService, displayOrder: parseInt(e.target.value, 10) || 1 })}
-                                className="w-full bg-[#141414] border border-[#2C2C2C] rounded-lg px-3 py-2 text-xs text-gray-200 focus:outline-none focus:border-[#FFB300]"
-                              />
-                            </div>
-                          </div>
-
-                          {/* Artwork Image Upload & URL */}
-                          <div className="space-y-2 bg-[#141414] p-3 rounded-lg border border-[#2C2C2C]">
-                            <label className="text-xs font-semibold text-gray-300 block">
-                              Devotional Artwork Image
-                            </label>
-                            <div className="flex items-center gap-3">
-                              <div className="w-16 h-16 rounded-xl bg-[#1E1E1E] border border-[#2C2C2C] flex items-center justify-center overflow-hidden flex-shrink-0">
-                                {editingCategoryService.artwork ? (
-                                  <img
-                                    src={resolveArtworkUrl(editingCategoryService.artwork)}
-                                    alt="Preview"
-                                    className="w-full h-full object-contain p-1"
-                                    onError={(e: any) => { e.currentTarget.style.display = 'none'; }}
-                                  />
-                                ) : (
-                                  <ImageIcon className="w-6 h-6 text-gray-600" />
-                                )}
-                              </div>
-
-                              <div className="flex-1 space-y-2">
-                                <div className="flex items-center gap-2">
-                                  <label className="cursor-pointer px-3 py-1.5 bg-[#252525] hover:bg-[#333333] border border-[#3A3A3A] text-gray-200 rounded-lg text-xs font-medium flex items-center gap-1.5 transition">
-                                    <Upload className="w-3.5 h-3.5 text-amber-400" />
-                                    <span>Upload Image File</span>
-                                    <input
-                                      type="file"
-                                      accept="image/png, image/jpeg, image/webp"
-                                      onChange={handleServiceArtworkUpload}
-                                      className="hidden"
-                                    />
-                                  </label>
-                                  {editingCategoryService.artwork && (
-                                    <button
-                                      type="button"
-                                      onClick={() => setEditingCategoryService({ ...editingCategoryService, artwork: '' })}
-                                      className="px-2 py-1 bg-red-950/40 text-red-400 hover:text-red-300 rounded text-[11px] border border-red-900/30"
-                                    >
-                                      Remove
-                                    </button>
-                                  )}
-                                </div>
-                                <input
-                                  type="text"
-                                  placeholder="Or paste artwork URL (e.g. /images/categories/art-pooja-trans.png)"
-                                  value={editingCategoryService.artwork || ''}
-                                  onChange={(e) => setEditingCategoryService({ ...editingCategoryService, artwork: e.target.value })}
-                                  className="w-full bg-[#1E1E1E] border border-[#2C2C2C] rounded-md px-2.5 py-1 text-[11px] text-gray-300 font-mono placeholder-gray-500 focus:outline-none focus:border-[#FFB300]"
                                 />
                               </div>
+                            </td>
+                            <td className="py-3 px-4">
+                              <div className="font-bold text-gray-100 flex items-center gap-1.5">
+                                <span>{t.name}</span>
+                              </div>
+                              <div className="text-[11px] text-gray-400 font-mono">
+                                /{t.id || t.slug}
+                              </div>
+                              {t.originalName && t.originalName !== t.name && (
+                                <div className="text-[10px] text-amber-400/80">
+                                  EN: {t.originalName}
+                                </div>
+                              )}
+                            </td>
+                            <td className="py-3 px-4">
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-950/80 text-amber-300 border border-amber-800/40">
+                                <span>🕉️</span>
+                                <span>{t.deityName || t.deityId || 'Lord Ayyappa'}</span>
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 text-gray-300">
+                              <div className="flex items-center gap-1">
+                                <MapPin className="w-3.5 h-3.5 text-orange-400 flex-shrink-0" />
+                                <span className="font-medium text-gray-200">{t.city || 'Sannidhanam'}</span>
+                              </div>
+                              <div className="text-[11px] text-gray-400 pl-4.5">
+                                {t.state}{t.district ? `, ${t.district}` : ''}
+                              </div>
+                            </td>
+                            <td className="py-3 px-4 text-[11px] text-gray-300">
+                              {t.timings ? (
+                                <div className="space-y-0.5">
+                                  {t.timings.morning && (
+                                    <div className="flex items-center gap-1 text-gray-300">
+                                      <Clock className="w-3 h-3 text-amber-400" />
+                                      <span>{t.timings.morning}</span>
+                                    </div>
+                                  )}
+                                  {t.timings.evening && (
+                                    <div className="text-[10px] text-gray-400 pl-4">
+                                      {t.timings.evening}
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-gray-500 italic">Open Daily</span>
+                              )}
+                            </td>
+                            <td className="py-3 px-4">
+                              {t.hasLiveDarshan ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-rose-950/80 text-rose-300 border border-rose-800/40">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                                  <span>LIVE</span>
+                                </span>
+                              ) : (
+                                <span className="text-[11px] text-gray-500">No Stream</span>
+                              )}
+                            </td>
+                            <td className="py-3 px-4">
+                              <button
+                                type="button"
+                                onClick={() => handleToggleTempleActive(t)}
+                                title={t.isActive ? 'Active in Portal (Click to Hide)' : 'Hidden (Click to Publish)'}
+                                className={`px-2.5 py-1 rounded text-[10px] font-semibold flex items-center gap-1.5 transition ${t.isActive
+                                  ? 'bg-emerald-950 text-emerald-300 border border-emerald-800/50 hover:bg-emerald-900'
+                                  : 'bg-neutral-800 text-gray-400 border border-gray-700 hover:bg-neutral-700'
+                                  }`}
+                              >
+                                <span className={`w-1.5 h-1.5 rounded-full ${t.isActive ? 'bg-emerald-400' : 'bg-gray-500'}`} />
+                                <span>{t.isActive ? 'Published' : 'Draft'}</span>
+                              </button>
+                            </td>
+                            <td className="py-3 px-4 text-right">
+                              <div className="flex items-center justify-end gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenViewTemple(t)}
+                                  title="View Temple Details"
+                                  className="p-1.5 rounded bg-[#141414] hover:bg-neutral-800 text-gray-300 hover:text-cyan-400 border border-[#2C2C2C] transition"
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenEditTemple(t)}
+                                  title="Edit Temple"
+                                  className="p-1.5 rounded bg-[#141414] hover:bg-neutral-800 text-gray-300 hover:text-amber-400 border border-[#2C2C2C] transition"
+                                >
+                                  <Edit className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteTemple(t.id || t.slug, t.name)}
+                                  title="Delete Temple"
+                                  className="p-1.5 rounded bg-[#141414] hover:bg-rose-950/40 text-gray-400 hover:text-rose-400 border border-[#2C2C2C] transition"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* IN-PAGE NORMAL PAGE MODE: VIEW DETAILS (SANCTUM GREEN & GOLD SACRED PREVIEW) */}
+          {pageMode === 'VIEW_CATEGORY' && viewDetail && (
+            <div className="space-y-4 animate-in fade-in duration-200">
+              {/* Top Navigation: Back to List on top of the card */}
+              <div className="flex items-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPageMode('LIST');
+                    setViewDetail(null);
+                  }}
+                  className="px-3.5 py-1.5 rounded-lg bg-[#0D2E21] hover:bg-[#133F2E] text-gray-200 hover:text-white text-xs font-semibold transition inline-flex items-center gap-2 border border-[#1E5C41] shadow hover:border-[#FFB300]/50"
+                >
+                  <ArrowLeft className="w-4 h-4 text-[#FFB300]" />
+                  <span>Back to List</span>
+                </button>
+              </div>
+
+              {/* In-page Header: Logo Colors Sanctum Green & Divine Gold */}
+              <div className="bg-[#071C14] rounded-xl border border-[#1A4E38] p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xl">
+                <div>
+                  <h3 className="text-base font-bold text-[#FFB300] flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-[#FFB300]" />
+                    <span>
+                      {viewDetail.isType
+                        ? 'Devotional Subcategory Type / Sacred Verse'
+                        : viewDetail.isSubcategory || viewDetail.parentId
+                          ? 'Devotional Subcategory Sanctum Details'
+                          : 'Devotional Master Category'}
+                    </span>
+                  </h3>
+                  <p className="text-xs text-emerald-400/80">
+                    {viewDetail.isType
+                      ? `Type DB Record #${viewDetail.id} — Linked to Subcategory`
+                      : viewDetail.isSubcategory || viewDetail.parentId
+                        ? `Subcategory Record #${viewDetail.id} — Live Sanctum Worship Flow`
+                        : `Master Category Record #${viewDetail.id}`}
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2.5">
+                  {/* Real-time Dynamic Language Switcher (Direct from DB via API) */}
+                  <div className="flex items-center gap-1.5 p-1 bg-[#061A13] border border-[#1E5C41] rounded-lg shadow-inner">
+                    <Globe className="w-3.5 h-3.5 text-[#FFB300] ml-1.5" />
+                    <span className="text-[11px] font-bold text-gray-300 uppercase px-1">DB Lang:</span>
+                    <div className="flex items-center gap-1 overflow-x-auto">
+                      {languages.map(l => (
+                        <button
+                          key={l.code}
+                          type="button"
+                          onClick={() => handleViewDetailChangeLang(l.code)}
+                          className={`px-2.5 py-1 rounded text-xs font-semibold transition flex items-center gap-1 ${selectedLang === l.code
+                            ? 'bg-[#FFB300] text-[#071C14] font-bold shadow'
+                            : 'text-gray-300 hover:text-[#FFB300] hover:bg-[#0D2E21]'
+                            }`}
+                          title={`Switch to ${l.name} (${l.code}) — Dynamically fetched from MySQL via API`}
+                        >
+                          <span>{l.nativeName || l.name}</span>
+                          <span className="text-[10px] opacity-70 uppercase font-mono">({l.code})</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Action Buttons: Edit and Delete Side by Side */}
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (viewDetail.isType) {
+                          const match = devotionalContent.find(c => String(c.id) === String(viewDetail.id));
+                          if (match) {
+                            handleOpenEditType(match);
+                          } else {
+                            handleOpenEditType({
+                              id: Number(viewDetail.id),
+                              categoryId: Number(viewDetail.parentId),
+                              title: viewDetail.title,
+                              slug: viewDetail.slug,
+                              sacredText: viewDetail.sacredText,
+                              meaning: viewDetail.meaning,
+                              isPublished: viewDetail.isPublished !== false
+                            });
+                          }
+                        } else if (viewDetail.isSubcategory || viewDetail.parentId) {
+                          handleOpenEditSubcategory({
+                            id: String(viewDetail.id),
+                            title: viewDetail.title,
+                            slug: viewDetail.slug,
+                            parentId: Number(viewDetail.parentId) || 1,
+                            description: viewDetail.description || '',
+                            displayOrder: viewDetail.displayOrder || 1,
+                            imageUrl: viewDetail.imageUrl || '',
+                            parentTitle: viewDetail.parentTitle || 'Pooja Vidhanam',
+                          });
+                        } else {
+                          const matchingCat = categories.find(c => String(c.id) === String(viewDetail.id));
+                          if (matchingCat) {
+                            handleOpenEditCategory(matchingCat);
+                          } else {
+                            setEditingId(viewDetail.id);
+                            setFormTitle(viewDetail.title);
+                            setFormSlug(viewDetail.slug);
+                            setFormIsAudio(viewDetail.isAudio);
+                            setFormDescription(viewDetail.description || '');
+                            setPageMode('EDIT_CATEGORY');
+                          }
+                        }
+                      }}
+                      className="flex items-center gap-1.5 px-3.5 py-2 bg-[#FFB300] hover:bg-[#FFA000] text-[#071C14] font-bold text-xs rounded-lg transition shadow-lg shadow-amber-500/20"
+                      title="Edit this record"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                      <span>Edit</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (viewDetail.isType) {
+                          if (confirm(`Archive type / sacred verse "${viewDetail.title}" (#${viewDetail.id})?`)) {
+                            await handleDeleteContent(Number(viewDetail.id), viewDetail.title);
+                            setPageMode('LIST');
+                            setViewDetail(null);
+                          }
+                        } else if (viewDetail.isSubcategory || viewDetail.parentId) {
+                          if (confirm(`Archive subcategory "${viewDetail.title}" (#${viewDetail.id})?`)) {
+                            await handleDeleteSubcategory(String(viewDetail.id), viewDetail.title);
+                            setPageMode('LIST');
+                            setViewDetail(null);
+                          }
+                        } else {
+                          if (confirm(`Archive category "${viewDetail.title}" (#${viewDetail.id})?`)) {
+                            await handleDeleteCategory(viewDetail.id, viewDetail.title);
+                            setPageMode('LIST');
+                            setViewDetail(null);
+                          }
+                        }
+                      }}
+                      className="flex items-center gap-1.5 px-3.5 py-2 bg-red-950/60 hover:bg-red-900/80 border border-red-700/60 text-red-300 hover:text-white font-bold text-xs rounded-lg transition shadow-lg shadow-red-900/20"
+                      title="Delete this record"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                      <span>Delete</span>
+                    </button>
+                  </div>
+
+                </div>
+              </div>
+
+              {/* Main Detailed Grid: Devotional Scroll Reader (Left) & Admin Specs (Right) */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+                {/* LEFT: Sacred Devotional Reader (Authentic Green & Gold Scroll) */}
+                <div className="lg:col-span-7 flex flex-col items-center">
+
+                  {/* TYPE TABS / SELECTOR: Allows toggling between All Sacred Types or viewing a specific Type */}
+                  {viewDetail.contents && viewDetail.contents.length > 0 && (
+                    <div className="w-full mb-4 bg-[#082218] border border-[#1A4E38] rounded-xl p-3 shadow-lg space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-[#FFB300] uppercase tracking-wider flex items-center gap-1.5">
+                          <span>✨</span>
+                          <span>{viewDetail.title} Types ({viewDetail.contents.length})</span>
+                        </span>
+                        <span className="text-[11px] text-emerald-400 font-mono">
+                          {activeViewTypeTab === 'all'
+                            ? 'Showing: Complete Chanting Sequence'
+                            : `Showing Type #${(typeof activeViewTypeTab === 'number' ? activeViewTypeTab : 0) + 1} of ${viewDetail.contents.length}`}
+                        </span>
+                      </div>
+
+                      {/* Interactive Horizontal Scrollable Type Cards */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                        {/* Option to view all steps combined */}
+                        <button
+                          type="button"
+                          onClick={() => setActiveViewTypeTab('all')}
+                          className={`p-2 rounded-lg text-left transition border flex flex-col justify-between gap-1 ${activeViewTypeTab === 'all'
+                            ? 'bg-[#FFB300] text-[#071C14] border-[#FFB300] font-bold shadow-md'
+                            : 'bg-[#061A13] text-gray-300 border-[#16422F] hover:border-[#FFB300]/50'
+                            }`}
+                        >
+                          <div className="flex items-center justify-between w-full">
+                            <span className="text-[10px] font-mono uppercase">Full Flow</span>
+                            <span className="text-[9px] px-1 rounded bg-black/20">All</span>
+                          </div>
+                          <span className="truncate text-xs font-semibold">All {viewDetail.contents.length} Types</span>
+                        </button>
+
+                        {/* Each Individual Type Tab */}
+                        {viewDetail.contents.map((step, idx) => (
+                          <button
+                            key={step.id || idx}
+                            type="button"
+                            onClick={() => setActiveViewTypeTab(idx)}
+                            className={`p-2 rounded-lg text-left transition border flex flex-col justify-between gap-1 ${activeViewTypeTab === idx
+                              ? 'bg-[#FFB300] text-[#071C14] border-[#FFB300] font-bold shadow-md'
+                              : 'bg-[#061A13] text-gray-300 border-[#16422F] hover:border-[#FFB300]/50'
+                              }`}
+                          >
+                            <div className="flex items-center justify-between w-full">
+                              <span className="text-[10px] font-mono font-bold">#{idx + 1}</span>
+                              <span className="text-[9px] px-1 rounded bg-black/20">Type</span>
                             </div>
-                          </div>
-
-                          {/* Active Status Checkbox */}
-                          <div className="flex items-center gap-2 pt-1">
-                            <input
-                              type="checkbox"
-                              id="serviceActiveToggle"
-                              checked={editingCategoryService.isActive !== false}
-                              onChange={(e) => setEditingCategoryService({ ...editingCategoryService, isActive: e.target.checked })}
-                              className="w-4 h-4 rounded border-[#333] text-amber-500 focus:ring-amber-400 focus:ring-offset-0 bg-[#141414]"
-                            />
-                            <label htmlFor="serviceActiveToggle" className="text-xs text-gray-200 font-medium cursor-pointer">
-                              Publish this Devotional Service on Website & Mobile App
-                            </label>
-                          </div>
-
-                          {/* Modal Buttons */}
-                          <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#2C2C2C]">
-                            <button
-                              type="button"
-                              onClick={() => { setIsServiceEditModalOpen(false); setEditingCategoryService(null); }}
-                              className="px-4 py-2 bg-[#141414] hover:bg-[#252525] border border-[#2C2C2C] rounded-lg text-xs font-semibold text-gray-300 transition"
-                            >
-                              Cancel
-                            </button>
-                            <button
-                              type="submit"
-                              disabled={isSavingCategoryService}
-                              className="px-5 py-2 bg-[#FFB300] hover:bg-[#FFA000] text-black rounded-lg text-xs font-bold flex items-center gap-1.5 transition shadow-lg shadow-amber-500/20 disabled:opacity-50"
-                            >
-                              {isSavingCategoryService && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
-                              <span>Save Devotional Service</span>
-                            </button>
-                          </div>
-                        </form>
+                            <span className="truncate text-xs font-semibold">{step.title}</span>
+                          </button>
+                        ))}
                       </div>
                     </div>
                   )}
-                </div>
-              )}
 
-              {/* TAB: SACRED TEMPLES MANAGEMENT (Dynamically fetched from DB via API) */}
-              {(activeTab === 'temples' || (activeTab === 'categories' && selectedCategorySubtitle === 'temples')) && (
-                <div className="space-y-6">
-                  {/* Header Filter & Action Bar */}
-                  <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] p-5 shadow-lg">
-                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                      {/* Left Controls */}
-                      <div className="flex flex-wrap items-center gap-3">
-                        <div className="relative w-full sm:w-64">
-                          <Search className="w-4 h-4 absolute left-3 top-2.5 text-gray-400" />
-                          <input
-                            type="text"
-                            placeholder="Search temple, deity, city, state..."
-                            value={templeSearch}
-                            onChange={(e) => {
-                              setTempleSearch(e.target.value);
-                              loadAdminTemples(e.target.value, templeDeityFilter, templeStateFilter);
-                            }}
-                            className="w-full bg-[#141414] border border-[#2C2C2C] rounded-lg pl-9 pr-4 py-2 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-[#FFB300]"
-                          />
-                        </div>
+                  <div className="w-full flex items-center justify-between mb-3 px-1 text-xs">
+                    <span className="font-bold text-[#FFB300] uppercase tracking-wider flex items-center gap-1.5">
+                      <span>📜</span>
+                      <span>Devotional Reader View</span>
+                      <span className="px-1.5 py-0.5 rounded bg-[#061A13] border border-[#16422F] text-[#FEF08A] font-mono text-[10px]">
+                        {languages.find(l => l.code === selectedLang)?.name || selectedLang.toUpperCase()}
+                      </span>
+                    </span>
+                    <span className="text-[11px] text-emerald-400/90 font-mono">
+                      {viewDetail.contents && viewDetail.contents.length > 0
+                        ? activeViewTypeTab === 'all'
+                          ? `${viewDetail.contents.length} Ordered Steps`
+                          : `Type #${(typeof activeViewTypeTab === 'number' ? activeViewTypeTab : 0) + 1} / ${viewDetail.contents.length}`
+                        : 'Single Sacred Composition'}
+                    </span>
+                  </div>
 
-                        {/* Deity Filter */}
-                        <select
-                          value={templeDeityFilter}
-                          onChange={(e) => {
-                            setTempleDeityFilter(e.target.value);
-                            loadAdminTemples(templeSearch, e.target.value, templeStateFilter);
-                          }}
-                          className="bg-[#141414] border border-[#2C2C2C] rounded-lg px-3 py-2 text-xs text-amber-400 focus:outline-none focus:border-[#FFB300]"
-                        >
-                          <option value="ALL">All Deities</option>
-                          <option value="ayyappa">Lord Ayyappa</option>
-                          <option value="venkateswara">Lord Venkateswara</option>
-                          <option value="shiva">Lord Shiva</option>
-                          <option value="krishna">Lord Krishna</option>
-                          <option value="meenakshi">Goddess Meenakshi</option>
-                          <option value="durga">Goddess Durga</option>
-                          <option value="ganesha">Lord Ganesha</option>
-                          <option value="murugan">Lord Murugan</option>
-                        </select>
-
-                        {/* State Filter */}
-                        <select
-                          value={templeStateFilter}
-                          onChange={(e) => {
-                            setTempleStateFilter(e.target.value);
-                            loadAdminTemples(templeSearch, templeDeityFilter, e.target.value);
-                          }}
-                          className="bg-[#141414] border border-[#2C2C2C] rounded-lg px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-[#FFB300]"
-                        >
-                          <option value="ALL">All States</option>
-                          <option value="Kerala">Kerala</option>
-                          <option value="Andhra Pradesh">Andhra Pradesh</option>
-                          <option value="Tamil Nadu">Tamil Nadu</option>
-                          <option value="Karnataka">Karnataka</option>
-                          <option value="Telangana">Telangana</option>
-                          <option value="Uttar Pradesh">Uttar Pradesh</option>
-                          <option value="Maharashtra">Maharashtra</option>
-                        </select>
-
-                        {/* Language Selector */}
-                        <select
-                          value={selectedLang}
-                          onChange={(e) => {
-                            setSelectedLang(e.target.value);
-                          }}
-                          className="bg-[#141414] border border-[#2C2C2C] rounded-lg px-3 py-2 text-xs text-emerald-400 focus:outline-none focus:border-[#FFB300]"
-                        >
-                          <option value="en">English (English)</option>
-                          <option value="te">Telugu (తెలుగు)</option>
-                          <option value="kn">Kannada (ಕನ್ನಡ)</option>
-                          <option value="ta">Tamil (தமிழ்)</option>
-                          <option value="ml">Malayalam (മലയാളം)</option>
-                          <option value="hi">Hindi (हिन्दी)</option>
-                        </select>
-                      </div>
-
-                      {/* Right Actions */}
-                      <div className="flex items-center gap-3">
-                        <span className="text-xs text-gray-400">
-                          Total: <strong className="text-amber-400 font-bold">{templesList.length}</strong> Sacred Temples
+                  {/* Real-time Dynamic Language DB Status Banner */}
+                  {viewDetail.hasExactTranslation === false && selectedLang !== 'te' && (
+                    <div className="w-full max-w-lg mb-3 p-3 bg-amber-950/40 border border-amber-600/50 rounded-xl flex items-center justify-between text-xs text-amber-200 shadow-md">
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4 text-[#FFB300] flex-shrink-0" />
+                        <span>
+                          No <strong>{languages.find(l => l.code === selectedLang)?.name || selectedLang.toUpperCase()}</strong> translation exists in MariaDB yet.
                         </span>
-                        <button
-                          type="button"
-                          onClick={() => loadAdminTemples()}
-                          disabled={isTemplesLoading}
-                          title="Refresh from DB"
-                          className="p-2 rounded-lg bg-[#141414] border border-[#2C2C2C] hover:border-[#FFB300] text-gray-300 hover:text-amber-400 transition"
-                        >
-                          <RefreshCw className={`w-4 h-4 ${isTemplesLoading ? 'animate-spin text-amber-400' : ''}`} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleOpenCreateTemple}
-                          className="flex items-center gap-2 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white px-4 py-2 rounded-lg text-xs font-bold transition shadow-md shadow-orange-950/40"
-                        >
-                          <Plus className="w-4 h-4" />
-                          <span>+ Create Sacred Temple</span>
-                        </button>
                       </div>
-                    </div>
-                  </div>
-
-                  {/* Temples List Table */}
-                  <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] overflow-hidden shadow-lg">
-                    {isTemplesLoading ? (
-                      <div className="py-20 flex flex-col items-center justify-center text-center">
-                        <RefreshCw className="w-8 h-8 text-[#FFB300] animate-spin mb-3" />
-                        <p className="text-sm text-gray-300 font-medium">Fetching Sacred Temples from Database via API...</p>
-                        <p className="text-xs text-gray-500 mt-1">Connecting to MySQL temples directory</p>
-                      </div>
-                    ) : templesList.length === 0 ? (
-                      <div className="py-16 text-center">
-                        <Landmark className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-                        <p className="text-base text-gray-300 font-semibold">No Sacred Temples Found</p>
-                        <p className="text-xs text-gray-500 mt-1">No temples match the search criteria or database table is empty.</p>
-                        <button
-                          type="button"
-                          onClick={handleOpenCreateTemple}
-                          className="mt-4 px-4 py-2 rounded-lg bg-[#FFB300] hover:bg-amber-400 text-black text-xs font-bold transition"
-                        >
-                          + Add First Sacred Temple
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
-                          <thead>
-                            <tr className="border-b border-[#2C2C2C] bg-[#141414] text-[11px] uppercase tracking-wider text-gray-400 font-semibold">
-                              <th className="py-3 px-4 w-12">#</th>
-                              <th className="py-3 px-4 w-20">Banner</th>
-                              <th className="py-3 px-4">Temple Name & Slug</th>
-                              <th className="py-3 px-4">Deity</th>
-                              <th className="py-3 px-4">Location</th>
-                              <th className="py-3 px-4">Darshan Timings</th>
-                              <th className="py-3 px-4">Live Darshan</th>
-                              <th className="py-3 px-4">Status</th>
-                              <th className="py-3 px-4 text-right">Actions</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-[#2C2C2C] text-xs">
-                            {templesList.map((t, idx) => (
-                              <tr key={t.id || t.slug || idx} className="hover:bg-[#252525]/60 transition">
-                                <td className="py-3 px-4 text-gray-500 font-mono text-[11px]">
-                                  #{t.dbId || idx + 1}
-                                </td>
-                                <td className="py-3 px-4">
-                                  <div className="w-14 h-10 rounded-md overflow-hidden bg-neutral-900 border border-[#2C2C2C] relative">
-                                    <img
-                                      src={resolveTempleImageUrl(t.thumbnailUrl || t.heroImageUrl)}
-                                      alt={t.name}
-                                      className="w-full h-full object-cover"
-                                      onError={(e: any) => {
-                                        e.currentTarget.src = 'https://saranamayyappa.in/images/temples/banner-sabarimala-hd.png';
-                                      }}
-                                    />
-                                  </div>
-                                </td>
-                                <td className="py-3 px-4">
-                                  <div className="font-bold text-gray-100 flex items-center gap-1.5">
-                                    <span>{t.name}</span>
-                                  </div>
-                                  <div className="text-[11px] text-gray-400 font-mono">
-                                    /{t.id || t.slug}
-                                  </div>
-                                  {t.originalName && t.originalName !== t.name && (
-                                    <div className="text-[10px] text-amber-400/80">
-                                      EN: {t.originalName}
-                                    </div>
-                                  )}
-                                </td>
-                                <td className="py-3 px-4">
-                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-950/80 text-amber-300 border border-amber-800/40">
-                                    <span>🕉️</span>
-                                    <span>{t.deityName || t.deityId || 'Lord Ayyappa'}</span>
-                                  </span>
-                                </td>
-                                <td className="py-3 px-4 text-gray-300">
-                                  <div className="flex items-center gap-1">
-                                    <MapPin className="w-3.5 h-3.5 text-orange-400 flex-shrink-0" />
-                                    <span className="font-medium text-gray-200">{t.city || 'Sannidhanam'}</span>
-                                  </div>
-                                  <div className="text-[11px] text-gray-400 pl-4.5">
-                                    {t.state}{t.district ? `, ${t.district}` : ''}
-                                  </div>
-                                </td>
-                                <td className="py-3 px-4 text-[11px] text-gray-300">
-                                  {t.timings ? (
-                                    <div className="space-y-0.5">
-                                      {t.timings.morning && (
-                                        <div className="flex items-center gap-1 text-gray-300">
-                                          <Clock className="w-3 h-3 text-amber-400" />
-                                          <span>{t.timings.morning}</span>
-                                        </div>
-                                      )}
-                                      {t.timings.evening && (
-                                        <div className="text-[10px] text-gray-400 pl-4">
-                                          {t.timings.evening}
-                                        </div>
-                                      )}
-                                    </div>
-                                  ) : (
-                                    <span className="text-gray-500 italic">Open Daily</span>
-                                  )}
-                                </td>
-                                <td className="py-3 px-4">
-                                  {t.hasLiveDarshan ? (
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-rose-950/80 text-rose-300 border border-rose-800/40">
-                                      <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
-                                      <span>LIVE</span>
-                                    </span>
-                                  ) : (
-                                    <span className="text-[11px] text-gray-500">No Stream</span>
-                                  )}
-                                </td>
-                                <td className="py-3 px-4">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleToggleTempleActive(t)}
-                                    title={t.isActive ? 'Active in Portal (Click to Hide)' : 'Hidden (Click to Publish)'}
-                                    className={`px-2.5 py-1 rounded text-[10px] font-semibold flex items-center gap-1.5 transition ${t.isActive
-                                      ? 'bg-emerald-950 text-emerald-300 border border-emerald-800/50 hover:bg-emerald-900'
-                                      : 'bg-neutral-800 text-gray-400 border border-gray-700 hover:bg-neutral-700'
-                                      }`}
-                                  >
-                                    <span className={`w-1.5 h-1.5 rounded-full ${t.isActive ? 'bg-emerald-400' : 'bg-gray-500'}`} />
-                                    <span>{t.isActive ? 'Published' : 'Draft'}</span>
-                                  </button>
-                                </td>
-                                <td className="py-3 px-4 text-right">
-                                  <div className="flex items-center justify-end gap-1.5">
-                                    <button
-                                      type="button"
-                                      onClick={() => handleOpenViewTemple(t)}
-                                      title="View Temple Details"
-                                      className="p-1.5 rounded bg-[#141414] hover:bg-neutral-800 text-gray-300 hover:text-cyan-400 border border-[#2C2C2C] transition"
-                                    >
-                                      <Eye className="w-3.5 h-3.5" />
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleOpenEditTemple(t)}
-                                      title="Edit Temple"
-                                      className="p-1.5 rounded bg-[#141414] hover:bg-neutral-800 text-gray-300 hover:text-amber-400 border border-[#2C2C2C] transition"
-                                    >
-                                      <Edit className="w-3.5 h-3.5" />
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleDeleteTemple(t.id || t.slug, t.name)}
-                                      title="Delete Temple"
-                                      className="p-1.5 rounded bg-[#141414] hover:bg-rose-950/40 text-gray-400 hover:text-rose-400 border border-[#2C2C2C] transition"
-                                    >
-                                      <Trash2 className="w-3.5 h-3.5" />
-                                    </button>
-                                  </div>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* IN-PAGE NORMAL PAGE MODE: VIEW DETAILS (SANCTUM GREEN & GOLD SACRED PREVIEW) */}
-              {pageMode === 'VIEW_CATEGORY' && viewDetail && (
-                <div className="space-y-6 animate-in fade-in duration-200">
-                  {/* In-page Header: Logo Colors Sanctum Green & Divine Gold */}
-                  <div className="bg-[#071C14] rounded-xl border border-[#1A4E38] p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xl">
-                    <div className="flex items-center gap-3">
                       <button
                         type="button"
                         onClick={() => {
-                          setPageMode('LIST');
-                          setViewDetail(null);
+                          if (viewDetail.isType) {
+                            openTranslationModal('devotional_contents', viewDetail.id, [
+                              { key: 'title', label: 'Title', value: viewDetail.title },
+                              { key: 'sacredText', label: 'Sacred Chant', value: viewDetail.sacredText },
+                              { key: 'meaning', label: 'Meaning', value: viewDetail.meaning }
+                            ], () => {
+                              handleViewDetailChangeLang(selectedLang);
+                            });
+                          } else {
+                            openTranslationModal('categories', viewDetail.id, [
+                              { key: 'title', label: 'Title', value: viewDetail.title },
+                              { key: 'description', label: 'Sacred Notes', value: viewDetail.description, isHtml: true }
+                            ], () => {
+                              handleViewDetailChangeLang(selectedLang);
+                            });
+                          }
                         }}
-                        className="px-3 py-1.5 rounded-lg bg-[#0D2E21] hover:bg-[#133F2E] text-gray-200 text-xs font-semibold transition flex items-center gap-1.5 border border-[#1E5C41] shadow"
+                        className="px-2.5 py-1 bg-[#FFB300] hover:bg-[#FFA000] text-[#071C14] font-bold rounded text-xs transition flex items-center gap-1 flex-shrink-0 ml-2"
                       >
-                        <ArrowLeft className="w-4 h-4 text-[#FFB300]" />
-                        <span>Back to List</span>
+                        <Sparkles className="w-3 h-3 text-[#071C14]" />
+                        <span>Add in DB</span>
                       </button>
-                      <div>
-                        <h3 className="text-base font-bold text-[#FFB300] flex items-center gap-2">
-                          <Sparkles className="w-4 h-4 text-[#FFB300]" />
-                          <span>
-                            {viewDetail.isType
-                              ? 'Devotional Subcategory Type / Sacred Verse'
-                              : viewDetail.isSubcategory || viewDetail.parentId
-                                ? 'Devotional Subcategory Sanctum Details'
-                                : 'Devotional Master Category'}
-                          </span>
-                        </h3>
-                        <p className="text-xs text-emerald-400/80">
-                          {viewDetail.isType
-                            ? `Type DB Record #${viewDetail.id} — Linked to Subcategory`
-                            : viewDetail.isSubcategory || viewDetail.parentId
-                              ? `Subcategory Record #${viewDetail.id} — Live Sanctum Worship Flow`
-                              : `Master Category Record #${viewDetail.id}`}
-                        </p>
+                    </div>
+                  )}
+
+                  {/* Sacred Scroll Outer Container */}
+                  <div className="w-full max-w-lg rounded-2xl overflow-hidden border-2 border-[#D4AF37]/60 shadow-[0_12px_45px_rgba(0,0,0,0.6),0_0_25px_rgba(212,175,55,0.15)] bg-[#071F17]">
+
+                    {/* Top Sanctum Header mimicking mobile app with logo colors */}
+                    <div className="bg-[#0A2A1E] text-[#FFB300] border-b border-[#1E5C41] px-5 py-3 flex items-center justify-between shadow">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">🪔</span>
+                        <span className="font-bold text-sm tracking-wide text-[#FFB300] truncate max-w-xs">
+                          {activeViewTypeTab !== 'all' && typeof activeViewTypeTab === 'number' && viewDetail.contents?.[activeViewTypeTab]
+                            ? viewDetail.contents[activeViewTypeTab].title
+                            : viewDetail.title}
+                        </span>
+                      </div>
+                      <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-[#071C14] border border-[#1E5C41] text-emerald-400">
+                        /{activeViewTypeTab !== 'all' && typeof activeViewTypeTab === 'number' && (viewDetail.contents?.[activeViewTypeTab] as any)?.slug
+                          ? (viewDetail.contents[activeViewTypeTab] as any).slug
+                          : viewDetail.slug}
+                      </span>
+                    </div>
+
+                    {/* Scroll Canvas with Sanctum Green & Divine Gold Typography */}
+                    <div className="bg-gradient-to-b from-[#082218] via-[#0A291E] to-[#071D15] p-6 text-center text-xs leading-relaxed max-h-[760px] overflow-y-auto space-y-5">
+                      {/* Case A: If Attached Devotional Types / Verses Exist in Contents */}
+                      {viewDetail.contents && viewDetail.contents.length > 0 ? (
+                        <div className="space-y-6">
+                          {/* Top Subcategory Description (full song/procedure from DB) if present */}
+                          {activeViewTypeTab === 'all' && viewDetail.description && (
+                            <div className="p-3.5 bg-[#061A13]/90 rounded-xl border border-[#1B563D] text-left max-w-md mx-auto space-y-2">
+                              <span className="text-[10px] font-bold uppercase text-[#FFB300] tracking-wider block text-center">
+                                Devotional Composition / Procedure
+                              </span>
+                              <div
+                                className="text-xs font-serif leading-relaxed text-[#FEF08A] whitespace-pre-wrap"
+                                dangerouslySetInnerHTML={{ __html: viewDetail.description }}
+                              />
+                            </div>
+                          )}
+
+                          {(activeViewTypeTab === 'all'
+                            ? viewDetail.contents
+                            : [viewDetail.contents[typeof activeViewTypeTab === 'number' ? activeViewTypeTab : 0]]
+                          ).map((v, idx) => (
+                            <div key={v.id || idx} className="space-y-2.5">
+                              {/* Step Title / Deity in Radiant Gold */}
+                              <h4 className="text-sm font-bold text-[#FFB300] tracking-wide uppercase flex items-center justify-center gap-1.5">
+                                <span>{v.title}</span>
+                              </h4>
+
+                              {/* Sacred Chanting Verses */}
+                              {v.sacredText && (
+                                <div className="text-sm font-bold text-[#FEF08A] font-serif leading-relaxed whitespace-pre-wrap max-w-md mx-auto py-1">
+                                  {v.sacredText}
+                                </div>
+                              )}
+
+                              {/* Ritual Action / Instructions / Commentary in Sage Green Box */}
+                              {v.meaning && (
+                                <div className="text-xs italic text-[#A7F3D0] bg-[#061A13]/90 border border-[#1B563D] p-2.5 rounded-lg max-w-md mx-auto text-center leading-relaxed">
+                                  {v.meaning}
+                                </div>
+                              )}
+
+                              {/* Dotted Gold Divider between steps */}
+                              {activeViewTypeTab === 'all' && idx < (viewDetail.contents?.length || 0) - 1 && (
+                                <div className="border-b border-dotted border-[#D4AF37]/35 w-3/4 mx-auto pt-4"></div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        /* Case B: Single Composition (Description / Sacred Text / Meaning) */
+                        <div className="space-y-4">
+                          <h4 className="text-base font-bold text-[#FFB300] tracking-wide">{viewDetail.title}</h4>
+
+                          {viewDetail.sacredText && (
+                            <div className="text-sm font-bold text-[#FEF08A] font-serif leading-relaxed whitespace-pre-wrap max-w-md mx-auto py-2 p-3 bg-[#061A13]/70 rounded-xl border border-[#1B563D]">
+                              {viewDetail.sacredText}
+                            </div>
+                          )}
+
+                          {viewDetail.meaning && viewDetail.meaning !== viewDetail.description && (
+                            <div className="text-xs italic text-[#A7F3D0] bg-[#061A13]/90 border border-[#1B563D] p-3 rounded-lg max-w-md mx-auto text-center">
+                              {viewDetail.meaning}
+                            </div>
+                          )}
+
+                          {viewDetail.description && (
+                            <div
+                              className="text-sm font-serif leading-relaxed text-[#FEF08A] whitespace-pre-wrap max-w-md mx-auto font-medium"
+                              dangerouslySetInnerHTML={{ __html: viewDetail.description }}
+                            />
+                          )}
+
+                          {/* Quick action to add step verses to this subcategory */}
+                          {(viewDetail.isSubcategory || viewDetail.parentId) && (
+                            <div className="pt-3">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenCreateType(viewDetail.id)}
+                                className="px-3.5 py-1.5 bg-[#FFB300]/10 hover:bg-[#FFB300]/20 text-[#FFB300] border border-[#FFB300]/40 rounded-lg text-xs font-bold transition flex items-center gap-1.5 mx-auto"
+                              >
+                                <Plus className="w-3.5 h-3.5" />
+                                <span>Add First Chanting Step to this Subcategory</span>
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Bottom Sacred Lotus Filigree Finish */}
+                      <div className="flex justify-center pt-4">
+                        <svg className="w-16 h-8 text-[#FFB300] opacity-80 transform rotate-180" viewBox="0 0 100 40" fill="currentColor">
+                          <path d="M50 0 C40 15, 20 20, 0 20 C20 25, 45 35, 50 40 C55 35, 80 25, 100 20 C80 20, 60 15, 50 0 Z"></path>
+                        </svg>
+                      </div>
+
+                    </div>
+                  </div>
+                </div>
+
+                {/* RIGHT: Sanctum Specifications & Step Sequence Console (Green & Gold) */}
+                <div className="lg:col-span-5 space-y-5">
+
+                  {/* Specifications Card */}
+                  <div className="bg-[#082219] border border-[#1A4E38] rounded-xl p-5 shadow-xl space-y-4">
+                    <div className="flex items-center justify-between pb-3 border-b border-[#16422F]">
+                      <h3 className="text-sm font-bold text-[#FFB300] flex items-center gap-2">
+                        <Database className="w-4 h-4 text-[#FFB300]" />
+                        <span>Sanctum Specifications</span>
+                      </h3>
+                      <span className="text-xs text-[#FFB300] font-mono font-bold bg-[#061A13] px-2 py-0.5 rounded border border-[#16422F]">
+                        ID: #{viewDetail.id}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 text-xs">
+                      <div className="bg-[#061A13] p-3 rounded-lg border border-[#16422F]">
+                        <span className="text-[10px] text-gray-400 uppercase block font-semibold">Parent Category</span>
+                        <span className="text-gray-100 font-medium">
+                          {viewDetail.parentTitle || viewDetail.parentSlug || 'Pooja Vidhanam (#113)'}
+                        </span>
+                      </div>
+                      <div className="bg-[#061A13] p-3 rounded-lg border border-[#16422F]">
+                        <span className="text-[10px] text-gray-400 uppercase block font-semibold">Total Steps / Types</span>
+                        <span className="text-[#FFB300] font-bold">
+                          {viewDetail.contents?.length || 0} Sacred Steps
+                        </span>
+                      </div>
+                      <div className="bg-[#061A13] p-3 rounded-lg border border-[#16422F]">
+                        <span className="text-[10px] text-gray-400 uppercase block font-semibold">URL Identifier</span>
+                        <span className="text-[#FFB300] font-mono">/{viewDetail.slug}</span>
+                      </div>
+                      <div className="bg-[#061A13] p-3 rounded-lg border border-[#16422F]">
+                        <span className="text-[10px] text-gray-400 uppercase block font-semibold">Content Format</span>
+                        <span className="text-emerald-400 font-medium">
+                          {viewDetail.isAudio ? '🎵 Audio Chanting' : '📜 Vidhanam Text'}
+                        </span>
+                      </div>
+                      <div className="bg-[#061A13] p-3 rounded-lg border border-[#16422F] col-span-2 flex items-center justify-between">
+                        <span className="text-[10px] text-gray-400 uppercase font-semibold">Subcategory Status</span>
+                        <div>{renderStatusBadge(viewDetail.status, viewDetail.isActive)}</div>
                       </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2.5">
-                      {/* Real-time Dynamic Language Switcher (Direct from DB via API) */}
-                      <div className="flex items-center gap-1.5 p-1 bg-[#061A13] border border-[#1E5C41] rounded-lg shadow-inner">
-                        <Globe className="w-3.5 h-3.5 text-[#FFB300] ml-1.5" />
-                        <span className="text-[11px] font-bold text-gray-300 uppercase px-1">DB Lang:</span>
-                        <div className="flex items-center gap-1 overflow-x-auto">
-                          {languages.map(l => (
-                            <button
-                              key={l.code}
-                              type="button"
-                              onClick={() => handleViewDetailChangeLang(l.code)}
-                              className={`px-2.5 py-1 rounded text-xs font-semibold transition flex items-center gap-1 ${selectedLang === l.code
-                                ? 'bg-[#FFB300] text-[#071C14] font-bold shadow'
-                                : 'text-gray-300 hover:text-[#FFB300] hover:bg-[#0D2E21]'
-                                }`}
-                              title={`Switch to ${l.name} (${l.code}) — Dynamically fetched from MySQL via API`}
-                            >
-                              <span>{l.nativeName || l.name}</span>
-                              <span className="text-[10px] opacity-70 uppercase font-mono">({l.code})</span>
-                            </button>
-                          ))}
+                    {/* Subcategory Artwork Image Preview */}
+                    {viewDetail.imageUrl && (
+                      <div className="bg-[#061A13] border border-[#16422F] rounded-lg p-3 flex items-center gap-3">
+                        <div className="w-14 h-14 rounded-lg overflow-hidden border border-[#D4AF37]/50 flex-shrink-0 bg-neutral-900 flex items-center justify-center">
+                          <img
+                            src={viewDetail.imageUrl.startsWith('http') || viewDetail.imageUrl.startsWith('data:')
+                              ? viewDetail.imageUrl
+                              : `${API_ORIGIN}${viewDetail.imageUrl.startsWith('/') ? '' : '/'}${viewDetail.imageUrl}`}
+                            alt={viewDetail.title}
+                            className="w-full h-full object-cover"
+                            onError={(e: any) => { e.currentTarget.style.display = 'none'; }}
+                          />
+                        </div>
+                        <div className="min-w-0">
+                          <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Sanctum Artwork</span>
+                          <p className="text-xs font-semibold text-gray-200 truncate">{viewDetail.title}</p>
+                          <p className="text-[10px] text-gray-400 font-mono truncate">{viewDetail.imageUrl}</p>
                         </div>
                       </div>
+                    )}
 
+                    {/* Quick Action Buttons: Edit and Delete Side by Side */}
+                    <div className="pt-3 border-t border-[#16422F] flex items-center gap-2">
                       <button
                         type="button"
                         onClick={() => {
@@ -5329,3194 +6407,2085 @@ export default function EnterpriseSuperAdminDashboard() {
                             }
                           }
                         }}
-                        className="flex items-center gap-1.5 px-4 py-2 bg-[#FFB300] hover:bg-[#FFA000] text-[#071C14] font-bold text-xs rounded-lg transition shadow-lg shadow-amber-500/20"
+                        className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-[#FFB300] hover:bg-[#FFA000] text-[#071C14] font-bold text-xs rounded-lg transition shadow"
+                        title="Edit this record"
                       >
                         <Edit3 className="w-3.5 h-3.5" />
-                        <span>Edit This Record</span>
+                        <span>Edit</span>
                       </button>
+
                       <button
                         type="button"
-                        onClick={() => {
-                          setPageMode('LIST');
-                          setViewDetail(null);
+                        onClick={async () => {
+                          if (viewDetail.isType) {
+                            if (confirm(`Archive type / sacred verse "${viewDetail.title}" (#${viewDetail.id})?`)) {
+                              await handleDeleteContent(Number(viewDetail.id), viewDetail.title);
+                              setPageMode('LIST');
+                              setViewDetail(null);
+                            }
+                          } else if (viewDetail.isSubcategory || viewDetail.parentId) {
+                            if (confirm(`Archive subcategory "${viewDetail.title}" (#${viewDetail.id})?`)) {
+                              await handleDeleteSubcategory(String(viewDetail.id), viewDetail.title);
+                              setPageMode('LIST');
+                              setViewDetail(null);
+                            }
+                          } else {
+                            if (confirm(`Archive category "${viewDetail.title}" (#${viewDetail.id})?`)) {
+                              await handleDeleteCategory(viewDetail.id, viewDetail.title);
+                              setPageMode('LIST');
+                              setViewDetail(null);
+                            }
+                          }
                         }}
-                        className="px-4 py-2 bg-[#0D2E21] hover:bg-[#133F2E] border border-[#1E5C41] rounded-lg text-gray-200 font-semibold text-xs transition"
+                        className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-red-950/60 hover:bg-red-900/80 border border-red-700/60 text-red-300 hover:text-white font-bold text-xs rounded-lg transition shadow"
+                        title="Delete this record"
                       >
-                        Close
+                        <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                        <span>Delete</span>
                       </button>
                     </div>
                   </div>
 
-                  {/* Main Detailed Grid: Devotional Scroll Reader (Left) & Admin Specs (Right) */}
-                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-
-                    {/* LEFT: Sacred Devotional Reader (Authentic Green & Gold Scroll) */}
-                    <div className="lg:col-span-7 flex flex-col items-center">
-
-                      {/* TYPE TABS / SELECTOR: Allows toggling between All Sacred Types or viewing a specific Type */}
-                      {viewDetail.contents && viewDetail.contents.length > 0 && (
-                        <div className="w-full mb-4 bg-[#082218] border border-[#1A4E38] rounded-xl p-3 shadow-lg space-y-2.5">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold text-[#FFB300] uppercase tracking-wider flex items-center gap-1.5">
-                              <span>✨</span>
-                              <span>{viewDetail.title} Types ({viewDetail.contents.length})</span>
-                            </span>
-                            <span className="text-[11px] text-emerald-400 font-mono">
-                              {activeViewTypeTab === 'all'
-                                ? 'Showing: Complete Chanting Sequence'
-                                : `Showing Type #${(typeof activeViewTypeTab === 'number' ? activeViewTypeTab : 0) + 1} of ${viewDetail.contents.length}`}
-                            </span>
+                  {/* Multi-Language Database Translations */}
+                  {viewDetail.translations && viewDetail.translations.length > 0 && (
+                    <div className="bg-[#082219] border border-[#1A4E38] rounded-xl p-5 shadow-xl space-y-3">
+                      <span className="text-xs font-bold text-[#FFB300] uppercase tracking-wide block">
+                        Database Multi-Language Translations ({viewDetail.translations.length})
+                      </span>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        {viewDetail.translations.map((tr) => (
+                          <div key={tr.code} className="p-2.5 rounded-lg bg-[#061A13] border border-[#16422F] space-y-0.5">
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-[#FFB300] uppercase text-[10px]">{tr.name || tr.code}</span>
+                              <span className="font-mono text-gray-500 text-[9px]">{tr.code}</span>
+                            </div>
+                            <div className="font-semibold text-gray-200 text-xs truncate">{tr.title}</div>
                           </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
-                          {/* Interactive Horizontal Scrollable Type Cards */}
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                            {/* Option to view all steps combined */}
-                            <button
-                              type="button"
-                              onClick={() => setActiveViewTypeTab('all')}
-                              className={`p-2 rounded-lg text-left transition border flex flex-col justify-between gap-1 ${activeViewTypeTab === 'all'
-                                ? 'bg-[#FFB300] text-[#071C14] border-[#FFB300] font-bold shadow-md'
-                                : 'bg-[#061A13] text-gray-300 border-[#16422F] hover:border-[#FFB300]/50'
+                  {/* Subcategory Types & Stotras Cards (Matches website layout with 4 types) */}
+                  {viewDetail.contents && viewDetail.contents.length > 0 && (
+                    <div className="bg-[#082219] border border-[#1A4E38] rounded-xl p-5 shadow-xl space-y-3">
+                      <div className="flex items-center justify-between pb-2 border-b border-[#16422F]">
+                        <span className="text-xs font-bold text-[#FFB300] uppercase tracking-wide flex items-center gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5 text-[#FFB300]" />
+                          <span>{viewDetail.title} Types &amp; Stotras ({viewDetail.contents.length})</span>
+                        </span>
+                        <span className="text-[10px] text-emerald-400 font-mono">Select card to view detail</span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                        {viewDetail.contents.map((typeItem, tIdx) => {
+                          const isSelected = activeViewTypeTab === tIdx;
+                          return (
+                            <div
+                              key={typeItem.id || tIdx}
+                              onClick={() => setActiveViewTypeTab(tIdx)}
+                              className={`rounded-xl border p-3.5 cursor-pointer transition-all transform hover:-translate-y-0.5 shadow-md flex flex-col justify-between gap-3 ${isSelected
+                                ? 'bg-[#0A3324] border-[#FFB300] shadow-[0_0_15px_rgba(255,179,0,0.2)]'
+                                : 'bg-[#061A13] border-[#16422F] hover:border-[#FFB300]/60'
                                 }`}
                             >
-                              <div className="flex items-center justify-between w-full">
-                                <span className="text-[10px] font-mono uppercase">Full Flow</span>
-                                <span className="text-[9px] px-1 rounded bg-black/20">All</span>
-                              </div>
-                              <span className="truncate text-xs font-semibold">All {viewDetail.contents.length} Types</span>
-                            </button>
-
-                            {/* Each Individual Type Tab */}
-                            {viewDetail.contents.map((step, idx) => (
-                              <button
-                                key={step.id || idx}
-                                type="button"
-                                onClick={() => setActiveViewTypeTab(idx)}
-                                className={`p-2 rounded-lg text-left transition border flex flex-col justify-between gap-1 ${activeViewTypeTab === idx
-                                  ? 'bg-[#FFB300] text-[#071C14] border-[#FFB300] font-bold shadow-md'
-                                  : 'bg-[#061A13] text-gray-300 border-[#16422F] hover:border-[#FFB300]/50'
-                                  }`}
-                              >
-                                <div className="flex items-center justify-between w-full">
-                                  <span className="text-[10px] font-mono font-bold">#{idx + 1}</span>
-                                  <span className="text-[9px] px-1 rounded bg-black/20">Type</span>
-                                </div>
-                                <span className="truncate text-xs font-semibold">{step.title}</span>
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="w-full flex items-center justify-between mb-3 px-1 text-xs">
-                        <span className="font-bold text-[#FFB300] uppercase tracking-wider flex items-center gap-1.5">
-                          <span>📜</span>
-                          <span>Devotional Reader View</span>
-                          <span className="px-1.5 py-0.5 rounded bg-[#061A13] border border-[#16422F] text-[#FEF08A] font-mono text-[10px]">
-                            {languages.find(l => l.code === selectedLang)?.name || selectedLang.toUpperCase()}
-                          </span>
-                        </span>
-                        <span className="text-[11px] text-emerald-400/90 font-mono">
-                          {viewDetail.contents && viewDetail.contents.length > 0
-                            ? activeViewTypeTab === 'all'
-                              ? `${viewDetail.contents.length} Ordered Steps`
-                              : `Type #${(typeof activeViewTypeTab === 'number' ? activeViewTypeTab : 0) + 1} / ${viewDetail.contents.length}`
-                            : 'Single Sacred Composition'}
-                        </span>
-                      </div>
-
-                      {/* Real-time Dynamic Language DB Status Banner */}
-                      {viewDetail.hasExactTranslation === false && selectedLang !== 'te' && (
-                        <div className="w-full max-w-lg mb-3 p-3 bg-amber-950/40 border border-amber-600/50 rounded-xl flex items-center justify-between text-xs text-amber-200 shadow-md">
-                          <div className="flex items-center gap-2">
-                            <AlertCircle className="w-4 h-4 text-[#FFB300] flex-shrink-0" />
-                            <span>
-                              No <strong>{languages.find(l => l.code === selectedLang)?.name || selectedLang.toUpperCase()}</strong> translation exists in MariaDB yet.
-                            </span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (viewDetail.isType) {
-                                openTranslationModal('devotional_contents', viewDetail.id, [
-                                  { key: 'title', label: 'Title', value: viewDetail.title },
-                                  { key: 'sacredText', label: 'Sacred Chant', value: viewDetail.sacredText },
-                                  { key: 'meaning', label: 'Meaning', value: viewDetail.meaning }
-                                ], () => {
-                                  handleViewDetailChangeLang(selectedLang);
-                                });
-                              } else {
-                                openTranslationModal('categories', viewDetail.id, [
-                                  { key: 'title', label: 'Title', value: viewDetail.title },
-                                  { key: 'description', label: 'Sacred Notes', value: viewDetail.description, isHtml: true }
-                                ], () => {
-                                  handleViewDetailChangeLang(selectedLang);
-                                });
-                              }
-                            }}
-                            className="px-2.5 py-1 bg-[#FFB300] hover:bg-[#FFA000] text-[#071C14] font-bold rounded text-xs transition flex items-center gap-1 flex-shrink-0 ml-2"
-                          >
-                            <Sparkles className="w-3 h-3 text-[#071C14]" />
-                            <span>Add in DB</span>
-                          </button>
-                        </div>
-                      )}
-
-                      {/* Sacred Scroll Outer Container */}
-                      <div className="w-full max-w-lg rounded-2xl overflow-hidden border-2 border-[#D4AF37]/60 shadow-[0_12px_45px_rgba(0,0,0,0.6),0_0_25px_rgba(212,175,55,0.15)] bg-[#071F17]">
-
-                        {/* Top Sanctum Header mimicking mobile app with logo colors */}
-                        <div className="bg-[#0A2A1E] text-[#FFB300] border-b border-[#1E5C41] px-5 py-3 flex items-center justify-between shadow">
-                          <div className="flex items-center gap-2">
-                            <span className="text-base">🪔</span>
-                            <span className="font-bold text-sm tracking-wide text-[#FFB300] truncate max-w-xs">
-                              {activeViewTypeTab !== 'all' && typeof activeViewTypeTab === 'number' && viewDetail.contents?.[activeViewTypeTab]
-                                ? viewDetail.contents[activeViewTypeTab].title
-                                : viewDetail.title}
-                            </span>
-                          </div>
-                          <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-[#071C14] border border-[#1E5C41] text-emerald-400">
-                            /{activeViewTypeTab !== 'all' && typeof activeViewTypeTab === 'number' && (viewDetail.contents?.[activeViewTypeTab] as any)?.slug
-                              ? (viewDetail.contents[activeViewTypeTab] as any).slug
-                              : viewDetail.slug}
-                          </span>
-                        </div>
-
-                        {/* Scroll Canvas with Sanctum Green & Divine Gold Typography */}
-                        <div className="bg-gradient-to-b from-[#082218] via-[#0A291E] to-[#071D15] p-6 text-center text-xs leading-relaxed max-h-[760px] overflow-y-auto space-y-5">
-
-                          {/* Top Sacred Arch Motif (Lotus Filigree) in Gold */}
-                          <div className="flex justify-center pt-2">
-                            <svg className="w-16 h-8 text-[#FFB300] opacity-80" viewBox="0 0 100 40" fill="currentColor">
-                              <path d="M50 0 C40 15, 20 20, 0 20 C20 25, 45 35, 50 40 C55 35, 80 25, 100 20 C80 20, 60 15, 50 0 Z"></path>
-                            </svg>
-                          </div>
-
-                          {/* Initial Sacred Invocations */}
-                          <div className="space-y-1 text-sm font-semibold text-[#FDE68A]">
-                            <p>śrī mahāgaṇādhipatayē namaḥ</p>
-                            <p>śrī gurubhyō namaḥ</p>
-                            <p className="font-bold text-[#FFB300]">hariḥ ōṁ</p>
-                          </div>
-
-                          <div className="border-b border-dotted border-[#D4AF37]/40 w-3/4 mx-auto my-3"></div>
-
-                          {/* Case A: If Attached Devotional Types / Verses Exist in Contents */}
-                          {viewDetail.contents && viewDetail.contents.length > 0 ? (
-                            <div className="space-y-6">
-                              {/* Top Subcategory Description (full song/procedure from DB) if present */}
-                              {activeViewTypeTab === 'all' && viewDetail.description && (
-                                <div className="p-3.5 bg-[#061A13]/90 rounded-xl border border-[#1B563D] text-left max-w-md mx-auto space-y-2">
-                                  <span className="text-[10px] font-bold uppercase text-[#FFB300] tracking-wider block text-center">
-                                    Devotional Composition / Procedure
+                              <div>
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="px-1.5 py-0.5 rounded bg-[#FFB300] text-[#071C14] text-[10px] font-black font-mono">
+                                    #{tIdx + 1}
                                   </span>
-                                  <div
-                                    className="text-xs font-serif leading-relaxed text-[#FEF08A] whitespace-pre-wrap"
-                                    dangerouslySetInnerHTML={{ __html: viewDetail.description }}
-                                  />
+                                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-[#0E2F23] border border-[#16422F] text-amber-300 font-medium">
+                                    Devotional Type
+                                  </span>
                                 </div>
-                              )}
-
-                              {(activeViewTypeTab === 'all'
-                                ? viewDetail.contents
-                                : [viewDetail.contents[typeof activeViewTypeTab === 'number' ? activeViewTypeTab : 0]]
-                              ).map((v, idx) => (
-                                <div key={v.id || idx} className="space-y-2.5">
-                                  {/* Step Title / Deity in Radiant Gold */}
-                                  <h4 className="text-sm font-bold text-[#FFB300] tracking-wide uppercase flex items-center justify-center gap-1.5">
-                                    <span>{v.title}</span>
-                                  </h4>
-
-                                  {/* Sacred Chanting Verses */}
-                                  {v.sacredText && (
-                                    <div className="text-sm font-bold text-[#FEF08A] font-serif leading-relaxed whitespace-pre-wrap max-w-md mx-auto py-1">
-                                      {v.sacredText}
-                                    </div>
-                                  )}
-
-                                  {/* Ritual Action / Instructions / Commentary in Sage Green Box */}
-                                  {v.meaning && (
-                                    <div className="text-xs italic text-[#A7F3D0] bg-[#061A13]/90 border border-[#1B563D] p-2.5 rounded-lg max-w-md mx-auto text-center leading-relaxed">
-                                      {v.meaning}
-                                    </div>
-                                  )}
-
-                                  {/* Dotted Gold Divider between steps */}
-                                  {activeViewTypeTab === 'all' && idx < (viewDetail.contents?.length || 0) - 1 && (
-                                    <div className="border-b border-dotted border-[#D4AF37]/35 w-3/4 mx-auto pt-4"></div>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            /* Case B: Single Composition (Description / Sacred Text / Meaning) */
-                            <div className="space-y-4">
-                              <h4 className="text-base font-bold text-[#FFB300] tracking-wide">{viewDetail.title}</h4>
-
-                              {viewDetail.sacredText && (
-                                <div className="text-sm font-bold text-[#FEF08A] font-serif leading-relaxed whitespace-pre-wrap max-w-md mx-auto py-2 p-3 bg-[#061A13]/70 rounded-xl border border-[#1B563D]">
-                                  {viewDetail.sacredText}
-                                </div>
-                              )}
-
-                              {viewDetail.meaning && viewDetail.meaning !== viewDetail.description && (
-                                <div className="text-xs italic text-[#A7F3D0] bg-[#061A13]/90 border border-[#1B563D] p-3 rounded-lg max-w-md mx-auto text-center">
-                                  {viewDetail.meaning}
-                                </div>
-                              )}
-
-                              {viewDetail.description && (
-                                <div
-                                  className="text-sm font-serif leading-relaxed text-[#FEF08A] whitespace-pre-wrap max-w-md mx-auto font-medium"
-                                  dangerouslySetInnerHTML={{ __html: viewDetail.description }}
-                                />
-                              )}
-
-                              {/* Quick action to add step verses to this subcategory */}
-                              {(viewDetail.isSubcategory || viewDetail.parentId) && (
-                                <div className="pt-3">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleOpenCreateType(viewDetail.id)}
-                                    className="px-3.5 py-1.5 bg-[#FFB300]/10 hover:bg-[#FFB300]/20 text-[#FFB300] border border-[#FFB300]/40 rounded-lg text-xs font-bold transition flex items-center gap-1.5 mx-auto"
-                                  >
-                                    <Plus className="w-3.5 h-3.5" />
-                                    <span>Add First Chanting Step to this Subcategory</span>
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          )}
-
-                          {/* Bottom Sacred Lotus Filigree Finish */}
-                          <div className="flex justify-center pt-4">
-                            <svg className="w-16 h-8 text-[#FFB300] opacity-80 transform rotate-180" viewBox="0 0 100 40" fill="currentColor">
-                              <path d="M50 0 C40 15, 20 20, 0 20 C20 25, 45 35, 50 40 C55 35, 80 25, 100 20 C80 20, 60 15, 50 0 Z"></path>
-                            </svg>
-                          </div>
-
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* RIGHT: Sanctum Specifications & Step Sequence Console (Green & Gold) */}
-                    <div className="lg:col-span-5 space-y-5">
-
-                      {/* Specifications Card */}
-                      <div className="bg-[#082219] border border-[#1A4E38] rounded-xl p-5 shadow-xl space-y-4">
-                        <div className="flex items-center justify-between pb-3 border-b border-[#16422F]">
-                          <h3 className="text-sm font-bold text-[#FFB300] flex items-center gap-2">
-                            <Database className="w-4 h-4 text-[#FFB300]" />
-                            <span>Sanctum Specifications</span>
-                          </h3>
-                          <span className="text-xs text-[#FFB300] font-mono font-bold bg-[#061A13] px-2 py-0.5 rounded border border-[#16422F]">
-                            ID: #{viewDetail.id}
-                          </span>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-3 text-xs">
-                          <div className="bg-[#061A13] p-3 rounded-lg border border-[#16422F]">
-                            <span className="text-[10px] text-gray-400 uppercase block font-semibold">Parent Category</span>
-                            <span className="text-gray-100 font-medium">
-                              {viewDetail.parentTitle || viewDetail.parentSlug || 'Pooja Vidhanam (#113)'}
-                            </span>
-                          </div>
-                          <div className="bg-[#061A13] p-3 rounded-lg border border-[#16422F]">
-                            <span className="text-[10px] text-gray-400 uppercase block font-semibold">Total Steps / Types</span>
-                            <span className="text-[#FFB300] font-bold">
-                              {viewDetail.contents?.length || 0} Sacred Steps
-                            </span>
-                          </div>
-                          <div className="bg-[#061A13] p-3 rounded-lg border border-[#16422F]">
-                            <span className="text-[10px] text-gray-400 uppercase block font-semibold">URL Identifier</span>
-                            <span className="text-[#FFB300] font-mono">/{viewDetail.slug}</span>
-                          </div>
-                          <div className="bg-[#061A13] p-3 rounded-lg border border-[#16422F]">
-                            <span className="text-[10px] text-gray-400 uppercase block font-semibold">Content Format</span>
-                            <span className="text-emerald-400 font-medium">
-                              {viewDetail.isAudio ? '🎵 Audio Chanting' : '📜 Vidhanam Text'}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Subcategory Artwork Image Preview */}
-                        {viewDetail.imageUrl && (
-                          <div className="bg-[#061A13] border border-[#16422F] rounded-lg p-3 flex items-center gap-3">
-                            <div className="w-14 h-14 rounded-lg overflow-hidden border border-[#D4AF37]/50 flex-shrink-0 bg-neutral-900 flex items-center justify-center">
-                              <img
-                                src={viewDetail.imageUrl.startsWith('http') || viewDetail.imageUrl.startsWith('data:')
-                                  ? viewDetail.imageUrl
-                                  : `${API_ORIGIN}${viewDetail.imageUrl.startsWith('/') ? '' : '/'}${viewDetail.imageUrl}`}
-                                alt={viewDetail.title}
-                                className="w-full h-full object-cover"
-                                onError={(e: any) => { e.currentTarget.style.display = 'none'; }}
-                              />
-                            </div>
-                            <div className="min-w-0">
-                              <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Sanctum Artwork</span>
-                              <p className="text-xs font-semibold text-gray-200 truncate">{viewDetail.title}</p>
-                              <p className="text-[10px] text-gray-400 font-mono truncate">{viewDetail.imageUrl}</p>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Multi-Language Database Translations */}
-                      {viewDetail.translations && viewDetail.translations.length > 0 && (
-                        <div className="bg-[#082219] border border-[#1A4E38] rounded-xl p-5 shadow-xl space-y-3">
-                          <span className="text-xs font-bold text-[#FFB300] uppercase tracking-wide block">
-                            Database Multi-Language Translations ({viewDetail.translations.length})
-                          </span>
-                          <div className="grid grid-cols-2 gap-2 text-xs">
-                            {viewDetail.translations.map((tr) => (
-                              <div key={tr.code} className="p-2.5 rounded-lg bg-[#061A13] border border-[#16422F] space-y-0.5">
-                                <div className="flex items-center justify-between">
-                                  <span className="font-bold text-[#FFB300] uppercase text-[10px]">{tr.name || tr.code}</span>
-                                  <span className="font-mono text-gray-500 text-[9px]">{tr.code}</span>
-                                </div>
-                                <div className="font-semibold text-gray-200 text-xs truncate">{tr.title}</div>
+                                <h4 className="font-bold text-xs text-gray-100 line-clamp-1">
+                                  {typeItem.title}
+                                </h4>
+                                <p className="text-[11px] text-gray-400 line-clamp-2 mt-1 leading-snug">
+                                  {typeItem.meaning || typeItem.sacredText || 'Sacred devotional recitation.'}
+                                </p>
                               </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
 
-                      {/* Subcategory Types & Stotras Cards (Matches website layout with 4 types) */}
-                      {viewDetail.contents && viewDetail.contents.length > 0 && (
-                        <div className="bg-[#082219] border border-[#1A4E38] rounded-xl p-5 shadow-xl space-y-3">
-                          <div className="flex items-center justify-between pb-2 border-b border-[#16422F]">
-                            <span className="text-xs font-bold text-[#FFB300] uppercase tracking-wide flex items-center gap-1.5">
-                              <Sparkles className="w-3.5 h-3.5 text-[#FFB300]" />
-                              <span>{viewDetail.title} Types &amp; Stotras ({viewDetail.contents.length})</span>
-                            </span>
-                            <span className="text-[10px] text-emerald-400 font-mono">Select card to view detail</span>
-                          </div>
-
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                            {viewDetail.contents.map((typeItem, tIdx) => {
-                              const isSelected = activeViewTypeTab === tIdx;
-                              return (
-                                <div
-                                  key={typeItem.id || tIdx}
-                                  onClick={() => setActiveViewTypeTab(tIdx)}
-                                  className={`rounded-xl border p-3.5 cursor-pointer transition-all transform hover:-translate-y-0.5 shadow-md flex flex-col justify-between gap-3 ${isSelected
-                                    ? 'bg-[#0A3324] border-[#FFB300] shadow-[0_0_15px_rgba(255,179,0,0.2)]'
-                                    : 'bg-[#061A13] border-[#16422F] hover:border-[#FFB300]/60'
-                                    }`}
-                                >
-                                  <div>
-                                    <div className="flex items-center justify-between mb-2">
-                                      <span className="px-1.5 py-0.5 rounded bg-[#FFB300] text-[#071C14] text-[10px] font-black font-mono">
-                                        #{tIdx + 1}
-                                      </span>
-                                      <span className="text-[9px] px-2 py-0.5 rounded-full bg-[#0E2F23] border border-[#16422F] text-amber-300 font-medium">
-                                        Devotional Type
-                                      </span>
-                                    </div>
-                                    <h4 className="font-bold text-xs text-gray-100 line-clamp-1">
-                                      {typeItem.title}
-                                    </h4>
-                                    <p className="text-[11px] text-gray-400 line-clamp-2 mt-1 leading-snug">
-                                      {typeItem.meaning || typeItem.sacredText || 'Sacred devotional recitation.'}
-                                    </p>
-                                  </div>
-
-                                  <div className="pt-2 border-t border-[#16422F]/60 flex items-center justify-between text-[11px]">
-                                    <span className={`font-semibold ${isSelected ? 'text-[#FFB300]' : 'text-emerald-400'}`}>
-                                      {isSelected ? '✓ Viewing' : 'View Detail'}
-                                    </span>
-                                    <div className={`w-5 h-5 rounded-full flex items-center justify-center ${isSelected ? 'bg-[#FFB300] text-[#071C14]' : 'bg-[#0E2F23] text-gray-300'
-                                      }`}>
-                                      <ChevronRight className="w-3.5 h-3.5" />
-                                    </div>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Chanting Steps Sequence (Ordered) */}
-                      <div className="bg-[#082219] border border-[#1A4E38] rounded-xl p-5 shadow-xl space-y-3">
-                        <div className="flex items-center justify-between pb-2 border-b border-[#16422F]">
-                          <span className="text-xs font-bold text-gray-200 uppercase tracking-wide">
-                            Chanting Sequence &amp; Steps
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => handleOpenCreateType(viewDetail.id)}
-                            className="px-2.5 py-1 bg-[#FFB300] hover:bg-[#FFA000] text-[#071C14] rounded-lg text-xs font-bold transition flex items-center gap-1 shadow"
-                          >
-                            <Plus className="w-3.5 h-3.5" />
-                            <span>Add Step</span>
-                          </button>
-                        </div>
-
-                        {viewDetail.contents && viewDetail.contents.length > 0 ? (
-                          <div className="space-y-2 max-h-[380px] overflow-y-auto pr-1 text-xs">
-                            {viewDetail.contents.map((step, idx) => (
-                              <div
-                                key={step.id || idx}
-                                className="bg-[#061A13] p-3 rounded-lg border border-[#16422F] hover:border-[#FFB300]/40 transition flex items-center justify-between gap-3 group"
-                              >
-                                <div className="min-w-0">
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-mono text-[#FFB300] font-bold text-[10px]">#{idx + 1}</span>
-                                    <span className="font-semibold text-gray-100 truncate">{step.title}</span>
-                                  </div>
-                                  {step.sacredText && (
-                                    <p className="text-gray-400 text-[11px] truncate mt-0.5">{step.sacredText}</p>
-                                  )}
-                                </div>
-                                <div className="flex items-center gap-1 flex-shrink-0">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleOpenEditType(step as any)}
-                                    className="p-1.5 hover:bg-[#0E2F23] rounded text-[#FFB300] transition"
-                                    title="Edit this Step / Verse"
-                                  >
-                                    <Edit3 className="w-3.5 h-3.5" />
-                                  </button>
+                              <div className="pt-2 border-t border-[#16422F]/60 flex items-center justify-between text-[11px]">
+                                <span className={`font-semibold ${isSelected ? 'text-[#FFB300]' : 'text-emerald-400'}`}>
+                                  {isSelected ? '✓ Viewing' : 'View Detail'}
+                                </span>
+                                <div className={`w-5 h-5 rounded-full flex items-center justify-center ${isSelected ? 'bg-[#FFB300] text-[#071C14]' : 'bg-[#0E2F23] text-gray-300'
+                                  }`}>
+                                  <ChevronRight className="w-3.5 h-3.5" />
                                 </div>
                               </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="p-6 text-center text-xs text-gray-400 bg-[#061A13] rounded-lg border border-[#16422F]">
-                            <BookOpen className="w-6 h-6 mx-auto mb-2 text-[#FFB300] opacity-60" />
-                            <p className="font-semibold text-gray-300">No subcategory types / verses attached yet.</p>
-                            <p className="text-[11px] text-gray-400 mt-1">Click &quot;+ Add Step&quot; above to create worship steps and recitations under this subcategory.</p>
-                          </div>
-                        )}
+                            </div>
+                          );
+                        })}
                       </div>
-
                     </div>
+                  )}
 
-                  </div>
+
 
                 </div>
-              )}
 
-              {/* IN-PAGE NORMAL PAGE MODE: CREATE / EDIT CATEGORY (SANCTUM GREEN & GOLD LAYOUT MATCHING VIEW DETAILED) */}
-              {pageMode === 'EDIT_CATEGORY' && (
-                <div className="space-y-6 animate-in fade-in duration-200">
-                  {/* Header: Sanctum Green & Divine Gold */}
-                  <div className="bg-[#071C14] rounded-xl border border-[#1A4E38] p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xl">
-                    <div className="flex items-center gap-3">
-                      <button
-                        type="button"
-                        onClick={() => setPageMode('LIST')}
-                        className="px-3 py-1.5 rounded-lg bg-[#0D2E21] hover:bg-[#133F2E] text-gray-200 text-xs font-semibold transition flex items-center gap-1.5 border border-[#1E5C41] shadow"
-                      >
-                        <ArrowLeft className="w-4 h-4 text-[#FFB300]" />
-                        <span>Back to Categories</span>
-                      </button>
-                      <div>
-                        <h3 className="text-base font-bold text-[#FFB300] flex items-center gap-2">
-                          <Sparkles className="w-4 h-4 text-[#FFB300]" />
-                          <span>{editingId ? 'Edit Devotional Category' : 'Create New Devotional Category'}</span>
-                        </h3>
-                        <p className="text-xs text-emerald-400/80">
-                          {editingId ? `Master Category Record #${editingId} — Sanctum Pillar` : 'New Master Category Record'}
-                        </p>
-                      </div>
+              </div>
+
+            </div>
+          )}
+
+          {/* IN-PAGE NORMAL PAGE MODE: CREATE / EDIT CATEGORY (SANCTUM GREEN & GOLD LAYOUT MATCHING VIEW DETAILED) */}
+          {pageMode === 'EDIT_CATEGORY' && (
+            <div className="space-y-4 animate-in fade-in duration-200">
+              {/* Top Navigation: Back to List on top of the card */}
+              <div className="flex items-center">
+                <button
+                  type="button"
+                  onClick={() => setPageMode('LIST')}
+                  className="px-3.5 py-1.5 rounded-lg bg-[#0D2E21] hover:bg-[#133F2E] text-gray-200 hover:text-white text-xs font-semibold transition inline-flex items-center gap-2 border border-[#1E5C41] shadow hover:border-[#FFB300]/50"
+                >
+                  <ArrowLeft className="w-4 h-4 text-[#FFB300]" />
+                  <span>Back to List</span>
+                </button>
+              </div>
+
+              {/* Header: Sanctum Green & Divine Gold */}
+              <div className="bg-[#071C14] rounded-xl border border-[#1A4E38] p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xl">
+                <div>
+                  <h3 className="text-base font-bold text-[#FFB300] flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-[#FFB300]" />
+                    <span>{editingId ? 'Edit Devotional Category' : 'Create New Devotional Category'}</span>
+                  </h3>
+                  <p className="text-xs text-emerald-400/80">
+                    {editingId ? `Master Category Record #${editingId} — Sanctum Pillar` : 'New Master Category Record'}
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2.5">
+                  {/* Language Selector in Edit Category Mode */}
+                  <div className="flex items-center gap-1.5 p-1 bg-[#061A13] border border-[#1E5C41] rounded-lg shadow-inner">
+                    <Globe className="w-3.5 h-3.5 text-[#FFB300] ml-1.5" />
+                    <span className="text-[11px] font-bold text-gray-300 uppercase px-1">Lang:</span>
+                    <div className="flex items-center gap-1 overflow-x-auto">
+                      {languages.map(l => (
+                        <button
+                          key={l.code}
+                          type="button"
+                          onClick={() => handleEditCategoryChangeLang(l.code)}
+                          className={`px-2.5 py-1 rounded text-xs font-semibold transition flex items-center gap-1 ${selectedLang === l.code
+                            ? 'bg-[#FFB300] text-[#071C14] font-bold shadow'
+                            : 'text-gray-300 hover:text-[#FFB300] hover:bg-[#0D2E21]'
+                            }`}
+                          title={`Edit ${l.name} (${l.code}) — Dynamically fetched from MySQL via API`}
+                        >
+                          <span>{l.nativeName || l.name}</span>
+                          <span className="text-[10px] opacity-70 uppercase font-mono">({l.code})</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setPageMode('LIST')}
+                    className="px-4 py-2 bg-[#0D2E21] hover:bg-[#133F2E] border border-[#1E5C41] rounded-lg text-gray-200 font-semibold text-xs transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveCategory}
+                    className="flex items-center gap-1.5 px-5 py-2 bg-[#FFB300] hover:bg-[#FFA000] text-[#071C14] font-bold text-xs rounded-lg transition shadow-lg shadow-amber-500/20"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    <span>Save Category to MySQL</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* 2-Column Grid: Left Edit Form & Right Live Devotional Preview */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+                {/* LEFT: Category Input Form */}
+                <div className="lg:col-span-7 bg-[#082218] rounded-xl border border-[#1A4E38] p-6 shadow-xl space-y-5 text-xs">
+                  {/* Language Status Notice */}
+                  {editingId && !formTitle && (
+                    <div className="p-3 bg-amber-950/40 border border-amber-600/50 rounded-xl flex items-center gap-2 text-xs text-amber-200">
+                      <AlertCircle className="w-4 h-4 text-[#FFB300] flex-shrink-0" />
+                      <span>
+                        No <strong>{languages.find(l => l.code === selectedLang)?.name || selectedLang.toUpperCase()}</strong> translation exists in MariaDB yet. Enter title &amp; description below to create it directly in MySQL.
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block font-bold text-gray-300 uppercase mb-1">
+                        Category Title ({selectedLang.toUpperCase()}) *
+                      </label>
+                      <input
+                        type="text"
+                        value={formTitle}
+                        onChange={(e) => setFormTitle(e.target.value)}
+                        placeholder="e.g. శ్రీ అయ్యప్ప శరణు ఘోష"
+                        className="w-full bg-[#061A13] border border-[#1E5C41] rounded-lg px-3 py-2 text-gray-100 focus:outline-none focus:border-[#FFB300]"
+                      />
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2.5">
-                      {/* Language Selector in Edit Category Mode */}
-                      <div className="flex items-center gap-1.5 p-1 bg-[#061A13] border border-[#1E5C41] rounded-lg shadow-inner">
-                        <Globe className="w-3.5 h-3.5 text-[#FFB300] ml-1.5" />
-                        <span className="text-[11px] font-bold text-gray-300 uppercase px-1">Lang:</span>
-                        <div className="flex items-center gap-1 overflow-x-auto">
-                          {languages.map(l => (
-                            <button
-                              key={l.code}
-                              type="button"
-                              onClick={() => handleEditCategoryChangeLang(l.code)}
-                              className={`px-2.5 py-1 rounded text-xs font-semibold transition flex items-center gap-1 ${selectedLang === l.code
-                                ? 'bg-[#FFB300] text-[#071C14] font-bold shadow'
-                                : 'text-gray-300 hover:text-[#FFB300] hover:bg-[#0D2E21]'
-                                }`}
-                              title={`Edit ${l.name} (${l.code}) — Dynamically fetched from MySQL via API`}
-                            >
-                              <span>{l.nativeName || l.name}</span>
-                              <span className="text-[10px] opacity-70 uppercase font-mono">({l.code})</span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
+                    <div>
+                      <label className="block font-bold text-gray-300 uppercase mb-1">
+                        URL Identifier (Slug) *
+                      </label>
+                      <input
+                        type="text"
+                        value={formSlug}
+                        onChange={(e) => setFormSlug(e.target.value)}
+                        placeholder="e.g. daily-pooja"
+                        className="w-full bg-[#061A13] border border-[#1E5C41] rounded-lg px-3 py-2 text-[#FFB300] font-mono focus:outline-none focus:border-[#FFB300]"
+                      />
+                    </div>
+                  </div>
 
+                  <div>
+                    <label className="block font-bold text-gray-300 uppercase mb-1">Content Type</label>
+                    <select
+                      value={formIsAudio ? 'true' : 'false'}
+                      onChange={(e) => setFormIsAudio(e.target.value === 'true')}
+                      className="w-full bg-[#061A13] border border-[#1E5C41] rounded-lg px-3 py-2 text-[#FEF08A] font-medium focus:outline-none focus:border-[#FFB300]"
+                    >
+                      <option value="false">Text &amp; Devotional Slokas (Readable)</option>
+                      <option value="true">Audio Track (Sing-along &amp; Chant)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-gray-300 uppercase mb-1 flex items-center justify-between">
+                      <span>Description (Rich Text &amp; Formatted Notes)</span>
+                      <span className="text-[#FFB300] font-mono text-[10px]">Rich Text Mode</span>
+                    </label>
+                    <RichTextEditor
+                      value={formDescription}
+                      onChange={(val) => setFormDescription(val)}
+                      placeholder="Brief spiritual summary of this sacred section..."
+                      minHeight="180px"
+                      hideTemplateBtn={true}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between gap-3 pt-4 border-t border-[#1E5C41]">
+                    <button
+                      type="button"
+                      onClick={() => openTranslationModal('categories', editingId || undefined, [
+                        { key: 'title', label: 'Category Title', value: formTitle },
+                        { key: 'description', label: 'Description', value: formDescription, isHtml: true }
+                      ], (trans, lang) => {
+                        if (trans.title) setFormTitle(trans.title);
+                        if (trans.description) setFormDescription(trans.description);
+                        if (lang) setSelectedLang(lang);
+                      })}
+                      className="bg-[#FFB300]/15 hover:bg-[#FFB300]/25 text-[#FFB300] border border-[#FFB300]/40 px-3.5 py-2 rounded-lg text-xs font-semibold transition flex items-center gap-1.5"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-[#FFB300]" />
+                      <span>✨ Translate (v3)</span>
+                    </button>
+
+                    <div className="flex items-center gap-2">
                       <button
                         type="button"
                         onClick={() => setPageMode('LIST')}
-                        className="px-4 py-2 bg-[#0D2E21] hover:bg-[#133F2E] border border-[#1E5C41] rounded-lg text-gray-200 font-semibold text-xs transition"
+                        className="px-4 py-2 bg-[#0D2E21] hover:bg-[#133F2E] border border-[#1E5C41] rounded-lg text-gray-200 text-xs font-semibold transition"
                       >
                         Cancel
                       </button>
                       <button
                         type="button"
                         onClick={handleSaveCategory}
-                        className="flex items-center gap-1.5 px-5 py-2 bg-[#FFB300] hover:bg-[#FFA000] text-[#071C14] font-bold text-xs rounded-lg transition shadow-lg shadow-amber-500/20"
+                        className="bg-[#FFB300] hover:bg-[#FFA000] text-[#071C14] px-5 py-2 rounded-lg text-xs font-bold transition shadow-lg shadow-amber-500/20"
                       >
-                        <Save className="w-3.5 h-3.5" />
-                        <span>Save Category to MySQL</span>
+                        Save Category to MySQL
                       </button>
                     </div>
                   </div>
+                </div>
 
-                  {/* 2-Column Grid: Left Edit Form & Right Live Devotional Preview */}
-                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                {/* RIGHT: Live Category Devotional Card Preview */}
+                <div className="lg:col-span-5 space-y-5">
+                  <div className="flex items-center justify-between px-1 text-xs">
+                    <span className="font-bold text-[#FFB300] uppercase tracking-wider flex items-center gap-1.5">
+                      <span>📜</span>
+                      <span>Category Card Preview</span>
+                    </span>
+                    <span className="text-[11px] text-emerald-400 font-mono">Real-time Portal Card</span>
+                  </div>
 
-                    {/* LEFT: Category Input Form */}
-                    <div className="lg:col-span-7 bg-[#082218] rounded-xl border border-[#1A4E38] p-6 shadow-xl space-y-5 text-xs">
-                      {/* Language Status Notice */}
-                      {editingId && !formTitle && (
-                        <div className="p-3 bg-amber-950/40 border border-amber-600/50 rounded-xl flex items-center gap-2 text-xs text-amber-200">
-                          <AlertCircle className="w-4 h-4 text-[#FFB300] flex-shrink-0" />
-                          <span>
-                            No <strong>{languages.find(l => l.code === selectedLang)?.name || selectedLang.toUpperCase()}</strong> translation exists in MariaDB yet. Enter title &amp; description below to create it directly in MySQL.
-                          </span>
-                        </div>
+                  <div className="w-full rounded-2xl overflow-hidden border-2 border-[#D4AF37]/60 shadow-[0_12px_45px_rgba(0,0,0,0.6),0_0_25px_rgba(212,175,55,0.15)] bg-[#071F17]">
+                    <div className="bg-[#0A2A1E] text-[#FFB300] border-b border-[#1E5C41] px-4 py-2.5 flex items-center justify-between shadow">
+                      <div className="flex items-center gap-2 truncate">
+                        <span className="text-base">🪔</span>
+                        <span className="font-bold text-xs tracking-wide text-[#FFB300] truncate">
+                          {formTitle || 'Category Title'}
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#071C14] border border-[#1E5C41] text-emerald-400">
+                        /{formSlug || 'slug'}
+                      </span>
+                    </div>
+
+                    <div className="bg-gradient-to-b from-[#082218] via-[#0A291E] to-[#071D15] p-5 text-center text-xs leading-relaxed max-h-[500px] overflow-y-auto space-y-4">
+                      <h4 className="text-base font-bold text-[#FFB300] tracking-wide">
+                        {formTitle || 'Master Devotional Category'}
+                      </h4>
+
+                      {formDescription ? (
+                        <div
+                          className="p-3 bg-[#061A13]/90 rounded-xl border border-[#1B563D] text-left text-xs font-serif leading-relaxed text-[#FEF08A] whitespace-pre-wrap max-h-60 overflow-y-auto"
+                          dangerouslySetInnerHTML={{ __html: formDescription }}
+                        />
+                      ) : (
+                        <p className="text-[11px] italic text-emerald-400/60 p-3 bg-[#061A13]/50 rounded-xl border border-dashed border-[#1B563D]">
+                          Enter Category Description on the left to preview...
+                        </p>
                       )}
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block font-bold text-gray-300 uppercase mb-1">
-                            Category Title ({selectedLang.toUpperCase()}) *
-                          </label>
-                          <input
-                            type="text"
-                            value={formTitle}
-                            onChange={(e) => setFormTitle(e.target.value)}
-                            placeholder="e.g. శ్రీ అయ్యప్ప శరణు ఘోష"
-                            className="w-full bg-[#061A13] border border-[#1E5C41] rounded-lg px-3 py-2 text-gray-100 focus:outline-none focus:border-[#FFB300]"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block font-bold text-gray-300 uppercase mb-1">
-                            URL Identifier (Slug) *
-                          </label>
-                          <input
-                            type="text"
-                            value={formSlug}
-                            onChange={(e) => setFormSlug(e.target.value)}
-                            placeholder="e.g. daily-pooja"
-                            className="w-full bg-[#061A13] border border-[#1E5C41] rounded-lg px-3 py-2 text-[#FFB300] font-mono focus:outline-none focus:border-[#FFB300]"
-                          />
-                        </div>
+                      <div className="flex justify-center pt-2">
+                        <svg className="w-12 h-6 text-[#FFB300] opacity-80 transform rotate-180" viewBox="0 0 100 40" fill="currentColor">
+                          <path d="M50 0 C40 15, 20 20, 0 20 C20 25, 45 35, 50 40 C55 35, 80 25, 100 20 C80 20, 60 15, 50 0 Z"></path>
+                        </svg>
                       </div>
+                    </div>
+                  </div>
 
-                      <div>
-                        <label className="block font-bold text-gray-300 uppercase mb-1">Content Type</label>
-                        <select
-                          value={formIsAudio ? 'true' : 'false'}
-                          onChange={(e) => setFormIsAudio(e.target.value === 'true')}
-                          className="w-full bg-[#061A13] border border-[#1E5C41] rounded-lg px-3 py-2 text-[#FEF08A] font-medium focus:outline-none focus:border-[#FFB300]"
+                  <div className="bg-[#082219] border border-[#1A4E38] rounded-xl p-4 shadow-xl space-y-3">
+                    <div className="flex items-center justify-between pb-2 border-b border-[#16422F]">
+                      <h4 className="text-xs font-bold text-[#FFB300] flex items-center gap-1.5">
+                        <Database className="w-3.5 h-3.5 text-[#FFB300]" />
+                        <span>Category Specifications</span>
+                      </h4>
+                      <span className="text-[10px] text-[#FFB300] font-mono font-bold bg-[#061A13] px-2 py-0.5 rounded border border-[#16422F]">
+                        {editingId ? `Editing #${editingId}` : 'New Category'}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2.5 text-xs">
+                      <div className="bg-[#061A13] p-2.5 rounded-lg border border-[#16422F]">
+                        <span className="text-[9px] text-gray-400 uppercase block font-semibold">Content Format</span>
+                        <span className="text-emerald-400 font-medium">{formIsAudio ? '🎵 Audio Track' : '📜 Sacred Text'}</span>
+                      </div>
+                      <div className="bg-[#061A13] p-2.5 rounded-lg border border-[#16422F]">
+                        <span className="text-[9px] text-gray-400 uppercase block font-semibold">URL Identifier</span>
+                        <span className="text-[#FFB300] font-mono truncate block">/{formSlug || 'slug'}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* IN-PAGE NORMAL PAGE MODE: CREATE / EDIT SUBCATEGORY (SANCTUM GREEN & GOLD LAYOUT MATCHING VIEW DETAILED) */}
+          {pageMode === 'EDIT_SUBCATEGORY' && (
+            <div className="space-y-4 animate-in fade-in duration-200">
+              {/* Top Navigation: Back to List on top of the card */}
+              <div className="flex items-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPageMode('LIST');
+                    setEditingSubId(null);
+                    setViewDetail(null);
+                  }}
+                  className="px-3.5 py-1.5 rounded-lg bg-[#0D2E21] hover:bg-[#133F2E] text-gray-200 hover:text-white text-xs font-semibold transition inline-flex items-center gap-2 border border-[#1E5C41] shadow hover:border-[#FFB300]/50"
+                >
+                  <ArrowLeft className="w-4 h-4 text-[#FFB300]" />
+                  <span>Back to List</span>
+                </button>
+              </div>
+
+              {/* Header: Sanctum Green & Divine Gold */}
+              <div className="bg-[#071C14] rounded-xl border border-[#1A4E38] p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xl">
+                <div>
+                  <h3 className="text-base font-bold text-[#FFB300] flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-[#FFB300]" />
+                    <span>{editingSubId ? 'Edit Devotional Subcategory Sanctum Details' : 'Create Devotional Subcategory'}</span>
+                  </h3>
+                  <p className="text-xs text-emerald-400/80">
+                    {editingSubId ? `Subcategory Record #${editingSubId} — Live Sanctum Worship Flow` : 'New Sacred Subcategory Record'}
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2.5">
+                  {/* Language Selector in Edit Subcategory Mode */}
+                  <div className="flex items-center gap-1.5 p-1 bg-[#061A13] border border-[#1E5C41] rounded-lg shadow-inner">
+                    <Globe className="w-3.5 h-3.5 text-[#FFB300] ml-1.5" />
+                    <span className="text-[11px] font-bold text-gray-300 uppercase px-1">DB Lang:</span>
+                    <div className="flex items-center gap-1 overflow-x-auto">
+                      {languages.map(l => (
+                        <button
+                          key={l.code}
+                          type="button"
+                          onClick={() => handleEditSubcategoryChangeLang(l.code)}
+                          className={`px-2.5 py-1 rounded text-xs font-semibold transition flex items-center gap-1 ${selectedLang === l.code
+                            ? 'bg-[#FFB300] text-[#071C14] font-bold shadow'
+                            : 'text-gray-300 hover:text-[#FFB300] hover:bg-[#0D2E21]'
+                            }`}
+                          title={`Edit ${l.name} (${l.code}) — Dynamically fetched from MySQL via API`}
                         >
-                          <option value="false">Text &amp; Devotional Slokas (Readable)</option>
-                          <option value="true">Audio Track (Sing-along &amp; Chant)</option>
-                        </select>
+                          <span>{l.nativeName || l.name}</span>
+                          <span className="text-[10px] opacity-70 uppercase font-mono">({l.code})</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleSaveSubcategory}
+                    className="flex items-center gap-1.5 px-5 py-2 bg-[#FFB300] hover:bg-[#FFA000] text-[#071C14] font-bold text-xs rounded-lg transition shadow-lg shadow-amber-500/20"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    <span>Save</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Exact View Detailed 2-Column Grid: Left Sacred Scroll Reader & Right Sanctum Console */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+                {/* LEFT: Sacred Devotional Reader (Authentic Green & Gold Scroll) */}
+                <div className="lg:col-span-7 flex flex-col items-center">
+
+                  {/* TYPE TABS / SELECTOR: Allows toggling between All Sacred Types or viewing a specific Type */}
+                  {viewDetail?.contents && viewDetail.contents.length > 0 && (
+                    <div className="w-full mb-4 bg-[#082218] border border-[#1A4E38] rounded-xl p-3 shadow-lg space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-[#FFB300] uppercase tracking-wider flex items-center gap-1.5">
+                          <span>✨</span>
+                          <span>{subFormTitle || viewDetail.title} Types ({viewDetail.contents.length})</span>
+                        </span>
+                        <span className="text-[11px] text-emerald-400 font-mono">
+                          {activeViewTypeTab === 'all'
+                            ? 'Showing: Complete Chanting Sequence'
+                            : `Showing Type #${(typeof activeViewTypeTab === 'number' ? activeViewTypeTab : 0) + 1} of ${viewDetail.contents.length}`}
+                        </span>
                       </div>
 
-                      <div>
-                        <label className="block font-bold text-gray-300 uppercase mb-1 flex items-center justify-between">
-                          <span>Description (Rich Text &amp; Formatted Notes)</span>
-                          <span className="text-[#FFB300] font-mono text-[10px]">Rich Text Mode</span>
-                        </label>
+                      {/* Interactive Horizontal Scrollable Type Cards */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                        <button
+                          type="button"
+                          onClick={() => setActiveViewTypeTab('all')}
+                          className={`p-2 rounded-lg text-left transition border flex flex-col justify-between gap-1 ${activeViewTypeTab === 'all'
+                            ? 'bg-[#FFB300] text-[#071C14] border-[#FFB300] font-bold shadow-md'
+                            : 'bg-[#061A13] text-gray-300 border-[#16422F] hover:border-[#FFB300]/50'
+                            }`}
+                        >
+                          <div className="flex items-center justify-between w-full">
+                            <span className="text-[10px] font-mono uppercase">Full Flow</span>
+                            <span className="text-[9px] px-1 rounded bg-black/20">All</span>
+                          </div>
+                          <span className="truncate text-xs font-semibold">All {viewDetail.contents.length} Types</span>
+                        </button>
+
+                        {viewDetail.contents.map((step, idx) => (
+                          <button
+                            key={step.id || idx}
+                            type="button"
+                            onClick={() => setActiveViewTypeTab(idx)}
+                            className={`p-2 rounded-lg text-left transition border flex flex-col justify-between gap-1 ${activeViewTypeTab === idx
+                              ? 'bg-[#FFB300] text-[#071C14] border-[#FFB300] font-bold shadow-md'
+                              : 'bg-[#061A13] text-gray-300 border-[#16422F] hover:border-[#FFB300]/50'
+                              }`}
+                          >
+                            <div className="flex items-center justify-between w-full">
+                              <span className="text-[10px] font-mono font-bold">#{idx + 1}</span>
+                              <span className="text-[9px] px-1 rounded bg-black/20">Type</span>
+                            </div>
+                            <span className="truncate text-xs font-semibold">{step.title}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="w-full flex items-center justify-between mb-3 px-1 text-xs">
+                    <span className="font-bold text-[#FFB300] uppercase tracking-wider flex items-center gap-1.5">
+                      <span>📜</span>
+                      <span>Devotional Reader View</span>
+                      <span className="px-1.5 py-0.5 rounded bg-[#061A13] border border-[#16422F] text-[#FEF08A] font-mono text-[10px]">
+                        {languages.find(l => l.code === selectedLang)?.name || selectedLang.toUpperCase()}
+                      </span>
+                    </span>
+                    <span className="text-[11px] text-emerald-400/90 font-mono">
+                      {viewDetail?.contents && viewDetail.contents.length > 0
+                        ? activeViewTypeTab === 'all'
+                          ? `${viewDetail.contents.length} Ordered Steps`
+                          : `Type #${(typeof activeViewTypeTab === 'number' ? activeViewTypeTab : 0) + 1} / ${viewDetail.contents.length}`
+                        : 'Single Sacred Composition'}
+                    </span>
+                  </div>
+
+                  {/* Sacred Scroll Outer Container */}
+                  <div className="w-full max-w-lg rounded-2xl overflow-hidden border-2 border-[#D4AF37]/60 shadow-[0_12px_45px_rgba(0,0,0,0.6),0_0_25px_rgba(212,175,55,0.15)] bg-[#071F17]">
+
+                    {/* Top Sanctum Header */}
+                    <div className="bg-[#0A2A1E] text-[#FFB300] border-b border-[#1E5C41] px-5 py-3 flex items-center justify-between shadow">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">🪔</span>
+                        <span className="font-bold text-sm tracking-wide text-[#FFB300] truncate max-w-xs">
+                          {activeViewTypeTab !== 'all' && typeof activeViewTypeTab === 'number' && viewDetail?.contents?.[activeViewTypeTab]
+                            ? viewDetail.contents[activeViewTypeTab].title
+                            : (subFormTitle || viewDetail?.title || 'Subcategory')}
+                        </span>
+                      </div>
+                      <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-[#071C14] border border-[#1E5C41] text-emerald-400">
+                        /{activeViewTypeTab !== 'all' && typeof activeViewTypeTab === 'number' && (viewDetail?.contents?.[activeViewTypeTab] as any)?.slug
+                          ? (viewDetail?.contents?.[activeViewTypeTab] as any).slug
+                          : (subFormSlug || viewDetail?.slug || 'slug')}
+                      </span>
+                    </div>
+
+                    {/* Scroll Canvas with Sanctum Green & Divine Gold Typography */}
+                    <div className="bg-gradient-to-b from-[#082218] via-[#0A291E] to-[#071D15] p-6 text-center text-xs leading-relaxed max-h-[760px] overflow-y-auto space-y-5">
+                      {/* Editable Sacred Notes & Full Lyrics Area */}
+                      <div className="p-3.5 bg-[#061A13]/90 rounded-xl border border-[#1B563D] text-left max-w-md mx-auto space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold uppercase text-[#FFB300] tracking-wider block">
+                            Sacred Notes / Procedure Description / Full Lyrics
+                          </span>
+                          <span className="text-[9px] text-emerald-400 font-mono">Editable</span>
+                        </div>
                         <RichTextEditor
-                          value={formDescription}
-                          onChange={(val) => setFormDescription(val)}
-                          placeholder="Brief spiritual summary of this sacred section..."
-                          minHeight="180px"
+                          value={subFormDescription}
+                          onChange={(val) => setSubFormDescription(val)}
+                          placeholder="Enter full step-by-step procedure, sankalpam, or chapter text..."
+                          minHeight="140px"
                           hideTemplateBtn={true}
                         />
                       </div>
 
-                      <div className="flex items-center justify-between gap-3 pt-4 border-t border-[#1E5C41]">
-                        <button
-                          type="button"
-                          onClick={() => openTranslationModal('categories', editingId || undefined, [
-                            { key: 'title', label: 'Category Title', value: formTitle },
-                            { key: 'description', label: 'Description', value: formDescription, isHtml: true }
-                          ], (trans, lang) => {
-                            if (trans.title) setFormTitle(trans.title);
-                            if (trans.description) setFormDescription(trans.description);
-                            if (lang) setSelectedLang(lang);
-                          })}
-                          className="bg-[#FFB300]/15 hover:bg-[#FFB300]/25 text-[#FFB300] border border-[#FFB300]/40 px-3.5 py-2 rounded-lg text-xs font-semibold transition flex items-center gap-1.5"
-                        >
-                          <Sparkles className="w-3.5 h-3.5 text-[#FFB300]" />
-                          <span>✨ Translate (v3)</span>
-                        </button>
-
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setPageMode('LIST')}
-                            className="px-4 py-2 bg-[#0D2E21] hover:bg-[#133F2E] border border-[#1E5C41] rounded-lg text-gray-200 text-xs font-semibold transition"
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            type="button"
-                            onClick={handleSaveCategory}
-                            className="bg-[#FFB300] hover:bg-[#FFA000] text-[#071C14] px-5 py-2 rounded-lg text-xs font-bold transition shadow-lg shadow-amber-500/20"
-                          >
-                            Save Category to MySQL
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* RIGHT: Live Category Devotional Card Preview */}
-                    <div className="lg:col-span-5 space-y-5">
-                      <div className="flex items-center justify-between px-1 text-xs">
-                        <span className="font-bold text-[#FFB300] uppercase tracking-wider flex items-center gap-1.5">
-                          <span>📜</span>
-                          <span>Category Card Preview</span>
-                        </span>
-                        <span className="text-[11px] text-emerald-400 font-mono">Real-time Portal Card</span>
-                      </div>
-
-                      <div className="w-full rounded-2xl overflow-hidden border-2 border-[#D4AF37]/60 shadow-[0_12px_45px_rgba(0,0,0,0.6),0_0_25px_rgba(212,175,55,0.15)] bg-[#071F17]">
-                        <div className="bg-[#0A2A1E] text-[#FFB300] border-b border-[#1E5C41] px-4 py-2.5 flex items-center justify-between shadow">
-                          <div className="flex items-center gap-2 truncate">
-                            <span className="text-base">🪔</span>
-                            <span className="font-bold text-xs tracking-wide text-[#FFB300] truncate">
-                              {formTitle || 'Category Title'}
-                            </span>
-                          </div>
-                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#071C14] border border-[#1E5C41] text-emerald-400">
-                            /{formSlug || 'slug'}
-                          </span>
-                        </div>
-
-                        <div className="bg-gradient-to-b from-[#082218] via-[#0A291E] to-[#071D15] p-5 text-center text-xs leading-relaxed max-h-[500px] overflow-y-auto space-y-4">
-                          <div className="flex justify-center pt-1">
-                            <svg className="w-12 h-6 text-[#FFB300] opacity-80" viewBox="0 0 100 40" fill="currentColor">
-                              <path d="M50 0 C40 15, 20 20, 0 20 C20 25, 45 35, 50 40 C55 35, 80 25, 100 20 C80 20, 60 15, 50 0 Z"></path>
-                            </svg>
-                          </div>
-
-                          <div className="space-y-0.5 text-xs font-semibold text-[#FDE68A]">
-                            <p>śrī mahāgaṇādhipatayē namaḥ</p>
-                            <p>śrī gurubhyō namaḥ</p>
-                            <p className="font-bold text-[#FFB300]">hariḥ ōṁ</p>
-                          </div>
-
-                          <div className="border-b border-dotted border-[#D4AF37]/40 w-3/4 mx-auto my-2"></div>
-
-                          <h4 className="text-base font-bold text-[#FFB300] tracking-wide">
-                            {formTitle || 'Master Devotional Category'}
-                          </h4>
-
-                          {formDescription ? (
-                            <div
-                              className="p-3 bg-[#061A13]/90 rounded-xl border border-[#1B563D] text-left text-xs font-serif leading-relaxed text-[#FEF08A] whitespace-pre-wrap max-h-60 overflow-y-auto"
-                              dangerouslySetInnerHTML={{ __html: formDescription }}
-                            />
-                          ) : (
-                            <p className="text-[11px] italic text-emerald-400/60 p-3 bg-[#061A13]/50 rounded-xl border border-dashed border-[#1B563D]">
-                              Enter Category Description on the left to preview...
-                            </p>
-                          )}
-
-                          <div className="flex justify-center pt-2">
-                            <svg className="w-12 h-6 text-[#FFB300] opacity-80 transform rotate-180" viewBox="0 0 100 40" fill="currentColor">
-                              <path d="M50 0 C40 15, 20 20, 0 20 C20 25, 45 35, 50 40 C55 35, 80 25, 100 20 C80 20, 60 15, 50 0 Z"></path>
-                            </svg>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="bg-[#082219] border border-[#1A4E38] rounded-xl p-4 shadow-xl space-y-3">
-                        <div className="flex items-center justify-between pb-2 border-b border-[#16422F]">
-                          <h4 className="text-xs font-bold text-[#FFB300] flex items-center gap-1.5">
-                            <Database className="w-3.5 h-3.5 text-[#FFB300]" />
-                            <span>Category Specifications</span>
-                          </h4>
-                          <span className="text-[10px] text-[#FFB300] font-mono font-bold bg-[#061A13] px-2 py-0.5 rounded border border-[#16422F]">
-                            {editingId ? `Editing #${editingId}` : 'New Category'}
-                          </span>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-2.5 text-xs">
-                          <div className="bg-[#061A13] p-2.5 rounded-lg border border-[#16422F]">
-                            <span className="text-[9px] text-gray-400 uppercase block font-semibold">Content Format</span>
-                            <span className="text-emerald-400 font-medium">{formIsAudio ? '🎵 Audio Track' : '📜 Sacred Text'}</span>
-                          </div>
-                          <div className="bg-[#061A13] p-2.5 rounded-lg border border-[#16422F]">
-                            <span className="text-[9px] text-gray-400 uppercase block font-semibold">URL Identifier</span>
-                            <span className="text-[#FFB300] font-mono truncate block">/{formSlug || 'slug'}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* IN-PAGE NORMAL PAGE MODE: CREATE / EDIT SUBCATEGORY (SANCTUM GREEN & GOLD LAYOUT MATCHING VIEW DETAILED) */}
-              {pageMode === 'EDIT_SUBCATEGORY' && (
-                <div className="space-y-6 animate-in fade-in duration-200">
-                  {/* Header: Sanctum Green & Divine Gold */}
-                  <div className="bg-[#071C14] rounded-xl border border-[#1A4E38] p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xl">
-                    <div className="flex items-center gap-3">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setPageMode('LIST');
-                          setViewDetail(null);
-                        }}
-                        className="px-3 py-1.5 rounded-lg bg-[#0D2E21] hover:bg-[#133F2E] text-gray-200 text-xs font-semibold transition flex items-center gap-1.5 border border-[#1E5C41] shadow"
-                      >
-                        <ArrowLeft className="w-4 h-4 text-[#FFB300]" />
-                        <span>Back to List</span>
-                      </button>
-                      <div>
-                        <h3 className="text-base font-bold text-[#FFB300] flex items-center gap-2">
-                          <Sparkles className="w-4 h-4 text-[#FFB300]" />
-                          <span>{editingSubId ? 'Edit Devotional Subcategory Sanctum Details' : 'Create Devotional Subcategory'}</span>
-                        </h3>
-                        <p className="text-xs text-emerald-400/80">
-                          {editingSubId ? `Subcategory Record #${editingSubId} — Live Sanctum Worship Flow` : 'New Sacred Subcategory Record'}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2.5">
-                      {/* Language Selector in Edit Subcategory Mode */}
-                      <div className="flex items-center gap-1.5 p-1 bg-[#061A13] border border-[#1E5C41] rounded-lg shadow-inner">
-                        <Globe className="w-3.5 h-3.5 text-[#FFB300] ml-1.5" />
-                        <span className="text-[11px] font-bold text-gray-300 uppercase px-1">DB Lang:</span>
-                        <div className="flex items-center gap-1 overflow-x-auto">
-                          {languages.map(l => (
-                            <button
-                              key={l.code}
-                              type="button"
-                              onClick={() => handleEditSubcategoryChangeLang(l.code)}
-                              className={`px-2.5 py-1 rounded text-xs font-semibold transition flex items-center gap-1 ${selectedLang === l.code
-                                ? 'bg-[#FFB300] text-[#071C14] font-bold shadow'
-                                : 'text-gray-300 hover:text-[#FFB300] hover:bg-[#0D2E21]'
-                                }`}
-                              title={`Edit ${l.name} (${l.code}) — Dynamically fetched from MySQL via API`}
-                            >
-                              <span>{l.nativeName || l.name}</span>
-                              <span className="text-[10px] opacity-70 uppercase font-mono">({l.code})</span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setPageMode('LIST');
-                          setViewDetail(null);
-                        }}
-                        className="px-4 py-2 bg-[#0D2E21] hover:bg-[#133F2E] border border-[#1E5C41] rounded-lg text-gray-200 font-semibold text-xs transition"
-                      >
-                        Close
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleSaveSubcategory}
-                        className="flex items-center gap-1.5 px-5 py-2 bg-[#FFB300] hover:bg-[#FFA000] text-[#071C14] font-bold text-xs rounded-lg transition shadow-lg shadow-amber-500/20"
-                      >
-                        <Save className="w-3.5 h-3.5" />
-                        <span>Save Subcategory to MySQL</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Exact View Detailed 2-Column Grid: Left Sacred Scroll Reader & Right Sanctum Console */}
-                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-
-                    {/* LEFT: Sacred Devotional Reader (Authentic Green & Gold Scroll) */}
-                    <div className="lg:col-span-7 flex flex-col items-center">
-
-                      {/* TYPE TABS / SELECTOR: Allows toggling between All Sacred Types or viewing a specific Type */}
+                      {/* Attached Devotional Types / Verses (Full Flow Chanting Sequence) */}
                       {viewDetail?.contents && viewDetail.contents.length > 0 && (
-                        <div className="w-full mb-4 bg-[#082218] border border-[#1A4E38] rounded-xl p-3 shadow-lg space-y-2.5">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold text-[#FFB300] uppercase tracking-wider flex items-center gap-1.5">
-                              <span>✨</span>
-                              <span>{subFormTitle || viewDetail.title} Types ({viewDetail.contents.length})</span>
-                            </span>
-                            <span className="text-[11px] text-emerald-400 font-mono">
-                              {activeViewTypeTab === 'all'
-                                ? 'Showing: Complete Chanting Sequence'
-                                : `Showing Type #${(typeof activeViewTypeTab === 'number' ? activeViewTypeTab : 0) + 1} of ${viewDetail.contents.length}`}
-                            </span>
-                          </div>
+                        <div className="space-y-6 pt-2">
+                          {(activeViewTypeTab === 'all'
+                            ? viewDetail.contents
+                            : [viewDetail.contents[typeof activeViewTypeTab === 'number' ? activeViewTypeTab : 0]]
+                          ).map((v, idx) => (
+                            <div key={v.id || idx} className="space-y-2.5">
+                              <h4 className="text-sm font-bold text-[#FFB300] tracking-wide uppercase flex items-center justify-center gap-1.5">
+                                <span>{v.title}</span>
+                              </h4>
 
-                          {/* Interactive Horizontal Scrollable Type Cards */}
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                            <button
-                              type="button"
-                              onClick={() => setActiveViewTypeTab('all')}
-                              className={`p-2 rounded-lg text-left transition border flex flex-col justify-between gap-1 ${activeViewTypeTab === 'all'
-                                ? 'bg-[#FFB300] text-[#071C14] border-[#FFB300] font-bold shadow-md'
-                                : 'bg-[#061A13] text-gray-300 border-[#16422F] hover:border-[#FFB300]/50'
-                                }`}
-                            >
-                              <div className="flex items-center justify-between w-full">
-                                <span className="text-[10px] font-mono uppercase">Full Flow</span>
-                                <span className="text-[9px] px-1 rounded bg-black/20">All</span>
-                              </div>
-                              <span className="truncate text-xs font-semibold">All {viewDetail.contents.length} Types</span>
-                            </button>
-
-                            {viewDetail.contents.map((step, idx) => (
-                              <button
-                                key={step.id || idx}
-                                type="button"
-                                onClick={() => setActiveViewTypeTab(idx)}
-                                className={`p-2 rounded-lg text-left transition border flex flex-col justify-between gap-1 ${activeViewTypeTab === idx
-                                  ? 'bg-[#FFB300] text-[#071C14] border-[#FFB300] font-bold shadow-md'
-                                  : 'bg-[#061A13] text-gray-300 border-[#16422F] hover:border-[#FFB300]/50'
-                                  }`}
-                              >
-                                <div className="flex items-center justify-between w-full">
-                                  <span className="text-[10px] font-mono font-bold">#{idx + 1}</span>
-                                  <span className="text-[9px] px-1 rounded bg-black/20">Type</span>
+                              {v.sacredText && (
+                                <div className="text-sm font-bold text-[#FEF08A] font-serif leading-relaxed whitespace-pre-wrap max-w-md mx-auto py-1">
+                                  {v.sacredText}
                                 </div>
-                                <span className="truncate text-xs font-semibold">{step.title}</span>
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
+                              )}
 
-                      <div className="w-full flex items-center justify-between mb-3 px-1 text-xs">
-                        <span className="font-bold text-[#FFB300] uppercase tracking-wider flex items-center gap-1.5">
-                          <span>📜</span>
-                          <span>Devotional Reader View</span>
-                          <span className="px-1.5 py-0.5 rounded bg-[#061A13] border border-[#16422F] text-[#FEF08A] font-mono text-[10px]">
-                            {languages.find(l => l.code === selectedLang)?.name || selectedLang.toUpperCase()}
-                          </span>
-                        </span>
-                        <span className="text-[11px] text-emerald-400/90 font-mono">
-                          {viewDetail?.contents && viewDetail.contents.length > 0
-                            ? activeViewTypeTab === 'all'
-                              ? `${viewDetail.contents.length} Ordered Steps`
-                              : `Type #${(typeof activeViewTypeTab === 'number' ? activeViewTypeTab : 0) + 1} / ${viewDetail.contents.length}`
-                            : 'Single Sacred Composition'}
-                        </span>
-                      </div>
-
-                      {/* Sacred Scroll Outer Container */}
-                      <div className="w-full max-w-lg rounded-2xl overflow-hidden border-2 border-[#D4AF37]/60 shadow-[0_12px_45px_rgba(0,0,0,0.6),0_0_25px_rgba(212,175,55,0.15)] bg-[#071F17]">
-
-                        {/* Top Sanctum Header */}
-                        <div className="bg-[#0A2A1E] text-[#FFB300] border-b border-[#1E5C41] px-5 py-3 flex items-center justify-between shadow">
-                          <div className="flex items-center gap-2">
-                            <span className="text-base">🪔</span>
-                            <span className="font-bold text-sm tracking-wide text-[#FFB300] truncate max-w-xs">
-                              {activeViewTypeTab !== 'all' && typeof activeViewTypeTab === 'number' && viewDetail?.contents?.[activeViewTypeTab]
-                                ? viewDetail.contents[activeViewTypeTab].title
-                                : (subFormTitle || viewDetail?.title || 'Subcategory')}
-                            </span>
-                          </div>
-                          <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-[#071C14] border border-[#1E5C41] text-emerald-400">
-                            /{activeViewTypeTab !== 'all' && typeof activeViewTypeTab === 'number' && (viewDetail?.contents?.[activeViewTypeTab] as any)?.slug
-                              ? (viewDetail?.contents?.[activeViewTypeTab] as any).slug
-                              : (subFormSlug || viewDetail?.slug || 'slug')}
-                          </span>
-                        </div>
-
-                        {/* Scroll Canvas with Sanctum Green & Divine Gold Typography */}
-                        <div className="bg-gradient-to-b from-[#082218] via-[#0A291E] to-[#071D15] p-6 text-center text-xs leading-relaxed max-h-[760px] overflow-y-auto space-y-5">
-
-                          {/* Top Sacred Arch Motif in Gold */}
-                          <div className="flex justify-center pt-2">
-                            <svg className="w-16 h-8 text-[#FFB300] opacity-80" viewBox="0 0 100 40" fill="currentColor">
-                              <path d="M50 0 C40 15, 20 20, 0 20 C20 25, 45 35, 50 40 C55 35, 80 25, 100 20 C80 20, 60 15, 50 0 Z"></path>
-                            </svg>
-                          </div>
-
-                          {/* Invocations */}
-                          <div className="space-y-1 text-sm font-semibold text-[#FDE68A]">
-                            <p>śrī mahāgaṇādhipatayē namaḥ</p>
-                            <p>śrī gurubhyō namaḥ</p>
-                            <p className="font-bold text-[#FFB300]">hariḥ ōṁ</p>
-                          </div>
-
-                          <div className="border-b border-dotted border-[#D4AF37]/40 w-3/4 mx-auto my-3"></div>
-
-                          {/* Editable Sacred Notes & Full Lyrics Area */}
-                          <div className="p-3.5 bg-[#061A13]/90 rounded-xl border border-[#1B563D] text-left max-w-md mx-auto space-y-2">
-                            <div className="flex items-center justify-between">
-                              <span className="text-[10px] font-bold uppercase text-[#FFB300] tracking-wider block">
-                                Sacred Notes / Procedure Description / Full Lyrics
-                              </span>
-                              <span className="text-[9px] text-emerald-400 font-mono">Editable</span>
-                            </div>
-                            <RichTextEditor
-                              value={subFormDescription}
-                              onChange={(val) => setSubFormDescription(val)}
-                              placeholder="Enter full step-by-step procedure, sankalpam, or chapter text..."
-                              minHeight="140px"
-                              hideTemplateBtn={true}
-                            />
-                          </div>
-
-                          {/* Attached Devotional Types / Verses (Full Flow Chanting Sequence) */}
-                          {viewDetail?.contents && viewDetail.contents.length > 0 && (
-                            <div className="space-y-6 pt-2">
-                              {(activeViewTypeTab === 'all'
-                                ? viewDetail.contents
-                                : [viewDetail.contents[typeof activeViewTypeTab === 'number' ? activeViewTypeTab : 0]]
-                              ).map((v, idx) => (
-                                <div key={v.id || idx} className="space-y-2.5">
-                                  <h4 className="text-sm font-bold text-[#FFB300] tracking-wide uppercase flex items-center justify-center gap-1.5">
-                                    <span>{v.title}</span>
-                                  </h4>
-
-                                  {v.sacredText && (
-                                    <div className="text-sm font-bold text-[#FEF08A] font-serif leading-relaxed whitespace-pre-wrap max-w-md mx-auto py-1">
-                                      {v.sacredText}
-                                    </div>
-                                  )}
-
-                                  {v.meaning && (
-                                    <div className="text-xs italic text-[#A7F3D0] bg-[#061A13]/90 border border-[#1B563D] p-2.5 rounded-lg max-w-md mx-auto text-center leading-relaxed">
-                                      {v.meaning}
-                                    </div>
-                                  )}
-
-                                  {activeViewTypeTab === 'all' && idx < (viewDetail?.contents?.length || 0) - 1 && (
-                                    <div className="border-b border-dotted border-[#D4AF37]/35 w-3/4 mx-auto pt-4"></div>
-                                  )}
+                              {v.meaning && (
+                                <div className="text-xs italic text-[#A7F3D0] bg-[#061A13]/90 border border-[#1B563D] p-2.5 rounded-lg max-w-md mx-auto text-center leading-relaxed">
+                                  {v.meaning}
                                 </div>
-                              ))}
-                            </div>
-                          )}
+                              )}
 
-                          {/* Bottom Sacred Lotus Filigree Finish */}
-                          <div className="flex justify-center pt-4">
-                            <svg className="w-16 h-8 text-[#FFB300] opacity-80 transform rotate-180" viewBox="0 0 100 40" fill="currentColor">
-                              <path d="M50 0 C40 15, 20 20, 0 20 C20 25, 45 35, 50 40 C55 35, 80 25, 100 20 C80 20, 60 15, 50 0 Z"></path>
-                            </svg>
-                          </div>
-
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* RIGHT: Sanctum Specifications & 4-Cards Console */}
-                    <div className="lg:col-span-5 space-y-5">
-
-                      {/* Card 1: Sanctum Specifications */}
-                      <div className="bg-[#082219] border border-[#1A4E38] rounded-xl p-5 shadow-xl space-y-4">
-                        <div className="flex items-center justify-between pb-3 border-b border-[#16422F]">
-                          <h3 className="text-sm font-bold text-[#FFB300] flex items-center gap-2">
-                            <Database className="w-4 h-4 text-[#FFB300]" />
-                            <span>Sanctum Specifications</span>
-                          </h3>
-                          <span className="text-xs text-[#FFB300] font-mono font-bold bg-[#061A13] px-2 py-0.5 rounded border border-[#16422F]">
-                            ID: #{editingSubId || 'New'}
-                          </span>
-                        </div>
-
-                        <div className="space-y-3 text-xs">
-                          {/* Parent Category & Total Steps */}
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="bg-[#061A13] p-3 rounded-lg border border-[#16422F]">
-                              <label className="text-[10px] text-gray-400 uppercase block font-semibold mb-1">Parent Category *</label>
-                              <select
-                                value={subFormParentId}
-                                onChange={(e) => setSubFormParentId(e.target.value)}
-                                className="w-full bg-[#071C14] border border-[#1E5C41] rounded px-2.5 py-1.5 text-xs text-[#FEF08A] font-medium focus:outline-none focus:border-[#FFB300]"
-                              >
-                                <option value="">-- Choose Parent --</option>
-                                {parentLookupList.map(p => (
-                                  <option key={p.id} value={p.id}>
-                                    {p.parentId ? `└── ${p.title}` : p.title}
-                                  </option>
-                                ))}
-                                {/* Any category from Devotional Services not yet in parentLookupList */}
-                                {devotionalServices
-                                  .filter(s => {
-                                    const sId = (s.serviceId || s.id || '').toLowerCase();
-                                    return !parentLookupList.some(p => p.slug?.toLowerCase() === sId || String(p.id) === sId);
-                                  })
-                                  .map(s => (
-                                    <option key={s.id || s.serviceId} value={s.id || s.serviceId}>
-                                      {s.title}
-                                    </option>
-                                  ))}
-                              </select>
-                            </div>
-                            <div className="bg-[#061A13] p-3 rounded-lg border border-[#16422F]">
-                              <span className="text-[10px] text-gray-400 uppercase block font-semibold mb-1">Total Steps / Types</span>
-                              <span className="text-[#FFB300] font-bold text-xs block pt-1.5">
-                                {viewDetail?.contents?.length || 0} Sacred Steps
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* Subcategory Title & URL Identifier */}
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="bg-[#061A13] p-3 rounded-lg border border-[#16422F]">
-                              <label className="text-[10px] text-gray-400 uppercase block font-semibold mb-1">
-                                Title ({selectedLang.toUpperCase()}) *
-                              </label>
-                              <input
-                                type="text"
-                                value={subFormTitle}
-                                onChange={(e) => setSubFormTitle(e.target.value)}
-                                placeholder="e.g. Ayyappa Pooja Vidhanam"
-                                className="w-full bg-[#071C14] border border-[#1E5C41] rounded px-2.5 py-1.5 text-xs text-gray-100 font-semibold focus:outline-none focus:border-[#FFB300]"
-                              />
-                            </div>
-                            <div className="bg-[#061A13] p-3 rounded-lg border border-[#16422F]">
-                              <label className="text-[10px] text-gray-400 uppercase block font-semibold mb-1">
-                                URL Identifier *
-                              </label>
-                              <input
-                                type="text"
-                                value={subFormSlug}
-                                onChange={(e) => setSubFormSlug(e.target.value)}
-                                placeholder="ayyappa-padi-pooja"
-                                className="w-full bg-[#071C14] border border-[#1E5C41] rounded px-2.5 py-1.5 text-xs text-[#FFB300] font-mono focus:outline-none focus:border-[#FFB300]"
-                              />
-                            </div>
-                          </div>
-
-                          {/* Sanctum Artwork */}
-                          <div className="bg-[#061A13] border border-[#16422F] rounded-lg p-3 flex flex-col sm:flex-row items-center gap-3">
-                            <div className="w-14 h-14 rounded-lg overflow-hidden border border-[#D4AF37]/50 flex-shrink-0 bg-neutral-900 flex items-center justify-center">
-                              {subFormImageUrl ? (
-                                <img
-                                  src={subFormImageUrl.startsWith('http') || subFormImageUrl.startsWith('data:')
-                                    ? subFormImageUrl
-                                    : `${API_ORIGIN}${subFormImageUrl.startsWith('/') ? '' : '/'}${subFormImageUrl}`}
-                                  alt={subFormTitle}
-                                  className="w-full h-full object-cover"
-                                  onError={(e: any) => { e.currentTarget.style.display = 'none'; }}
-                                />
-                              ) : (
-                                <span className="text-xl">🪔</span>
+                              {activeViewTypeTab === 'all' && idx < (viewDetail?.contents?.length || 0) - 1 && (
+                                <div className="border-b border-dotted border-[#D4AF37]/35 w-3/4 mx-auto pt-4"></div>
                               )}
                             </div>
-                            <div className="flex-1 w-full space-y-1.5">
-                              <div className="flex items-center justify-between">
-                                <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Sanctum Artwork</span>
-                                <div className="flex items-center gap-1.5">
-                                  <label className="px-2 py-0.5 bg-[#0D2E21] hover:bg-[#133F2E] text-[#FFB300] rounded cursor-pointer border border-[#1E5C41] text-[10px] font-semibold flex items-center gap-1">
-                                    <Upload className="w-3 h-3" />
-                                    <span>Upload</span>
-                                    <input type="file" accept="image/*" onChange={handleSubcategoryImageUpload} className="hidden" />
-                                  </label>
-                                  {subFormImageUrl && (
-                                    <button
-                                      type="button"
-                                      onClick={() => setSubFormImageUrl('')}
-                                      className="px-1.5 py-0.5 bg-red-950/40 text-red-400 hover:text-red-300 rounded text-[10px] border border-red-900/30"
-                                    >
-                                      Clear
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                              <input
-                                type="text"
-                                placeholder="Artwork URL"
-                                value={subFormImageUrl}
-                                onChange={(e) => setSubFormImageUrl(e.target.value)}
-                                className="w-full bg-[#071C14] border border-[#1E5C41] rounded px-2 py-1 text-[11px] text-gray-300 font-mono placeholder-gray-600 focus:outline-none focus:border-[#FFB300]"
-                              />
-                            </div>
-                          </div>
-
-                          {/* Card Bottom Actions */}
-                          <div className="pt-2 flex items-center justify-between gap-2 border-t border-[#16422F]">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setPageMode('LIST');
-                                setViewDetail(null);
-                              }}
-                              className="px-3.5 py-1.5 bg-[#0D2E21] hover:bg-[#133F2E] border border-[#1E5C41] rounded-lg text-gray-200 text-xs font-semibold transition"
-                            >
-                              Cancel
-                            </button>
-                            <button
-                              type="button"
-                              onClick={handleSaveSubcategory}
-                              className="px-4 py-1.5 bg-[#FFB300] hover:bg-[#FFA000] text-[#071C14] rounded-lg text-xs font-bold transition shadow-lg shadow-amber-500/20 flex items-center gap-1.5"
-                            >
-                              <Save className="w-3.5 h-3.5" />
-                              <span>Save Subcategory to MySQL</span>
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Card 2: Database Multi-Language Translations */}
-                      <div className="bg-[#082219] border border-[#1A4E38] rounded-xl p-5 shadow-xl space-y-3">
-                        <div className="flex items-center justify-between pb-2 border-b border-[#16422F]">
-                          <span className="text-xs font-bold text-[#FFB300] uppercase tracking-wide">
-                            Database Multi-Language Translations ({viewDetail?.translations?.length || 0})
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => openTranslationModal('categories', editingSubId || undefined, [
-                              { key: 'title', label: 'Subcategory Title', value: subFormTitle },
-                              { key: 'description', label: 'Sacred Notes', value: subFormDescription, isHtml: true }
-                            ], (trans, lang) => {
-                              if (trans.title) setSubFormTitle(trans.title);
-                              if (trans.description) setSubFormDescription(trans.description);
-                              if (lang) setSelectedLang(lang);
-                            })}
-                            className="bg-[#FFB300]/15 hover:bg-[#FFB300]/25 text-[#FFB300] border border-[#FFB300]/40 px-2.5 py-1 rounded text-[11px] font-semibold transition flex items-center gap-1"
-                          >
-                            <Sparkles className="w-3 h-3 text-[#FFB300]" />
-                            <span>✨ Translate (v3)</span>
-                          </button>
-                        </div>
-
-                        {viewDetail?.translations && viewDetail.translations.length > 0 ? (
-                          <div className="grid grid-cols-2 gap-2 text-xs">
-                            {viewDetail.translations.map((tr) => (
-                              <div
-                                key={tr.code}
-                                onClick={() => handleEditSubcategoryChangeLang(tr.code)}
-                                className={`p-2.5 rounded-lg border space-y-0.5 cursor-pointer transition ${selectedLang === tr.code
-                                  ? 'bg-[#0A3324] border-[#FFB300]'
-                                  : 'bg-[#061A13] border-[#16422F] hover:border-[#FFB300]/50'
-                                  }`}
-                              >
-                                <div className="flex items-center justify-between">
-                                  <span className="font-bold text-[#FFB300] uppercase text-[10px]">{tr.name || tr.code}</span>
-                                  <span className="font-mono text-gray-500 text-[9px]">{tr.code}</span>
-                                </div>
-                                <div className="font-semibold text-gray-200 text-xs truncate">{tr.title}</div>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="p-3 bg-[#061A13] rounded-lg border border-[#16422F] text-center text-xs text-gray-400">
-                            No translations in DB yet. Click &quot;✨ Translate (v3)&quot; above to translate.
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Card 3: Subcategory Types & Stotras 4-Card Grid (Exact match with View Detailed) */}
-                      {viewDetail?.contents && viewDetail.contents.length > 0 && (
-                        <div className="bg-[#082219] border border-[#1A4E38] rounded-xl p-5 shadow-xl space-y-3">
-                          <div className="flex items-center justify-between pb-2 border-b border-[#16422F]">
-                            <span className="text-xs font-bold text-[#FFB300] uppercase tracking-wide flex items-center gap-1.5">
-                              <Sparkles className="w-3.5 h-3.5 text-[#FFB300]" />
-                              <span>{subFormTitle || viewDetail.title} Types &amp; Stotras ({viewDetail.contents.length})</span>
-                            </span>
-                            <span className="text-[10px] text-emerald-400 font-mono">Select card to view detail</span>
-                          </div>
-
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                            {viewDetail.contents.map((typeItem, tIdx) => {
-                              const isSelected = activeViewTypeTab === tIdx;
-                              return (
-                                <div
-                                  key={typeItem.id || tIdx}
-                                  onClick={() => setActiveViewTypeTab(tIdx)}
-                                  className={`rounded-xl border p-3.5 cursor-pointer transition-all transform hover:-translate-y-0.5 shadow-md flex flex-col justify-between gap-3 ${isSelected
-                                    ? 'bg-[#0A3324] border-[#FFB300] shadow-[0_0_15px_rgba(255,179,0,0.2)]'
-                                    : 'bg-[#061A13] border-[#16422F] hover:border-[#FFB300]/60'
-                                    }`}
-                                >
-                                  <div>
-                                    <div className="flex items-center justify-between mb-2">
-                                      <span className="px-1.5 py-0.5 rounded bg-[#FFB300] text-[#071C14] text-[10px] font-black font-mono">
-                                        #{tIdx + 1}
-                                      </span>
-                                      <span className="text-[9px] px-2 py-0.5 rounded-full bg-[#0E2F23] border border-[#16422F] text-amber-300 font-medium">
-                                        Devotional Type
-                                      </span>
-                                    </div>
-                                    <h4 className="font-bold text-xs text-gray-100 line-clamp-1">
-                                      {typeItem.title}
-                                    </h4>
-                                    <p className="text-[11px] text-gray-400 line-clamp-2 mt-1 leading-snug">
-                                      {typeItem.meaning || typeItem.sacredText || 'Sacred devotional recitation.'}
-                                    </p>
-                                  </div>
-
-                                  <div className="pt-2 border-t border-[#16422F]/60 flex items-center justify-between text-[11px]">
-                                    <span className={`font-semibold ${isSelected ? 'text-[#FFB300]' : 'text-emerald-400'}`}>
-                                      {isSelected ? '✓ Viewing' : 'View Detail'}
-                                    </span>
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleOpenEditType(typeItem as any);
-                                      }}
-                                      className="px-2 py-0.5 bg-[#0E2F23] hover:bg-[#154634] text-[#FFB300] rounded text-[10px] font-bold border border-[#1E5C41] flex items-center gap-1"
-                                    >
-                                      <Edit3 className="w-3 h-3" />
-                                      <span>Edit</span>
-                                    </button>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
+                          ))}
                         </div>
                       )}
 
-                      {/* Card 4: Chanting Sequence & Steps (Ordered) */}
-                      <div className="bg-[#082219] border border-[#1A4E38] rounded-xl p-5 shadow-xl space-y-3">
-                        <div className="flex items-center justify-between pb-2 border-b border-[#16422F]">
-                          <span className="text-xs font-bold text-gray-200 uppercase tracking-wide">
-                            Chanting Sequence &amp; Steps
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => handleOpenCreateType(editingSubId || viewDetail?.id)}
-                            className="px-2.5 py-1 bg-[#FFB300] hover:bg-[#FFA000] text-[#071C14] rounded-lg text-xs font-bold transition flex items-center gap-1 shadow"
-                          >
-                            <Plus className="w-3.5 h-3.5" />
-                            <span>Add Step</span>
-                          </button>
-                        </div>
-
-                        {viewDetail?.contents && viewDetail.contents.length > 0 ? (
-                          <div className="space-y-2 max-h-[380px] overflow-y-auto pr-1 text-xs">
-                            {viewDetail.contents.map((step, idx) => (
-                              <div
-                                key={step.id || idx}
-                                className="bg-[#061A13] p-3 rounded-lg border border-[#16422F] hover:border-[#FFB300]/40 transition flex items-center justify-between gap-3 group"
-                              >
-                                <div className="min-w-0">
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-mono text-[#FFB300] font-bold text-[10px]">#{idx + 1}</span>
-                                    <span className="font-semibold text-gray-100 truncate">{step.title}</span>
-                                  </div>
-                                  {step.sacredText && (
-                                    <p className="text-gray-400 text-[11px] truncate mt-0.5">{step.sacredText}</p>
-                                  )}
-                                </div>
-                                <div className="flex items-center gap-1 flex-shrink-0">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleOpenEditType(step as any)}
-                                    className="p-1.5 hover:bg-[#0E2F23] rounded text-[#FFB300] transition"
-                                    title="Edit this Step / Verse"
-                                  >
-                                    <Edit3 className="w-3.5 h-3.5" />
-                                  </button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="p-6 text-center text-xs text-gray-400 bg-[#061A13] rounded-lg border border-[#16422F]">
-                            <BookOpen className="w-6 h-6 mx-auto mb-2 text-[#FFB300] opacity-60" />
-                            <p className="font-semibold text-gray-300">No subcategory types / verses attached yet.</p>
-                            <p className="text-[11px] text-gray-400 mt-1">Click &quot;+ Add Step&quot; above to create worship steps and recitations under this subcategory.</p>
-                          </div>
-                        )}
+                      {/* Bottom Sacred Lotus Filigree Finish */}
+                      <div className="flex justify-center pt-4">
+                        <svg className="w-16 h-8 text-[#FFB300] opacity-80 transform rotate-180" viewBox="0 0 100 40" fill="currentColor">
+                          <path d="M50 0 C40 15, 20 20, 0 20 C20 25, 45 35, 50 40 C55 35, 80 25, 100 20 C80 20, 60 15, 50 0 Z"></path>
+                        </svg>
                       </div>
 
                     </div>
                   </div>
                 </div>
-              )}
 
-              {/* IN-PAGE NORMAL PAGE MODE: CREATE / EDIT SUBCATEGORY TYPE (SANCTUM GREEN & GOLD LAYOUT MATCHING VIEW DETAILED) */}
-              {pageMode === 'EDIT_TYPE' && (
-                <div className="space-y-6 animate-in fade-in duration-200">
-                  {/* Header: Sanctum Green & Divine Gold */}
-                  <div className="bg-[#071C14] rounded-xl border border-[#1A4E38] p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xl">
-                    <div className="flex items-center gap-3">
-                      <button
-                        type="button"
-                        onClick={() => setPageMode('LIST')}
-                        className="px-3 py-1.5 rounded-lg bg-[#0D2E21] hover:bg-[#133F2E] text-gray-200 text-xs font-semibold transition flex items-center gap-1.5 border border-[#1E5C41] shadow"
-                      >
-                        <ArrowLeft className="w-4 h-4 text-[#FFB300]" />
-                        <span>Back to Types</span>
-                      </button>
-                      <div>
-                        <h3 className="text-base font-bold text-[#FFB300] flex items-center gap-2">
-                          <BookOpen className="w-4 h-4 text-[#FFB300]" />
-                          <span>{editingTypeId ? 'Edit Subcategory Type / Sacred Verse' : 'Create Subcategory Type / Sacred Verse'}</span>
-                        </h3>
-                        <p className="text-xs text-emerald-400/80">
-                          {editingTypeId ? `Type DB Record #${editingTypeId} — Chanting Verse &amp; Spiritual Meaning` : 'New Sacred Chanting Verse Record'}
-                        </p>
-                      </div>
+                {/* RIGHT: Sanctum Specifications & 4-Cards Console */}
+                <div className="lg:col-span-5 space-y-5">
+
+                  {/* Card 1: Sanctum Specifications */}
+                  <div className="bg-[#082219] border border-[#1A4E38] rounded-xl p-5 shadow-xl space-y-4">
+                    <div className="flex items-center justify-between pb-3 border-b border-[#16422F]">
+                      <h3 className="text-sm font-bold text-[#FFB300] flex items-center gap-2">
+                        <Database className="w-4 h-4 text-[#FFB300]" />
+                        <span>Sanctum Specifications</span>
+                      </h3>
+                      <span className="text-xs text-[#FFB300] font-mono font-bold bg-[#061A13] px-2 py-0.5 rounded border border-[#16422F]">
+                        ID: #{editingSubId || 'New'}
+                      </span>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2.5">
-                      {/* Language Selector in Edit Type Mode */}
-                      <div className="flex items-center gap-1.5 p-1 bg-[#061A13] border border-[#1E5C41] rounded-lg shadow-inner">
-                        <Globe className="w-3.5 h-3.5 text-[#FFB300] ml-1.5" />
-                        <span className="text-[11px] font-bold text-gray-300 uppercase px-1">Lang:</span>
-                        <div className="flex items-center gap-1 overflow-x-auto">
-                          {languages.map(l => (
-                            <button
-                              key={l.code}
-                              type="button"
-                              onClick={() => handleEditTypeChangeLang(l.code)}
-                              className={`px-2.5 py-1 rounded text-xs font-semibold transition flex items-center gap-1 ${selectedLang === l.code
-                                ? 'bg-[#FFB300] text-[#071C14] font-bold shadow'
-                                : 'text-gray-300 hover:text-[#FFB300] hover:bg-[#0D2E21]'
-                                }`}
-                              title={`Edit ${l.name} (${l.code}) — Dynamically fetched from MySQL via API`}
-                            >
-                              <span>{l.nativeName || l.name}</span>
-                              <span className="text-[10px] opacity-70 uppercase font-mono">({l.code})</span>
-                            </button>
-                          ))}
+                    <div className="space-y-3 text-xs">
+                      {/* Parent Category & God / Goddess (Deity) Selection - Pure DB-driven from API */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="bg-[#061A13] p-3 rounded-lg border border-[#16422F]">
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="text-[10px] text-gray-400 uppercase font-semibold">Parent Category *</label>
+                            <span className="text-[9px] text-emerald-400 font-mono">
+                              {parentLookupList.length > 0 ? `${parentLookupList.length} in DB` : 'Fetching...'}
+                            </span>
+                          </div>
+                          <select
+                            value={subFormParentId}
+                            onChange={(e) => setSubFormParentId(Number(e.target.value))}
+                            className="w-full bg-[#071C14] border border-[#1E5C41] rounded px-2.5 py-1.5 text-xs text-[#FEF08A] font-medium focus:outline-none focus:border-[#FFB300]"
+                          >
+                            <option value="">-- Select Parent Category from DB --</option>
+                            {parentLookupList.map((p: any) => (
+                              <option key={p.id} value={p.id}>
+                                {p.parentId ? `└── ${p.title}` : p.title}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="bg-[#061A13] p-3 rounded-lg border border-[#16422F]">
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="text-[10px] text-[#FFB300] uppercase font-semibold flex items-center gap-1">
+                              <span>🕉️</span>
+                              <span>God / Goddess (Deity) *</span>
+                            </label>
+                            <span className="text-[9px] text-emerald-400 font-mono">
+                              {deities.length > 0 ? `${deities.length} in DB` : 'Fetching...'}
+                            </span>
+                          </div>
+                          <select
+                            value={subFormDeityId}
+                            onChange={(e) => setSubFormDeityId(e.target.value)}
+                            className="w-full bg-[#071C14] border border-[#1E5C41] rounded px-2.5 py-1.5 text-xs text-[#FEF08A] font-semibold focus:outline-none focus:border-[#FFB300]"
+                          >
+                            {deities.length === 0 ? (
+                              <option value="">Loading Deities from DB...</option>
+                            ) : (
+                              deities.map((d: any) => {
+                                const dId = d.slug || d.id;
+                                const dName = d.name || d.englishName || d.id;
+                                const dAlt = (d.teluguName && d.teluguName !== dName) ? d.teluguName : (d.alternateName || '');
+                                return (
+                                  <option key={dId} value={dId}>
+                                    🕉️ {dName}{dAlt ? ` (${dAlt})` : ''}
+                                  </option>
+                                );
+                              })
+                            )}
+                          </select>
+
                         </div>
                       </div>
 
+                      {/* Subcategory Title & URL Identifier */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-[#061A13] p-3 rounded-lg border border-[#16422F]">
+                          <label className="text-[10px] text-gray-400 uppercase block font-semibold mb-1">
+                            Title ({selectedLang.toUpperCase()}) *
+                          </label>
+                          <input
+                            type="text"
+                            value={subFormTitle}
+                            onChange={(e) => setSubFormTitle(e.target.value)}
+                            placeholder="e.g. Ayyappa Pooja Vidhanam"
+                            className="w-full bg-[#071C14] border border-[#1E5C41] rounded px-2.5 py-1.5 text-xs text-gray-100 font-semibold focus:outline-none focus:border-[#FFB300]"
+                          />
+                        </div>
+                        <div className="bg-[#061A13] p-3 rounded-lg border border-[#16422F]">
+                          <label className="text-[10px] text-gray-400 uppercase block font-semibold mb-1">
+                            URL Identifier *
+                          </label>
+                          <input
+                            type="text"
+                            value={subFormSlug}
+                            onChange={(e) => setSubFormSlug(e.target.value)}
+                            placeholder="ayyappa-padi-pooja"
+                            className="w-full bg-[#071C14] border border-[#1E5C41] rounded px-2.5 py-1.5 text-xs text-[#FFB300] font-mono focus:outline-none focus:border-[#FFB300]"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Subcategory Status */}
+                      <div className="bg-[#061A13] p-3 rounded-lg border border-[#16422F]">
+                        <label className="text-[10px] text-gray-400 uppercase block font-semibold mb-1">
+                          Subcategory Status
+                        </label>
+                        <select
+                          value={subFormStatus}
+                          onChange={(e) => setSubFormStatus(e.target.value)}
+                          className="w-full bg-[#071C14] border border-[#1E5C41] rounded px-2.5 py-1.5 text-xs text-[#FFB300] font-semibold focus:outline-none focus:border-[#FFB300]"
+                        >
+                          <option value="active">Active (Visible & Published)</option>
+                          <option value="coming_soon">Coming Soon (Upcoming Preview)</option>
+                          <option value="inactive">Inactive (Hidden / Draft)</option>
+                        </select>
+                      </div>
+
+                      {/* Sanctum Artwork */}
+                      <div className="bg-[#061A13] border border-[#16422F] rounded-lg p-3 flex flex-col sm:flex-row items-center gap-3">
+                        <div className="w-14 h-14 rounded-lg overflow-hidden border border-[#D4AF37]/50 flex-shrink-0 bg-neutral-900 flex items-center justify-center">
+                          {subFormImageUrl ? (
+                            <img
+                              src={subFormImageUrl.startsWith('http') || subFormImageUrl.startsWith('data:')
+                                ? subFormImageUrl
+                                : `${API_ORIGIN}${subFormImageUrl.startsWith('/') ? '' : '/'}${subFormImageUrl}`}
+                              alt={subFormTitle}
+                              className="w-full h-full object-cover"
+                              onError={(e: any) => { e.currentTarget.style.display = 'none'; }}
+                            />
+                          ) : (
+                            <span className="text-xl">🪔</span>
+                          )}
+                        </div>
+                        <div className="flex-1 w-full space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Sanctum Artwork</span>
+                            <div className="flex items-center gap-1.5">
+                              <label className="px-2 py-0.5 bg-[#0D2E21] hover:bg-[#133F2E] text-[#FFB300] rounded cursor-pointer border border-[#1E5C41] text-[10px] font-semibold flex items-center gap-1">
+                                <Upload className="w-3 h-3" />
+                                <span>Upload</span>
+                                <input type="file" accept="image/*" onChange={handleSubcategoryImageUpload} className="hidden" />
+                              </label>
+                              {subFormImageUrl && (
+                                <button
+                                  type="button"
+                                  onClick={() => setSubFormImageUrl('')}
+                                  className="px-1.5 py-0.5 bg-red-950/40 text-red-400 hover:text-red-300 rounded text-[10px] border border-red-900/30"
+                                >
+                                  Clear
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                          <input
+                            type="text"
+                            placeholder="Artwork URL"
+                            value={subFormImageUrl}
+                            onChange={(e) => setSubFormImageUrl(e.target.value)}
+                            className="w-full bg-[#071C14] border border-[#1E5C41] rounded px-2 py-1 text-[11px] text-gray-300 font-mono placeholder-gray-600 focus:outline-none focus:border-[#FFB300]"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Card Bottom Actions */}
+                      <div className="pt-2 flex items-center justify-between gap-2 border-t border-[#16422F]">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPageMode('LIST');
+                            setViewDetail(null);
+                          }}
+                          className="px-3.5 py-1.5 bg-[#0D2E21] hover:bg-[#133F2E] border border-[#1E5C41] rounded-lg text-gray-200 text-xs font-semibold transition"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleSaveSubcategory}
+                          className="px-4 py-1.5 bg-[#FFB300] hover:bg-[#FFA000] text-[#071C14] rounded-lg text-xs font-bold transition shadow-lg shadow-amber-500/20 flex items-center gap-1.5"
+                        >
+                          <Save className="w-3.5 h-3.5" />
+                          <span>Save</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card 2: Database Multi-Language Translations */}
+                  <div className="bg-[#082219] border border-[#1A4E38] rounded-xl p-5 shadow-xl space-y-3">
+                    <div className="flex items-center justify-between pb-2 border-b border-[#16422F]">
+                      <span className="text-xs font-bold text-[#FFB300] uppercase tracking-wide">
+                        Database Multi-Language Translations ({viewDetail?.translations?.length || 0})
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleOpenSubcategoryTranslation}
+                        className="bg-[#FFB300]/15 hover:bg-[#FFB300]/25 text-[#FFB300] border border-[#FFB300]/40 px-2.5 py-1 rounded text-[11px] font-semibold transition flex items-center gap-1 shadow-sm"
+                        title="Auto-translate into English, Tamil, Kannada, & Hindi"
+                      >
+                        <Sparkles className="w-3 h-3 text-[#FFB300]" />
+                        <span>✨ Translate (v3)</span>
+                      </button>
+                    </div>
+
+                    {/* Dual Workflow Guidance Banner */}
+                    <div className="bg-[#061A13] border border-[#16422F] rounded-lg p-2.5 text-[11px] text-gray-300 space-y-1">
+                      <div className="flex items-center gap-1.5 font-bold text-amber-300 text-xs">
+                        <span>🌐</span>
+                        <span>Multi-Language Workflow</span>
+                      </div>
+                      <p className="text-gray-400">
+                        <strong className="text-amber-300/90">Way 1 (Auto):</strong> Click <span className="text-[#FFB300] font-semibold">&quot;✨ Translate (v3)&quot;</span> to select target languages and automatically translate &amp; save to MySQL.
+                      </p>
+                      <p className="text-gray-400">
+                        <strong className="text-amber-300/90">Way 2 (Manual):</strong> Click any DB Lang button (<span className="text-[#FFB300] font-mono">TE, EN, TA, KN, HI</span>) above to enter or paste custom text and save.
+                      </p>
+                    </div>
+
+                    {viewDetail?.translations && viewDetail.translations.length > 0 ? (
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        {viewDetail.translations.map((tr) => (
+                          <div
+                            key={tr.code}
+                            onClick={() => handleEditSubcategoryChangeLang(tr.code)}
+                            className={`p-2.5 rounded-lg border space-y-0.5 cursor-pointer transition ${selectedLang === tr.code
+                              ? 'bg-[#0A3324] border-[#FFB300]'
+                              : 'bg-[#061A13] border-[#16422F] hover:border-[#FFB300]/50'
+                              }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-[#FFB300] uppercase text-[10px]">{tr.name || tr.code}</span>
+                              <span className="font-mono text-gray-500 text-[9px]">{tr.code}</span>
+                            </div>
+                            <div className="font-semibold text-gray-200 text-xs truncate">{tr.title}</div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="p-3 bg-[#061A13] rounded-lg border border-[#16422F] text-center text-xs text-gray-400">
+                        No translations in DB yet. Click &quot;✨ Translate (v3)&quot; above to translate.
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Card 3: Subcategory Types & Stotras 4-Card Grid (Exact match with View Detailed) */}
+                  {viewDetail?.contents && viewDetail.contents.length > 0 && (
+                    <div className="bg-[#082219] border border-[#1A4E38] rounded-xl p-5 shadow-xl space-y-3">
+                      <div className="flex items-center justify-between pb-2 border-b border-[#16422F]">
+                        <span className="text-xs font-bold text-[#FFB300] uppercase tracking-wide flex items-center gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5 text-[#FFB300]" />
+                          <span>{subFormTitle || viewDetail.title} Types &amp; Stotras ({viewDetail.contents.length})</span>
+                        </span>
+                        <span className="text-[10px] text-emerald-400 font-mono">Select card to view detail</span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                        {viewDetail.contents.map((typeItem, tIdx) => {
+                          const isSelected = activeViewTypeTab === tIdx;
+                          return (
+                            <div
+                              key={typeItem.id || tIdx}
+                              onClick={() => setActiveViewTypeTab(tIdx)}
+                              className={`rounded-xl border p-3.5 cursor-pointer transition-all transform hover:-translate-y-0.5 shadow-md flex flex-col justify-between gap-3 ${isSelected
+                                ? 'bg-[#0A3324] border-[#FFB300] shadow-[0_0_15px_rgba(255,179,0,0.2)]'
+                                : 'bg-[#061A13] border-[#16422F] hover:border-[#FFB300]/60'
+                                }`}
+                            >
+                              <div>
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="px-1.5 py-0.5 rounded bg-[#FFB300] text-[#071C14] text-[10px] font-black font-mono">
+                                    #{tIdx + 1}
+                                  </span>
+                                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-[#0E2F23] border border-[#16422F] text-amber-300 font-medium">
+                                    Devotional Type
+                                  </span>
+                                </div>
+                                <h4 className="font-bold text-xs text-gray-100 line-clamp-1">
+                                  {typeItem.title}
+                                </h4>
+                                <p className="text-[11px] text-gray-400 line-clamp-2 mt-1 leading-snug">
+                                  {typeItem.meaning || typeItem.sacredText || 'Sacred devotional recitation.'}
+                                </p>
+                              </div>
+
+                              <div className="pt-2 border-t border-[#16422F]/60 flex items-center justify-between text-[11px]">
+                                <span className={`font-semibold ${isSelected ? 'text-[#FFB300]' : 'text-emerald-400'}`}>
+                                  {isSelected ? '✓ Viewing' : 'View Detail'}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenEditType(typeItem as any);
+                                  }}
+                                  className="px-2 py-0.5 bg-[#0E2F23] hover:bg-[#154634] text-[#FFB300] rounded text-[10px] font-bold border border-[#1E5C41] flex items-center gap-1"
+                                >
+                                  <Edit3 className="w-3 h-3" />
+                                  <span>Edit</span>
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+
+
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* IN-PAGE NORMAL PAGE MODE: CREATE / EDIT SUBCATEGORY TYPE (SANCTUM GREEN & GOLD LAYOUT MATCHING VIEW DETAILED) */}
+          {pageMode === 'EDIT_TYPE' && (
+            <div className="space-y-4 animate-in fade-in duration-200">
+              {/* Top Navigation: Back to List on top of the card */}
+              <div className="flex items-center">
+                <button
+                  type="button"
+                  onClick={() => setPageMode('LIST')}
+                  className="px-3.5 py-1.5 rounded-lg bg-[#0D2E21] hover:bg-[#133F2E] text-gray-200 hover:text-white text-xs font-semibold transition inline-flex items-center gap-2 border border-[#1E5C41] shadow hover:border-[#FFB300]/50"
+                >
+                  <ArrowLeft className="w-4 h-4 text-[#FFB300]" />
+                  <span>Back to List</span>
+                </button>
+              </div>
+
+              {/* Header: Sanctum Green & Divine Gold */}
+              <div className="bg-[#071C14] rounded-xl border border-[#1A4E38] p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xl">
+                <div>
+                  <h3 className="text-base font-bold text-[#FFB300] flex items-center gap-2">
+                    <BookOpen className="w-4 h-4 text-[#FFB300]" />
+                    <span>{editingTypeId ? 'Edit Subcategory Type / Sacred Verse' : 'Create Subcategory Type / Sacred Verse'}</span>
+                  </h3>
+                  <p className="text-xs text-emerald-400/80">
+                    {editingTypeId ? `Type DB Record #${editingTypeId} — Chanting Verse &amp; Spiritual Meaning` : 'New Sacred Chanting Verse Record'}
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2.5">
+                  {/* Language Selector in Edit Type Mode */}
+                  <div className="flex items-center gap-1.5 p-1 bg-[#061A13] border border-[#1E5C41] rounded-lg shadow-inner">
+                    <Globe className="w-3.5 h-3.5 text-[#FFB300] ml-1.5" />
+                    <span className="text-[11px] font-bold text-gray-300 uppercase px-1">Lang:</span>
+                    <div className="flex items-center gap-1 overflow-x-auto">
+                      {languages.map(l => (
+                        <button
+                          key={l.code}
+                          type="button"
+                          onClick={() => handleEditTypeChangeLang(l.code)}
+                          className={`px-2.5 py-1 rounded text-xs font-semibold transition flex items-center gap-1 ${selectedLang === l.code
+                            ? 'bg-[#FFB300] text-[#071C14] font-bold shadow'
+                            : 'text-gray-300 hover:text-[#FFB300] hover:bg-[#0D2E21]'
+                            }`}
+                          title={`Edit ${l.name} (${l.code}) — Dynamically fetched from MySQL via API`}
+                        >
+                          <span>{l.nativeName || l.name}</span>
+                          <span className="text-[10px] opacity-70 uppercase font-mono">({l.code})</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setPageMode('LIST')}
+                    className="px-4 py-2 bg-[#0D2E21] hover:bg-[#133F2E] border border-[#1E5C41] rounded-lg text-gray-200 font-semibold text-xs transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveType}
+                    className="flex items-center gap-1.5 px-5 py-2 bg-[#FFB300] hover:bg-[#FFA000] text-[#071C14] font-bold text-xs rounded-lg transition shadow-lg shadow-amber-500/20"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    <span>Save Type to MySQL</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* 2-Column Grid: Left Edit Form & Right Live Devotional Verse Reader Preview */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+                {/* LEFT: Sacred Input Form */}
+                <div className="lg:col-span-7 bg-[#082218] rounded-xl border border-[#1A4E38] p-6 shadow-xl space-y-5 text-xs">
+                  {/* Language Status Notice */}
+                  {editingTypeId && !typeFormTitle && (
+                    <div className="p-3 bg-amber-950/40 border border-amber-600/50 rounded-xl flex items-center gap-2 text-xs text-amber-200">
+                      <AlertCircle className="w-4 h-4 text-[#FFB300] flex-shrink-0" />
+                      <span>
+                        No <strong>{languages.find(l => l.code === selectedLang)?.name || selectedLang.toUpperCase()}</strong> translation exists in MariaDB yet. Enter chanting verse &amp; meaning below to create it directly in MySQL.
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Cascading Category & Subcategory Assignment */}
+                  <div className="bg-[#061A13] p-4 rounded-xl border border-[#1E5C41] space-y-3">
+                    <div className="flex items-center justify-between pb-2 border-b border-[#16422F]">
+                      <span className="text-[11px] font-bold text-[#FFB300] uppercase tracking-wider flex items-center gap-1.5">
+                        <span>📁</span>
+                        <span>Assign Category &amp; Target Subcategory</span>
+                      </span>
+                      <span className="text-[10px] text-emerald-400">
+                        Step 1: Parent Category &rarr; Step 2: Subcategory
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Primary Parent Category Selector */}
+                      <div>
+                        <label className="block font-bold text-gray-300 uppercase mb-1 flex items-center justify-between">
+                          <span>1. Parent Category</span>
+                          <span className="text-[10px] text-[#FFB300] font-normal">
+                            ({parentLookupList.length > 0 ? parentLookupList.length : 9} categories)
+                          </span>
+                        </label>
+                        <select
+                          value={typeFormParentId}
+                          onChange={(e) => {
+                            const newParent = e.target.value;
+                            setTypeFormParentId(newParent);
+                            const subPool = allSubcategoriesList.length > 0 ? allSubcategoriesList : subcategories;
+                            const filtered = newParent === 'all'
+                              ? subPool
+                              : subPool.filter(s => String(s.parentId) === String(newParent) || String(s.parentSlug) === String(newParent));
+                            if (filtered.length > 0) {
+                              if (!filtered.some(s => Number(s.id) === Number(typeFormCategoryId))) {
+                                setTypeFormCategoryId(Number(filtered[0].id));
+                              }
+                            } else {
+                              setTypeFormCategoryId('');
+                            }
+                          }}
+                          className="w-full bg-[#071C14] border border-[#1E5C41] rounded-lg px-3 py-2 text-[#FEF08A] font-medium focus:outline-none focus:border-[#FFB300]"
+                        >
+                          <option value="all">-- All Parent Categories ({parentLookupList.length > 0 ? parentLookupList.length : 9}) --</option>
+                          {parentLookupList.map(p => (
+                            <option key={p.id} value={p.id}>
+                              {p.title} ({p.subcategoriesCount ?? 0} subcategories)
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Target Subcategory Selector */}
+                      <div>
+                        <label className="block font-bold text-gray-300 uppercase mb-1 flex items-center justify-between">
+                          <span>2. Target Subcategory *</span>
+                          <span className="text-[10px] text-gray-400 font-normal">
+                            {(() => {
+                              const subPool = allSubcategoriesList.length > 0 ? allSubcategoriesList : subcategories;
+                              const count = typeFormParentId === 'all'
+                                ? subPool.length
+                                : subPool.filter(s => String(s.parentId) === String(typeFormParentId) || String(s.parentSlug) === String(typeFormParentId)).length;
+                              return `(${count} available)`;
+                            })()}
+                          </span>
+                        </label>
+                        <select
+                          value={typeFormCategoryId}
+                          onChange={(e) => {
+                            const val = Number(e.target.value);
+                            setTypeFormCategoryId(val || '');
+                            if (val) {
+                              const subPool = allSubcategoriesList.length > 0 ? allSubcategoriesList : subcategories;
+                              const match = subPool.find(s => Number(s.id) === val);
+                              if (match && match.parentId) {
+                                setTypeFormParentId(match.parentId);
+                              }
+                            }
+                          }}
+                          className="w-full bg-[#071C14] border border-[#1E5C41] rounded-lg px-3 py-2 text-[#FEF08A] font-medium focus:outline-none focus:border-[#FFB300]"
+                        >
+                          <option value="">-- Choose Subcategory (e.g. Ayyappa Pooja, Ganapati Pooja) --</option>
+                          {(() => {
+                            const subPool = allSubcategoriesList.length > 0 ? allSubcategoriesList : subcategories;
+                            const filtered = typeFormParentId === 'all'
+                              ? subPool
+                              : subPool.filter(s => String(s.parentId) === String(typeFormParentId) || String(s.parentSlug) === String(typeFormParentId));
+                            return filtered.map(s => (
+                              <option key={s.id} value={s.id}>
+                                {s.parentTitle ? `${s.parentTitle} ➔ ` : ''}{s.title} (#{s.id})
+                              </option>
+                            ));
+                          })()}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block font-bold text-gray-300 uppercase mb-1">
+                        Type / Verse Title *
+                      </label>
+                      <input
+                        type="text"
+                        value={typeFormTitle}
+                        onChange={(e) => setTypeFormTitle(e.target.value)}
+                        placeholder="e.g. ధ్యానం / Dhyanam / Sri Rudram"
+                        className="w-full bg-[#061A13] border border-[#1E5C41] rounded-lg px-3 py-2 text-gray-100 focus:outline-none focus:border-[#FFB300]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block font-bold text-gray-300 uppercase mb-1">
+                        URL Identifier (Slug) *
+                      </label>
+                      <input
+                        type="text"
+                        value={typeFormSlug}
+                        onChange={(e) => setTypeFormSlug(e.target.value)}
+                        placeholder="e.g. dhyanam-mantra"
+                        className="w-full bg-[#061A13] border border-[#1E5C41] rounded-lg px-3 py-2 text-[#FFB300] font-mono focus:outline-none focus:border-[#FFB300]"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-[#FFB300] uppercase mb-1">
+                      Sacred Chanting / Sanskrit / Telugu Mantras (Recitation Text)
+                    </label>
+                    <textarea
+                      rows={4}
+                      value={typeFormSacredText}
+                      onChange={(e) => setTypeFormSacredText(e.target.value)}
+                      placeholder="ఓం శ్రీ స్వామియే శరణం అయ్యప్ప..."
+                      className="w-full bg-[#061A13] border border-[#1E5C41] rounded-lg p-3 text-[#FEF08A] font-serif leading-relaxed text-xs focus:outline-none focus:border-[#FFB300]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-emerald-400 uppercase mb-1">
+                      Spiritual Meaning / Ritual Commentary / Benefits
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={typeFormMeaning}
+                      onChange={(e) => setTypeFormMeaning(e.target.value)}
+                      placeholder="Enter the spiritual meaning and significance of this ritual step..."
+                      className="w-full bg-[#061A13] border border-[#1E5C41] rounded-lg p-3 text-emerald-200 text-xs focus:outline-none focus:border-[#FFB300]"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block font-bold text-gray-300 uppercase mb-1">Display Order</label>
+                      <input
+                        type="number"
+                        value={typeFormDisplayOrder}
+                        onChange={(e) => setTypeFormDisplayOrder(Number(e.target.value))}
+                        className="w-full bg-[#061A13] border border-[#1E5C41] rounded-lg px-3 py-2 text-gray-100 focus:outline-none focus:border-[#FFB300]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-gray-300 uppercase mb-1">Status</label>
+                      <select
+                        value={typeFormStatus}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setTypeFormStatus(val);
+                          setTypeFormIsPublished(val === 'active');
+                        }}
+                        className="w-full bg-[#061A13] border border-[#1E5C41] rounded-lg px-3 py-2 text-[#FFB300] font-semibold focus:outline-none focus:border-[#FFB300]"
+                      >
+                        <option value="active">Active (Published &amp; Visible in App)</option>
+                        <option value="coming_soon">Coming Soon (Upcoming Preview)</option>
+                        <option value="inactive">Inactive (Hidden / Draft)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-3 pt-4 border-t border-[#1E5C41]">
+                    <button
+                      type="button"
+                      onClick={() => openTranslationModal('devotional_contents', editingTypeId || undefined, [
+                        { key: 'title', label: 'Type Title', value: typeFormTitle },
+                        { key: 'sacredText', label: 'Sacred Chant', value: typeFormSacredText },
+                        { key: 'meaning', label: 'Meaning', value: typeFormMeaning }
+                      ], (trans) => {
+                        if (trans.title) setTypeFormTitle(trans.title);
+                        if (trans.sacredText) setTypeFormSacredText(trans.sacredText);
+                        if (trans.meaning) setTypeFormMeaning(trans.meaning);
+                      })}
+                      className="bg-[#FFB300]/15 hover:bg-[#FFB300]/25 text-[#FFB300] border border-[#FFB300]/40 px-3.5 py-2 rounded-lg text-xs font-semibold transition flex items-center gap-1.5"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-[#FFB300]" />
+                      <span>✨ Translate (v3)</span>
+                    </button>
+
+                    <div className="flex items-center gap-2">
                       <button
                         type="button"
                         onClick={() => setPageMode('LIST')}
-                        className="px-4 py-2 bg-[#0D2E21] hover:bg-[#133F2E] border border-[#1E5C41] rounded-lg text-gray-200 font-semibold text-xs transition"
+                        className="px-4 py-2 bg-[#0D2E21] hover:bg-[#133F2E] border border-[#1E5C41] rounded-lg text-gray-200 text-xs font-semibold transition"
                       >
                         Cancel
                       </button>
                       <button
                         type="button"
                         onClick={handleSaveType}
-                        className="flex items-center gap-1.5 px-5 py-2 bg-[#FFB300] hover:bg-[#FFA000] text-[#071C14] font-bold text-xs rounded-lg transition shadow-lg shadow-amber-500/20"
+                        className="bg-[#FFB300] hover:bg-[#FFA000] text-[#071C14] px-5 py-2 rounded-lg text-xs font-bold transition shadow-lg shadow-amber-500/20"
                       >
-                        <Save className="w-3.5 h-3.5" />
-                        <span>Save Type to MySQL</span>
+                        Save Type to MySQL
                       </button>
                     </div>
                   </div>
+                </div>
 
-                  {/* 2-Column Grid: Left Edit Form & Right Live Devotional Verse Reader Preview */}
-                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                {/* RIGHT: Live Devotional Verse Reader Preview */}
+                <div className="lg:col-span-5 space-y-5">
+                  <div className="flex items-center justify-between px-1 text-xs">
+                    <span className="font-bold text-[#FFB300] uppercase tracking-wider flex items-center gap-1.5">
+                      <span>📜</span>
+                      <span>Devotional Verse Preview</span>
+                    </span>
+                    <span className="text-[11px] text-emerald-400 font-mono">Live Worship Card</span>
+                  </div>
 
-                    {/* LEFT: Sacred Input Form */}
-                    <div className="lg:col-span-7 bg-[#082218] rounded-xl border border-[#1A4E38] p-6 shadow-xl space-y-5 text-xs">
-                      {/* Language Status Notice */}
-                      {editingTypeId && !typeFormTitle && (
-                        <div className="p-3 bg-amber-950/40 border border-amber-600/50 rounded-xl flex items-center gap-2 text-xs text-amber-200">
-                          <AlertCircle className="w-4 h-4 text-[#FFB300] flex-shrink-0" />
-                          <span>
-                            No <strong>{languages.find(l => l.code === selectedLang)?.name || selectedLang.toUpperCase()}</strong> translation exists in MariaDB yet. Enter chanting verse &amp; meaning below to create it directly in MySQL.
-                          </span>
-                        </div>
-                      )}
+                  {/* Sacred Scroll Outer Container */}
+                  <div className="w-full rounded-2xl overflow-hidden border-2 border-[#D4AF37]/60 shadow-[0_12px_45px_rgba(0,0,0,0.6),0_0_25px_rgba(212,175,55,0.15)] bg-[#071F17]">
 
-                      {/* Cascading Category & Subcategory Assignment */}
-                      <div className="bg-[#061A13] p-4 rounded-xl border border-[#1E5C41] space-y-3">
-                        <div className="flex items-center justify-between pb-2 border-b border-[#16422F]">
-                          <span className="text-[11px] font-bold text-[#FFB300] uppercase tracking-wider flex items-center gap-1.5">
-                            <span>📁</span>
-                            <span>Assign Category &amp; Target Subcategory</span>
-                          </span>
-                          <span className="text-[10px] text-emerald-400">
-                            Step 1: Parent Category &rarr; Step 2: Subcategory
-                          </span>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {/* Primary Parent Category Selector */}
-                          <div>
-                            <label className="block font-bold text-gray-300 uppercase mb-1 flex items-center justify-between">
-                              <span>1. Parent Category</span>
-                              <span className="text-[10px] text-[#FFB300] font-normal">
-                                ({parentLookupList.length > 0 ? parentLookupList.length : 9} categories)
-                              </span>
-                            </label>
-                            <select
-                              value={typeFormParentId}
-                              onChange={(e) => {
-                                const newParent = e.target.value;
-                                setTypeFormParentId(newParent);
-                                const subPool = allSubcategoriesList.length > 0 ? allSubcategoriesList : subcategories;
-                                const filtered = newParent === 'all'
-                                  ? subPool
-                                  : subPool.filter(s => String(s.parentId) === String(newParent) || String(s.parentSlug) === String(newParent));
-                                if (filtered.length > 0) {
-                                  if (!filtered.some(s => Number(s.id) === Number(typeFormCategoryId))) {
-                                    setTypeFormCategoryId(Number(filtered[0].id));
-                                  }
-                                } else {
-                                  setTypeFormCategoryId('');
-                                }
-                              }}
-                              className="w-full bg-[#071C14] border border-[#1E5C41] rounded-lg px-3 py-2 text-[#FEF08A] font-medium focus:outline-none focus:border-[#FFB300]"
-                            >
-                              <option value="all">-- All Parent Categories ({parentLookupList.length > 0 ? parentLookupList.length : 9}) --</option>
-                              {parentLookupList.map(p => (
-                                <option key={p.id} value={p.id}>
-                                  {p.title} ({p.subcategoriesCount ?? 0} subcategories)
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-
-                          {/* Target Subcategory Selector */}
-                          <div>
-                            <label className="block font-bold text-gray-300 uppercase mb-1 flex items-center justify-between">
-                              <span>2. Target Subcategory *</span>
-                              <span className="text-[10px] text-gray-400 font-normal">
-                                {(() => {
-                                  const subPool = allSubcategoriesList.length > 0 ? allSubcategoriesList : subcategories;
-                                  const count = typeFormParentId === 'all'
-                                    ? subPool.length
-                                    : subPool.filter(s => String(s.parentId) === String(typeFormParentId) || String(s.parentSlug) === String(typeFormParentId)).length;
-                                  return `(${count} available)`;
-                                })()}
-                              </span>
-                            </label>
-                            <select
-                              value={typeFormCategoryId}
-                              onChange={(e) => {
-                                const val = Number(e.target.value);
-                                setTypeFormCategoryId(val || '');
-                                if (val) {
-                                  const subPool = allSubcategoriesList.length > 0 ? allSubcategoriesList : subcategories;
-                                  const match = subPool.find(s => Number(s.id) === val);
-                                  if (match && match.parentId) {
-                                    setTypeFormParentId(match.parentId);
-                                  }
-                                }
-                              }}
-                              className="w-full bg-[#071C14] border border-[#1E5C41] rounded-lg px-3 py-2 text-[#FEF08A] font-medium focus:outline-none focus:border-[#FFB300]"
-                            >
-                              <option value="">-- Choose Subcategory (e.g. Ayyappa Pooja, Ganapati Pooja) --</option>
-                              {(() => {
-                                const subPool = allSubcategoriesList.length > 0 ? allSubcategoriesList : subcategories;
-                                const filtered = typeFormParentId === 'all'
-                                  ? subPool
-                                  : subPool.filter(s => String(s.parentId) === String(typeFormParentId) || String(s.parentSlug) === String(typeFormParentId));
-                                return filtered.map(s => (
-                                  <option key={s.id} value={s.id}>
-                                    {s.parentTitle ? `${s.parentTitle} ➔ ` : ''}{s.title} (#{s.id})
-                                  </option>
-                                ));
-                              })()}
-                            </select>
-                          </div>
-                        </div>
+                    {/* Header */}
+                    <div className="bg-[#0A2A1E] text-[#FFB300] border-b border-[#1E5C41] px-4 py-2.5 flex items-center justify-between shadow">
+                      <div className="flex items-center gap-2 truncate">
+                        <span className="text-base">🪔</span>
+                        <span className="font-bold text-xs tracking-wide text-[#FFB300] truncate">
+                          {typeFormTitle || 'Verse / Step Title'}
+                        </span>
                       </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block font-bold text-gray-300 uppercase mb-1">
-                            Type / Verse Title *
-                          </label>
-                          <input
-                            type="text"
-                            value={typeFormTitle}
-                            onChange={(e) => setTypeFormTitle(e.target.value)}
-                            placeholder="e.g. ధ్యానం / Dhyanam / Sri Rudram"
-                            className="w-full bg-[#061A13] border border-[#1E5C41] rounded-lg px-3 py-2 text-gray-100 focus:outline-none focus:border-[#FFB300]"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block font-bold text-gray-300 uppercase mb-1">
-                            URL Identifier (Slug) *
-                          </label>
-                          <input
-                            type="text"
-                            value={typeFormSlug}
-                            onChange={(e) => setTypeFormSlug(e.target.value)}
-                            placeholder="e.g. dhyanam-mantra"
-                            className="w-full bg-[#061A13] border border-[#1E5C41] rounded-lg px-3 py-2 text-[#FFB300] font-mono focus:outline-none focus:border-[#FFB300]"
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block font-bold text-[#FFB300] uppercase mb-1">
-                          Sacred Chanting / Sanskrit / Telugu Mantras (Recitation Text)
-                        </label>
-                        <textarea
-                          rows={4}
-                          value={typeFormSacredText}
-                          onChange={(e) => setTypeFormSacredText(e.target.value)}
-                          placeholder="ఓం శ్రీ స్వామియే శరణం అయ్యప్ప..."
-                          className="w-full bg-[#061A13] border border-[#1E5C41] rounded-lg p-3 text-[#FEF08A] font-serif leading-relaxed text-xs focus:outline-none focus:border-[#FFB300]"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block font-bold text-emerald-400 uppercase mb-1">
-                          Spiritual Meaning / Ritual Commentary / Benefits
-                        </label>
-                        <textarea
-                          rows={3}
-                          value={typeFormMeaning}
-                          onChange={(e) => setTypeFormMeaning(e.target.value)}
-                          placeholder="Enter the spiritual meaning and significance of this ritual step..."
-                          className="w-full bg-[#061A13] border border-[#1E5C41] rounded-lg p-3 text-emerald-200 text-xs focus:outline-none focus:border-[#FFB300]"
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block font-bold text-gray-300 uppercase mb-1">Display Order</label>
-                          <input
-                            type="number"
-                            value={typeFormDisplayOrder}
-                            onChange={(e) => setTypeFormDisplayOrder(Number(e.target.value))}
-                            className="w-full bg-[#061A13] border border-[#1E5C41] rounded-lg px-3 py-2 text-gray-100 focus:outline-none focus:border-[#FFB300]"
-                          />
-                        </div>
-                        <div className="flex items-center gap-2 pt-6">
-                          <input
-                            type="checkbox"
-                            id="typeFormPublished"
-                            checked={typeFormIsPublished}
-                            onChange={(e) => setTypeFormIsPublished(e.target.checked)}
-                            className="w-4 h-4 rounded bg-[#061A13] border-[#1E5C41] text-[#FFB300] focus:ring-[#FFB300]"
-                          />
-                          <label htmlFor="typeFormPublished" className="text-gray-300 font-semibold cursor-pointer">
-                            Published and Active in Devotional App
-                          </label>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between gap-3 pt-4 border-t border-[#1E5C41]">
-                        <button
-                          type="button"
-                          onClick={() => openTranslationModal('devotional_contents', editingTypeId || undefined, [
-                            { key: 'title', label: 'Type Title', value: typeFormTitle },
-                            { key: 'sacredText', label: 'Sacred Chant', value: typeFormSacredText },
-                            { key: 'meaning', label: 'Meaning', value: typeFormMeaning }
-                          ], (trans) => {
-                            if (trans.title) setTypeFormTitle(trans.title);
-                            if (trans.sacredText) setTypeFormSacredText(trans.sacredText);
-                            if (trans.meaning) setTypeFormMeaning(trans.meaning);
-                          })}
-                          className="bg-[#FFB300]/15 hover:bg-[#FFB300]/25 text-[#FFB300] border border-[#FFB300]/40 px-3.5 py-2 rounded-lg text-xs font-semibold transition flex items-center gap-1.5"
-                        >
-                          <Sparkles className="w-3.5 h-3.5 text-[#FFB300]" />
-                          <span>✨ Translate (v3)</span>
-                        </button>
-
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setPageMode('LIST')}
-                            className="px-4 py-2 bg-[#0D2E21] hover:bg-[#133F2E] border border-[#1E5C41] rounded-lg text-gray-200 text-xs font-semibold transition"
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            type="button"
-                            onClick={handleSaveType}
-                            className="bg-[#FFB300] hover:bg-[#FFA000] text-[#071C14] px-5 py-2 rounded-lg text-xs font-bold transition shadow-lg shadow-amber-500/20"
-                          >
-                            Save Type to MySQL
-                          </button>
-                        </div>
-                      </div>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#071C14] border border-[#1E5C41] text-emerald-400">
+                        /{typeFormSlug || 'slug'}
+                      </span>
                     </div>
 
-                    {/* RIGHT: Live Devotional Verse Reader Preview */}
-                    <div className="lg:col-span-5 space-y-5">
-                      <div className="flex items-center justify-between px-1 text-xs">
-                        <span className="font-bold text-[#FFB300] uppercase tracking-wider flex items-center gap-1.5">
-                          <span>📜</span>
-                          <span>Devotional Verse Preview</span>
+                    {/* Scroll Canvas with Sacred Text & Meaning */}
+                    <div className="bg-gradient-to-b from-[#082218] via-[#0A291E] to-[#071D15] p-5 text-center text-xs leading-relaxed max-h-[500px] overflow-y-auto space-y-4">
+                      {/* Step Title in Radiant Gold */}
+                      <h4 className="text-sm font-bold text-[#FFB300] tracking-wide uppercase">
+                        {typeFormTitle || 'Type / Verse Title'}
+                      </h4>
+
+                      {/* Sacred Chanting Verses */}
+                      {typeFormSacredText ? (
+                        <div className="text-sm font-bold text-[#FEF08A] font-serif leading-relaxed whitespace-pre-wrap max-w-md mx-auto py-2 p-3 bg-[#061A13]/70 rounded-xl border border-[#1B563D]">
+                          {typeFormSacredText}
+                        </div>
+                      ) : (
+                        <p className="text-[11px] italic text-emerald-400/60 p-3 bg-[#061A13]/50 rounded-xl border border-dashed border-[#1B563D]">
+                          Enter Sacred Sanskrit / Telugu Chant on the left to see live chanting preview...
+                        </p>
+                      )}
+
+                      {/* Ritual Meaning in Sage Green Box */}
+                      {typeFormMeaning ? (
+                        <div className="text-xs italic text-[#A7F3D0] bg-[#061A13]/90 border border-[#1B563D] p-3 rounded-lg max-w-md mx-auto text-center leading-relaxed">
+                          {typeFormMeaning}
+                        </div>
+                      ) : null}
+
+                      {/* Bottom Sacred Lotus */}
+                      <div className="flex justify-center pt-2">
+                        <svg className="w-12 h-6 text-[#FFB300] opacity-80 transform rotate-180" viewBox="0 0 100 40" fill="currentColor">
+                          <path d="M50 0 C40 15, 20 20, 0 20 C20 25, 45 35, 50 40 C55 35, 80 25, 100 20 C80 20, 60 15, 50 0 Z"></path>
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Specifications Card */}
+                  <div className="bg-[#082219] border border-[#1A4E38] rounded-xl p-4 shadow-xl space-y-3">
+                    <div className="flex items-center justify-between pb-2 border-b border-[#16422F]">
+                      <h4 className="text-xs font-bold text-[#FFB300] flex items-center gap-1.5">
+                        <Database className="w-3.5 h-3.5 text-[#FFB300]" />
+                        <span>Type Attributes</span>
+                      </h4>
+                      <span className="text-[10px] text-[#FFB300] font-mono font-bold bg-[#061A13] px-2 py-0.5 rounded border border-[#16422F]">
+                        {editingTypeId ? `Editing #${editingTypeId}` : 'New Record'}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2.5 text-xs">
+                      <div className="bg-[#061A13] p-2.5 rounded-lg border border-[#16422F]">
+                        <span className="text-[9px] text-gray-400 uppercase block font-semibold">Target Subcategory</span>
+                        <span className="text-[#FEF08A] font-medium truncate block">
+                          {(() => {
+                            const subPool = allSubcategoriesList.length > 0 ? allSubcategoriesList : subcategories;
+                            const match = subPool.find(s => Number(s.id) === Number(typeFormCategoryId));
+                            return match ? match.title : 'Not Assigned';
+                          })()}
                         </span>
-                        <span className="text-[11px] text-emerald-400 font-mono">Live Worship Card</span>
                       </div>
-
-                      {/* Sacred Scroll Outer Container */}
-                      <div className="w-full rounded-2xl overflow-hidden border-2 border-[#D4AF37]/60 shadow-[0_12px_45px_rgba(0,0,0,0.6),0_0_25px_rgba(212,175,55,0.15)] bg-[#071F17]">
-
-                        {/* Header */}
-                        <div className="bg-[#0A2A1E] text-[#FFB300] border-b border-[#1E5C41] px-4 py-2.5 flex items-center justify-between shadow">
-                          <div className="flex items-center gap-2 truncate">
-                            <span className="text-base">🪔</span>
-                            <span className="font-bold text-xs tracking-wide text-[#FFB300] truncate">
-                              {typeFormTitle || 'Verse / Step Title'}
-                            </span>
-                          </div>
-                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#071C14] border border-[#1E5C41] text-emerald-400">
-                            /{typeFormSlug || 'slug'}
-                          </span>
-                        </div>
-
-                        {/* Scroll Canvas with Sacred Text & Meaning */}
-                        <div className="bg-gradient-to-b from-[#082218] via-[#0A291E] to-[#071D15] p-5 text-center text-xs leading-relaxed max-h-[500px] overflow-y-auto space-y-4">
-
-                          {/* Top Sacred Arch */}
-                          <div className="flex justify-center pt-1">
-                            <svg className="w-12 h-6 text-[#FFB300] opacity-80" viewBox="0 0 100 40" fill="currentColor">
-                              <path d="M50 0 C40 15, 20 20, 0 20 C20 25, 45 35, 50 40 C55 35, 80 25, 100 20 C80 20, 60 15, 50 0 Z"></path>
-                            </svg>
-                          </div>
-
-                          <div className="space-y-0.5 text-xs font-semibold text-[#FDE68A]">
-                            <p>śrī mahāgaṇādhipatayē namaḥ</p>
-                            <p>śrī gurubhyō namaḥ</p>
-                            <p className="font-bold text-[#FFB300]">hariḥ ōṁ</p>
-                          </div>
-
-                          <div className="border-b border-dotted border-[#D4AF37]/40 w-3/4 mx-auto my-2"></div>
-
-                          {/* Step Title in Radiant Gold */}
-                          <h4 className="text-sm font-bold text-[#FFB300] tracking-wide uppercase">
-                            {typeFormTitle || 'Type / Verse Title'}
-                          </h4>
-
-                          {/* Sacred Chanting Verses */}
-                          {typeFormSacredText ? (
-                            <div className="text-sm font-bold text-[#FEF08A] font-serif leading-relaxed whitespace-pre-wrap max-w-md mx-auto py-2 p-3 bg-[#061A13]/70 rounded-xl border border-[#1B563D]">
-                              {typeFormSacredText}
-                            </div>
-                          ) : (
-                            <p className="text-[11px] italic text-emerald-400/60 p-3 bg-[#061A13]/50 rounded-xl border border-dashed border-[#1B563D]">
-                              Enter Sacred Sanskrit / Telugu Chant on the left to see live chanting preview...
-                            </p>
-                          )}
-
-                          {/* Ritual Meaning in Sage Green Box */}
-                          {typeFormMeaning ? (
-                            <div className="text-xs italic text-[#A7F3D0] bg-[#061A13]/90 border border-[#1B563D] p-3 rounded-lg max-w-md mx-auto text-center leading-relaxed">
-                              {typeFormMeaning}
-                            </div>
-                          ) : null}
-
-                          {/* Bottom Sacred Lotus */}
-                          <div className="flex justify-center pt-2">
-                            <svg className="w-12 h-6 text-[#FFB300] opacity-80 transform rotate-180" viewBox="0 0 100 40" fill="currentColor">
-                              <path d="M50 0 C40 15, 20 20, 0 20 C20 25, 45 35, 50 40 C55 35, 80 25, 100 20 C80 20, 60 15, 50 0 Z"></path>
-                            </svg>
-                          </div>
-                        </div>
+                      <div className="bg-[#061A13] p-2.5 rounded-lg border border-[#16422F]">
+                        <span className="text-[9px] text-gray-400 uppercase block font-semibold">Display Order</span>
+                        <span className="text-[#FFB300] font-bold block">Step #{typeFormDisplayOrder || 1}</span>
                       </div>
-
-                      {/* Specifications Card */}
-                      <div className="bg-[#082219] border border-[#1A4E38] rounded-xl p-4 shadow-xl space-y-3">
-                        <div className="flex items-center justify-between pb-2 border-b border-[#16422F]">
-                          <h4 className="text-xs font-bold text-[#FFB300] flex items-center gap-1.5">
-                            <Database className="w-3.5 h-3.5 text-[#FFB300]" />
-                            <span>Type Attributes</span>
-                          </h4>
-                          <span className="text-[10px] text-[#FFB300] font-mono font-bold bg-[#061A13] px-2 py-0.5 rounded border border-[#16422F]">
-                            {editingTypeId ? `Editing #${editingTypeId}` : 'New Record'}
-                          </span>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-2.5 text-xs">
-                          <div className="bg-[#061A13] p-2.5 rounded-lg border border-[#16422F]">
-                            <span className="text-[9px] text-gray-400 uppercase block font-semibold">Target Subcategory</span>
-                            <span className="text-[#FEF08A] font-medium truncate block">
-                              {(() => {
-                                const subPool = allSubcategoriesList.length > 0 ? allSubcategoriesList : subcategories;
-                                const match = subPool.find(s => Number(s.id) === Number(typeFormCategoryId));
-                                return match ? match.title : 'Not Assigned';
-                              })()}
-                            </span>
-                          </div>
-                          <div className="bg-[#061A13] p-2.5 rounded-lg border border-[#16422F]">
-                            <span className="text-[9px] text-gray-400 uppercase block font-semibold">Display Order</span>
-                            <span className="text-[#FFB300] font-bold block">Step #{typeFormDisplayOrder || 1}</span>
-                          </div>
-                          <div className="bg-[#061A13] p-2.5 rounded-lg border border-[#16422F]">
-                            <span className="text-[9px] text-gray-400 uppercase block font-semibold">URL Identifier</span>
-                            <span className="text-[#FFB300] font-mono truncate block">/{typeFormSlug || 'slug'}</span>
-                          </div>
-                          <div className="bg-[#061A13] p-2.5 rounded-lg border border-[#16422F]">
-                            <span className="text-[9px] text-gray-400 uppercase block font-semibold">Status</span>
-                            <span className={`font-semibold block ${typeFormIsPublished ? 'text-emerald-400' : 'text-amber-400'}`}>
-                              {typeFormIsPublished ? '✓ Published' : 'Draft'}
-                            </span>
-                          </div>
-                        </div>
+                      <div className="bg-[#061A13] p-2.5 rounded-lg border border-[#16422F]">
+                        <span className="text-[9px] text-gray-400 uppercase block font-semibold">URL Identifier</span>
+                        <span className="text-[#FFB300] font-mono truncate block">/{typeFormSlug || 'slug'}</span>
+                      </div>
+                      <div className="bg-[#061A13] p-2.5 rounded-lg border border-[#16422F]">
+                        <span className="text-[9px] text-gray-400 uppercase block font-semibold mb-1">Status</span>
+                        {renderStatusBadge(typeFormStatus, typeFormIsPublished)}
                       </div>
                     </div>
                   </div>
                 </div>
-              )}
+              </div>
+            </div>
+          )}
 
-              {/* NORMAL LIST MODE: CATEGORIES, SUBCATEGORIES, TYPES TABLES */}
-              {pageMode === 'LIST' && (
-                <>
-                  {/* TAB 1: CATEGORIES */}
-                  {activeTab === 'categories' && selectedCategorySubtitle !== 'temples' && (
-                    <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] overflow-hidden space-y-0">
-                      <div className="p-5 border-b border-[#2C2C2C] flex flex-col sm:flex-row items-center justify-between gap-4">
-                        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-                          <div className="relative w-full sm:w-64">
-                            <Search className="w-4 h-4 absolute left-3 top-2.5 text-gray-400" />
-                            <input
-                              type="text"
-                              placeholder="Server Search..."
-                              value={searchQuery}
-                              onChange={(e) => setSearchQuery(e.target.value)}
-                              className="w-full bg-[#141414] border border-[#2C2C2C] rounded-lg pl-9 pr-4 py-2 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-[#FFB300]"
-                            />
-                          </div>
-
-                          <select
-                            value={selectedLang}
-                            onChange={(e) => setSelectedLang(e.target.value)}
-                            className="bg-[#141414] border border-[#2C2C2C] rounded-lg px-3 py-2 text-xs text-amber-400 focus:outline-none focus:border-[#FFB300]"
-                          >
-                            <option value="en">English (English)</option>
-                            <option value="te">Telugu (తెలుగు)</option>
-                            <option value="kn">Kannada (ಕನ್ನಡ)</option>
-                            <option value="ta">Tamil (தமிழ்)</option>
-                            <option value="hi">Hindi (हिन्दी)</option>
-                          </select>
-
-                          <select
-                            value={isAudioFilter}
-                            onChange={(e) => setIsAudioFilter(e.target.value)}
-                            className="bg-[#141414] border border-[#2C2C2C] rounded-lg px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-[#FFB300]"
-                          >
-                            <option value="">All Types</option>
-                            <option value="true">Audio Only</option>
-                            <option value="false">Text / Slokas Only</option>
-                          </select>
-                        </div>
-
-                        <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
-                          <span className="text-xs text-gray-400">
-                            Total: <strong className="text-gray-200">{totalCount}</strong> categories
-                          </span>
-                          <button
-                            onClick={handleOpenCreateCategory}
-                            className="flex items-center justify-center gap-2 bg-[#D84315] hover:bg-[#BF360C] text-white px-4 py-2 rounded-lg text-xs font-bold transition shadow-md shadow-orange-950"
-                          >
-                            <Plus className="w-4 h-4" />
-                            <span>Create Category</span>
-                          </button>
-                        </div>
+          {/* NORMAL LIST MODE: CATEGORIES, SUBCATEGORIES, TYPES TABLES */}
+          {pageMode === 'LIST' && (
+            <>
+              {/* TAB 1: CATEGORIES */}
+              {activeTab === 'categories' && selectedCategorySubtitle !== 'temples' && (
+                <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] overflow-hidden space-y-0">
+                  <div className="p-5 border-b border-[#2C2C2C] flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                      <div className="relative w-full sm:w-64">
+                        <Search className="w-4 h-4 absolute left-3 top-2.5 text-gray-400" />
+                        <input
+                          type="text"
+                          placeholder="Server Search..."
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          className="w-full bg-[#141414] border border-[#2C2C2C] rounded-lg pl-9 pr-4 py-2 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-[#FFB300]"
+                        />
                       </div>
 
-                      {/* Batch Actions Bar for Categories */}
-                      {selectedCategoryIds.length > 0 && (
-                        <div className="p-3 px-5 bg-amber-950/40 border-b border-amber-500/30 flex items-center justify-between text-xs text-amber-200 animate-in fade-in">
-                          <div className="flex items-center gap-2">
-                            <CheckSquare className="w-4 h-4 text-amber-400" />
-                            <span><strong>{selectedCategoryIds.length}</strong> categories selected</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setSelectedCategoryIds([])}
-                              className="px-3 py-1 rounded bg-neutral-800 hover:bg-neutral-700 text-gray-300 text-xs transition"
-                            >
-                              Deselect All
-                            </button>
-                            <button
-                              type="button"
-                              onClick={handleBatchDeleteCategories}
-                              className="px-3 py-1 rounded bg-red-600 hover:bg-red-700 text-white font-bold text-xs transition flex items-center gap-1 shadow"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                              <span>Delete Selected ({selectedCategoryIds.length})</span>
-                            </button>
-                          </div>
-                        </div>
-                      )}
+                      <select
+                        value={selectedLang}
+                        onChange={(e) => setSelectedLang(e.target.value)}
+                        className="bg-[#141414] border border-[#2C2C2C] rounded-lg px-3 py-2 text-xs text-amber-400 focus:outline-none focus:border-[#FFB300]"
+                      >
+                        <option value="en">English (English)</option>
+                        <option value="te">Telugu (తెలుగు)</option>
+                        <option value="kn">Kannada (ಕನ್ನಡ)</option>
+                        <option value="ta">Tamil (தமிழ்)</option>
+                        <option value="hi">Hindi (हिन्दी)</option>
+                      </select>
 
-                      <div className="overflow-x-auto min-h-[300px]">
-                        {loading ? (
-                          <div className="p-12 text-center text-xs text-gray-400 flex items-center justify-center gap-2">
-                            <RefreshCw className="w-4 h-4 animate-spin text-[#FFB300]" />
-                            <span>Querying MySQL via Prisma server-side...</span>
-                          </div>
-                        ) : (
-                          <table className="w-full text-left text-xs text-gray-300">
-                            <thead className="bg-[#181818] uppercase tracking-wider text-gray-400 border-b border-[#2C2C2C]">
-                              <tr>
-                                <th className="px-4 py-3.5 w-10 text-center">
-                                  <input
-                                    type="checkbox"
-                                    checked={categories.length > 0 && categories.every(c => selectedCategoryIds.includes(String(c.id)))}
-                                    onChange={(e) => {
-                                      if (e.target.checked) {
-                                        setSelectedCategoryIds(Array.from(new Set([...selectedCategoryIds, ...categories.map(c => String(c.id))])));
-                                      } else {
-                                        const pageIds = new Set(categories.map(c => String(c.id)));
-                                        setSelectedCategoryIds(selectedCategoryIds.filter(id => !pageIds.has(id)));
-                                      }
-                                    }}
-                                    className="rounded bg-[#121212] border-[#3A3A3A] text-amber-500 focus:ring-amber-500 cursor-pointer"
-                                  />
-                                </th>
-                                <th className="px-3 py-3.5 w-12 text-center">Artwork</th>
-                                <th className="px-4 py-3.5">ID</th>
-                                <th className="px-6 py-3.5">Category Title &amp; Subtitle ({selectedLang.toUpperCase()})</th>
-                                <th className="px-6 py-3.5">Slug</th>
-                                <th className="px-6 py-3.5">Subcategories</th>
-                                <th className="px-6 py-3.5">Content Type</th>
-                                <th className="px-6 py-3.5 text-center font-bold text-amber-400">Options / Actions</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-[#2C2C2C]">
-                              {categories.length === 0 ? (
-                                <tr>
-                                  <td colSpan={8} className="px-6 py-12 text-center text-gray-400">
-                                    <BookOpen className="w-10 h-10 mx-auto text-gray-600 mb-2 opacity-50" />
-                                    <p className="text-sm font-semibold">No categories found in database</p>
-                                    <p className="text-xs text-gray-500 mt-1">Click &quot;Create Category&quot; above to add a new devotional category.</p>
-                                  </td>
-                                </tr>
-                              ) : (
-                                categories.map((item) => {
-                                  const catImg = item.imageUrl || item.artwork || '';
-                                  return (
-                                    <tr key={item.id} className="hover:bg-neutral-800/40 transition">
-                                      <td className="px-4 py-4 text-center">
-                                        <input
-                                          type="checkbox"
-                                          checked={selectedCategoryIds.includes(String(item.id))}
-                                          onChange={(e) => {
-                                            if (e.target.checked) {
-                                              setSelectedCategoryIds(prev => [...prev, String(item.id)]);
-                                            } else {
-                                              setSelectedCategoryIds(prev => prev.filter(id => id !== String(item.id)));
-                                            }
-                                          }}
-                                          className="rounded bg-[#121212] border-[#3A3A3A] text-amber-500 focus:ring-amber-500 cursor-pointer"
-                                        />
-                                      </td>
-                                      <td className="px-3 py-4 text-center">
-                                        <div className="w-10 h-10 rounded-lg bg-[#141414] border border-[#2C2C2C] overflow-hidden flex items-center justify-center mx-auto">
-                                          {catImg ? (
-                                            <img
-                                              src={catImg.startsWith('http') ? catImg : `${API_ORIGIN}${catImg.startsWith('/') ? '' : '/'}${catImg}`}
-                                              alt={item.title}
-                                              className="w-full h-full object-contain p-1"
-                                              onError={(e: any) => {
-                                                e.currentTarget.style.display = 'none';
-                                                if (e.currentTarget.parentElement) {
-                                                  e.currentTarget.parentElement.innerHTML = '<span class="text-xs">🪔</span>';
-                                                }
-                                              }}
-                                            />
-                                          ) : (
-                                            <span className="text-xs">🪔</span>
-                                          )}
-                                        </div>
-                                      </td>
-                                      <td className="px-4 py-4 font-mono text-gray-500">#{item.id}</td>
-                                      <td className="px-6 py-4">
-                                        <div className="font-semibold text-gray-100 flex items-center gap-2">
-                                          <span className="text-orange-400">🪔</span>
-                                          <span>{item.title}</span>
-                                        </div>
-                                        <div className="font-mono text-[11px] text-amber-400/90 mt-0.5">/{item.slug}</div>
-                                        {(item.subtitle || item.description) && (
-                                          <div className="text-[11px] text-gray-400 truncate max-w-sm mt-0.5" title={item.subtitle || item.description}>
-                                            {item.subtitle || item.description}
-                                          </div>
-                                        )}
-                                      </td>
-                                      <td className="px-6 py-4 font-mono text-amber-400/90">{item.slug}</td>
-                                      <td className="px-6 py-4">
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            setSelectedParentCategoryFilter(String(item.id));
-                                            setActiveTab('subcategories');
-                                            setPageMode('LIST');
-                                            loadSubcategories(1, '', selectedLang, String(item.id));
-                                          }}
-                                          className="px-2.5 py-1 rounded bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-semibold transition flex items-center gap-1.5"
-                                          title="View subcategories under this category"
-                                        >
-                                          <Layers className="w-3.5 h-3.5" />
-                                          <span>{item.subcategoriesCount || 0} subcategories</span>
-                                        </button>
-                                      </td>
-                                      <td className="px-6 py-4">
-                                        {item.isAudio ? (
-                                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/30">
-                                            <Music className="w-3 h-3" /> Audio Track
-                                          </span>
-                                        ) : (
-                                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium bg-blue-500/10 text-blue-400 border border-blue-500/30">
-                                            <BookOpen className="w-3 h-3" /> Slokas & Mantras
-                                          </span>
-                                        )}
-                                      </td>
-                                      <td className="px-6 py-4 text-center space-x-2 whitespace-nowrap">
-                                        <button
-                                          onClick={() => handleOpenViewCategory(item.id)}
-                                          className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 rounded text-sky-400 text-xs font-semibold transition"
-                                          title="View Category Details"
-                                        >
-                                          <Eye className="w-3.5 h-3.5" />
-                                          <span>View</span>
-                                        </button>
-                                        <button
-                                          onClick={() => handleOpenEditCategory(item)}
-                                          className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 rounded text-amber-400 text-xs font-semibold transition"
-                                        >
-                                          <Edit3 className="w-3.5 h-3.5" />
-                                          <span>Edit</span>
-                                        </button>
-                                        <button
-                                          onClick={() => handleDeleteCategory(item.id, item.title)}
-                                          className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-red-950/40 hover:bg-red-900/60 border border-red-800/40 rounded text-red-400 text-xs font-semibold transition"
-                                        >
-                                          <Trash2 className="w-3.5 h-3.5" />
-                                          <span>Delete</span>
-                                        </button>
-                                      </td>
-                                    </tr>
-                                  );
-                                }))}
-                            </tbody>
-                          </table>
-                        )}
+                      <select
+                        value={isAudioFilter}
+                        onChange={(e) => setIsAudioFilter(e.target.value)}
+                        className="bg-[#141414] border border-[#2C2C2C] rounded-lg px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-[#FFB300]"
+                      >
+                        <option value="">All Types</option>
+                        <option value="true">Audio Only</option>
+                        <option value="false">Text / Slokas Only</option>
+                      </select>
+                    </div>
+
+                    <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+                      <span className="text-xs text-gray-400">
+                        Total: <strong className="text-gray-200">{totalCount}</strong> categories
+                      </span>
+                      <button
+                        onClick={handleOpenCreateCategory}
+                        className="flex items-center justify-center gap-2 bg-[#D84315] hover:bg-[#BF360C] text-white px-4 py-2 rounded-lg text-xs font-bold transition shadow-md shadow-orange-950"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span>Create Category</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Batch Actions Bar for Categories */}
+                  {selectedCategoryIds.length > 0 && (
+                    <div className="p-3 px-5 bg-amber-950/40 border-b border-amber-500/30 flex items-center justify-between text-xs text-amber-200 animate-in fade-in">
+                      <div className="flex items-center gap-2">
+                        <CheckSquare className="w-4 h-4 text-amber-400" />
+                        <span><strong>{selectedCategoryIds.length}</strong> categories selected</span>
                       </div>
-
-                      {/* Categories Pagination Bar */}
-                      <div className="p-4 border-t border-[#2C2C2C] flex flex-col sm:flex-row items-center justify-between gap-3 bg-[#151515]">
-                        <div className="flex items-center gap-3 text-xs text-gray-400">
-                          <span>
-                            Showing page <strong className="text-gray-200">{page}</strong> of <strong className="text-gray-200">{totalPages}</strong> (Total <strong className="text-gray-200">{totalCount}</strong>)
-                          </span>
-                          <span className="text-neutral-600">|</span>
-                          <div className="flex items-center gap-1.5">
-                            <span>Rows per page:</span>
-                            <select
-                              value={15}
-                              onChange={(e) => {
-                                const newLim = Number(e.target.value);
-                                loadCategories(1, searchQuery, selectedLang, isAudioFilter, newLim);
-                              }}
-                              className="bg-[#121212] border border-[#2C2C2C] rounded px-2 py-1 text-xs text-gray-200"
-                            >
-                              <option value={10}>10</option>
-                              <option value={15}>15</option>
-                              <option value={25}>25</option>
-                              <option value={50}>50</option>
-                              <option value={100}>100</option>
-                            </select>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            disabled={page <= 1}
-                            onClick={() => loadCategories(page - 1, searchQuery, selectedLang, isAudioFilter)}
-                            className="px-3 py-1.5 bg-[#1E1E1E] border border-[#2C2C2C] rounded-lg disabled:opacity-40 hover:bg-neutral-800 text-xs text-gray-300 transition flex items-center gap-1"
-                          >
-                            <ChevronLeft className="w-4 h-4" />
-                            <span>Prev</span>
-                          </button>
-                          <span className="text-xs font-semibold px-2 text-amber-400">{page} / {totalPages}</span>
-                          <button
-                            disabled={page >= totalPages}
-                            onClick={() => loadCategories(page + 1, searchQuery, selectedLang, isAudioFilter)}
-                            className="px-3 py-1.5 bg-[#1E1E1E] border border-[#2C2C2C] rounded-lg disabled:opacity-40 hover:bg-neutral-800 text-xs text-gray-300 transition flex items-center gap-1"
-                          >
-                            <span>Next</span>
-                            <ChevronRight className="w-4 h-4" />
-                          </button>
-                        </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedCategoryIds([])}
+                          className="px-3 py-1 rounded bg-neutral-800 hover:bg-neutral-700 text-gray-300 text-xs transition"
+                        >
+                          Deselect All
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleBatchDeleteCategories}
+                          className="px-3 py-1 rounded bg-red-600 hover:bg-red-700 text-white font-bold text-xs transition flex items-center gap-1 shadow"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Delete Selected ({selectedCategoryIds.length})</span>
+                        </button>
                       </div>
                     </div>
                   )}
 
-                  {/* TAB 2: SUBCATEGORIES */}
-                  {activeTab === 'subcategories' && (
-                    <div className="space-y-6">
-                      {/* Category Filter & Subcategory Header */}
-                      <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] p-5 shadow-xl">
-                        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-[#2C2C2C] pb-4">
-                          <div>
-                            <h2 className="text-base font-bold text-gray-100 flex items-center gap-2">
-                              <Layers className="w-5 h-5 text-orange-400" />
-                              <span>Category-Based Subcategories Management</span>
-                            </h2>
-                            <p className="text-xs text-gray-400 mt-0.5">
-                              Organize and manage sanctum rituals, stotras, prayers, bhajans, darshan, and seva under their respective parent categories.
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-3 w-full md:w-auto">
-                            <select
-                              value={selectedLang}
-                              onChange={(e) => {
-                                setSelectedLang(e.target.value);
-                                loadSubcategories(1, searchQuery, e.target.value, selectedParentCategoryFilter);
-                                loadParentLookup(e.target.value);
-                              }}
-                              className="bg-[#141414] border border-[#2C2C2C] rounded-lg px-3 py-1.5 text-xs text-amber-400 focus:outline-none focus:border-[#FFB300]"
-                            >
-                              <option value="en">English (English)</option>
-                              <option value="te">Telugu (తెలుగు)</option>
-                              <option value="kn">Kannada (ಕನ್ನಡ)</option>
-                              <option value="ta">Tamil (தமிழ்)</option>
-                              <option value="hi">Hindi (हिन्दी)</option>
-                            </select>
-                            <button
-                              onClick={() => handleOpenCreateSubcategory(selectedParentCategoryFilter !== 'all' ? selectedParentCategoryFilter : undefined)}
-                              className="flex items-center justify-center gap-2 bg-[#D84315] hover:bg-[#BF360C] text-white px-4 py-1.5 rounded-lg text-xs font-bold transition shadow-md shadow-orange-950 flex-shrink-0"
-                            >
-                              <Plus className="w-4 h-4" />
-                              <span>Add Subcategory</span>
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Filter Pills with Bulletproof Category Matching */}
-                        <div className="pt-4">
-                          <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block mb-2.5">
-                            Filter by Parent Category ({Math.max(parentLookupList.length, devotionalServices.length, 9)} Categories):
-                          </span>
-                          <div className="flex flex-wrap items-center gap-2">
-                            {/* All Categories Button */}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSelectedParentCategoryFilter('all');
-                                loadSubcategories(1, searchQuery, selectedLang, 'all');
-                              }}
-                              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${selectedParentCategoryFilter === 'all'
-                                ? 'bg-[#FFB300] text-black shadow-lg shadow-amber-500/20 font-bold'
-                                : 'bg-[#141414] text-gray-300 hover:text-white border border-[#2C2C2C]'
-                                }`}
-                            >
-                              <span>All Categories</span>
-                              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${selectedParentCategoryFilter === 'all' ? 'bg-black/30 text-black' : 'bg-neutral-800 text-gray-400'}`}>
-                                {selectedParentCategoryFilter === 'all' ? subTotalCount || subcategories.length : (parentLookupList.reduce((acc, p) => acc + (p.subcategoriesCount || 0), 0) || subcategories.length)}
-                              </span>
-                            </button>
-
-                            {/* Standard Sanctum Categories with Exact Target Matching */}
-                            {[
-                              { key: 'pooja', name: 'Pooja Vidhanam', icon: '🪔', targetSlugs: ['pooja-vidhanam', 'poojalu-vrathaalu', 'pooja'], exactId: '113' },
-                              { key: 'stotras', name: 'Divine Stotras', icon: '📜', targetSlugs: ['stotras', 'divine-stotras', 'stotramulu', 'slogans-of-sri-ayyappa-swami'], exactId: '114' },
-                              { key: 'slokas', name: 'Daily Slokas', icon: '📿', targetSlugs: ['slokas', 'daily-slokas'], exactId: '115' },
-                              { key: 'songs', name: 'Bhajans & Songs', icon: '🎵', targetSlugs: ['songs', 'bhajans', 'bhajana-keerthanalu'], exactId: '116' },
-                              { key: 'live-streams', name: 'Live Darshan', icon: '📺', targetSlugs: ['live-streams', 'live-darshan'], exactId: '117' },
-                              { key: 'panchangam', name: 'Panchangam', icon: '🧭', targetSlugs: ['panchangam'] },
-                              { key: 'festivals', name: 'Temple Festivals', icon: '📅', targetSlugs: ['festivals'] },
-                              { key: 'temples', name: 'Sacred Temples', icon: '🏛️', targetSlugs: ['temples'] },
-                              { key: 'donations', name: 'Annadanam Seva', icon: '🍲', targetSlugs: ['donations', 'annadanam'] },
-                            ].map(cat => {
-                              const exactMatch = parentLookupList.find(p => cat.exactId && String(p.id) === String(cat.exactId));
-                              let matchedParent = exactMatch;
-                              if (!matchedParent || (matchedParent.subcategoriesCount || 0) === 0) {
-                                const candidates = parentLookupList.filter(p =>
-                                  (cat.targetSlugs && cat.targetSlugs.includes(p.slug)) ||
-                                  p.slug === cat.key ||
-                                  p.slug?.startsWith(cat.key) ||
-                                  p.title?.toLowerCase().includes(cat.name.toLowerCase()) ||
-                                  (cat.exactId && String(p.id) === String(cat.exactId))
-                                );
-                                if (candidates.length > 0) {
-                                  const active = candidates.find(p => (p.subcategoriesCount || 0) > 0);
-                                  matchedParent = active || matchedParent || candidates.sort((a, b) => (b.subcategoriesCount || 0) - (a.subcategoriesCount || 0))[0];
-                                }
-                              }
-
-                              const targetId = matchedParent ? String(matchedParent.id) : (cat.exactId ? String(cat.exactId) : cat.key);
-                              const count = matchedParent?.subcategoriesCount ?? 0;
-                              const isSelected = selectedParentCategoryFilter === targetId || selectedParentCategoryFilter === cat.key || (matchedParent && (selectedParentCategoryFilter === matchedParent.slug || String(selectedParentCategoryFilter) === String(matchedParent.id)));
-
-                              return (
-                                <button
-                                  key={cat.key}
-                                  type="button"
-                                  onClick={() => {
-                                    setSelectedParentCategoryFilter(targetId);
-                                    loadSubcategories(1, searchQuery, selectedLang, targetId);
-                                  }}
-                                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${isSelected
-                                    ? 'bg-[#FFB300] text-black shadow-lg shadow-amber-500/20 font-bold'
-                                    : 'bg-[#141414] text-gray-300 hover:text-white border border-[#2C2C2C]'
-                                    }`}
-                                >
-                                  <span>{cat.icon}</span>
-                                  <span>{cat.name}</span>
-                                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${isSelected ? 'bg-black/30 text-black' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}`}>
-                                    {count}
-                                  </span>
-                                </button>
-                              );
-                            })}
-
-                            {/* Custom & Dynamic Parent Categories from DB (e.g. Vinod, etc.) */}
-                            {parentLookupList
-                              .filter(p => !p.parentId)
-                              .filter(p => {
-                                const pSlug = (p.slug || '').toLowerCase();
-                                const pId = String(p.id);
-                                return ![
-                                  '113', '114', '115', '116', '117', '14', '15',
-                                  'pooja', 'pooja-vidhanam', 'poojalu-vrathaalu',
-                                  'stotras', 'divine-stotras', 'stotramulu', 'slogans-of-sri-ayyappa-swami',
-                                  'slokas', 'daily-slokas',
-                                  'songs', 'bhajans', 'bhajana-keerthanalu',
-                                  'live-streams', 'live-darshan', 'darshan',
-                                  'panchangam',
-                                  'festivals', 'temple-festivals',
-                                  'temples', 'sacred-temples',
-                                  'donations', 'annadanam', 'annadanam-seva',
-                                  '2026-uthara-nakshatra-dates', 'shabarimala-temple-opening-dates'
-                                ].includes(pSlug) && !['113', '114', '115', '116', '117', '14', '15'].includes(pId);
-                              })
-                              .map(cat => {
-                                const targetId = String(cat.id);
-                                const count = cat.subcategoriesCount ?? 0;
-                                const isSelected = selectedParentCategoryFilter === targetId || selectedParentCategoryFilter === cat.slug;
-                                return (
-                                  <button
-                                    key={cat.id || cat.slug}
-                                    type="button"
-                                    onClick={() => {
-                                      setSelectedParentCategoryFilter(targetId);
-                                      loadSubcategories(1, searchQuery, selectedLang, targetId);
-                                    }}
-                                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${isSelected
-                                      ? 'bg-[#FFB300] text-black shadow-lg shadow-amber-500/20 font-bold'
-                                      : 'bg-[#141414] text-gray-300 hover:text-white border border-[#2C2C2C]'
-                                      }`}
-                                  >
-                                    <span>✨</span>
-                                    <span>{cat.title}</span>
-                                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${isSelected ? 'bg-black/30 text-black' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}`}>
-                                      {count}
-                                    </span>
-                                  </button>
-                                );
-                              })}
-
-                            {/* Any Devotional Service not yet in parentLookupList (e.g. instant UI reflection) */}
-                            {devotionalServices
-                              .filter(s => {
-                                const sId = (s.serviceId || s.id || '').toLowerCase();
-                                const isStd = ['pooja', 'stotras', 'slokas', 'songs', 'bhajans', 'darshan', 'live-darshan', 'panchangam', 'festivals', 'temples', 'annadanam'].includes(sId);
-                                if (isStd) return false;
-                                return !parentLookupList.some(p => p.slug?.toLowerCase() === sId || String(p.id) === sId);
-                              })
-                              .map(s => {
-                                const targetKey = s.serviceId || s.id;
-                                const isSelected = selectedParentCategoryFilter === targetKey;
-                                return (
-                                  <button
-                                    key={targetKey}
-                                    type="button"
-                                    onClick={() => {
-                                      setSelectedParentCategoryFilter(targetKey);
-                                      loadSubcategories(1, searchQuery, selectedLang, targetKey);
-                                    }}
-                                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${isSelected
-                                      ? 'bg-[#FFB300] text-black shadow-lg shadow-amber-500/20 font-bold'
-                                      : 'bg-[#141414] text-gray-300 hover:text-white border border-[#2C2C2C]'
-                                      }`}
-                                  >
-                                    <span>✨</span>
-                                    <span>{s.title}</span>
-                                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${isSelected ? 'bg-black/30 text-black' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}`}>
-                                      0
-                                    </span>
-                                  </button>
-                                );
-                              })}
-                          </div>
-                        </div>
+                  <div className="overflow-x-auto min-h-[300px]">
+                    {loading ? (
+                      <div className="p-12 text-center text-xs text-gray-400 flex items-center justify-center gap-2">
+                        <RefreshCw className="w-4 h-4 animate-spin text-[#FFB300]" />
+                        <span>Querying MySQL via Prisma server-side...</span>
                       </div>
-
-                      {/* Subcategories Table Container */}
-                      <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] overflow-hidden shadow-2xl">
-                        <div className="p-4 border-b border-[#2C2C2C] flex items-center justify-between bg-[#181818]">
-                          <span className="text-xs font-bold text-gray-200 uppercase tracking-wider flex items-center gap-2">
-                            <Layers className="w-4 h-4 text-orange-400" />
-                            <span>
-                              {selectedParentCategoryFilter === 'all'
-                                ? `All Subcategories in System (${subTotalCount || subcategories.length})`
-                                : (() => {
-                                  const foundParent = parentLookupList.find(p => String(p.id) === String(selectedParentCategoryFilter) || p.slug === selectedParentCategoryFilter);
-                                  const title = foundParent?.title || (selectedParentCategoryFilter === '113' || selectedParentCategoryFilter === 'pooja' ? 'Pooja Vidhanam' : selectedParentCategoryFilter);
-                                  return `Subcategories under "${title.toUpperCase()}" (${subTotalCount || subcategories.length})`;
-                                })()}
-                            </span>
-                          </span>
-                          <button
-                            onClick={() => loadSubcategories(subPage, searchQuery, selectedLang, resolveParentId(selectedParentCategoryFilter))}
-                            className="text-xs text-gray-400 hover:text-amber-400 flex items-center gap-1 transition"
-                          >
-                            <RefreshCw className="w-3.5 h-3.5" />
-                            <span>Refresh List</span>
-                          </button>
-                        </div>
-
-                        {/* Batch Actions Bar for Subcategories */}
-                        {selectedSubcategoryIds.length > 0 && (
-                          <div className="p-3 px-5 bg-amber-950/40 border-b border-amber-500/30 flex items-center justify-between text-xs text-amber-200 animate-in fade-in">
-                            <div className="flex items-center gap-2">
-                              <CheckSquare className="w-4 h-4 text-amber-400" />
-                              <span><strong>{selectedSubcategoryIds.length}</strong> subcategories selected</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => setSelectedSubcategoryIds([])}
-                                className="px-3 py-1 rounded bg-neutral-800 hover:bg-neutral-700 text-gray-300 text-xs transition"
-                              >
-                                Deselect All
-                              </button>
-                              <button
-                                type="button"
-                                onClick={handleBatchDeleteSubcategories}
-                                className="px-3 py-1 rounded bg-red-600 hover:bg-red-700 text-white font-bold text-xs transition flex items-center gap-1 shadow"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                                <span>Delete Selected ({selectedSubcategoryIds.length})</span>
-                              </button>
-                            </div>
-                          </div>
-                        )}
-
-                        <div className="overflow-x-auto min-h-[300px]">
-                          {(() => {
-                            const displayed = subcategories.filter(sub => {
-                              if (!searchQuery || searchQuery.trim() === '') return true;
-                              const q = searchQuery.toLowerCase().trim();
-                              const title = (sub.title || '').toLowerCase();
-                              const slug = (sub.slug || '').toLowerCase();
-                              const desc = (sub.description || '').toLowerCase();
-                              return title.includes(q) || slug.includes(q) || desc.includes(q);
-                            });
-
-                            if (displayed.length === 0) {
-                              return (
-                                <div className="p-12 text-center text-xs text-gray-400">
-                                  <Layers className="w-8 h-8 mx-auto mb-2 text-gray-600 opacity-60" />
-                                  <p className="font-semibold text-gray-300">
-                                    No subcategories found {selectedParentCategoryFilter !== 'all' ? `under "${selectedParentCategoryFilter}"` : ''}.
-                                  </p>
-                                  <button
-                                    onClick={() => handleOpenCreateSubcategory(selectedParentCategoryFilter !== 'all' ? selectedParentCategoryFilter : undefined)}
-                                    className="mt-3 px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-amber-400 border border-neutral-700 rounded text-xs font-semibold transition"
-                                  >
-                                    + Add Subcategory under this Category
-                                  </button>
-                                </div>
-                              );
-                            }
-
-                            return (
-                              <table className="w-full text-left text-xs text-gray-300">
-                                <thead className="bg-[#151515] uppercase text-[11px] text-gray-400 border-b border-[#2C2C2C]">
-                                  <tr>
-                                    <th className="px-4 py-3 w-10 text-center">
-                                      <input
-                                        type="checkbox"
-                                        checked={displayed.length > 0 && displayed.every((s: any) => selectedSubcategoryIds.includes(String(s.id)))}
-                                        onChange={(e) => {
-                                          if (e.target.checked) {
-                                            setSelectedSubcategoryIds(Array.from(new Set([...selectedSubcategoryIds, ...displayed.map((s: any) => String(s.id))])));
-                                          } else {
-                                            const pageIds = new Set(displayed.map((s: any) => String(s.id)));
-                                            setSelectedSubcategoryIds(selectedSubcategoryIds.filter(id => !pageIds.has(id)));
-                                          }
-                                        }}
-                                        className="rounded bg-[#121212] border-[#3A3A3A] text-amber-500 focus:ring-amber-500 cursor-pointer"
-                                      />
-                                    </th>
-                                    <th className="px-4 py-3">Image</th>
-                                    <th className="px-5 py-3">Subcategory Title &amp; Slug</th>
-                                    <th className="px-5 py-3">Parent Category</th>
-                                    <th className="px-5 py-3">Type / Format</th>
-                                    <th className="px-5 py-3">Order</th>
-                                    <th className="px-5 py-3 text-right">Actions</th>
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y divide-[#2C2C2C]">
-                                  {displayed.map((sub: any) => {
-                                    const pSlug = sub.parentSlug || sub.parentKey || 'pooja';
-                                    const rawImg = sub.imageUrl || sub.image || '';
-                                    const cleanImg = rawImg && !rawImg.includes('.webp') ? rawImg : '';
-                                    return (
-                                      <tr key={sub.id} className="hover:bg-neutral-800/40 transition">
-                                        <td className="px-4 py-3 text-center">
-                                          <input
-                                            type="checkbox"
-                                            checked={selectedSubcategoryIds.includes(String(sub.id))}
-                                            onChange={(e) => {
-                                              if (e.target.checked) {
-                                                setSelectedSubcategoryIds(prev => [...prev, String(sub.id)]);
-                                              } else {
-                                                setSelectedSubcategoryIds(prev => prev.filter(id => id !== String(sub.id)));
-                                              }
-                                            }}
-                                            className="rounded bg-[#121212] border-[#3A3A3A] text-amber-500 focus:ring-amber-500 cursor-pointer"
-                                          />
-                                        </td>
-                                        <td className="px-4 py-3 whitespace-nowrap">
-                                          <div className="relative group/subthumb w-10 h-10 rounded-lg bg-[#141414] border border-[#2C2C2C] overflow-hidden flex items-center justify-center flex-shrink-0">
-                                            {cleanImg ? (
-                                              <img
-                                                src={cleanImg.startsWith('http') || cleanImg.startsWith('data:') ? cleanImg : `${API_ORIGIN}${cleanImg.startsWith('/') ? '' : '/'}${cleanImg}`}
-                                                alt={sub.title}
-                                                className="w-full h-full object-cover"
-                                                onError={(e: any) => {
-                                                  e.currentTarget.style.display = 'none';
-                                                  if (e.currentTarget.parentElement) {
-                                                    e.currentTarget.parentElement.innerHTML = '<span class="text-xs">🪔</span>';
-                                                  }
-                                                }}
-                                              />
-                                            ) : (
-                                              <span className="text-xs">🪔</span>
-                                            )}
-                                            <label
-                                              className="absolute inset-0 bg-black/75 opacity-0 group-hover/subthumb:opacity-100 flex items-center justify-center cursor-pointer transition rounded-lg"
-                                              title="Upload / Change Image"
-                                            >
-                                              <Upload className="w-3.5 h-3.5 text-amber-400" />
-                                              <input
-                                                type="file"
-                                                accept="image/png, image/jpeg, image/webp"
-                                                onChange={(e) => handleQuickSubcategoryImageUpload(sub.id, e)}
-                                                className="hidden"
-                                              />
-                                            </label>
-                                          </div>
-                                        </td>
-
-                                        <td className="px-5 py-3">
-                                          <p className="font-bold text-gray-100 flex items-center gap-1.5">
-                                            <span>{sub.title && sub.title !== sub.slug ? sub.title : sub.slug.replace(/-/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}</span>
-                                          </p>
-                                          <p className="font-mono text-[11px] text-amber-400/90 mt-0.5">/{sub.slug}</p>
-                                          {sub.description && (
-                                            <p className="text-gray-400 text-[11px] truncate max-w-xs mt-0.5" title={sub.description}>
-                                              {sub.description}
-                                            </p>
-                                          )}
-                                        </td>
-
-                                        <td className="px-5 py-3 whitespace-nowrap">
-                                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-orange-950/50 text-orange-300 border border-orange-800/40">
-                                            <span>📁</span>
-                                            <span>{sub.parentTitle || pSlug}</span>
-                                          </span>
-                                        </td>
-
-                                        <td className="px-5 py-3 whitespace-nowrap">
-                                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${sub.isAudio
-                                            ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
-                                            : 'bg-sky-500/10 text-sky-400 border border-sky-500/30'
-                                            }`}>
-                                            {sub.isAudio ? '🎵 Audio Track' : '📜 Vidhanam / Stotra'}
-                                          </span>
-                                        </td>
-
-                                        <td className="px-5 py-3 whitespace-nowrap font-mono text-gray-400">
-                                          #{sub.displayOrder ?? sub.id}
-                                        </td>
-
-                                        <td className="px-5 py-3 text-right whitespace-nowrap">
-                                          <div className="flex items-center justify-end gap-1.5">
-                                            <button
-                                              type="button"
-                                              onClick={() => {
-                                                setSelectedSubcategoryForTypes(String(sub.id));
-                                                setActiveTab('content');
-                                                setPageMode('LIST');
-                                                loadDevotionalContent(1, '', String(sub.id));
-                                              }}
-                                              className="p-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded text-amber-300 transition flex items-center gap-1"
-                                              title="Manage Types & Verses under this Subcategory"
-                                            >
-                                              <BookOpen className="w-3.5 h-3.5" />
-                                              <span className="text-[11px] font-semibold">Types</span>
-                                            </button>
-                                            <button
-                                              onClick={() => handleOpenViewSubcategory(sub.id)}
-                                              className="p-1.5 bg-[#252525] hover:bg-[#303030] border border-[#3A3A3A] rounded text-sky-400 transition"
-                                              title="View Subcategory Details"
-                                            >
-                                              <Eye className="w-3.5 h-3.5" />
-                                            </button>
-                                            <button
-                                              onClick={() => handleOpenEditSubcategory(sub)}
-                                              className="p-1.5 bg-[#252525] hover:bg-[#303030] border border-[#3A3A3A] rounded text-amber-400 transition"
-                                              title="Edit Subcategory"
-                                            >
-                                              <Edit3 className="w-3.5 h-3.5" />
-                                            </button>
-                                            <button
-                                              onClick={() => handleDeleteSubcategory(sub.id, sub.title)}
-                                              className="p-1.5 bg-red-950/40 hover:bg-red-900/60 border border-red-800/40 rounded text-red-400 transition"
-                                              title="Delete Subcategory"
-                                            >
-                                              <Trash2 className="w-3.5 h-3.5" />
-                                            </button>
-                                          </div>
-                                        </td>
-                                      </tr>
-                                    );
-                                  })}
-                                </tbody>
-                              </table>
-                            );
-                          })()}
-                        </div>
-
-                        {/* Subcategories Pagination Bar */}
-                        <div className="p-4 border-t border-[#2C2C2C] flex flex-col sm:flex-row items-center justify-between gap-3 bg-[#151515]">
-                          <div className="flex items-center gap-3 text-xs text-gray-400">
-                            <span>
-                              Showing page <strong className="text-gray-200">{subPage}</strong> of <strong className="text-gray-200">{subTotalPages}</strong> (Total <strong className="text-gray-200">{subTotalCount || subcategories.length}</strong> subcategories)
-                            </span>
-                            <span className="text-neutral-600">|</span>
-                            <div className="flex items-center gap-1.5">
-                              <span>Rows per page:</span>
-                              <select
-                                value={subLimit}
+                    ) : (
+                      <table className="w-full text-left text-xs text-gray-300">
+                        <thead className="bg-[#181818] uppercase tracking-wider text-gray-400 border-b border-[#2C2C2C]">
+                          <tr>
+                            <th className="px-4 py-3.5 w-10 text-center">
+                              <input
+                                type="checkbox"
+                                checked={categories.length > 0 && categories.every(c => selectedCategoryIds.includes(String(c.id)))}
                                 onChange={(e) => {
-                                  const newLim = Number(e.target.value);
-                                  setSubLimit(newLim);
-                                  loadSubcategories(1, searchQuery, selectedLang, selectedParentCategoryFilter, newLim);
+                                  if (e.target.checked) {
+                                    setSelectedCategoryIds(Array.from(new Set([...selectedCategoryIds, ...categories.map(c => String(c.id))])));
+                                  } else {
+                                    const pageIds = new Set(categories.map(c => String(c.id)));
+                                    setSelectedCategoryIds(selectedCategoryIds.filter(id => !pageIds.has(id)));
+                                  }
                                 }}
-                                className="bg-[#121212] border border-[#2C2C2C] rounded px-2 py-1 text-xs text-gray-200"
-                              >
-                                <option value={10}>10</option>
-                                <option value={15}>15</option>
-                                <option value={25}>25</option>
-                                <option value={50}>50</option>
-                                <option value={100}>100</option>
-                              </select>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <button
-                              disabled={subPage <= 1}
-                              onClick={() => loadSubcategories(subPage - 1, searchQuery, selectedLang, selectedParentCategoryFilter, subLimit)}
-                              className="px-3 py-1.5 bg-[#1E1E1E] border border-[#2C2C2C] rounded-lg disabled:opacity-40 hover:bg-neutral-800 text-xs text-gray-300 transition flex items-center gap-1"
-                            >
-                              <ChevronLeft className="w-4 h-4" />
-                              <span>Prev</span>
-                            </button>
-                            <span className="text-xs font-semibold px-2 text-amber-400">{subPage} / {subTotalPages}</span>
-                            <button
-                              disabled={subPage >= subTotalPages}
-                              onClick={() => loadSubcategories(subPage + 1, searchQuery, selectedLang, selectedParentCategoryFilter, subLimit)}
-                              className="px-3 py-1.5 bg-[#1E1E1E] border border-[#2C2C2C] rounded-lg disabled:opacity-40 hover:bg-neutral-800 text-xs text-gray-300 transition flex items-center gap-1"
-                            >
-                              <span>Next</span>
-                              <ChevronRight className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* TAB 3: SUBCATEGORY TYPES & SACRED VERSES */}
-                  {activeTab === 'content' && (
-                    <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] overflow-hidden space-y-0">
-                      <div className="p-5 border-b border-[#2C2C2C] flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                        <div>
-                          <div className="flex items-center gap-2 text-xs text-amber-400 font-semibold mb-1">
-                            <span>Categories</span>
-                            <span>&gt;</span>
-                            <span>Subcategories</span>
-                            <span>&gt;</span>
-                            <span className="text-gray-200">Subcategory Types</span>
-                          </div>
-                          <h2 className="text-base font-bold text-gray-100 flex items-center gap-2">
-                            <BookOpen className="w-5 h-5 text-orange-400" />
-                            <span>Subcategory Types &amp; Sacred Verses Management</span>
-                          </h2>
-                          <p className="text-xs text-gray-400 mt-0.5">
-                            Manage worship steps, sacred mantras, chants, and procedures under each subcategory dynamically.
-                          </p>
-                        </div>
-
-                        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-xs text-gray-400">Subcategory:</span>
-                            <select
-                              value={selectedSubcategoryForTypes}
-                              onChange={(e) => {
-                                setSelectedSubcategoryForTypes(e.target.value);
-                                loadDevotionalContent(1, searchQuery, e.target.value);
-                              }}
-                              className="bg-[#141414] border border-[#2C2C2C] rounded-lg px-3 py-2 text-xs text-amber-400 focus:outline-none focus:border-[#FFB300] max-w-xs truncate"
-                            >
-                              <option value="all">All Subcategories ({stats?.activeSubcategories ?? (allSubcategoriesList.length || subTotalCount || 134)})</option>
-                              {(allSubcategoriesList.length > 0 ? allSubcategoriesList : subcategories).map(s => (
-                                <option key={s.id} value={s.id}>
-                                  {s.parentTitle ? `${s.parentTitle} ➔ ` : ''}{s.title} (/{s.slug})
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-
-                          <button
-                            onClick={() => handleOpenCreateType(selectedSubcategoryForTypes !== 'all' ? selectedSubcategoryForTypes : undefined)}
-                            className="flex items-center gap-2 bg-[#D84315] hover:bg-[#BF360C] text-white px-4 py-2 rounded-lg text-xs font-bold transition shadow-md shadow-orange-950 flex-shrink-0"
-                          >
-                            <Plus className="w-4 h-4" />
-                            <span>Add Subcategory Type</span>
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Batch Actions Bar for Types */}
-                      {selectedTypeIds.length > 0 && (
-                        <div className="p-3 px-5 bg-amber-950/40 border-b border-amber-500/30 flex items-center justify-between text-xs text-amber-200 animate-in fade-in">
-                          <div className="flex items-center gap-2">
-                            <CheckSquare className="w-4 h-4 text-amber-400" />
-                            <span><strong>{selectedTypeIds.length}</strong> types selected</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setSelectedTypeIds([])}
-                              className="px-3 py-1 rounded bg-neutral-800 hover:bg-neutral-700 text-gray-300 text-xs transition"
-                            >
-                              Deselect All
-                            </button>
-                            <button
-                              type="button"
-                              onClick={handleBatchDeleteTypes}
-                              className="px-3 py-1 rounded bg-red-600 hover:bg-red-700 text-white font-bold text-xs transition flex items-center gap-1 shadow"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                              <span>Delete Selected ({selectedTypeIds.length})</span>
-                            </button>
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="overflow-x-auto min-h-[300px]">
-                        {devotionalContent.length === 0 ? (
-                          <div className="p-12 text-center text-xs text-gray-400">
-                            <BookOpen className="w-8 h-8 mx-auto mb-2 text-gray-600 opacity-60" />
-                            <p className="font-semibold text-gray-300">No subcategory types or verses found in database.</p>
-                            <p className="text-gray-500 mt-1">Click &quot;+ Add Subcategory Type&quot; above to create worship steps and recitations under this subcategory.</p>
-                            <button
-                              onClick={() => handleOpenCreateType(selectedSubcategoryForTypes !== 'all' ? selectedSubcategoryForTypes : undefined)}
-                              className="mt-3 px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-amber-400 border border-neutral-700 rounded text-xs font-semibold transition"
-                            >
-                              + Add First Subcategory Type
-                            </button>
-                          </div>
-                        ) : (
-                          <table className="w-full text-left text-xs text-gray-300">
-                            <thead className="bg-[#181818] uppercase text-gray-400 border-b border-[#2C2C2C]">
-                              <tr>
-                                <th className="px-4 py-3 w-10 text-center">
-                                  <input
-                                    type="checkbox"
-                                    checked={devotionalContent.length > 0 && devotionalContent.every(t => selectedTypeIds.includes(t.id))}
-                                    onChange={(e) => {
-                                      if (e.target.checked) {
-                                        setSelectedTypeIds(Array.from(new Set([...selectedTypeIds, ...devotionalContent.map(t => t.id)])));
-                                      } else {
-                                        const pageIds = new Set(devotionalContent.map(t => t.id));
-                                        setSelectedTypeIds(selectedTypeIds.filter(id => !pageIds.has(id)));
-                                      }
-                                    }}
-                                    className="rounded bg-[#121212] border-[#3A3A3A] text-amber-500 focus:ring-amber-500 cursor-pointer"
-                                  />
-                                </th>
-                                <th className="px-4 py-3">ID</th>
-                                <th className="px-6 py-3">Type Title &amp; Slug</th>
-                                <th className="px-6 py-3">Subcategory</th>
-                                <th className="px-6 py-3">Status</th>
-                                <th className="px-6 py-3">Sacred Verse</th>
-                                <th className="px-6 py-3">Spiritual Meaning</th>
-                                <th className="px-6 py-3 text-right">Actions</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-[#2C2C2C]">
-                              {devotionalContent.map(item => (
+                                className="rounded bg-[#121212] border-[#3A3A3A] text-amber-500 focus:ring-amber-500 cursor-pointer"
+                              />
+                            </th>
+                            <th className="px-3 py-3.5 w-12 text-center">Artwork</th>
+                            <th className="px-4 py-3.5">ID</th>
+                            <th className="px-6 py-3.5">Category Title &amp; Subtitle ({selectedLang.toUpperCase()})</th>
+                            <th className="px-6 py-3.5">Slug</th>
+                            <th className="px-6 py-3.5">Subcategories</th>
+                            <th className="px-6 py-3.5">Content Type</th>
+                            <th className="px-6 py-3.5 text-center font-bold text-amber-400">Options / Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#2C2C2C]">
+                          {categories.length === 0 ? (
+                            <tr>
+                              <td colSpan={8} className="px-6 py-12 text-center text-gray-400">
+                                <BookOpen className="w-10 h-10 mx-auto text-gray-600 mb-2 opacity-50" />
+                                <p className="text-sm font-semibold">No categories found in database</p>
+                                <p className="text-xs text-gray-500 mt-1">Click &quot;Create Category&quot; above to add a new devotional category.</p>
+                              </td>
+                            </tr>
+                          ) : (
+                            categories.map((item) => {
+                              const catImg = item.imageUrl || item.artwork || '';
+                              return (
                                 <tr key={item.id} className="hover:bg-neutral-800/40 transition">
                                   <td className="px-4 py-4 text-center">
                                     <input
                                       type="checkbox"
-                                      checked={selectedTypeIds.includes(item.id)}
+                                      checked={selectedCategoryIds.includes(String(item.id))}
                                       onChange={(e) => {
                                         if (e.target.checked) {
-                                          setSelectedTypeIds(prev => [...prev, item.id]);
+                                          setSelectedCategoryIds(prev => [...prev, String(item.id)]);
                                         } else {
-                                          setSelectedTypeIds(prev => prev.filter(id => id !== item.id));
+                                          setSelectedCategoryIds(prev => prev.filter(id => id !== String(item.id)));
                                         }
                                       }}
                                       className="rounded bg-[#121212] border-[#3A3A3A] text-amber-500 focus:ring-amber-500 cursor-pointer"
                                     />
                                   </td>
-                                  <td className="px-4 py-4 font-mono text-gray-500">#{item.id}</td>
-                                  <td className="px-6 py-4">
-                                    <div className="font-semibold text-gray-100">{item.title}</div>
-                                    <div className="font-mono text-[11px] text-amber-400/90">/{item.slug}</div>
-                                  </td>
-                                  <td className="px-6 py-4 text-gray-300 whitespace-nowrap">
-                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-neutral-800 border border-neutral-700 text-[11px]">
-                                      <span>📁</span>
-                                      <span>{item.category?.title || item.category?.slug || `Subcategory #${item.categoryId}`}</span>
-                                    </span>
-                                  </td>
-                                  <td className="px-6 py-4 whitespace-nowrap">
-                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${item.isPublished !== false ? 'bg-emerald-950/70 text-emerald-300 border border-emerald-800/50' : 'bg-amber-950/70 text-amber-300 border border-amber-800/50'}`}>
-                                      {item.isPublished !== false ? 'Published' : 'Draft'}
-                                    </span>
-                                  </td>
-                                  <td className="px-6 py-4 font-mono text-amber-300 max-w-xs truncate">{item.sacredText || '—'}</td>
-                                  <td className="px-6 py-4 text-gray-400 max-w-xs truncate">{item.meaning || '—'}</td>
-                                  <td className="px-6 py-4 text-right whitespace-nowrap">
-                                    <div className="flex items-center justify-end gap-1.5">
-                                      <button
-                                        onClick={() => handleOpenViewContent(item.id)}
-                                        title="View Subcategory Type Details"
-                                        className="p-1.5 hover:bg-neutral-700 rounded text-sky-400 transition"
-                                      >
-                                        <Eye className="w-3.5 h-3.5" />
-                                      </button>
-                                      <button
-                                        onClick={() => handleOpenEditType(item)}
-                                        title="Edit Subcategory Type"
-                                        className="p-1.5 hover:bg-neutral-700 rounded text-amber-400 transition"
-                                      >
-                                        <Edit3 className="w-3.5 h-3.5" />
-                                      </button>
-                                      <button
-                                        onClick={() => handleDeleteType(item.id, item.title)}
-                                        title="Delete Subcategory Type"
-                                        className="p-1.5 hover:bg-neutral-700 rounded text-red-400 transition"
-                                      >
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                      </button>
+                                  <td className="px-3 py-4 text-center">
+                                    <div className="w-10 h-10 rounded-lg bg-[#141414] border border-[#2C2C2C] overflow-hidden flex items-center justify-center mx-auto">
+                                      {catImg ? (
+                                        <img
+                                          src={catImg.startsWith('http') ? catImg : `${API_ORIGIN}${catImg.startsWith('/') ? '' : '/'}${catImg}`}
+                                          alt={item.title}
+                                          className="w-full h-full object-contain p-1"
+                                          onError={(e: any) => {
+                                            e.currentTarget.style.display = 'none';
+                                            if (e.currentTarget.parentElement) {
+                                              e.currentTarget.parentElement.innerHTML = '<span class="text-xs">🪔</span>';
+                                            }
+                                          }}
+                                        />
+                                      ) : (
+                                        <span className="text-xs">🪔</span>
+                                      )}
                                     </div>
                                   </td>
+                                  <td className="px-4 py-4 font-mono text-gray-500">#{item.id}</td>
+                                  <td className="px-6 py-4">
+                                    <div className="font-semibold text-gray-100 flex items-center gap-2">
+                                      <span className="text-orange-400">🪔</span>
+                                      <span>{item.title}</span>
+                                    </div>
+                                    <div className="font-mono text-[11px] text-amber-400/90 mt-0.5">/{item.slug}</div>
+                                    {(item.subtitle || item.description) && (
+                                      <div className="text-[11px] text-gray-400 truncate max-w-sm mt-0.5" title={item.subtitle || item.description}>
+                                        {item.subtitle || item.description}
+                                      </div>
+                                    )}
+                                  </td>
+                                  <td className="px-6 py-4 font-mono text-amber-400/90">{item.slug}</td>
+                                  <td className="px-6 py-4">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setSelectedParentCategoryFilter(String(item.id));
+                                        setActiveTab('subcategories');
+                                        setPageMode('LIST');
+                                        loadSubcategories(1, '', selectedLang, String(item.id));
+                                      }}
+                                      className="px-2.5 py-1 rounded bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-semibold transition flex items-center gap-1.5"
+                                      title="View subcategories under this category"
+                                    >
+                                      <Layers className="w-3.5 h-3.5" />
+                                      <span className="font-bold">{item.subcategoriesCount || 0}</span>
+                                    </button>
+                                  </td>
+                                  <td className="px-6 py-4">
+                                    {item.isAudio ? (
+                                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/30">
+                                        <Music className="w-3 h-3" /> Audio Track
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium bg-blue-500/10 text-blue-400 border border-blue-500/30">
+                                        <BookOpen className="w-3 h-3" /> Slokas & Mantras
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td className="px-6 py-4 text-center space-x-2 whitespace-nowrap">
+                                    <button
+                                      onClick={() => handleOpenViewCategory(item.id)}
+                                      className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 rounded text-sky-400 text-xs font-semibold transition"
+                                      title="View Category Details"
+                                    >
+                                      <Eye className="w-3.5 h-3.5" />
+                                      <span>View</span>
+                                    </button>
+                                    <button
+                                      onClick={() => handleOpenEditCategory(item)}
+                                      className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 rounded text-amber-400 text-xs font-semibold transition"
+                                    >
+                                      <Edit3 className="w-3.5 h-3.5" />
+                                      <span>Edit</span>
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeleteCategory(item.id, item.title)}
+                                      className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-red-950/40 hover:bg-red-900/60 border border-red-800/40 rounded text-red-400 text-xs font-semibold transition"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                      <span>Delete</span>
+                                    </button>
+                                  </td>
                                 </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        )}
-                      </div>
-
-                      {/* Types Pagination Bar */}
-                      <div className="p-4 border-t border-[#2C2C2C] flex flex-col sm:flex-row items-center justify-between gap-3 bg-[#151515]">
-                        <div className="flex items-center gap-3 text-xs text-gray-400">
-                          <span>
-                            Showing page <strong className="text-gray-200">{typePage}</strong> of <strong className="text-gray-200">{typeTotalPages}</strong> (Total <strong className="text-gray-200">{typeTotalCount || devotionalContent.length}</strong> types)
-                          </span>
-                          <span className="text-neutral-600">|</span>
-                          <div className="flex items-center gap-1.5">
-                            <span>Rows per page:</span>
-                            <select
-                              value={typeLimit}
-                              onChange={(e) => {
-                                const newLim = Number(e.target.value);
-                                setTypeLimit(newLim);
-                                loadDevotionalContent(1, searchQuery, selectedSubcategoryForTypes, newLim);
-                              }}
-                              className="bg-[#121212] border border-[#2C2C2C] rounded px-2 py-1 text-xs text-gray-200"
-                            >
-                              <option value={10}>10</option>
-                              <option value={15}>15</option>
-                              <option value={25}>25</option>
-                              <option value={50}>50</option>
-                              <option value={100}>100</option>
-                            </select>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            disabled={typePage <= 1}
-                            onClick={() => loadDevotionalContent(typePage - 1, searchQuery, selectedSubcategoryForTypes, typeLimit)}
-                            className="px-3 py-1.5 bg-[#1E1E1E] border border-[#2C2C2C] rounded-lg disabled:opacity-40 hover:bg-neutral-800 text-xs text-gray-300 transition flex items-center gap-1"
-                          >
-                            <ChevronLeft className="w-4 h-4" />
-                            <span>Prev</span>
-                          </button>
-                          <span className="text-xs font-semibold px-2 text-amber-400">{typePage} / {typeTotalPages}</span>
-                          <button
-                            disabled={typePage >= typeTotalPages}
-                            onClick={() => loadDevotionalContent(typePage + 1, searchQuery, selectedSubcategoryForTypes, typeLimit)}
-                            className="px-3 py-1.5 bg-[#1E1E1E] border border-[#2C2C2C] rounded-lg disabled:opacity-40 hover:bg-neutral-800 text-xs text-gray-300 transition flex items-center gap-1"
-                          >
-                            <span>Next</span>
-                            <ChevronRight className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
-
-              {/* TAB 4: PANCHANGAM & FESTIVALS */}
-              {activeTab === 'panchangam' && (
-                <div className="space-y-6">
-                  {/* Top Controls Bar */}
-                  <div className="bg-[#1C1C1C] rounded-xl border border-[#FFB300]/30 p-5 shadow-xl">
-                    <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 border-b border-[#2C2C2C] pb-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
-                          <Compass className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <h2 className="text-base font-bold text-[#FFB300] tracking-wide flex items-center gap-2">
-                            <span>Vedic Astronomical Panchangam Directory</span>
-                            <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-950/60 text-emerald-300 border border-emerald-800/40">
-                              {panchangamEntries.length} Days in {new Date(panchangamYear, panchangamMonth - 1).toLocaleString('default', { month: 'long' })} {panchangamYear}
-                            </span>
-                          </h2>
-                          <p className="text-xs text-gray-400">
-                            High-precision ephemeris engine (Jean Meeus VSOP87 & Lahiri Chitra Paksha) with live MySQL daily override controls.
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
-                        {/* City Selector */}
-                        <div className="flex items-center gap-1.5 bg-[#141414] border border-[#2C2C2C] rounded-lg px-2.5 py-1.5">
-                          <MapPin className="w-3.5 h-3.5 text-amber-400" />
-                          <select
-                            value={panchangamCity}
-                            onChange={(e) => {
-                              const c = e.target.value;
-                              setPanchangamCity(c);
-                              loadPanchangam(c, selectedLang);
-                              loadPanchangamEntries(c, panchangamYear, panchangamMonth, selectedLang);
-                            }}
-                            className="bg-transparent text-xs text-gray-200 focus:outline-none cursor-pointer"
-                          >
-                            <option value="Hyderabad" className="bg-[#181818]">Hyderabad (హైదరాబాద్)</option>
-                            <option value="Vijayawada" className="bg-[#181818]">Vijayawada (విజయవాడ)</option>
-                            <option value="Visakhapatnam" className="bg-[#181818]">Visakhapatnam (విశాఖపట్నం)</option>
-                            <option value="Tirupati" className="bg-[#181818]">Tirupati (తిరుపతి)</option>
-                            <option value="Bengaluru" className="bg-[#181818]">Bengaluru (ಬೆಂಗಳೂರು)</option>
-                            <option value="Chennai" className="bg-[#181818]">Chennai (சென்னை)</option>
-                            <option value="Sabarimala" className="bg-[#181818]">Sabarimala (ശബരിമല)</option>
-                          </select>
-                        </div>
-
-                        {/* Year Selector */}
-                        <select
-                          value={panchangamYear}
-                          onChange={(e) => {
-                            const y = parseInt(e.target.value, 10);
-                            setPanchangamYear(y);
-                            loadPanchangamEntries(panchangamCity, y, panchangamMonth, selectedLang);
-                          }}
-                          className="bg-[#141414] border border-[#2C2C2C] rounded-lg px-3 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-[#FFB300] cursor-pointer"
-                        >
-                          {[2024, 2025, 2026, 2027, 2028, 2029, 2030].map(y => (
-                            <option key={y} value={y} className="bg-[#181818]">{y}</option>
-                          ))}
-                        </select>
-
-                        {/* Month Selector */}
-                        <select
-                          value={panchangamMonth}
-                          onChange={(e) => {
-                            const m = parseInt(e.target.value, 10);
-                            setPanchangamMonth(m);
-                            loadPanchangamEntries(panchangamCity, panchangamYear, m, selectedLang);
-                          }}
-                          className="bg-[#141414] border border-[#2C2C2C] rounded-lg px-3 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-[#FFB300] cursor-pointer"
-                        >
-                          {[
-                            { num: 1, name: 'January' },
-                            { num: 2, name: 'February' },
-                            { num: 3, name: 'March' },
-                            { num: 4, name: 'April' },
-                            { num: 5, name: 'May' },
-                            { num: 6, name: 'June' },
-                            { num: 7, name: 'July' },
-                            { num: 8, name: 'August' },
-                            { num: 9, name: 'September' },
-                            { num: 10, name: 'October' },
-                            { num: 11, name: 'November' },
-                            { num: 12, name: 'December' },
-                          ].map(m => (
-                            <option key={m.num} value={m.num} className="bg-[#181818]">{m.name}</option>
-                          ))}
-                        </select>
-
-                        {/* Refresh Button */}
-                        <button
-                          onClick={() => {
-                            loadPanchangam(panchangamCity, selectedLang);
-                            loadPanchangamEntries(panchangamCity, panchangamYear, panchangamMonth, selectedLang);
-                          }}
-                          className="p-2 bg-[#141414] hover:bg-neutral-800 border border-[#2C2C2C] rounded-lg text-gray-400 hover:text-amber-400 transition"
-                          title="Reload Ephemeris & Overrides"
-                        >
-                          <RefreshCw className="w-3.5 h-3.5" />
-                        </button>
-
-                        {/* Add Override Button */}
-                        <button
-                          onClick={() => handleOpenCreatePanchangamOverride()}
-                          className="flex items-center gap-1.5 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white px-3.5 py-1.5 rounded-lg text-xs font-bold transition shadow-md shadow-orange-950 flex-shrink-0"
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                          <span>+ Override / Add Day</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Today's Live Highlight Strip */}
-                    {livePanchangam && (
-                      <div className="mt-4 pt-4 border-t border-[#2C2C2C] grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-                        <div className="bg-[#141414] p-2.5 rounded-lg border border-[#2C2C2C]">
-                          <span className="text-[10px] text-gray-500 uppercase tracking-wider block font-semibold">Today's Date & Vaaram</span>
-                          <strong className="text-gray-100 font-bold block mt-0.5">{livePanchangam.isoDate}</strong>
-                          <span className="text-amber-400 font-semibold">{livePanchangam.vaaram}</span>
-                        </div>
-                        <div className="bg-[#141414] p-2.5 rounded-lg border border-[#2C2C2C]">
-                          <span className="text-[10px] text-gray-500 uppercase tracking-wider block font-semibold">Tithi & End Time</span>
-                          <strong className="text-emerald-400 font-bold block mt-0.5">{livePanchangam.tithi}</strong>
-                          <span className="text-gray-400 text-[11px]">ends {livePanchangam.tithiEndTime}</span>
-                        </div>
-                        <div className="bg-[#141414] p-2.5 rounded-lg border border-[#2C2C2C]">
-                          <span className="text-[10px] text-gray-500 uppercase tracking-wider block font-semibold">Nakshatram</span>
-                          <strong className="text-sky-400 font-bold block mt-0.5">{livePanchangam.nakshatram}</strong>
-                          <span className="text-gray-400 text-[11px] truncate block">{livePanchangam.samvatsaram}</span>
-                        </div>
-                        <div className="bg-[#141414] p-2.5 rounded-lg border border-[#2C2C2C]">
-                          <span className="text-[10px] text-gray-500 uppercase tracking-wider block font-semibold">Sun & Rahu Timings</span>
-                          <strong className="text-amber-300 font-bold block mt-0.5">☀️ {livePanchangam.sunrise} — 🌙 {livePanchangam.sunset}</strong>
-                          <span className="text-rose-400 text-[11px]">Rahu: {livePanchangam.rahuKalam}</span>
-                        </div>
-                      </div>
+                              );
+                            }))}
+                        </tbody>
+                      </table>
                     )}
                   </div>
 
-                  {/* Month Panchangam Directory Table (View All) */}
-                  <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] overflow-hidden shadow-2xl">
-                    <div className="p-4 border-b border-[#2C2C2C] flex items-center justify-between bg-[#181818]">
-                      <div className="flex items-center gap-2">
-                        <Compass className="w-4 h-4 text-amber-400" />
-                        <span className="text-xs font-bold text-gray-200 uppercase tracking-wider">
-                          Daily Vedic Panchangam Schedule — {new Date(panchangamYear, panchangamMonth - 1).toLocaleString('default', { month: 'long' })} {panchangamYear} ({panchangamCity})
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-3 text-xs text-gray-400">
-                        <span className="flex items-center gap-1.5">
-                          <span className="w-2 h-2 rounded-full bg-amber-400" /> Custom DB Override
-                        </span>
-                        <span className="flex items-center gap-1.5">
-                          <span className="w-2 h-2 rounded-full bg-neutral-500" /> Astronomical Engine
-                        </span>
+                  {/* Categories Pagination Bar */}
+                  <div className="p-4 border-t border-[#2C2C2C] flex flex-col sm:flex-row items-center justify-between gap-3 bg-[#151515]">
+                    <div className="flex items-center gap-3 text-xs text-gray-400">
+                      <span>
+                        Showing page <strong className="text-gray-200">{page}</strong> of <strong className="text-gray-200">{totalPages}</strong> (Total <strong className="text-gray-200">{totalCount}</strong>)
+                      </span>
+                      <span className="text-neutral-600">|</span>
+                      <div className="flex items-center gap-1.5">
+                        <span>Rows per page:</span>
+                        <select
+                          value={15}
+                          onChange={(e) => {
+                            const newLim = Number(e.target.value);
+                            loadCategories(1, searchQuery, selectedLang, isAudioFilter, newLim);
+                          }}
+                          className="bg-[#121212] border border-[#2C2C2C] rounded px-2 py-1 text-xs text-gray-200"
+                        >
+                          <option value={10}>10</option>
+                          <option value={15}>15</option>
+                          <option value={25}>25</option>
+                          <option value={50}>50</option>
+                          <option value={100}>100</option>
+                        </select>
                       </div>
                     </div>
-
-                    <div className="overflow-x-auto min-h-[350px]">
-                      {isLoadingPanchangamEntries ? (
-                        <div className="p-12 text-center text-xs text-gray-400">
-                          <RefreshCw className="w-6 h-6 mx-auto mb-2 animate-spin text-amber-400" />
-                          <p>Calculating planetary positions & loading daily Panchangam...</p>
-                        </div>
-                      ) : panchangamEntries.length === 0 ? (
-                        <div className="p-12 text-center text-xs text-gray-400">
-                          <p className="font-semibold text-gray-300">No entries loaded for this month.</p>
-                          <button
-                            onClick={() => loadPanchangamEntries(panchangamCity, panchangamYear, panchangamMonth, selectedLang)}
-                            className="mt-2 px-3 py-1.5 bg-neutral-800 text-amber-400 rounded text-xs font-semibold"
-                          >
-                            Click to Reload
-                          </button>
-                        </div>
-                      ) : (
-                        <table className="w-full text-left text-xs text-gray-300">
-                          <thead className="bg-[#151515] uppercase text-[11px] text-gray-400 border-b border-[#2C2C2C]">
-                            <tr>
-                              <th className="px-5 py-3">Date & Day</th>
-                              <th className="px-5 py-3">Tithi</th>
-                              <th className="px-5 py-3">Nakshatram</th>
-                              <th className="px-5 py-3">Paksham</th>
-                              <th className="px-5 py-3">Sun Times</th>
-                              <th className="px-5 py-3">Rahu Kalam</th>
-                              <th className="px-5 py-3">Source Status</th>
-                              <th className="px-5 py-3 text-right">Actions</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-[#2C2C2C]">
-                            {panchangamEntries.map((day) => (
-                              <tr
-                                key={day.date}
-                                className={`hover:bg-neutral-800/40 transition ${day.isOverride ? 'bg-amber-950/10' : ''
-                                  }`}
-                              >
-                                <td className="px-5 py-3.5 whitespace-nowrap">
-                                  <p className="font-bold text-gray-100">{day.date}</p>
-                                  <p className="text-[11px] text-amber-400 font-semibold">{day.vaaram}</p>
-                                </td>
-
-                                <td className="px-5 py-3.5">
-                                  <p className="font-semibold text-emerald-400">{day.tithi}</p>
-                                  {day.tithiEndTime && (
-                                    <p className="text-[10px] text-gray-400">ends {day.tithiEndTime}</p>
-                                  )}
-                                </td>
-
-                                <td className="px-5 py-3.5">
-                                  <p className="font-semibold text-sky-400">{day.nakshatram}</p>
-                                  {day.nakshatraEndTime && (
-                                    <p className="text-[10px] text-gray-400">ends {day.nakshatraEndTime}</p>
-                                  )}
-                                </td>
-
-                                <td className="px-5 py-3.5 whitespace-nowrap">
-                                  <span className="text-gray-300 font-medium">{day.paksham}</span>
-                                </td>
-
-                                <td className="px-5 py-3.5 whitespace-nowrap">
-                                  <p className="text-gray-200">☀️ {day.sunrise}</p>
-                                  <p className="text-gray-400 text-[11px]">🌙 {day.sunset}</p>
-                                </td>
-
-                                <td className="px-5 py-3.5 whitespace-nowrap">
-                                  <span className="text-rose-400 font-mono text-[11px]">{day.rahuKalam}</span>
-                                </td>
-
-                                <td className="px-5 py-3.5 whitespace-nowrap">
-                                  {day.isOverride ? (
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30">
-                                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-                                      MySQL Override #{day.id}
-                                    </span>
-                                  ) : (
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-neutral-800 text-gray-400 border border-neutral-700">
-                                      Astronomical VSOP87
-                                    </span>
-                                  )}
-                                </td>
-
-                                <td className="px-5 py-3.5 text-right whitespace-nowrap">
-                                  <div className="flex items-center justify-end gap-1.5">
-                                    {/* View by ID */}
-                                    <button
-                                      onClick={() => {
-                                        setSelectedViewPanchangam(day);
-                                        setIsViewPanchangamModalOpen(true);
-                                      }}
-                                      className="p-1.5 bg-[#252525] hover:bg-[#303030] text-sky-400 rounded-lg transition"
-                                      title="View Full Panchangam Details"
-                                    >
-                                      <Eye className="w-3.5 h-3.5" />
-                                    </button>
-
-                                    {/* Edit / Override */}
-                                    <button
-                                      onClick={() => handleOpenCreatePanchangamOverride(day)}
-                                      className="p-1.5 bg-[#252525] hover:bg-[#303030] text-amber-400 rounded-lg transition"
-                                      title="Customize or Override this Day"
-                                    >
-                                      <Edit3 className="w-3.5 h-3.5" />
-                                    </button>
-
-                                    {/* Delete / Reset */}
-                                    {day.isOverride && (
-                                      <button
-                                        onClick={() => handleDeletePanchangamOverride(day.id, day.date)}
-                                        className="p-1.5 bg-red-950/40 hover:bg-red-900/60 text-rose-400 border border-red-800/40 rounded-lg transition"
-                                        title="Delete Override (Revert to Astronomical Calculation)"
-                                      >
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                      </button>
-                                    )}
-                                  </div>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      )}
+                    <div className="flex items-center gap-2">
+                      <button
+                        disabled={page <= 1}
+                        onClick={() => loadCategories(page - 1, searchQuery, selectedLang, isAudioFilter)}
+                        className="px-3 py-1.5 bg-[#1E1E1E] border border-[#2C2C2C] rounded-lg disabled:opacity-40 hover:bg-neutral-800 text-xs text-gray-300 transition flex items-center gap-1"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                        <span>Prev</span>
+                      </button>
+                      <span className="text-xs font-semibold px-2 text-amber-400">{page} / {totalPages}</span>
+                      <button
+                        disabled={page >= totalPages}
+                        onClick={() => loadCategories(page + 1, searchQuery, selectedLang, isAudioFilter)}
+                        className="px-3 py-1.5 bg-[#1E1E1E] border border-[#2C2C2C] rounded-lg disabled:opacity-40 hover:bg-neutral-800 text-xs text-gray-300 transition flex items-center gap-1"
+                      >
+                        <span>Next</span>
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* TAB: FESTIVALS (Dedicated Festivals & Observances Directory Page) */}
-              {activeTab === 'festivals' && (
+              {/* TAB 2: SUBCATEGORIES */}
+              {activeTab === 'subcategories' && (
                 <div className="space-y-6">
-                  {/* Sabarimala Festival Dates & Management (View All, View By ID, Create, Edit, Delete) */}
-                  <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] overflow-hidden shadow-2xl">
-                    <div className="p-5 border-b border-[#2C2C2C] flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                  {/* Category Filter & Subcategory Header Card (Matching Category Style) */}
+                  <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] p-6 shadow-xl">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                       <div>
-                        <div className="flex items-center gap-2">
-                          <h2 className="text-base font-bold text-gray-100 flex items-center gap-2">
-                            <Calendar className="w-5 h-5 text-orange-400" />
-                            <span>Sabarimala & Temple Festivals Directory</span>
-                          </h2>
-                          <span className="bg-[#D84315]/20 text-orange-400 border border-orange-500/30 px-2 py-0.5 rounded-full text-[11px] font-semibold">
-                            {festivals.length} Festivals
-                          </span>
-                        </div>
-                        <p className="text-xs text-gray-400 mt-1">
-                          Dynamic sanctum festival schedule from MySQL database with 5-language localization.
+                        <h2 className="text-base font-bold text-[#FFB300] flex items-center gap-2">
+                          <Layers className="w-5 h-5 text-orange-400" />
+                          <span>Devotional Subcategories Management</span>
+                        </h2>
+                        <p className="text-xs text-gray-400 mt-1 max-w-2xl leading-relaxed">
+                          Authoritative devotional subcategories, chapters, stotras, prayers, and bhajans fetched dynamically from MySQL DB with server-side pagination, search, and status filters.
                         </p>
                       </div>
 
-                      <div className="flex items-center gap-2.5 w-full md:w-auto">
-                        <div className="relative flex-1 md:w-64">
-                          <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                          <input
-                            type="text"
-                            value={festivalSearch}
+                      <div className="flex flex-wrap items-center gap-3">
+                        {/* Language Selector */}
+                        <div className="flex items-center gap-1.5 bg-[#141414] border border-[#2C2C2C] rounded-lg px-2.5 py-1.5">
+                          <Globe className="w-3.5 h-3.5 text-amber-400" />
+                          <select
+                            value={selectedLang}
                             onChange={(e) => {
-                              setFestivalSearch(e.target.value);
-                              loadFestivals(1, e.target.value, festivalYear);
+                              const val = e.target.value;
+                              setSelectedLang(val);
+                              loadSubcategories(1, subSearch, val, selectedParentCategoryFilter, subLimit, subcategoryStatusFilter);
+                              loadParentLookup(val);
                             }}
-                            placeholder="Search festivals by name or date..."
-                            className="w-full bg-[#121212] border border-[#2C2C2C] rounded-lg pl-8 pr-3 py-1.5 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-[#FFB300]"
-                          />
-                          {festivalSearch && (
-                            <button
-                              onClick={() => { setFestivalSearch(''); loadFestivals(1, '', festivalYear); }}
-                              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200 text-xs"
-                            >
-                              ✕
-                            </button>
-                          )}
+                            className="bg-transparent text-xs text-amber-400 font-semibold focus:outline-none cursor-pointer"
+                          >
+                            <option value="en" className="bg-[#1E1E1E] text-gray-200">English (EN)</option>
+                            <option value="te" className="bg-[#1E1E1E] text-gray-200">Telugu (తెలుగు)</option>
+                            <option value="kn" className="bg-[#1E1E1E] text-gray-200">Kannada (ಕನ್ನಡ)</option>
+                            <option value="ta" className="bg-[#1E1E1E] text-gray-200">Tamil (தமிழ்)</option>
+                            <option value="hi" className="bg-[#1E1E1E] text-gray-200">Hindi (हिन्दी)</option>
+                          </select>
                         </div>
 
+                        {/* Add Subcategory Button */}
                         <button
-                          onClick={() => loadFestivals(1, festivalSearch, festivalYear)}
-                          className="p-2 bg-[#141414] hover:bg-[#252525] border border-[#2C2C2C] rounded-lg text-gray-300 hover:text-amber-400 transition"
-                          title="Refresh Festivals Catalog"
+                          onClick={() => handleOpenCreateSubcategory(selectedParentCategoryFilter !== 'all' ? selectedParentCategoryFilter : undefined)}
+                          className="px-3.5 py-1.5 bg-[#FFB300] hover:bg-[#FFA000] text-black rounded-lg text-xs font-bold flex items-center gap-1.5 transition shadow-lg shadow-amber-500/20"
                         >
-                          <RefreshCw className="w-4 h-4" />
-                        </button>
-
-                        <button
-                          onClick={handleOpenCreateFestival}
-                          className="flex items-center gap-2 bg-[#D84315] hover:bg-[#BF360C] text-white px-4 py-2 rounded-lg text-xs font-bold transition shadow-md shadow-orange-950 whitespace-nowrap"
-                        >
-                          <Plus className="w-4 h-4" />
-                          <span>Create Festival</span>
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Add Subcategory</span>
                         </button>
                       </div>
                     </div>
 
-                    {/* Year-Based Filter Navigation Bar */}
-                    <div className="bg-[#161616] px-5 py-3 border-b border-[#2C2C2C] flex flex-wrap items-center justify-between gap-3">
+                    {/* Server-Side Search Bar & Status Filters (Matching Category Style) */}
+                    <div className="mt-5 pt-4 border-t border-[#2C2C2C] flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+                      <div className="relative flex-1 max-w-md">
+                        <Search className="w-4 h-4 absolute left-3 top-2.5 text-gray-400" />
+                        <input
+                          type="text"
+                          placeholder="Search subcategories server-side by title or slug..."
+                          value={subSearch}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setSubSearch(val);
+                            loadSubcategories(1, val, selectedLang, selectedParentCategoryFilter, subLimit, subcategoryStatusFilter);
+                          }}
+                          className="w-full bg-[#141414] border border-[#2C2C2C] rounded-lg pl-9 pr-8 py-2 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-[#FFB300]"
+                        />
+                        {subSearch && (
+                          <button
+                            onClick={() => {
+                              setSubSearch('');
+                              loadSubcategories(1, '', selectedLang, selectedParentCategoryFilter, subLimit, subcategoryStatusFilter);
+                            }}
+                            className="absolute right-2.5 top-2.5 text-gray-400 hover:text-gray-200 text-xs"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Server-Side Status Filter Buttons */}
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
-                          <Calendar className="w-3.5 h-3.5 text-amber-400" />
-                          Year:
-                        </span>
-                        <div className="flex items-center gap-1 bg-[#101010] p-1 rounded-lg border border-[#2C2C2C]">
-                          {['2024', '2025', '2026', '2027', '2028', 'all'].map((yr) => (
+                        <span className="text-xs text-gray-400 font-medium">Status:</span>
+                        <div className="flex items-center bg-[#141414] border border-[#2C2C2C] rounded-lg p-0.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSubcategoryStatusFilter('all');
+                              loadSubcategories(1, subSearch, selectedLang, selectedParentCategoryFilter, subLimit, 'all');
+                            }}
+                            className={`px-3 py-1 rounded text-xs font-semibold transition ${subcategoryStatusFilter === 'all'
+                              ? 'bg-[#FFB300] text-black shadow'
+                              : 'text-gray-400 hover:text-gray-200'
+                              }`}
+                          >
+                            All
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSubcategoryStatusFilter('active');
+                              loadSubcategories(1, subSearch, selectedLang, selectedParentCategoryFilter, subLimit, 'active');
+                            }}
+                            className={`px-3 py-1 rounded text-xs font-semibold transition ${subcategoryStatusFilter === 'active'
+                              ? 'bg-emerald-600 text-white shadow'
+                              : 'text-gray-400 hover:text-gray-200'
+                              }`}
+                          >
+                            Active
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSubcategoryStatusFilter('coming_soon');
+                              loadSubcategories(1, subSearch, selectedLang, selectedParentCategoryFilter, subLimit, 'coming_soon');
+                            }}
+                            className={`px-3 py-1 rounded text-xs font-semibold transition ${subcategoryStatusFilter === 'coming_soon'
+                              ? 'bg-amber-600 text-white shadow'
+                              : 'text-gray-400 hover:text-gray-200'
+                              }`}
+                          >
+                            Coming Soon
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSubcategoryStatusFilter('inactive');
+                              loadSubcategories(1, subSearch, selectedLang, selectedParentCategoryFilter, subLimit, 'inactive');
+                            }}
+                            className={`px-3 py-1 rounded text-xs font-semibold transition ${subcategoryStatusFilter === 'inactive'
+                              ? 'bg-rose-600 text-white shadow'
+                              : 'text-gray-400 hover:text-gray-200'
+                              }`}
+                          >
+                            Inactive
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Filter Pills with Bulletproof Category Matching */}
+                    <div className="pt-4 border-t border-[#2C2C2C] mt-4">
+                      <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block mb-2.5">
+                        Filter by Parent Category (9 Categories):
+                      </span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {/* All Categories Button */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedParentCategoryFilter('all');
+                            loadSubcategories(1, subSearch, selectedLang, 'all', subLimit, subcategoryStatusFilter);
+                          }}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${selectedParentCategoryFilter === 'all'
+                            ? 'bg-[#FFB300] text-black shadow-lg shadow-amber-500/20 font-bold'
+                            : 'bg-[#141414] text-gray-300 hover:text-white border border-[#2C2C2C]'
+                            }`}
+                        >
+                          <span>All Categories</span>
+                          <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${selectedParentCategoryFilter === 'all' ? 'bg-black/30 text-black' : 'bg-neutral-800 text-gray-400'}`}>
+                            {selectedParentCategoryFilter === 'all'
+                              ? subTotalCount || subcategories.length
+                              : (Object.values(parentCategoryCounts).reduce((acc, c) => acc + c, 0) || subTotalCount || subcategories.length)}
+                          </span>
+                        </button>
+
+                        {/* Standard Sanctum Categories with Exact Target Matching */}
+                        {[
+                          { key: 'pooja', name: 'Pooja Vidhanam', icon: '🪔', targetSlugs: ['pooja-vidhanam', 'poojalu-vrathaalu', 'pooja'], exactId: '113' },
+                          { key: 'stotras', name: 'Divine Stotras', icon: '📜', targetSlugs: ['stotras', 'divine-stotras', 'stotramulu', 'slogans-of-sri-ayyappa-swami'], exactId: '114' },
+                          { key: 'slokas', name: 'Daily Slokas', icon: '📿', targetSlugs: ['slokas', 'daily-slokas'], exactId: '115' },
+                          { key: 'songs', name: 'Bhajans & Songs', icon: '🎵', targetSlugs: ['songs', 'bhajans', 'bhajana-keerthanalu'], exactId: '116' },
+                          { key: 'live-streams', name: 'Live Darshan', icon: '📺', targetSlugs: ['live-streams', 'live-darshan'], exactId: '117' },
+                          { key: 'panchangam', name: 'Panchangam', icon: '🧭', targetSlugs: ['panchangam'] },
+                          { key: 'festivals', name: 'Temple Festivals', icon: '📅', targetSlugs: ['festivals'] },
+                          { key: 'temples', name: 'Sacred Temples', icon: '🏛️', targetSlugs: ['temples'] },
+                          { key: 'donations', name: 'Annadanam Seva', icon: '🍲', targetSlugs: ['donations', 'annadanam'] },
+                        ].map(cat => {
+                          const exactMatch = parentLookupList.find(p => cat.exactId && String(p.id) === String(cat.exactId));
+                          let matchedParent = exactMatch;
+                          if (!matchedParent || (matchedParent.subcategoriesCount || 0) === 0) {
+                            const candidates = parentLookupList.filter(p =>
+                              (cat.targetSlugs && cat.targetSlugs.includes(p.slug)) ||
+                              p.slug === cat.key ||
+                              p.slug?.startsWith(cat.key) ||
+                              p.title?.toLowerCase().includes(cat.name.toLowerCase()) ||
+                              (cat.exactId && String(p.id) === String(cat.exactId))
+                            );
+                            if (candidates.length > 0) {
+                              const active = candidates.find(p => (p.subcategoriesCount || 0) > 0);
+                              matchedParent = active || matchedParent || candidates.sort((a, b) => (b.subcategoriesCount || 0) - (a.subcategoriesCount || 0))[0];
+                            }
+                          }
+
+                          const targetId = matchedParent ? String(matchedParent.id) : (cat.exactId ? String(cat.exactId) : cat.key);
+                          const count = (matchedParent && matchedParent.subcategoriesCount !== undefined && matchedParent.subcategoriesCount > 0)
+                            ? matchedParent.subcategoriesCount
+                            : (parentCategoryCounts[cat.key] ??
+                              (cat.key === 'songs' ? parentCategoryCounts['bhajans'] : undefined) ??
+                              (cat.key === 'bhajans' ? parentCategoryCounts['songs'] : undefined) ??
+                              (cat.key === 'live-streams' ? parentCategoryCounts['darshan'] : undefined) ??
+                              (cat.key === 'donations' ? parentCategoryCounts['annadanam'] : undefined) ??
+                              0);
+                          const isSelected = selectedParentCategoryFilter === targetId || selectedParentCategoryFilter === cat.key || (matchedParent && (selectedParentCategoryFilter === matchedParent.slug || String(selectedParentCategoryFilter) === String(matchedParent.id)));
+
+                          return (
                             <button
-                              key={yr}
+                              key={cat.key}
+                              type="button"
                               onClick={() => {
-                                setFestivalYear(yr);
-                                loadFestivals(1, festivalSearch, yr);
+                                setSelectedParentCategoryFilter(targetId);
+                                loadSubcategories(1, subSearch, selectedLang, targetId, subLimit, subcategoryStatusFilter);
                               }}
-                              className={`px-3 py-1 rounded-md text-xs font-bold transition ${festivalYear === yr
-                                ? 'bg-[#D84315] text-white shadow-sm'
-                                : 'text-gray-400 hover:text-gray-100 hover:bg-neutral-800'
+                              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${isSelected
+                                ? 'bg-[#FFB300] text-black shadow-lg shadow-amber-500/20 font-bold'
+                                : 'bg-[#141414] text-gray-300 hover:text-white border border-[#2C2C2C]'
                                 }`}
                             >
-                              {yr === 'all' ? 'All Years' : yr === '2026' ? '2026 (Active)' : yr}
+                              <span>{cat.icon}</span>
+                              <span>{cat.name}</span>
+                              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${isSelected ? 'bg-black/30 text-black' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}`}>
+                                {count}
+                              </span>
                             </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-3 text-xs text-gray-400">
-                        <span className="bg-neutral-800/80 px-2.5 py-1 rounded border border-[#2C2C2C]">
-                          Showing <span className="font-bold text-amber-400">{festivals.length}</span> festivals in {festivalYear === 'all' ? 'All Years' : `Year ${festivalYear}`}
-                        </span>
+                          );
+                        })}
                       </div>
                     </div>
+                  </div>
 
-                    <div className="overflow-x-auto min-h-[250px]">
-                      {festivals.length === 0 ? (
+                  {/* Subcategories Table Container (Matching Category Style) */}
+                  <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] overflow-hidden shadow-2xl">
+                    <div className="p-4 border-b border-[#2C2C2C] flex items-center justify-between bg-[#181818]">
+                      <span className="text-xs font-bold text-gray-200 uppercase tracking-wider flex items-center gap-2">
+                        <Layers className="w-4 h-4 text-orange-400" />
+                        <span>
+                          {selectedParentCategoryFilter === 'all'
+                            ? `All Subcategories in System (${subTotalCount || subcategories.length})`
+                            : (() => {
+                              const foundParent = parentLookupList.find(p => String(p.id) === String(selectedParentCategoryFilter) || p.slug === selectedParentCategoryFilter);
+                              const title = foundParent?.title || (selectedParentCategoryFilter === '113' || selectedParentCategoryFilter === 'pooja' ? 'Pooja Vidhanam' : selectedParentCategoryFilter);
+                              return `Subcategories under "${title.toUpperCase()}" (${subTotalCount || subcategories.length})`;
+                            })()}
+                        </span>
+                      </span>
+                      <button
+                        onClick={() => loadSubcategories(subPage, subSearch, selectedLang, resolveParentId(selectedParentCategoryFilter), subLimit, subcategoryStatusFilter)}
+                        className="text-xs text-gray-400 hover:text-amber-400 flex items-center gap-1 transition"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        <span>Refresh List</span>
+                      </button>
+                    </div>
+
+                    {/* Batch Actions Bar for Subcategories */}
+                    {selectedSubcategoryIds.length > 0 && (
+                      <div className="p-3 px-5 bg-amber-950/40 border-b border-amber-500/30 flex items-center justify-between text-xs text-amber-200 animate-in fade-in">
+                        <div className="flex items-center gap-2">
+                          <CheckSquare className="w-4 h-4 text-amber-400" />
+                          <span><strong>{selectedSubcategoryIds.length}</strong> subcategories selected</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedSubcategoryIds([])}
+                            className="px-3 py-1 rounded bg-neutral-800 hover:bg-neutral-700 text-gray-300 text-xs transition"
+                          >
+                            Deselect All
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleBatchDeleteSubcategories}
+                            className="px-3 py-1 rounded bg-red-600 hover:bg-red-700 text-white font-bold text-xs transition flex items-center gap-1 shadow"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Delete Selected ({selectedSubcategoryIds.length})</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="overflow-x-auto min-h-[300px]">
+                      {subcategories.length === 0 ? (
                         <div className="p-12 text-center text-xs text-gray-400">
-                          <Calendar className="w-8 h-8 text-gray-600 mx-auto mb-2 opacity-50" />
-                          <p className="font-semibold text-gray-300">No festival entries found.</p>
-                          <p className="text-gray-500 mt-1">Click "+ Create Festival" to add verified Sabarimala Mandala Kalam or Makara Jyothi dates.</p>
+                          <Layers className="w-8 h-8 mx-auto mb-2 text-gray-600 opacity-60" />
+                          <p className="font-semibold text-gray-300">
+                            No subcategories found {subSearch ? `matching "${subSearch}"` : ''} {selectedParentCategoryFilter !== 'all' ? `under "${selectedParentCategoryFilter}"` : ''}.
+                          </p>
+                          <button
+                            onClick={() => handleOpenCreateSubcategory(selectedParentCategoryFilter !== 'all' ? selectedParentCategoryFilter : undefined)}
+                            className="mt-3 px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-amber-400 border border-neutral-700 rounded text-xs font-semibold transition"
+                          >
+                            + Add Subcategory
+                          </button>
                         </div>
                       ) : (
-                        <table className="w-full text-left text-xs text-gray-300">
-                          <thead className="bg-[#181818] uppercase text-gray-400 border-b border-[#2C2C2C]">
-                            <tr>
-                              <th className="px-6 py-3">ID</th>
-                              <th className="px-6 py-3">Festival Name</th>
-                              <th className="px-6 py-3">Observance Date</th>
-                              <th className="px-6 py-3">Slug</th>
-                              <th className="px-6 py-3">Source & Observance Note</th>
-                              <th className="px-6 py-3">Status</th>
-                              <th className="px-6 py-3 text-right">Actions</th>
+                        <table className="w-full text-left text-xs border-collapse">
+                          <thead>
+                            <tr className="bg-[#151515] border-b border-[#2C2C2C] text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                              <th className="py-3 px-4 w-12 text-center">
+                                <input
+                                  type="checkbox"
+                                  checked={subcategories.length > 0 && subcategories.every((s: any) => selectedSubcategoryIds.includes(String(s.id)))}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setSelectedSubcategoryIds(Array.from(new Set([...selectedSubcategoryIds, ...subcategories.map((s: any) => String(s.id))])));
+                                    } else {
+                                      const pageIds = new Set(subcategories.map((s: any) => String(s.id)));
+                                      setSelectedSubcategoryIds(selectedSubcategoryIds.filter(id => !pageIds.has(id)));
+                                    }
+                                  }}
+                                  className="rounded bg-[#121212] border-[#3A3A3A] text-amber-500 focus:ring-amber-500 cursor-pointer"
+                                />
+                              </th>
+                              <th className="py-3 px-4 w-14 text-center">#</th>
+                              <th className="py-3 px-4 w-20 text-center">Artwork</th>
+                              <th className="py-3 px-4 min-w-[240px]">Devotional Subcategory</th>
+                              <th className="py-3 px-4 w-40">Parent Category</th>
+                              <th className="py-3 px-4 w-28 text-center">Types</th>
+                              <th className="py-3 px-4 w-28 text-center">Status</th>
+                              <th className="py-3 px-4 min-w-[200px] text-right">Actions</th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-[#2C2C2C]">
-                            {festivals.map(f => {
-                              const langMatch = f.translations?.find(t => (t as any).language?.code === selectedLang)
-                                || f.translations?.find(t => (t as any).language?.code === 'en')
-                                || f.translations?.find(t => (t as any).language?.code === 'te')
-                                || f.translations?.[0];
-                              const enMatch = f.translations?.find(t => (t as any).language?.code === 'en');
-                              const dateObj = new Date(f.festivalDate);
-                              const formattedDate = isNaN(dateObj.getTime())
-                                ? f.festivalDate
-                                : dateObj.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+                          <tbody className="divide-y divide-[#282828]">
+                            {subcategories.map((sub: any, index: number) => {
+                              const pSlug = sub.parentSlug || sub.parentKey || 'pooja';
+                              const rawImg = sub.imageUrl || sub.image || '';
+                              const cleanImg = rawImg && !rawImg.includes('.webp') ? rawImg : '';
+                              const countNum = (typeof sub.typesCount === 'number' && sub.typesCount > 0)
+                                ? sub.typesCount
+                                : (subcategoriesTypeCounts[String(sub.id)] ?? subcategoriesTypeCounts[sub.slug] ?? (typeof sub.typesCount === 'number' ? sub.typesCount : 0));
 
                               return (
-                                <tr key={f.id} className="hover:bg-neutral-800/40 transition">
-                                  <td className="px-6 py-4 font-mono text-gray-400">#{f.id}</td>
-                                  <td className="px-6 py-4">
-                                    <div className="font-semibold text-gray-100 text-sm">
-                                      {langMatch?.name || f.slug}
-                                    </div>
-                                    {enMatch && enMatch.name !== langMatch?.name && (
-                                      <div className="text-[11px] text-gray-400">
-                                        {enMatch.name}
-                                      </div>
-                                    )}
+                                <tr
+                                  key={sub.id}
+                                  onClick={() => handleOpenViewSubcategory(sub.id)}
+                                  className="hover:bg-neutral-800/40 transition-colors group cursor-pointer"
+                                >
+                                  {/* Checkbox */}
+                                  <td className="py-3 px-4 text-center" onClick={(e) => e.stopPropagation()}>
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedSubcategoryIds.includes(String(sub.id))}
+                                      onChange={(e) => {
+                                        if (e.target.checked) {
+                                          setSelectedSubcategoryIds(prev => [...prev, String(sub.id)]);
+                                        } else {
+                                          setSelectedSubcategoryIds(prev => prev.filter(id => id !== String(sub.id)));
+                                        }
+                                      }}
+                                      className="rounded bg-[#121212] border-[#3A3A3A] text-amber-500 focus:ring-amber-500 cursor-pointer"
+                                    />
                                   </td>
-                                  <td className="px-6 py-4 font-mono text-amber-400 font-semibold whitespace-nowrap">
-                                    📅 {formattedDate}
-                                  </td>
-                                  <td className="px-6 py-4 font-mono text-gray-400 text-[11px]">
-                                    {f.slug}
-                                  </td>
-                                  <td className="px-6 py-4 text-gray-300 max-w-xs truncate" title={f.sourceNote || langMatch?.description || ''}>
-                                    {f.sourceNote || langMatch?.description || '—'}
-                                  </td>
-                                  <td className="px-6 py-4">
-                                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${f.isPublished !== false
-                                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                                      : 'bg-neutral-700 text-gray-400'
-                                      }`}>
-                                      <span className={`w-1.5 h-1.5 rounded-full ${f.isPublished !== false ? 'bg-emerald-400 animate-pulse' : 'bg-gray-400'}`}></span>
-                                      {f.isPublished !== false ? 'Published' : 'Draft'}
+
+                                  {/* # Order */}
+                                  <td className="py-3 px-4 text-center">
+                                    <span className="text-[11px] px-2 py-0.5 rounded bg-neutral-800/80 border border-neutral-700/60 text-amber-400 font-mono font-bold">
+                                      #{sub.displayOrder ?? index + 1}
                                     </span>
                                   </td>
-                                  <td className="px-6 py-4 text-right">
+
+                                  {/* Artwork */}
+                                  <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
+                                    <div className="flex items-center justify-center">
+                                      {cleanImg ? (
+                                        <div className="relative group/art w-9 h-9 rounded-lg bg-neutral-900 border border-neutral-800 overflow-hidden flex items-center justify-center flex-shrink-0">
+                                          <img
+                                            src={cleanImg.startsWith('http') || cleanImg.startsWith('data:') ? cleanImg : `${API_ORIGIN}${cleanImg.startsWith('/') ? '' : '/'}${cleanImg}`}
+                                            alt={sub.title}
+                                            className="w-full h-full object-cover opacity-90 group-hover/art:opacity-100 transition"
+                                            onError={(e: any) => { e.currentTarget.style.display = 'none'; }}
+                                          />
+                                          <label
+                                            className="absolute inset-0 bg-black/75 opacity-0 group-hover/art:opacity-100 flex items-center justify-center cursor-pointer transition rounded-lg"
+                                            title="Upload / Change Image"
+                                          >
+                                            <Upload className="w-3.5 h-3.5 text-amber-400" />
+                                            <input
+                                              type="file"
+                                              accept="image/png, image/jpeg, image/webp"
+                                              onChange={(e) => handleQuickSubcategoryImageUpload(sub.id, e)}
+                                              className="hidden"
+                                            />
+                                          </label>
+                                        </div>
+                                      ) : (
+                                        <label
+                                          className="w-9 h-9 rounded-lg bg-neutral-900 border border-dashed border-neutral-700 hover:border-amber-400 text-gray-500 hover:text-amber-400 flex items-center justify-center cursor-pointer transition flex-shrink-0"
+                                          title="Upload Image"
+                                        >
+                                          <Upload className="w-3.5 h-3.5" />
+                                          <input
+                                            type="file"
+                                            accept="image/png, image/jpeg, image/webp"
+                                            onChange={(e) => handleQuickSubcategoryImageUpload(sub.id, e)}
+                                            className="hidden"
+                                          />
+                                        </label>
+                                      )}
+                                    </div>
+                                  </td>
+
+                                  {/* Subcategory Title */}
+                                  <td className="py-3 px-4">
+                                    <div className="flex flex-col">
+                                      <div className="flex items-center gap-1.5 flex-wrap">
+                                        <span className="font-bold text-gray-100 group-hover:text-[#FFB300] transition text-sm">
+                                          {sub.title && sub.title !== sub.slug ? sub.title : sub.slug.replace(/-/g, ' ').replace(/\w/g, (l: string) => l.toUpperCase())}
+                                        </span>
+                                        {sub.deityId && (
+                                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-950/60 text-emerald-300 border border-emerald-800/40">
+                                            <span>🕉️</span>
+                                            <span className="capitalize">{sub.deityId.replace(/-/g, ' ')}</span>
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div className="flex items-center gap-2 mt-0.5">
+                                        <span className="text-[11px] font-mono text-amber-400/80">/{sub.slug}</span>
+                                        {sub.description && (
+                                          <span className="text-[11px] text-gray-400 line-clamp-1 max-w-sm" title={sub.description}>· {sub.description}</span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </td>
+
+                                  {/* Parent Category */}
+                                  <td className="py-3 px-4 whitespace-nowrap">
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[#141414] border border-[#2C2C2C] text-orange-300 text-[11px] font-semibold">
+                                      <span>📁</span>
+                                      <span>{sub.parentTitle || pSlug}</span>
+                                    </span>
+                                  </td>
+
+                                  {/* Types Count & Link (Replacing Type / Format) */}
+                                  <td className="py-3 px-4 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setSelectedSubcategoryForTypes(String(sub.id));
+                                        setActiveTab('content');
+                                        setPageMode('LIST');
+                                        loadDevotionalContent(1, '', String(sub.id));
+                                      }}
+                                      title={`View ${countNum} worship types under this subcategory`}
+                                      className={`inline-flex items-center justify-center min-w-[2.2rem] px-2.5 py-0.5 rounded-full font-bold font-mono text-xs transition shadow-sm hover:scale-105 ${countNum > 0
+                                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50 shadow-[0_0_10px_rgba(255,179,0,0.2)]'
+                                        : 'bg-neutral-800/60 text-gray-400 border border-neutral-700/60 hover:border-neutral-600'
+                                        }`}
+                                    >
+                                      <span>{countNum}</span>
+                                    </button>
+                                  </td>
+
+                                  {/* Status */}
+                                  <td className="py-3 px-4 text-center whitespace-nowrap">
+                                    {renderStatusBadge(sub.status, sub.isActive)}
+                                  </td>
+
+                                  {/* Actions */}
+                                  <td className="py-3 px-4 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                                     <div className="flex items-center justify-end gap-1.5">
                                       <button
-                                        onClick={(e) => handleOpenViewFestival(f, e)}
-                                        className="p-1.5 hover:bg-neutral-700/80 rounded text-sky-400 hover:text-sky-300 transition"
-                                        title="View Festival Details (View by ID)"
+                                        type="button"
+                                        onClick={() => handleOpenViewSubcategory(sub.id)}
+                                        title="View Subcategory Details"
+                                        className="px-2 py-1 bg-[#141414] hover:bg-[#252525] text-gray-300 hover:text-white rounded border border-[#2C2C2C] flex items-center gap-1 text-[11px] font-semibold transition"
                                       >
-                                        <Eye className="w-4 h-4" />
+                                        <Eye className="w-3 h-3 text-sky-400" />
+                                        <span>View</span>
                                       </button>
                                       <button
-                                        onClick={(e) => handleOpenEditFestival(f, e)}
-                                        className="p-1.5 hover:bg-neutral-700/80 rounded text-amber-400 hover:text-amber-300 transition"
-                                        title="Edit Festival Record"
+                                        type="button"
+                                        onClick={() => handleOpenEditSubcategory(sub)}
+                                        title="Edit Subcategory Details"
+                                        className="px-2 py-1 bg-[#141414] hover:bg-[#252525] text-gray-300 hover:text-amber-400 rounded border border-[#2C2C2C] flex items-center gap-1 text-[11px] font-semibold transition"
                                       >
-                                        <Edit className="w-4 h-4" />
+                                        <Edit3 className="w-3 h-3 text-amber-400" />
+                                        <span>Edit</span>
                                       </button>
                                       <button
-                                        onClick={() => handleDeleteFestival(f.id, langMatch?.name || f.slug)}
-                                        className="p-1.5 hover:bg-neutral-700/80 rounded text-red-400 hover:text-red-300 transition"
-                                        title="Delete Festival Record"
+                                        type="button"
+                                        onClick={() => handleDeleteSubcategory(sub.id, sub.title)}
+                                        title="Delete Subcategory"
+                                        className="px-2 py-1 bg-[#141414] hover:bg-rose-950/40 text-gray-300 hover:text-red-400 rounded border border-[#2C2C2C] hover:border-red-900/40 flex items-center gap-1 text-[11px] font-semibold transition"
                                       >
-                                        <Trash2 className="w-4 h-4" />
+                                        <Trash2 className="w-3 h-3 text-red-400" />
+                                        <span>Delete</span>
                                       </button>
                                     </div>
                                   </td>
@@ -8527,319 +8496,1025 @@ export default function EnterpriseSuperAdminDashboard() {
                         </table>
                       )}
                     </div>
+
+                    {/* Subcategories Pagination Bar */}
+                    <div className="p-4 border-t border-[#2C2C2C] flex flex-col sm:flex-row items-center justify-between gap-3 bg-[#151515]">
+                      <div className="flex items-center gap-3 text-xs text-gray-400">
+                        <span>
+                          Showing page <strong className="text-gray-200">{subPage}</strong> of <strong className="text-gray-200">{subTotalPages}</strong> (Total <strong className="text-gray-200">{subTotalCount || subcategories.length}</strong> subcategories)
+                        </span>
+                        <span className="text-neutral-600">|</span>
+                        <div className="flex items-center gap-1.5">
+                          <span>Rows per page:</span>
+                          <select
+                            value={subLimit}
+                            onChange={(e) => {
+                              const newLim = Number(e.target.value);
+                              setSubLimit(newLim);
+                              loadSubcategories(1, subSearch, selectedLang, selectedParentCategoryFilter, newLim, subcategoryStatusFilter);
+                            }}
+                            className="bg-[#121212] border border-[#2C2C2C] rounded px-2 py-1 text-xs text-gray-200"
+                          >
+                            <option value={10}>10</option>
+                            <option value={15}>15</option>
+                            <option value={25}>25</option>
+                            <option value={50}>50</option>
+                            <option value={100}>100</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          disabled={subPage <= 1}
+                          onClick={() => loadSubcategories(subPage - 1, subSearch, selectedLang, selectedParentCategoryFilter, subLimit, subcategoryStatusFilter)}
+                          className="px-3 py-1.5 bg-[#1E1E1E] border border-[#2C2C2C] rounded-lg disabled:opacity-40 hover:bg-neutral-800 text-xs text-gray-300 transition flex items-center gap-1"
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                          <span>Prev</span>
+                        </button>
+                        <span className="text-xs font-semibold px-2 text-amber-400">{subPage} / {subTotalPages}</span>
+                        <button
+                          disabled={subPage >= subTotalPages}
+                          onClick={() => loadSubcategories(subPage + 1, subSearch, selectedLang, selectedParentCategoryFilter, subLimit, subcategoryStatusFilter)}
+                          className="px-3 py-1.5 bg-[#1E1E1E] border border-[#2C2C2C] rounded-lg disabled:opacity-40 hover:bg-neutral-800 text-xs text-gray-300 transition flex items-center gap-1"
+                        >
+                          <span>Next</span>
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
 
-              {/* TAB 5: AUDIO LIBRARY */}
-              {activeTab === 'audio' && (
-                <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] overflow-hidden">
-                  <div className="p-5 border-b border-[#2C2C2C] flex items-center justify-between">
+
+              {/* TAB 3: SUBCATEGORY TYPES & SACRED VERSES */}
+              {activeTab === 'content' && (
+                <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] overflow-hidden space-y-0">
+                  <div className="p-5 border-b border-[#2C2C2C] flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                     <div>
-                      <h2 className="text-base font-bold text-gray-100">Devotional Audio Library</h2>
-                      <p className="text-xs text-gray-400">Offline persistent chants (Suprabatham, Harivarasanam, etc.).</p>
+                      <div className="flex items-center gap-2 text-xs text-amber-400 font-semibold mb-1">
+                        <span>Categories</span>
+                        <span>&gt;</span>
+                        <span>Subcategories</span>
+                        <span>&gt;</span>
+                        <span className="text-gray-200">Subcategory Types</span>
+                      </div>
+                      <h2 className="text-base font-bold text-gray-100 flex items-center gap-2">
+                        <BookOpen className="w-5 h-5 text-orange-400" />
+                        <span>Subcategory Types &amp; Sacred Verses Management</span>
+                      </h2>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        Manage worship steps, sacred mantras, chants, and procedures under each subcategory dynamically.
+                      </p>
                     </div>
-                    <span className="px-3 py-1 bg-amber-500/10 border border-amber-500/20 text-[#FFB300] rounded-full text-xs font-semibold">
-                      {audioList.length} Tracks in Database
+
+                    <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs text-gray-400">Status:</span>
+                        <select
+                          value={typeStatusFilter}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setTypeStatusFilter(val);
+                            loadDevotionalContent(1, searchQuery, selectedSubcategoryForTypes, typeLimit, val);
+                          }}
+                          className="bg-[#141414] border border-[#2C2C2C] rounded-lg px-2.5 py-2 text-xs text-amber-400 focus:outline-none focus:border-[#FFB300]"
+                        >
+                          <option value="all">All Statuses</option>
+                          <option value="active">Active (Published)</option>
+                          <option value="coming_soon">Coming Soon</option>
+                          <option value="inactive">Inactive</option>
+                        </select>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs text-gray-400">Subcategory:</span>
+                        <select
+                          value={selectedSubcategoryForTypes}
+                          onChange={(e) => {
+                            setSelectedSubcategoryForTypes(e.target.value);
+                            loadDevotionalContent(1, searchQuery, e.target.value);
+                          }}
+                          className="bg-[#141414] border border-[#2C2C2C] rounded-lg px-3 py-2 text-xs text-amber-400 focus:outline-none focus:border-[#FFB300] max-w-xs truncate"
+                        >
+                          <option value="all">All Subcategories ({stats?.activeSubcategories ?? (allSubcategoriesList.length || subTotalCount || 134)})</option>
+                          {(allSubcategoriesList.length > 0 ? allSubcategoriesList : subcategories).map(s => {
+                            const sCount = subcategoriesTypeCounts[String(s.id)] ?? s.typesCount ?? 0;
+                            return (
+                              <option key={s.id} value={s.id}>
+                                {s.parentTitle ? `${s.parentTitle} ➔ ` : ''}{s.title} ({sCount} {sCount === 1 ? 'type' : 'types'})
+                              </option>
+                            );
+                          })}
+                        </select>
+                      </div>
+
+                      <button
+                        onClick={() => handleOpenCreateType(selectedSubcategoryForTypes !== 'all' ? selectedSubcategoryForTypes : undefined)}
+                        className="flex items-center gap-2 bg-[#D84315] hover:bg-[#BF360C] text-white px-4 py-2 rounded-lg text-xs font-bold transition shadow-md shadow-orange-950 flex-shrink-0"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span>Add Subcategory Type</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Batch Actions Bar for Types */}
+                  {selectedTypeIds.length > 0 && (
+                    <div className="p-3 px-5 bg-amber-950/40 border-b border-amber-500/30 flex items-center justify-between text-xs text-amber-200 animate-in fade-in">
+                      <div className="flex items-center gap-2">
+                        <CheckSquare className="w-4 h-4 text-amber-400" />
+                        <span><strong>{selectedTypeIds.length}</strong> types selected</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedTypeIds([])}
+                          className="px-3 py-1 rounded bg-neutral-800 hover:bg-neutral-700 text-gray-300 text-xs transition"
+                        >
+                          Deselect All
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleBatchDeleteTypes}
+                          className="px-3 py-1 rounded bg-red-600 hover:bg-red-700 text-white font-bold text-xs transition flex items-center gap-1 shadow"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Delete Selected ({selectedTypeIds.length})</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="overflow-x-auto min-h-[300px]">
+                    {devotionalContent.length === 0 ? (
+                      <div className="p-12 text-center text-xs text-gray-400">
+                        <BookOpen className="w-8 h-8 mx-auto mb-2 text-gray-600 opacity-60" />
+                        <p className="font-semibold text-gray-300">No subcategory types or verses found in database.</p>
+                        <p className="text-gray-500 mt-1">Click &quot;+ Add Subcategory Type&quot; above to create worship steps and recitations under this subcategory.</p>
+                        <button
+                          onClick={() => handleOpenCreateType(selectedSubcategoryForTypes !== 'all' ? selectedSubcategoryForTypes : undefined)}
+                          className="mt-3 px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-amber-400 border border-neutral-700 rounded text-xs font-semibold transition"
+                        >
+                          + Add First Subcategory Type
+                        </button>
+                      </div>
+                    ) : (
+                      <table className="w-full text-left text-xs text-gray-300">
+                        <thead className="bg-[#181818] uppercase text-gray-400 border-b border-[#2C2C2C]">
+                          <tr>
+                            <th className="px-4 py-3 w-10 text-center">
+                              <input
+                                type="checkbox"
+                                checked={devotionalContent.length > 0 && devotionalContent.every(t => selectedTypeIds.includes(t.id))}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedTypeIds(Array.from(new Set([...selectedTypeIds, ...devotionalContent.map(t => t.id)])));
+                                  } else {
+                                    const pageIds = new Set(devotionalContent.map(t => t.id));
+                                    setSelectedTypeIds(selectedTypeIds.filter(id => !pageIds.has(id)));
+                                  }
+                                }}
+                                className="rounded bg-[#121212] border-[#3A3A3A] text-amber-500 focus:ring-amber-500 cursor-pointer"
+                              />
+                            </th>
+                            <th className="px-4 py-3">ID</th>
+                            <th className="px-6 py-3">Type Title &amp; Slug</th>
+                            <th className="px-6 py-3">Subcategory</th>
+                            <th className="px-6 py-3">Status</th>
+                            <th className="px-6 py-3">Sacred Verse</th>
+                            <th className="px-6 py-3">Spiritual Meaning</th>
+                            <th className="px-6 py-3 text-right">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#2C2C2C]">
+                          {devotionalContent.map(item => (
+                            <tr key={item.id} className="hover:bg-neutral-800/40 transition">
+                              <td className="px-4 py-4 text-center">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedTypeIds.includes(item.id)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setSelectedTypeIds(prev => [...prev, item.id]);
+                                    } else {
+                                      setSelectedTypeIds(prev => prev.filter(id => id !== item.id));
+                                    }
+                                  }}
+                                  className="rounded bg-[#121212] border-[#3A3A3A] text-amber-500 focus:ring-amber-500 cursor-pointer"
+                                />
+                              </td>
+                              <td className="px-4 py-4 font-mono text-gray-500">#{item.id}</td>
+                              <td className="px-6 py-4">
+                                <div className="font-semibold text-gray-100">{item.title}</div>
+                                <div className="font-mono text-[11px] text-amber-400/90">/{item.slug}</div>
+                              </td>
+                              <td className="px-6 py-4 text-gray-300 whitespace-nowrap">
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-neutral-800 border border-neutral-700 text-[11px]">
+                                  <span>📁</span>
+                                  <span>{item.category?.title || item.category?.slug || `Subcategory #${item.categoryId}`}</span>
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                {renderStatusBadge((item as any).status, item.isPublished)}
+                              </td>
+                              <td className="px-6 py-4 font-mono text-amber-300 max-w-xs truncate">{item.sacredText || '—'}</td>
+                              <td className="px-6 py-4 text-gray-400 max-w-xs truncate">{item.meaning || '—'}</td>
+                              <td className="px-6 py-4 text-right whitespace-nowrap">
+                                <div className="flex items-center justify-end gap-1.5">
+                                  <button
+                                    onClick={() => handleOpenViewContent(item.id)}
+                                    title="View Subcategory Type Details"
+                                    className="p-1.5 hover:bg-neutral-700 rounded text-sky-400 transition"
+                                  >
+                                    <Eye className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleOpenEditType(item)}
+                                    title="Edit Subcategory Type"
+                                    className="p-1.5 hover:bg-neutral-700 rounded text-amber-400 transition"
+                                  >
+                                    <Edit3 className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteType(item.id, item.title)}
+                                    title="Delete Subcategory Type"
+                                    className="p-1.5 hover:bg-neutral-700 rounded text-red-400 transition"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+
+                  {/* Types Pagination Bar */}
+                  <div className="p-4 border-t border-[#2C2C2C] flex flex-col sm:flex-row items-center justify-between gap-3 bg-[#151515]">
+                    <div className="flex items-center gap-3 text-xs text-gray-400">
+                      <span>
+                        Showing page <strong className="text-gray-200">{typePage}</strong> of <strong className="text-gray-200">{typeTotalPages}</strong> (Total <strong className="text-gray-200">{typeTotalCount || devotionalContent.length}</strong> types)
+                      </span>
+                      <span className="text-neutral-600">|</span>
+                      <div className="flex items-center gap-1.5">
+                        <span>Rows per page:</span>
+                        <select
+                          value={typeLimit}
+                          onChange={(e) => {
+                            const newLim = Number(e.target.value);
+                            setTypeLimit(newLim);
+                            loadDevotionalContent(1, searchQuery, selectedSubcategoryForTypes, newLim);
+                          }}
+                          className="bg-[#121212] border border-[#2C2C2C] rounded px-2 py-1 text-xs text-gray-200"
+                        >
+                          <option value={10}>10</option>
+                          <option value={15}>15</option>
+                          <option value={25}>25</option>
+                          <option value={50}>50</option>
+                          <option value={100}>100</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        disabled={typePage <= 1}
+                        onClick={() => loadDevotionalContent(typePage - 1, searchQuery, selectedSubcategoryForTypes, typeLimit)}
+                        className="px-3 py-1.5 bg-[#1E1E1E] border border-[#2C2C2C] rounded-lg disabled:opacity-40 hover:bg-neutral-800 text-xs text-gray-300 transition flex items-center gap-1"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                        <span>Prev</span>
+                      </button>
+                      <span className="text-xs font-semibold px-2 text-amber-400">{typePage} / {typeTotalPages}</span>
+                      <button
+                        disabled={typePage >= typeTotalPages}
+                        onClick={() => loadDevotionalContent(typePage + 1, searchQuery, selectedSubcategoryForTypes, typeLimit)}
+                        className="px-3 py-1.5 bg-[#1E1E1E] border border-[#2C2C2C] rounded-lg disabled:opacity-40 hover:bg-neutral-800 text-xs text-gray-300 transition flex items-center gap-1"
+                      >
+                        <span>Next</span>
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* TAB 4: PANCHANGAM & FESTIVALS */}
+          {activeTab === 'panchangam' && (
+            <div className="space-y-6">
+              {/* Top Controls Bar */}
+              <div className="bg-[#1C1C1C] rounded-xl border border-[#FFB300]/30 p-5 shadow-xl">
+                <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 border-b border-[#2C2C2C] pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                      <Compass className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h2 className="text-base font-bold text-[#FFB300] tracking-wide flex items-center gap-2">
+                        <span>Vedic Astronomical Panchangam Directory</span>
+                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-950/60 text-emerald-300 border border-emerald-800/40">
+                          {panchangamEntries.length} Days in {new Date(panchangamYear, panchangamMonth - 1).toLocaleString('default', { month: 'long' })} {panchangamYear}
+                        </span>
+                      </h2>
+                      <p className="text-xs text-gray-400">
+                        High-precision ephemeris engine (Jean Meeus VSOP87 & Lahiri Chitra Paksha) with live MySQL daily override controls.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
+                    {/* City Selector */}
+                    <div className="flex items-center gap-1.5 bg-[#141414] border border-[#2C2C2C] rounded-lg px-2.5 py-1.5">
+                      <MapPin className="w-3.5 h-3.5 text-amber-400" />
+                      <select
+                        value={panchangamCity}
+                        onChange={(e) => {
+                          const c = e.target.value;
+                          setPanchangamCity(c);
+                          loadPanchangam(c, selectedLang);
+                          loadPanchangamEntries(c, panchangamYear, panchangamMonth, selectedLang);
+                        }}
+                        className="bg-transparent text-xs text-gray-200 focus:outline-none cursor-pointer"
+                      >
+                        <option value="Hyderabad" className="bg-[#181818]">Hyderabad (హైదరాబాద్)</option>
+                        <option value="Vijayawada" className="bg-[#181818]">Vijayawada (విజయవాడ)</option>
+                        <option value="Visakhapatnam" className="bg-[#181818]">Visakhapatnam (విశాఖపట్నం)</option>
+                        <option value="Tirupati" className="bg-[#181818]">Tirupati (తిరుపతి)</option>
+                        <option value="Bengaluru" className="bg-[#181818]">Bengaluru (ಬೆಂಗಳೂರು)</option>
+                        <option value="Chennai" className="bg-[#181818]">Chennai (சென்னை)</option>
+                        <option value="Sabarimala" className="bg-[#181818]">Sabarimala (ശബരിമല)</option>
+                      </select>
+                    </div>
+
+                    {/* Year Selector */}
+                    <select
+                      value={panchangamYear}
+                      onChange={(e) => {
+                        const y = parseInt(e.target.value, 10);
+                        setPanchangamYear(y);
+                        loadPanchangamEntries(panchangamCity, y, panchangamMonth, selectedLang);
+                      }}
+                      className="bg-[#141414] border border-[#2C2C2C] rounded-lg px-3 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-[#FFB300] cursor-pointer"
+                    >
+                      {[2024, 2025, 2026, 2027, 2028, 2029, 2030].map(y => (
+                        <option key={y} value={y} className="bg-[#181818]">{y}</option>
+                      ))}
+                    </select>
+
+                    {/* Month Selector */}
+                    <select
+                      value={panchangamMonth}
+                      onChange={(e) => {
+                        const m = parseInt(e.target.value, 10);
+                        setPanchangamMonth(m);
+                        loadPanchangamEntries(panchangamCity, panchangamYear, m, selectedLang);
+                      }}
+                      className="bg-[#141414] border border-[#2C2C2C] rounded-lg px-3 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-[#FFB300] cursor-pointer"
+                    >
+                      {[
+                        { num: 1, name: 'January' },
+                        { num: 2, name: 'February' },
+                        { num: 3, name: 'March' },
+                        { num: 4, name: 'April' },
+                        { num: 5, name: 'May' },
+                        { num: 6, name: 'June' },
+                        { num: 7, name: 'July' },
+                        { num: 8, name: 'August' },
+                        { num: 9, name: 'September' },
+                        { num: 10, name: 'October' },
+                        { num: 11, name: 'November' },
+                        { num: 12, name: 'December' },
+                      ].map(m => (
+                        <option key={m.num} value={m.num} className="bg-[#181818]">{m.name}</option>
+                      ))}
+                    </select>
+
+                    {/* Refresh Button */}
+                    <button
+                      onClick={() => {
+                        loadPanchangam(panchangamCity, selectedLang);
+                        loadPanchangamEntries(panchangamCity, panchangamYear, panchangamMonth, selectedLang);
+                      }}
+                      className="p-2 bg-[#141414] hover:bg-neutral-800 border border-[#2C2C2C] rounded-lg text-gray-400 hover:text-amber-400 transition"
+                      title="Reload Ephemeris & Overrides"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                    </button>
+
+                    {/* Add Override Button */}
+                    <button
+                      onClick={() => handleOpenCreatePanchangamOverride()}
+                      className="flex items-center gap-1.5 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white px-3.5 py-1.5 rounded-lg text-xs font-bold transition shadow-md shadow-orange-950 flex-shrink-0"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>+ Override / Add Day</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Today's Live Highlight Strip */}
+                {livePanchangam && (
+                  <div className="mt-4 pt-4 border-t border-[#2C2C2C] grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                    <div className="bg-[#141414] p-2.5 rounded-lg border border-[#2C2C2C]">
+                      <span className="text-[10px] text-gray-500 uppercase tracking-wider block font-semibold">Today's Date & Vaaram</span>
+                      <strong className="text-gray-100 font-bold block mt-0.5">{livePanchangam.isoDate}</strong>
+                      <span className="text-amber-400 font-semibold">{livePanchangam.vaaram}</span>
+                    </div>
+                    <div className="bg-[#141414] p-2.5 rounded-lg border border-[#2C2C2C]">
+                      <span className="text-[10px] text-gray-500 uppercase tracking-wider block font-semibold">Tithi & End Time</span>
+                      <strong className="text-emerald-400 font-bold block mt-0.5">{livePanchangam.tithi}</strong>
+                      <span className="text-gray-400 text-[11px]">ends {livePanchangam.tithiEndTime}</span>
+                    </div>
+                    <div className="bg-[#141414] p-2.5 rounded-lg border border-[#2C2C2C]">
+                      <span className="text-[10px] text-gray-500 uppercase tracking-wider block font-semibold">Nakshatram</span>
+                      <strong className="text-sky-400 font-bold block mt-0.5">{livePanchangam.nakshatram}</strong>
+                      <span className="text-gray-400 text-[11px] truncate block">{livePanchangam.samvatsaram}</span>
+                    </div>
+                    <div className="bg-[#141414] p-2.5 rounded-lg border border-[#2C2C2C]">
+                      <span className="text-[10px] text-gray-500 uppercase tracking-wider block font-semibold">Sun & Rahu Timings</span>
+                      <strong className="text-amber-300 font-bold block mt-0.5">☀️ {livePanchangam.sunrise} — 🌙 {livePanchangam.sunset}</strong>
+                      <span className="text-rose-400 text-[11px]">Rahu: {livePanchangam.rahuKalam}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Month Panchangam Directory Table (View All) */}
+              <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] overflow-hidden shadow-2xl">
+                <div className="p-4 border-b border-[#2C2C2C] flex items-center justify-between bg-[#181818]">
+                  <div className="flex items-center gap-2">
+                    <Compass className="w-4 h-4 text-amber-400" />
+                    <span className="text-xs font-bold text-gray-200 uppercase tracking-wider">
+                      Daily Vedic Panchangam Schedule — {new Date(panchangamYear, panchangamMonth - 1).toLocaleString('default', { month: 'long' })} {panchangamYear} ({panchangamCity})
                     </span>
                   </div>
-                  <div className="overflow-x-auto min-h-[300px]">
+                  <div className="flex items-center gap-3 text-xs text-gray-400">
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-amber-400" /> Custom DB Override
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-neutral-500" /> Astronomical Engine
+                    </span>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto min-h-[350px]">
+                  {isLoadingPanchangamEntries ? (
+                    <div className="p-12 text-center text-xs text-gray-400">
+                      <RefreshCw className="w-6 h-6 mx-auto mb-2 animate-spin text-amber-400" />
+                      <p>Calculating planetary positions & loading daily Panchangam...</p>
+                    </div>
+                  ) : panchangamEntries.length === 0 ? (
+                    <div className="p-12 text-center text-xs text-gray-400">
+                      <p className="font-semibold text-gray-300">No entries loaded for this month.</p>
+                      <button
+                        onClick={() => loadPanchangamEntries(panchangamCity, panchangamYear, panchangamMonth, selectedLang)}
+                        className="mt-2 px-3 py-1.5 bg-neutral-800 text-amber-400 rounded text-xs font-semibold"
+                      >
+                        Click to Reload
+                      </button>
+                    </div>
+                  ) : (
+                    <table className="w-full text-left text-xs text-gray-300">
+                      <thead className="bg-[#151515] uppercase text-[11px] text-gray-400 border-b border-[#2C2C2C]">
+                        <tr>
+                          <th className="px-5 py-3">Date & Day</th>
+                          <th className="px-5 py-3">Tithi</th>
+                          <th className="px-5 py-3">Nakshatram</th>
+                          <th className="px-5 py-3">Paksham</th>
+                          <th className="px-5 py-3">Sun Times</th>
+                          <th className="px-5 py-3">Rahu Kalam</th>
+                          <th className="px-5 py-3">Source Status</th>
+                          <th className="px-5 py-3 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#2C2C2C]">
+                        {panchangamEntries.map((day) => (
+                          <tr
+                            key={day.date}
+                            className={`hover:bg-neutral-800/40 transition ${day.isOverride ? 'bg-amber-950/10' : ''
+                              }`}
+                          >
+                            <td className="px-5 py-3.5 whitespace-nowrap">
+                              <p className="font-bold text-gray-100">{day.date}</p>
+                              <p className="text-[11px] text-amber-400 font-semibold">{day.vaaram}</p>
+                            </td>
+
+                            <td className="px-5 py-3.5">
+                              <p className="font-semibold text-emerald-400">{day.tithi}</p>
+                              {day.tithiEndTime && (
+                                <p className="text-[10px] text-gray-400">ends {day.tithiEndTime}</p>
+                              )}
+                            </td>
+
+                            <td className="px-5 py-3.5">
+                              <p className="font-semibold text-sky-400">{day.nakshatram}</p>
+                              {day.nakshatraEndTime && (
+                                <p className="text-[10px] text-gray-400">ends {day.nakshatraEndTime}</p>
+                              )}
+                            </td>
+
+                            <td className="px-5 py-3.5 whitespace-nowrap">
+                              <span className="text-gray-300 font-medium">{day.paksham}</span>
+                            </td>
+
+                            <td className="px-5 py-3.5 whitespace-nowrap">
+                              <p className="text-gray-200">☀️ {day.sunrise}</p>
+                              <p className="text-gray-400 text-[11px]">🌙 {day.sunset}</p>
+                            </td>
+
+                            <td className="px-5 py-3.5 whitespace-nowrap">
+                              <span className="text-rose-400 font-mono text-[11px]">{day.rahuKalam}</span>
+                            </td>
+
+                            <td className="px-5 py-3.5 whitespace-nowrap">
+                              {day.isOverride ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                                  MySQL Override #{day.id}
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-neutral-800 text-gray-400 border border-neutral-700">
+                                  Astronomical VSOP87
+                                </span>
+                              )}
+                            </td>
+
+                            <td className="px-5 py-3.5 text-right whitespace-nowrap">
+                              <div className="flex items-center justify-end gap-1.5">
+                                {/* View by ID */}
+                                <button
+                                  onClick={() => {
+                                    setSelectedViewPanchangam(day);
+                                    setIsViewPanchangamModalOpen(true);
+                                  }}
+                                  className="p-1.5 bg-[#252525] hover:bg-[#303030] text-sky-400 rounded-lg transition"
+                                  title="View Full Panchangam Details"
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                </button>
+
+                                {/* Edit / Override */}
+                                <button
+                                  onClick={() => handleOpenCreatePanchangamOverride(day)}
+                                  className="p-1.5 bg-[#252525] hover:bg-[#303030] text-amber-400 rounded-lg transition"
+                                  title="Customize or Override this Day"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5" />
+                                </button>
+
+                                {/* Delete / Reset */}
+                                {day.isOverride && (
+                                  <button
+                                    onClick={() => handleDeletePanchangamOverride(day.id, day.date)}
+                                    className="p-1.5 bg-red-950/40 hover:bg-red-900/60 text-rose-400 border border-red-800/40 rounded-lg transition"
+                                    title="Delete Override (Revert to Astronomical Calculation)"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: FESTIVALS (Dedicated Festivals & Observances Directory Page) */}
+          {activeTab === 'festivals' && (
+            <div className="space-y-6">
+              {/* Sabarimala Festival Dates & Management (View All, View By ID, Create, Edit, Delete) */}
+              <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] overflow-hidden shadow-2xl">
+                <div className="p-5 border-b border-[#2C2C2C] flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-base font-bold text-gray-100 flex items-center gap-2">
+                        <Calendar className="w-5 h-5 text-orange-400" />
+                        <span>Sabarimala & Temple Festivals Directory</span>
+                      </h2>
+                      <span className="bg-[#D84315]/20 text-orange-400 border border-orange-500/30 px-2 py-0.5 rounded-full text-[11px] font-semibold">
+                        {festivals.length} Festivals
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1">
+                      Dynamic sanctum festival schedule from MySQL database with 5-language localization.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2.5 w-full md:w-auto">
+                    <div className="relative flex-1 md:w-64">
+                      <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                      <input
+                        type="text"
+                        value={festivalSearch}
+                        onChange={(e) => {
+                          setFestivalSearch(e.target.value);
+                          loadFestivals(1, e.target.value, festivalYear);
+                        }}
+                        placeholder="Search festivals by name or date..."
+                        className="w-full bg-[#121212] border border-[#2C2C2C] rounded-lg pl-8 pr-3 py-1.5 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-[#FFB300]"
+                      />
+                      {festivalSearch && (
+                        <button
+                          onClick={() => { setFestivalSearch(''); loadFestivals(1, '', festivalYear); }}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200 text-xs"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+
+                    <button
+                      onClick={() => loadFestivals(1, festivalSearch, festivalYear)}
+                      className="p-2 bg-[#141414] hover:bg-[#252525] border border-[#2C2C2C] rounded-lg text-gray-300 hover:text-amber-400 transition"
+                      title="Refresh Festivals Catalog"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                    </button>
+
+                    <button
+                      onClick={handleOpenCreateFestival}
+                      className="flex items-center gap-2 bg-[#D84315] hover:bg-[#BF360C] text-white px-4 py-2 rounded-lg text-xs font-bold transition shadow-md shadow-orange-950 whitespace-nowrap"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Create Festival</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Year-Based Filter Navigation Bar */}
+                <div className="bg-[#161616] px-5 py-3 border-b border-[#2C2C2C] flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5 text-amber-400" />
+                      Year:
+                    </span>
+                    <div className="flex items-center gap-1 bg-[#101010] p-1 rounded-lg border border-[#2C2C2C]">
+                      {['2024', '2025', '2026', '2027', '2028', 'all'].map((yr) => (
+                        <button
+                          key={yr}
+                          onClick={() => {
+                            setFestivalYear(yr);
+                            loadFestivals(1, festivalSearch, yr);
+                          }}
+                          className={`px-3 py-1 rounded-md text-xs font-bold transition ${festivalYear === yr
+                            ? 'bg-[#D84315] text-white shadow-sm'
+                            : 'text-gray-400 hover:text-gray-100 hover:bg-neutral-800'
+                            }`}
+                        >
+                          {yr === 'all' ? 'All Years' : yr === '2026' ? '2026 (Active)' : yr}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 text-xs text-gray-400">
+                    <span className="bg-neutral-800/80 px-2.5 py-1 rounded border border-[#2C2C2C]">
+                      Showing <span className="font-bold text-amber-400">{festivals.length}</span> festivals in {festivalYear === 'all' ? 'All Years' : `Year ${festivalYear}`}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto min-h-[250px]">
+                  {festivals.length === 0 ? (
+                    <div className="p-12 text-center text-xs text-gray-400">
+                      <Calendar className="w-8 h-8 text-gray-600 mx-auto mb-2 opacity-50" />
+                      <p className="font-semibold text-gray-300">No festival entries found.</p>
+                      <p className="text-gray-500 mt-1">Click "+ Create Festival" to add verified Sabarimala Mandala Kalam or Makara Jyothi dates.</p>
+                    </div>
+                  ) : (
                     <table className="w-full text-left text-xs text-gray-300">
                       <thead className="bg-[#181818] uppercase text-gray-400 border-b border-[#2C2C2C]">
                         <tr>
                           <th className="px-6 py-3">ID</th>
-                          <th className="px-6 py-3">Audio Title</th>
-                          <th className="px-6 py-3">Slug Identifier</th>
-                          <th className="px-6 py-3">Duration</th>
-                          <th className="px-6 py-3">Offline Download Status</th>
+                          <th className="px-6 py-3">Festival Name</th>
+                          <th className="px-6 py-3">Observance Date</th>
+                          <th className="px-6 py-3">Slug</th>
+                          <th className="px-6 py-3">Source & Observance Note</th>
+                          <th className="px-6 py-3">Status</th>
+                          <th className="px-6 py-3 text-right">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[#2C2C2C]">
-                        {audioList.length === 0 ? (
-                          <tr>
-                            <td colSpan={5} className="px-6 py-12 text-center text-gray-400">
-                              <Music className="w-10 h-10 mx-auto text-gray-600 mb-2 opacity-50" />
-                              <p className="text-sm font-semibold">No devotional audio tracks found in database</p>
-                              <p className="text-xs text-gray-500 mt-1">Audio items registered with audio enabled will appear here.</p>
-                            </td>
-                          </tr>
-                        ) : (
-                          audioList.map(a => (
-                            <tr key={a.id} className="hover:bg-neutral-800/40">
-                              <td className="px-6 py-4 font-mono">#{a.id}</td>
-                              <td className="px-6 py-4 font-semibold text-gray-100 flex items-center gap-2">
-                                <Music className="w-3.5 h-3.5 text-amber-400" />
-                                <span>{a.title}</span>
-                              </td>
-                              <td className="px-6 py-4 font-mono text-amber-400">{a.slug}</td>
-                              <td className="px-6 py-4 font-mono">{a.duration}</td>
+                        {festivals.map(f => {
+                          const langMatch = f.translations?.find(t => (t as any).language?.code === selectedLang)
+                            || f.translations?.find(t => (t as any).language?.code === 'en')
+                            || f.translations?.find(t => (t as any).language?.code === 'te')
+                            || f.translations?.[0];
+                          const enMatch = f.translations?.find(t => (t as any).language?.code === 'en');
+                          const dateObj = new Date(f.festivalDate);
+                          const formattedDate = isNaN(dateObj.getTime())
+                            ? f.festivalDate
+                            : dateObj.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+
+                          return (
+                            <tr key={f.id} className="hover:bg-neutral-800/40 transition">
+                              <td className="px-6 py-4 font-mono text-gray-400">#{f.id}</td>
                               <td className="px-6 py-4">
-                                <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold">
-                                  OFFLINE_ENABLED
+                                <div className="font-semibold text-gray-100 text-sm">
+                                  {langMatch?.name || f.slug}
+                                </div>
+                                {enMatch && enMatch.name !== langMatch?.name && (
+                                  <div className="text-[11px] text-gray-400">
+                                    {enMatch.name}
+                                  </div>
+                                )}
+                              </td>
+                              <td className="px-6 py-4 font-mono text-amber-400 font-semibold whitespace-nowrap">
+                                📅 {formattedDate}
+                              </td>
+                              <td className="px-6 py-4 font-mono text-gray-400 text-[11px]">
+                                {f.slug}
+                              </td>
+                              <td className="px-6 py-4 text-gray-300 max-w-xs truncate" title={f.sourceNote || langMatch?.description || ''}>
+                                {f.sourceNote || langMatch?.description || '—'}
+                              </td>
+                              <td className="px-6 py-4">
+                                <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${f.isPublished !== false
+                                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                  : 'bg-neutral-700 text-gray-400'
+                                  }`}>
+                                  <span className={`w-1.5 h-1.5 rounded-full ${f.isPublished !== false ? 'bg-emerald-400 animate-pulse' : 'bg-gray-400'}`}></span>
+                                  {f.isPublished !== false ? 'Published' : 'Draft'}
                                 </span>
                               </td>
+                              <td className="px-6 py-4 text-right">
+                                <div className="flex items-center justify-end gap-1.5">
+                                  <button
+                                    onClick={(e) => handleOpenViewFestival(f, e)}
+                                    className="p-1.5 hover:bg-neutral-700/80 rounded text-sky-400 hover:text-sky-300 transition"
+                                    title="View Festival Details (View by ID)"
+                                  >
+                                    <Eye className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={(e) => handleOpenEditFestival(f, e)}
+                                    className="p-1.5 hover:bg-neutral-700/80 rounded text-amber-400 hover:text-amber-300 transition"
+                                    title="Edit Festival Record"
+                                  >
+                                    <Edit className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteFestival(f.id, langMatch?.name || f.slug)}
+                                    className="p-1.5 hover:bg-neutral-700/80 rounded text-red-400 hover:text-red-300 transition"
+                                    title="Delete Festival Record"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </td>
                             </tr>
-                          )))}
+                          );
+                        })}
                       </tbody>
                     </table>
-                  </div>
+                  )}
                 </div>
-              )}
+              </div>
+            </div>
+          )}
 
-              {/* TAB 6: CMS PAGES (WITH SUBTITLE TABS & DYNAMIC REAL-TIME EDITOR) */}
-              {activeTab === 'cms' && (
-                <div className="space-y-6">
-                  {/* Sub-Title Selector Bar */}
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                    {[
-                      { key: 'about_us', label: 'About Us', icon: BookOpen, desc: 'Mission & History' },
-                      { key: 'terms_conditions', label: 'Terms & Conditions', icon: ShieldCheck, desc: 'Devotee Agreement' },
-                      { key: 'privacy_policy', label: 'Privacy Policy', icon: Lock, desc: 'Data & Privacy' },
-                      { key: 'refund_policy', label: 'Refund Policy', icon: CheckCircle2, desc: 'Donation & Offerings' },
-                      { key: 'sabarimala_guidelines', label: 'Sabarimala Guidelines', icon: FileText, desc: 'Pilgrim Rules' },
-                    ].map(item => {
-                      const isSelected = selectedCmsKey === item.key;
-                      const SubIcon = item.icon;
-                      return (
-                        <button
-                          key={item.key}
-                          onClick={() => setSelectedCmsKey(item.key)}
-                          className={`p-4 rounded-xl border transition-all text-left flex items-start gap-3.5 ${isSelected
-                            ? 'bg-[#1C1C1C] border-[#FFB300] shadow-lg shadow-amber-950/30'
-                            : 'bg-[#181818] border-[#2C2C2C] hover:border-neutral-600 hover:bg-[#1E1E1E]'
-                            }`}
-                        >
-                          <div className={`p-2.5 rounded-lg ${isSelected ? 'bg-orange-500/20 text-[#FFB300] border border-orange-500/40' : 'bg-neutral-800 text-gray-400'}`}>
-                            <SubIcon className="w-5 h-5" />
-                          </div>
-                          <div className="min-w-0">
-                            <p className={`text-xs font-bold uppercase tracking-wide truncate ${isSelected ? 'text-[#FFB300]' : 'text-gray-200'}`}>
-                              {item.label}
-                            </p>
-                            <p className="text-[10px] text-gray-400 truncate mt-0.5">{item.desc}</p>
-                            <span className="inline-block mt-2 font-mono text-[9px] px-2 py-0.5 rounded bg-black/40 text-amber-300/80 border border-neutral-700">
-                              {item.key}
+          {/* TAB 5: AUDIO LIBRARY */}
+          {activeTab === 'audio' && (
+            <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] overflow-hidden">
+              <div className="p-5 border-b border-[#2C2C2C] flex items-center justify-between">
+                <div>
+                  <h2 className="text-base font-bold text-gray-100">Devotional Audio Library</h2>
+                  <p className="text-xs text-gray-400">Offline persistent chants (Suprabatham, Harivarasanam, etc.).</p>
+                </div>
+                <span className="px-3 py-1 bg-amber-500/10 border border-amber-500/20 text-[#FFB300] rounded-full text-xs font-semibold">
+                  {audioList.length} Tracks in Database
+                </span>
+              </div>
+              <div className="overflow-x-auto min-h-[300px]">
+                <table className="w-full text-left text-xs text-gray-300">
+                  <thead className="bg-[#181818] uppercase text-gray-400 border-b border-[#2C2C2C]">
+                    <tr>
+                      <th className="px-6 py-3">ID</th>
+                      <th className="px-6 py-3">Audio Title</th>
+                      <th className="px-6 py-3">Slug Identifier</th>
+                      <th className="px-6 py-3">Duration</th>
+                      <th className="px-6 py-3">Offline Download Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#2C2C2C]">
+                    {audioList.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="px-6 py-12 text-center text-gray-400">
+                          <Music className="w-10 h-10 mx-auto text-gray-600 mb-2 opacity-50" />
+                          <p className="text-sm font-semibold">No devotional audio tracks found in database</p>
+                          <p className="text-xs text-gray-500 mt-1">Audio items registered with audio enabled will appear here.</p>
+                        </td>
+                      </tr>
+                    ) : (
+                      audioList.map(a => (
+                        <tr key={a.id} className="hover:bg-neutral-800/40">
+                          <td className="px-6 py-4 font-mono">#{a.id}</td>
+                          <td className="px-6 py-4 font-semibold text-gray-100 flex items-center gap-2">
+                            <Music className="w-3.5 h-3.5 text-amber-400" />
+                            <span>{a.title}</span>
+                          </td>
+                          <td className="px-6 py-4 font-mono text-amber-400">{a.slug}</td>
+                          <td className="px-6 py-4 font-mono">{a.duration}</td>
+                          <td className="px-6 py-4">
+                            <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold">
+                              OFFLINE_ENABLED
                             </span>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
+                          </td>
+                        </tr>
+                      )))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
 
-                  {/* Dynamic CMS Page Editor */}
-                  <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] overflow-hidden shadow-xl">
-                    <div className="p-5 border-b border-[#2C2C2C] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <FileText className="w-4 h-4 text-orange-400" />
-                          <h2 className="text-base font-bold text-gray-100">
-                            Editing CMS Page: <span className="text-[#FFB300]">{cmsEditTitle || selectedCmsKey}</span>
-                          </h2>
-                        </div>
-                        <p className="text-xs text-gray-400 mt-1">
-                          Updates are stored live in MySQL table <code className="text-amber-400">app_settings</code> and served dynamically to mobile apps via API.
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <button
-                          type="button"
-                          onClick={() => openTranslationModal('cms', selectedCmsKey, [
-                            { key: 'title', label: 'Page Title', value: cmsEditTitle },
-                            { key: 'content', label: 'Page Content Body', value: cmsEditContent, isHtml: true }
-                          ], (trans) => {
-                            if (trans.title) setCmsEditTitle(trans.title);
-                            if (trans.content) setCmsEditContent(trans.content);
-                          })}
-                          className="flex items-center gap-1.5 bg-amber-600/20 hover:bg-amber-600/40 text-amber-300 border border-amber-500/40 px-4 py-2.5 rounded-lg text-xs font-bold transition"
-                        >
-                          <Sparkles className="w-4 h-4 text-amber-400" />
-                          <span>✨ Translate Page (v3)</span>
-                        </button>
-
-                        <button
-                          onClick={handleSaveCmsPage}
-                          disabled={isSavingCms}
-                          className="flex items-center gap-2 bg-[#D84315] hover:bg-[#BF360C] disabled:opacity-50 text-white px-5 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider transition shadow-md shadow-orange-950"
-                        >
-                          <CheckCircle2 className="w-4 h-4" />
-                          <span>{isSavingCms ? 'Saving to MySQL...' : 'Save to Database'}</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="p-6 space-y-5">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-xs font-semibold text-gray-300 uppercase mb-1.5">
-                            Database Key (Read Only Identifier)
-                          </label>
-                          <input
-                            type="text"
-                            value={selectedCmsKey}
-                            disabled
-                            className="w-full bg-[#121212] border border-[#2C2C2C] rounded-lg px-3.5 py-2 text-xs font-mono text-amber-300 cursor-not-allowed opacity-80"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-semibold text-gray-300 uppercase mb-1.5">
-                            Page Title & Sub-Heading
-                          </label>
-                          <input
-                            type="text"
-                            value={cmsEditTitle}
-                            onChange={(e) => setCmsEditTitle(e.target.value)}
-                            placeholder="e.g. About Saranam Ayyappa Devotional Platform"
-                            className="w-full bg-[#121212] border border-[#2C2C2C] rounded-lg px-3.5 py-2 text-xs text-gray-100 focus:outline-none focus:border-[#FFB300]"
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-300 uppercase mb-1.5 flex items-center justify-between">
-                          <span>Page Content Body (Rich Text WYSIWYG & HTML Editor)</span>
-                          <span className="text-amber-400 font-normal">CKEditor 5 Mode</span>
-                        </label>
-                        <RichTextEditor
-                          value={cmsEditContent}
-                          onChange={(newVal) => setCmsEditContent(newVal)}
-                          placeholder="Write or edit full CMS page text..."
-                        />
-                      </div>
-                    </div>
-
-                    {/* Table of all active CMS records */}
-                    <div className="border-t border-[#2C2C2C]">
-                      <div className="px-6 py-3 bg-[#181818] border-b border-[#2C2C2C] flex items-center justify-between">
-                        <span className="text-xs font-semibold text-gray-300 uppercase">
-                          MySQL Database Status (<code className="text-amber-400">app_settings</code>)
-                        </span>
-                        <button
-                          onClick={loadCms}
-                          className="text-xs text-gray-400 hover:text-amber-400 flex items-center gap-1.5 transition"
-                        >
-                          <RefreshCw className="w-3 h-3" />
-                          <span>Reload from DB</span>
-                        </button>
-                      </div>
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left text-xs text-gray-300">
-                          <thead className="bg-[#151515] uppercase text-[11px] text-gray-400 border-b border-[#2C2C2C]">
-                            <tr>
-                              <th className="px-6 py-2.5">Key</th>
-                              <th className="px-6 py-2.5">Title / Description</th>
-                              <th className="px-6 py-2.5">Content Preview</th>
-                              <th className="px-6 py-2.5">Last Synchronized</th>
-                              <th className="px-6 py-2.5 text-right">Action</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-[#2C2C2C]">
-                            {cmsPages.length === 0 ? (
-                              <tr>
-                                <td colSpan={5} className="px-6 py-12 text-center text-gray-400">
-                                  <FileText className="w-10 h-10 mx-auto text-gray-600 mb-2 opacity-50" />
-                                  <p className="text-sm font-semibold">No CMS pages stored in database</p>
-                                  <p className="text-xs text-gray-500 mt-1">Select any page key above to write and publish content to MySQL.</p>
-                                </td>
-                              </tr>
-                            ) : (
-                              cmsPages.map(p => (
-                                <tr
-                                  key={p.id}
-                                  className={`hover:bg-neutral-800/40 cursor-pointer ${selectedCmsKey === p.key ? 'bg-orange-500/10' : ''
-                                    }`}
-                                  onClick={() => setSelectedCmsKey(p.key)}
-                                >
-                                  <td className="px-6 py-3 font-mono text-amber-400 font-semibold">{p.key}</td>
-                                  <td className="px-6 py-3 text-gray-200 font-medium">{p.description || p.key}</td>
-                                  <td className="px-6 py-3 text-gray-400 max-w-xs truncate">{p.value || '—'}</td>
-                                  <td className="px-6 py-3 text-gray-400">{new Date(p.updatedAt).toLocaleString()}</td>
-                                  <td className="px-6 py-3 text-right">
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setSelectedCmsKey(p.key);
-                                      }}
-                                      className="px-2.5 py-1 rounded bg-[#D84315]/20 hover:bg-[#D84315]/40 text-[#FFB300] font-semibold text-[11px] transition"
-                                    >
-                                      Edit
-                                    </button>
-                                  </td>
-                                </tr>
-                              )))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* TAB 7: LANGUAGES */}
-              {activeTab === 'languages' && (
-                <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] overflow-hidden">
-                  <div className="p-5 border-b border-[#2C2C2C] flex items-center justify-between">
-                    <div>
-                      <h2 className="text-base font-bold text-gray-100">Languages in Database ({languages.length})</h2>
-                      <p className="text-xs text-gray-400">Create, edit, or manage supported devotional languages.</p>
-                    </div>
+          {/* TAB 6: CMS PAGES (WITH SUBTITLE TABS & DYNAMIC REAL-TIME EDITOR) */}
+          {activeTab === 'cms' && (
+            <div className="space-y-6">
+              {/* Sub-Title Selector Bar */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                {[
+                  { key: 'about_us', label: 'About Us', icon: BookOpen, desc: 'Mission & History' },
+                  { key: 'terms_conditions', label: 'Terms & Conditions', icon: ShieldCheck, desc: 'Devotee Agreement' },
+                  { key: 'privacy_policy', label: 'Privacy Policy', icon: Lock, desc: 'Data & Privacy' },
+                  { key: 'refund_policy', label: 'Refund Policy', icon: CheckCircle2, desc: 'Donation & Offerings' },
+                  { key: 'sabarimala_guidelines', label: 'Sabarimala Guidelines', icon: FileText, desc: 'Pilgrim Rules' },
+                ].map(item => {
+                  const isSelected = selectedCmsKey === item.key;
+                  const SubIcon = item.icon;
+                  return (
                     <button
-                      onClick={handleOpenCreateLanguage}
-                      className="flex items-center gap-2 bg-[#D84315] hover:bg-[#BF360C] text-white px-4 py-2 rounded-lg text-xs font-bold transition shadow-md shadow-orange-950"
+                      key={item.key}
+                      onClick={() => setSelectedCmsKey(item.key)}
+                      className={`p-4 rounded-xl border transition-all text-left flex items-start gap-3.5 ${isSelected
+                        ? 'bg-[#1C1C1C] border-[#FFB300] shadow-lg shadow-amber-950/30'
+                        : 'bg-[#181818] border-[#2C2C2C] hover:border-neutral-600 hover:bg-[#1E1E1E]'
+                        }`}
                     >
-                      <Plus className="w-4 h-4" />
-                      <span>Create Language</span>
+                      <div className={`p-2.5 rounded-lg ${isSelected ? 'bg-orange-500/20 text-[#FFB300] border border-orange-500/40' : 'bg-neutral-800 text-gray-400'}`}>
+                        <SubIcon className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className={`text-xs font-bold uppercase tracking-wide truncate ${isSelected ? 'text-[#FFB300]' : 'text-gray-200'}`}>
+                          {item.label}
+                        </p>
+                        <p className="text-[10px] text-gray-400 truncate mt-0.5">{item.desc}</p>
+                        <span className="inline-block mt-2 font-mono text-[9px] px-2 py-0.5 rounded bg-black/40 text-amber-300/80 border border-neutral-700">
+                          {item.key}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Dynamic CMS Page Editor */}
+              <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] overflow-hidden shadow-xl">
+                <div className="p-5 border-b border-[#2C2C2C] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-orange-400" />
+                      <h2 className="text-base font-bold text-gray-100">
+                        Editing CMS Page: <span className="text-[#FFB300]">{cmsEditTitle || selectedCmsKey}</span>
+                      </h2>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1">
+                      Updates are stored live in MySQL table <code className="text-amber-400">app_settings</code> and served dynamically to mobile apps via API.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => openTranslationModal('cms', selectedCmsKey, [
+                        { key: 'title', label: 'Page Title', value: cmsEditTitle },
+                        { key: 'content', label: 'Page Content Body', value: cmsEditContent, isHtml: true }
+                      ], (trans) => {
+                        if (trans.title) setCmsEditTitle(trans.title);
+                        if (trans.content) setCmsEditContent(trans.content);
+                      })}
+                      className="flex items-center gap-1.5 bg-amber-600/20 hover:bg-amber-600/40 text-amber-300 border border-amber-500/40 px-4 py-2.5 rounded-lg text-xs font-bold transition"
+                    >
+                      <Sparkles className="w-4 h-4 text-amber-400" />
+                      <span>✨ Translate Page (v3)</span>
+                    </button>
+
+                    <button
+                      onClick={handleSaveCmsPage}
+                      disabled={isSavingCms}
+                      className="flex items-center gap-2 bg-[#D84315] hover:bg-[#BF360C] disabled:opacity-50 text-white px-5 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider transition shadow-md shadow-orange-950"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>{isSavingCms ? 'Saving to MySQL...' : 'Save to Database'}</span>
                     </button>
                   </div>
+                </div>
 
+                <div className="p-6 space-y-5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-300 uppercase mb-1.5">
+                        Database Key (Read Only Identifier)
+                      </label>
+                      <input
+                        type="text"
+                        value={selectedCmsKey}
+                        disabled
+                        className="w-full bg-[#121212] border border-[#2C2C2C] rounded-lg px-3.5 py-2 text-xs font-mono text-amber-300 cursor-not-allowed opacity-80"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-300 uppercase mb-1.5">
+                        Page Title & Sub-Heading
+                      </label>
+                      <input
+                        type="text"
+                        value={cmsEditTitle}
+                        onChange={(e) => setCmsEditTitle(e.target.value)}
+                        placeholder="e.g. About Saranam Ayyappa Devotional Platform"
+                        className="w-full bg-[#121212] border border-[#2C2C2C] rounded-lg px-3.5 py-2 text-xs text-gray-100 focus:outline-none focus:border-[#FFB300]"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-300 uppercase mb-1.5 flex items-center justify-between">
+                      <span>Page Content Body (Rich Text WYSIWYG & HTML Editor)</span>
+                      <span className="text-amber-400 font-normal">CKEditor 5 Mode</span>
+                    </label>
+                    <RichTextEditor
+                      value={cmsEditContent}
+                      onChange={(newVal) => setCmsEditContent(newVal)}
+                      placeholder="Write or edit full CMS page text..."
+                    />
+                  </div>
+                </div>
+
+                {/* Table of all active CMS records */}
+                <div className="border-t border-[#2C2C2C]">
+                  <div className="px-6 py-3 bg-[#181818] border-b border-[#2C2C2C] flex items-center justify-between">
+                    <span className="text-xs font-semibold text-gray-300 uppercase">
+                      MySQL Database Status (<code className="text-amber-400">app_settings</code>)
+                    </span>
+                    <button
+                      onClick={loadCms}
+                      className="text-xs text-gray-400 hover:text-amber-400 flex items-center gap-1.5 transition"
+                    >
+                      <RefreshCw className="w-3 h-3" />
+                      <span>Reload from DB</span>
+                    </button>
+                  </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-xs text-gray-300">
-                      <thead className="bg-[#181818] uppercase text-gray-400 border-b border-[#2C2C2C]">
+                      <thead className="bg-[#151515] uppercase text-[11px] text-gray-400 border-b border-[#2C2C2C]">
                         <tr>
-                          <th className="px-6 py-3">Language ID</th>
-                          <th className="px-6 py-3">Name</th>
-                          <th className="px-6 py-3">Native</th>
-                          <th className="px-6 py-3">ISO Code</th>
-                          <th className="px-6 py-3">Translations in DB</th>
-                          <th className="px-6 py-3">Status</th>
-                          <th className="px-6 py-3 text-center font-bold text-amber-400">Options / Actions</th>
+                          <th className="px-6 py-2.5">Key</th>
+                          <th className="px-6 py-2.5">Title / Description</th>
+                          <th className="px-6 py-2.5">Content Preview</th>
+                          <th className="px-6 py-2.5">Last Synchronized</th>
+                          <th className="px-6 py-2.5 text-right">Action</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[#2C2C2C]">
-                        {languages.length === 0 ? (
+                        {cmsPages.length === 0 ? (
                           <tr>
-                            <td colSpan={7} className="px-6 py-12 text-center text-gray-400">
-                              <Globe className="w-10 h-10 mx-auto text-gray-600 mb-2 opacity-50" />
-                              <p className="text-sm font-semibold">No languages found in database</p>
-                              <p className="text-xs text-gray-500 mt-1">Click &quot;Create Language&quot; to configure a new language.</p>
+                            <td colSpan={5} className="px-6 py-12 text-center text-gray-400">
+                              <FileText className="w-10 h-10 mx-auto text-gray-600 mb-2 opacity-50" />
+                              <p className="text-sm font-semibold">No CMS pages stored in database</p>
+                              <p className="text-xs text-gray-500 mt-1">Select any page key above to write and publish content to MySQL.</p>
                             </td>
                           </tr>
                         ) : (
-                          languages.map(l => (
-                            <tr key={l.code} className="hover:bg-neutral-800/40">
-                              <td className="px-6 py-4 font-mono text-gray-500">#{l.id}</td>
-                              <td className="px-6 py-4 font-semibold text-gray-100">{l.name}</td>
-                              <td className="px-6 py-4 text-orange-400 font-semibold text-sm">{l.nativeName}</td>
-                              <td className="px-6 py-4 font-mono text-amber-400">{l.code}</td>
-                              <td className="px-6 py-4 font-semibold text-emerald-400">{l.translationCount || 0} records</td>
-                              <td className="px-6 py-4">
-                                <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold">
-                                  ACTIVE
-                                </span>
-                              </td>
-                              <td className="px-6 py-4 text-center space-x-2 whitespace-nowrap">
+                          cmsPages.map(p => (
+                            <tr
+                              key={p.id}
+                              className={`hover:bg-neutral-800/40 cursor-pointer ${selectedCmsKey === p.key ? 'bg-orange-500/10' : ''
+                                }`}
+                              onClick={() => setSelectedCmsKey(p.key)}
+                            >
+                              <td className="px-6 py-3 font-mono text-amber-400 font-semibold">{p.key}</td>
+                              <td className="px-6 py-3 text-gray-200 font-medium">{p.description || p.key}</td>
+                              <td className="px-6 py-3 text-gray-400 max-w-xs truncate">{p.value || '—'}</td>
+                              <td className="px-6 py-3 text-gray-400">{new Date(p.updatedAt).toLocaleString()}</td>
+                              <td className="px-6 py-3 text-right">
                                 <button
-                                  onClick={() => handleOpenEditLanguage(l)}
-                                  className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 rounded text-amber-400 text-xs font-semibold transition"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedCmsKey(p.key);
+                                  }}
+                                  className="px-2.5 py-1 rounded bg-[#D84315]/20 hover:bg-[#D84315]/40 text-[#FFB300] font-semibold text-[11px] transition"
                                 >
-                                  <Edit3 className="w-3.5 h-3.5" />
-                                  <span>Edit</span>
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteLanguage(l.id, l.name)}
-                                  className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-red-950/40 hover:bg-red-900/60 border border-red-800/40 rounded text-red-400 text-xs font-semibold transition"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                  <span>Delete</span>
+                                  Edit
                                 </button>
                               </td>
                             </tr>
@@ -8848,925 +9523,158 @@ export default function EnterpriseSuperAdminDashboard() {
                     </table>
                   </div>
                 </div>
-              )}
+              </div>
+            </div>
+          )}
 
-              {/* TAB 8: USER MANAGEMENT & DELETION REQUESTS */}
-              {activeTab === 'users' && (
-                <div className="space-y-4">
-                  {/* Sub-tab Navigation */}
-                  <div className="flex items-center gap-3 bg-[#1E1E1E] p-3 rounded-xl border border-[#2C2C2C]">
-                    <button
-                      onClick={() => { setUserSubTab('all'); setSelectedUserSubtitle('devotees'); }}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all ${userSubTab === 'all' && selectedUserSubtitle === 'devotees'
-                        ? 'bg-[#FFB300] text-black shadow-lg shadow-amber-950/20'
-                        : 'text-gray-400 hover:text-gray-200 hover:bg-[#252525]'
-                        }`}
-                    >
-                      <Users className="w-4 h-4" />
-                      <span>Devotees ({users.filter(u => !u.isDeleted).length})</span>
-                    </button>
-                    <button
-                      onClick={() => { setUserSubTab('all'); setSelectedUserSubtitle('dharma_karthas'); loadDharmaKarthas(); }}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all ${userSubTab === 'all' && selectedUserSubtitle === 'dharma_karthas'
-                        ? 'bg-amber-600 text-white shadow-lg shadow-amber-950/20'
-                        : 'text-gray-400 hover:text-gray-200 hover:bg-[#252525]'
-                        }`}
-                    >
-                      <ShieldCheck className="w-4 h-4" />
-                      <span>Dharma Karthas ({dharmaKarthas.length})</span>
-                    </button>
-                    <button
-                      onClick={() => setUserSubTab('requests')}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all relative ${userSubTab === 'requests'
-                        ? 'bg-rose-600 text-white shadow-lg shadow-rose-950/20'
-                        : 'text-gray-400 hover:text-gray-200 hover:bg-[#252525]'
-                        }`}
-                    >
-                      <AlertTriangle className="w-4 h-4 text-amber-300" />
-                      <span>Deletion Requests ({deletionRequests.length})</span>
-                      {deletionRequests.length > 0 && (
-                        <span className="ml-1 px-1.5 py-0.2 text-[10px] bg-red-500 text-white font-bold rounded-full animate-pulse">
-                          {deletionRequests.length}
-                        </span>
-                      )}
-                    </button>
-                  </div>
-
-                  {/* View 1: Pending Deletion Requests */}
-                  {userSubTab === 'requests' && (
-                    <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] overflow-hidden">
-                      <div className="p-5 border-b border-[#2C2C2C] flex items-center justify-between">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <AlertTriangle className="w-5 h-5 text-amber-400" />
-                            <h2 className="text-base font-bold text-gray-100">Devotee Account Deletion Requests</h2>
-                          </div>
-                          <p className="text-xs text-gray-400 mt-1">
-                            Devotees who verified their mobile OTP and submitted an account deletion request. Choose to soft-delete (deactivate) or permanently purge.
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => { loadDeletionRequests(); loadUsers(); }}
-                          className="flex items-center gap-2 px-3 py-1.5 bg-[#252525] hover:bg-[#2F2F2F] text-xs font-semibold rounded-lg text-gray-300 border border-[#3C3C3C] transition"
-                        >
-                          <RefreshCw className="w-3.5 h-3.5" />
-                          <span>Refresh</span>
-                        </button>
-                      </div>
-
-                      <div className="overflow-x-auto">
-                        {deletionRequests.length === 0 ? (
-                          <div className="p-12 text-center text-xs text-gray-400 space-y-2">
-                            <div className="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto mb-2">
-                              <CheckCircle2 className="w-6 h-6" />
-                            </div>
-                            <p className="font-semibold text-gray-200">No Pending Account Deletion Requests</p>
-                            <p className="text-gray-500">All registered devotee accounts are in good standing.</p>
-                          </div>
-                        ) : (
-                          <table className="w-full text-left text-xs text-gray-300">
-                            <thead className="bg-[#181818] uppercase text-gray-400 border-b border-[#2C2C2C]">
-                              <tr>
-                                <th className="px-6 py-3">User ID</th>
-                                <th className="px-6 py-3">Devotee / Identifier</th>
-                                <th className="px-6 py-3">Request Date</th>
-                                <th className="px-6 py-3">Deletion Reason</th>
-                                <th className="px-6 py-3">Status</th>
-                                <th className="px-6 py-3 text-right">Admin Actions</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-[#2C2C2C]">
-                              {deletionRequests.map(u => (
-                                <tr key={u.id} className="hover:bg-neutral-800/40">
-                                  <td className="px-6 py-4 font-mono text-gray-500">#{u.id}</td>
-                                  <td className="px-6 py-4">
-                                    <p className="font-semibold text-gray-100">{u.fullName || 'Devotee'}</p>
-                                    <p className="text-[11px] font-mono text-gray-400">{u.phoneNumber || u.deviceUuid || 'No phone'}</p>
-                                  </td>
-                                  <td className="px-6 py-4 text-gray-300">
-                                    {u.deletionRequestedAt ? new Date(u.deletionRequestedAt).toLocaleString() : 'Recent'}
-                                  </td>
-                                  <td className="px-6 py-4 max-w-xs">
-                                    <span className="bg-[#2A2421] text-amber-300 border border-amber-900/40 px-2.5 py-1 rounded text-[11px] block truncate" title={u.deletionReason || 'No reason provided'}>
-                                      {u.deletionReason || 'No reason provided by devotee'}
-                                    </span>
-                                  </td>
-                                  <td className="px-6 py-4">
-                                    {u.isDeleted ? (
-                                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                                        SOFT DELETED
-                                      </span>
-                                    ) : (
-                                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20 animate-pulse">
-                                        PENDING ACTION
-                                      </span>
-                                    )}
-                                  </td>
-                                  <td className="px-6 py-4 text-right">
-                                    <div className="flex items-center justify-end gap-2">
-                                      {!u.isDeleted && (
-                                        <button
-                                          onClick={() => handleSoftDeleteUser(u.id, u.fullName || u.phoneNumber)}
-                                          disabled={actionLoadingId === u.id}
-                                          className="px-3 py-1.5 bg-amber-600/20 hover:bg-amber-600/30 text-amber-400 border border-amber-600/30 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition disabled:opacity-50"
-                                          title="Deactivate account & move to Soft-Deleted archive"
-                                        >
-                                          <Archive className="w-3.5 h-3.5" />
-                                          <span>Soft Delete</span>
-                                        </button>
-                                      )}
-                                      <button
-                                        onClick={() => handlePermanentDeleteUser(u.id, u.fullName || u.phoneNumber)}
-                                        disabled={actionLoadingId === u.id}
-                                        className="px-3 py-1.5 bg-rose-600/20 hover:bg-rose-600/30 text-rose-400 border border-rose-600/30 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition disabled:opacity-50"
-                                        title="Permanently erase from MySQL database"
-                                      >
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                        <span>Permanent Delete</span>
-                                      </button>
-                                      <button
-                                        onClick={() => handleDismissDeletionRequest(u.id, u.fullName || u.phoneNumber)}
-                                        disabled={actionLoadingId === u.id}
-                                        className="px-3 py-1.5 bg-neutral-700/40 hover:bg-neutral-700/60 text-gray-300 border border-neutral-600/40 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition disabled:opacity-50"
-                                        title="Dismiss deletion request and keep account active"
-                                      >
-                                        <CheckCircle2 className="w-3.5 h-3.5" />
-                                        <span>Dismiss</span>
-                                      </button>
-                                    </div>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* View 2A: Dedicated Dynamic Dharma Karthas Records View */}
-                  {userSubTab === 'all' && selectedUserSubtitle === 'dharma_karthas' && (
-                    <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] overflow-hidden">
-                      <div className="p-5 border-b border-[#2C2C2C] flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <ShieldCheck className="w-5 h-5 text-amber-400" />
-                            <h2 className="text-base font-bold text-gray-100">
-                              Dharma Kartha Records ({dharmaKarthas.length})
-                            </h2>
-                          </div>
-                          <p className="text-xs text-gray-400 mt-1 max-w-2xl leading-relaxed">
-                            Authoritative trustee & temple management records dynamically queried from database via <code className="text-amber-400">/api/v1/admin/dharma-karthas</code>.
-                            Every record provides complete visibility into governed temples, scheduled events, festivals, administrative contacts, timings & aarthi, media gallery, speciality, and about details.
-                          </p>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <div className="relative">
-                            <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                            <input
-                              type="text"
-                              placeholder="Search Dharma Karthas or temples..."
-                              value={dkSearch}
-                              onChange={(e) => {
-                                setDkSearch(e.target.value);
-                                loadDharmaKarthas(e.target.value);
-                              }}
-                              className="pl-8 pr-3 py-1.5 bg-[#121212] border border-[#3C3C3C] rounded-lg text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-amber-500 w-64"
-                            />
-                          </div>
-                          <button
-                            onClick={() => loadDharmaKarthas(dkSearch)}
-                            disabled={dkLoading}
-                            className="flex items-center gap-2 px-3 py-1.5 bg-[#252525] hover:bg-[#2F2F2F] text-xs font-semibold rounded-lg text-gray-300 border border-[#3C3C3C] transition disabled:opacity-50"
-                            title="Refresh live Dharma Kartha records from database"
-                          >
-                            <RefreshCw className={`w-3.5 h-3.5 ${dkLoading ? 'animate-spin text-amber-400' : ''}`} />
-                            <span>Refresh</span>
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="overflow-x-auto">
-                        {dkLoading ? (
-                          <div className="p-12 text-center text-xs text-gray-400 space-y-2">
-                            <RefreshCw className="w-6 h-6 animate-spin text-amber-400 mx-auto mb-2" />
-                            <p className="font-semibold text-gray-300">Fetching live Dharma Kartha records from database...</p>
-                          </div>
-                        ) : dharmaKarthas.length === 0 ? (
-                          <div className="p-12 text-center text-xs text-gray-400 space-y-2">
-                            <ShieldCheck className="w-8 h-8 text-gray-500 mx-auto mb-2" />
-                            <p className="font-semibold text-gray-300">No Dharma Kartha records found.</p>
-                            <p className="text-gray-500">No trustees match the search criteria or have been approved yet.</p>
-                          </div>
-                        ) : (
-                          <table className="w-full text-left text-xs text-gray-300">
-                            <thead className="bg-[#181818] uppercase text-gray-400 border-b border-[#2C2C2C]">
-                              <tr>
-                                <th className="px-5 py-3">Trustee / Dharma Kartha</th>
-                                <th className="px-5 py-3">Governed Mandir(s)</th>
-                                <th className="px-5 py-3">Sacred Modules & Assets</th>
-                                <th className="px-5 py-3">Mandir Contact & Speciality</th>
-                                <th className="px-5 py-3 text-right">Actions</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-[#2C2C2C]">
-                              {dharmaKarthas.map((dk) => (
-                                <tr key={dk.id} className="hover:bg-neutral-800/40 transition">
-                                  {/* 1. Trustee Identity */}
-                                  <td className="px-5 py-4 align-top">
-                                    <div className="flex items-start gap-3">
-                                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-amber-600/30 to-amber-900/30 border border-amber-600/40 text-amber-300 font-bold flex items-center justify-center shrink-0">
-                                        {dk.fullName ? dk.fullName.charAt(0).toUpperCase() : 'D'}
-                                      </div>
-                                      <div>
-                                        <p className="font-bold text-gray-100 flex items-center gap-1.5">
-                                          <span>{dk.fullName || 'Dharma Kartha'}</span>
-                                          <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">
-                                            {dk.membershipRole || 'OWNER'}
-                                          </span>
-                                        </p>
-                                        <p className="text-[11px] font-mono text-gray-400 mt-0.5">{dk.phoneNumber || 'No phone'}</p>
-                                        {dk.email && <p className="text-[11px] text-gray-500">{dk.email}</p>}
-                                        <p className="text-[10px] text-gray-400 mt-1">
-                                          📍 {dk.city}, {dk.state}
-                                        </p>
-                                      </div>
-                                    </div>
-                                  </td>
-
-                                  {/* 2. Governed Temples */}
-                                  <td className="px-5 py-4 align-top">
-                                    {(!dk.temples || dk.temples.length === 0) ? (
-                                      <span className="text-gray-500 italic text-[11px]">No Temple assigned yet</span>
-                                    ) : (
-                                      <div className="space-y-2">
-                                        {dk.temples.map((t: any) => (
-                                          <div key={t.id} className="bg-[#141414] border border-[#2C2C2C] p-2.5 rounded-lg">
-                                            <div className="flex items-center justify-between gap-2">
-                                              <p className="font-bold text-amber-300 text-xs flex items-center gap-1">
-                                                <span>🛕</span>
-                                                <span>{t.name}</span>
-                                              </p>
-                                              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                                                {t.status || 'PUBLISHED'}
-                                              </span>
-                                            </div>
-                                            <p className="text-[11px] text-gray-400 mt-0.5">
-                                              Deity: <span className="text-gray-200 font-semibold">{t.primaryDeity}</span> • 📍 {t.city}, {t.state}
-                                            </p>
-                                            {t.alternateName && (
-                                              <p className="text-[10px] text-gray-500 italic">Local name: {t.alternateName}</p>
-                                            )}
-                                          </div>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </td>
-
-                                  {/* 3. Sacred Modules Summary Badges */}
-                                  <td className="px-5 py-4 align-top">
-                                    {(!dk.temples || dk.temples.length === 0) ? (
-                                      <span className="text-gray-500 italic text-[11px]">—</span>
-                                    ) : (
-                                      <div className="space-y-2">
-                                        {dk.temples.map((t: any) => (
-                                          <div key={t.id} className="grid grid-cols-2 gap-1.5 text-[11px]">
-                                            <span className="bg-[#242424] border border-[#333] px-2 py-1 rounded flex items-center gap-1 text-gray-300">
-                                              <span>📅</span>
-                                              <span><b>{t.events?.length || 0}</b> Events</span>
-                                            </span>
-                                            <span className="bg-[#242424] border border-[#333] px-2 py-1 rounded flex items-center gap-1 text-gray-300">
-                                              <span>🪔</span>
-                                              <span><b>{t.festivals?.length || 0}</b> Festivals</span>
-                                            </span>
-                                            <span className="bg-[#242424] border border-[#333] px-2 py-1 rounded flex items-center gap-1 text-gray-300">
-                                              <span>⏰</span>
-                                              <span><b>{t.timings?.length || 0}</b> Timings</span>
-                                            </span>
-                                            <span className="bg-[#242424] border border-[#333] px-2 py-1 rounded flex items-center gap-1 text-gray-300">
-                                              <span>🖼️</span>
-                                              <span><b>{t.gallery?.length || 0}</b> Media</span>
-                                            </span>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </td>
-
-                                  {/* 4. Mandir Contact & Speciality */}
-                                  <td className="px-5 py-4 align-top max-w-xs">
-                                    {(!dk.temples || dk.temples.length === 0) ? (
-                                      <span className="text-gray-500 italic text-[11px]">—</span>
-                                    ) : (
-                                      <div className="space-y-1.5 text-[11px]">
-                                        {dk.temples[0].officePhone && (
-                                          <p className="text-gray-300 flex items-center gap-1">
-                                            <Phone className="w-3 h-3 text-emerald-400 shrink-0" />
-                                            <span>{dk.temples[0].officePhone}</span>
-                                          </p>
-                                        )}
-                                        {dk.temples[0].officialEmail && (
-                                          <p className="text-gray-400 flex items-center gap-1 truncate" title={dk.temples[0].officialEmail}>
-                                            <Mail className="w-3 h-3 text-sky-400 shrink-0" />
-                                            <span className="truncate">{dk.temples[0].officialEmail}</span>
-                                          </p>
-                                        )}
-                                        {dk.temples[0].speciality && (
-                                          <p className="text-gray-400 line-clamp-2 mt-1 italic text-[10px] leading-relaxed border-t border-[#2C2C2C] pt-1">
-                                            ✨ {dk.temples[0].speciality}
-                                          </p>
-                                        )}
-                                      </div>
-                                    )}
-                                  </td>
-
-                                  {/* 5. Actions */}
-                                  <td className="px-5 py-4 align-top text-right">
-                                    <div className="flex flex-col items-end gap-1.5">
-                                      <button
-                                        onClick={() => {
-                                          setSelectedDkRecord(dk);
-                                          setSelectedDkTempleIndex(0);
-                                          setActiveDkDetailTab('about');
-                                        }}
-                                        className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition shadow-sm"
-                                        title="View full sacred details (Events, Festivals, Contact, Timings, Gallery, Speciality, About)"
-                                      >
-                                        <Eye className="w-3.5 h-3.5" />
-                                        <span>View Record</span>
-                                      </button>
-
-                                      <button
-                                        onClick={() => handleSoftDeleteUser(dk.id, dk.fullName || dk.phoneNumber)}
-                                        disabled={actionLoadingId === dk.id}
-                                        className="px-2.5 py-1 bg-[#252525] hover:bg-neutral-800 text-gray-400 hover:text-amber-400 border border-[#333] rounded text-[11px] font-semibold flex items-center gap-1 transition"
-                                        title="Deactivate trustee account"
-                                      >
-                                        <Archive className="w-3 h-3" />
-                                        <span>Deactivate</span>
-                                      </button>
-                                    </div>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* View 2B: Devotees View */}
-                  {userSubTab === 'all' && selectedUserSubtitle === 'devotees' && (
-                    <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] overflow-hidden">
-                      <div className="p-5 border-b border-[#2C2C2C] flex items-center justify-between">
-                        <div>
-                          <h2 className="text-base font-bold text-gray-100">Registered Devotees (MySQL `app_users`)</h2>
-                          <p className="text-xs text-gray-400">Active devotee profiles queried directly from MySQL via Prisma.</p>
-                        </div>
-                      </div>
-                      <div className="overflow-x-auto">
-                        {users.filter(u => !u.isDeleted).length === 0 ? (
-                          <div className="p-12 text-center text-xs text-gray-400 space-y-2">
-                            <p className="font-semibold text-gray-300">No active registered mobile devotee profiles yet.</p>
-                          </div>
-                        ) : (
-                          <table className="w-full text-left text-xs text-gray-300">
-                            <thead className="bg-[#181818] uppercase text-gray-400 border-b border-[#2C2C2C]">
-                              <tr>
-                                <th className="px-6 py-3">User ID</th>
-                                <th className="px-6 py-3">Phone / Identifier</th>
-                                <th className="px-6 py-3">Language</th>
-                                <th className="px-6 py-3">Status</th>
-                                <th className="px-6 py-3">Registered At</th>
-                                <th className="px-6 py-3 text-right">Actions</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-[#2C2C2C]">
-                              {users.filter(u => !u.isDeleted).map(u => (
-                                <tr key={u.id} className="hover:bg-neutral-800/40">
-                                  <td className="px-6 py-4 font-mono text-gray-500">#{u.id}</td>
-                                  <td className="px-6 py-4 font-semibold text-gray-100">
-                                    {u.fullName ? `${u.fullName} (${u.phoneNumber || u.deviceUuid})` : u.phoneNumber || u.deviceUuid || 'Anonymous Client'}
-                                  </td>
-                                  <td className="px-6 py-4 uppercase font-mono text-amber-400">{u.preferredLang}</td>
-                                  <td className="px-6 py-4">
-                                    {u.deletionRequested ? (
-                                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                                        DELETION REQUESTED
-                                      </span>
-                                    ) : (
-                                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${u.isSuspended ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'}`}>
-                                        {u.isSuspended ? 'SUSPENDED' : 'ACTIVE'}
-                                      </span>
-                                    )}
-                                  </td>
-                                  <td className="px-6 py-4 text-gray-400">{new Date(u.createdAt).toLocaleDateString()}</td>
-                                  <td className="px-6 py-4 text-right">
-                                    <div className="flex items-center justify-end gap-2">
-                                      <button
-                                        onClick={() => handleSoftDeleteUser(u.id, u.fullName || u.phoneNumber)}
-                                        disabled={actionLoadingId === u.id}
-                                        className="px-2.5 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 rounded text-[11px] font-semibold flex items-center gap-1 transition"
-                                      >
-                                        <Archive className="w-3 h-3" />
-                                        <span>Soft Delete</span>
-                                      </button>
-                                      <button
-                                        onClick={() => handlePermanentDeleteUser(u.id, u.fullName || u.phoneNumber)}
-                                        disabled={actionLoadingId === u.id}
-                                        className="px-2.5 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded text-[11px] font-semibold flex items-center gap-1 transition"
-                                      >
-                                        <Trash2 className="w-3 h-3" />
-                                        <span>Delete</span>
-                                      </button>
-                                    </div>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* MODAL DIALOG: COMPLETE DYNAMIC DHARMA KARTHA & MANDIR RECORD DETAILS */}
-                  {selectedDkRecord && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-                      <div className="bg-[#1C1C1C] border border-[#333] rounded-2xl w-full max-w-5xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                        {/* Modal Top Bar */}
-                        <div className="p-5 border-b border-[#2C2C2C] flex items-center justify-between bg-[#171717]">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-amber-600/30 border border-amber-600/50 flex items-center justify-center text-amber-300 font-bold text-base shrink-0">
-                              {selectedDkRecord.fullName ? selectedDkRecord.fullName.charAt(0).toUpperCase() : 'D'}
-                            </div>
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <h2 className="text-base font-bold text-gray-100">{selectedDkRecord.fullName}</h2>
-                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">
-                                  {selectedDkRecord.membershipRole || 'OWNER'}
-                                </span>
-                              </div>
-                              <p className="text-xs text-gray-400 mt-0.5">
-                                📞 {selectedDkRecord.phoneNumber || 'N/A'} • ✉️ {selectedDkRecord.email || 'N/A'} • 📍 {selectedDkRecord.city}, {selectedDkRecord.state}
-                              </p>
-                            </div>
-                          </div>
-
-                          <button
-                            onClick={() => setSelectedDkRecord(null)}
-                            className="w-8 h-8 rounded-lg bg-[#252525] hover:bg-[#333] text-gray-400 hover:text-white flex items-center justify-center transition"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-
-                        {/* Temple Selector (if multiple temples) */}
-                        {selectedDkRecord.temples && selectedDkRecord.temples.length > 1 && (
-                          <div className="px-5 py-2.5 bg-[#141414] border-b border-[#2C2C2C] flex items-center gap-2 overflow-x-auto">
-                            <span className="text-xs font-semibold text-gray-400">Managing Temple:</span>
-                            {selectedDkRecord.temples.map((temple: any, idx: number) => (
-                              <button
-                                key={temple.id}
-                                onClick={() => setSelectedDkTempleIndex(idx)}
-                                className={`px-3 py-1 rounded-lg text-xs font-semibold transition ${selectedDkTempleIndex === idx
-                                  ? 'bg-amber-600 text-white shadow-sm'
-                                  : 'bg-[#222] text-gray-300 hover:bg-[#2C2C2C]'
-                                  }`}
-                              >
-                                🛕 {temple.name}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-
-                        {/* Modal Content Body */}
-                        {(!selectedDkRecord.temples || selectedDkRecord.temples.length === 0) ? (
-                          <div className="p-12 text-center text-xs text-gray-400 space-y-2">
-                            <Landmark className="w-8 h-8 text-gray-500 mx-auto mb-2" />
-                            <p className="font-semibold text-gray-200">No Holy Temple Associated With This Trustee Yet</p>
-                            <p className="text-gray-500">This Dharma Kartha has registered their account but has not yet linked or registered a mandir.</p>
-                          </div>
-                        ) : (
-                          (() => {
-                            const temple = selectedDkRecord.temples[selectedDkTempleIndex] || selectedDkRecord.temples[0];
-                            return (
-                              <div className="flex-1 flex flex-col overflow-hidden">
-                                {/* 7 Modules Navigation Tabs */}
-                                <div className="flex items-center gap-1.5 px-5 pt-3 border-b border-[#2C2C2C] bg-[#141414] overflow-x-auto text-xs">
-                                  <button
-                                    onClick={() => setActiveDkDetailTab('about')}
-                                    className={`px-3.5 py-2 rounded-t-lg font-semibold transition flex items-center gap-1.5 border-b-2 ${activeDkDetailTab === 'about'
-                                      ? 'border-amber-500 text-amber-400 bg-[#1E1E1E]'
-                                      : 'border-transparent text-gray-400 hover:text-gray-200'
-                                      }`}
-                                  >
-                                    <Landmark className="w-3.5 h-3.5" />
-                                    <span>1. About & History</span>
-                                  </button>
-                                  <button
-                                    onClick={() => setActiveDkDetailTab('speciality')}
-                                    className={`px-3.5 py-2 rounded-t-lg font-semibold transition flex items-center gap-1.5 border-b-2 ${activeDkDetailTab === 'speciality'
-                                      ? 'border-amber-500 text-amber-400 bg-[#1E1E1E]'
-                                      : 'border-transparent text-gray-400 hover:text-gray-200'
-                                      }`}
-                                  >
-                                    <Sparkles className="w-3.5 h-3.5" />
-                                    <span>2. Speciality</span>
-                                  </button>
-                                  <button
-                                    onClick={() => setActiveDkDetailTab('contact')}
-                                    className={`px-3.5 py-2 rounded-t-lg font-semibold transition flex items-center gap-1.5 border-b-2 ${activeDkDetailTab === 'contact'
-                                      ? 'border-amber-500 text-amber-400 bg-[#1E1E1E]'
-                                      : 'border-transparent text-gray-400 hover:text-gray-200'
-                                      }`}
-                                  >
-                                    <Phone className="w-3.5 h-3.5" />
-                                    <span>3. Contact</span>
-                                  </button>
-                                  <button
-                                    onClick={() => setActiveDkDetailTab('timings')}
-                                    className={`px-3.5 py-2 rounded-t-lg font-semibold transition flex items-center gap-1.5 border-b-2 ${activeDkDetailTab === 'timings'
-                                      ? 'border-amber-500 text-amber-400 bg-[#1E1E1E]'
-                                      : 'border-transparent text-gray-400 hover:text-gray-200'
-                                      }`}
-                                  >
-                                    <Clock className="w-3.5 h-3.5" />
-                                    <span>4. Timings & Aarthi ({temple.timings?.length || 0})</span>
-                                  </button>
-                                  <button
-                                    onClick={() => setActiveDkDetailTab('events')}
-                                    className={`px-3.5 py-2 rounded-t-lg font-semibold transition flex items-center gap-1.5 border-b-2 ${activeDkDetailTab === 'events'
-                                      ? 'border-amber-500 text-amber-400 bg-[#1E1E1E]'
-                                      : 'border-transparent text-gray-400 hover:text-gray-200'
-                                      }`}
-                                  >
-                                    <Calendar className="w-3.5 h-3.5" />
-                                    <span>5. Events ({temple.events?.length || 0})</span>
-                                  </button>
-                                  <button
-                                    onClick={() => setActiveDkDetailTab('festivals')}
-                                    className={`px-3.5 py-2 rounded-t-lg font-semibold transition flex items-center gap-1.5 border-b-2 ${activeDkDetailTab === 'festivals'
-                                      ? 'border-amber-500 text-amber-400 bg-[#1E1E1E]'
-                                      : 'border-transparent text-gray-400 hover:text-gray-200'
-                                      }`}
-                                  >
-                                    <Flame className="w-3.5 h-3.5" />
-                                    <span>6. Festivals ({temple.festivals?.length || 0})</span>
-                                  </button>
-                                  <button
-                                    onClick={() => setActiveDkDetailTab('gallery')}
-                                    className={`px-3.5 py-2 rounded-t-lg font-semibold transition flex items-center gap-1.5 border-b-2 ${activeDkDetailTab === 'gallery'
-                                      ? 'border-amber-500 text-amber-400 bg-[#1E1E1E]'
-                                      : 'border-transparent text-gray-400 hover:text-gray-200'
-                                      }`}
-                                  >
-                                    <ImageIcon className="w-3.5 h-3.5" />
-                                    <span>7. Gallery ({temple.gallery?.length || 0})</span>
-                                  </button>
-                                </div>
-
-                                {/* Tab Panels */}
-                                <div className="flex-1 overflow-y-auto p-6 space-y-6 text-xs text-gray-300">
-                                  {/* TAB 1: ABOUT & HISTORY */}
-                                  {activeDkDetailTab === 'about' && (
-                                    <div className="space-y-5">
-                                      <div className="flex flex-col md:flex-row gap-5 items-start">
-                                        {temple.heroImageUrl && (
-                                          <img
-                                            src={temple.heroImageUrl}
-                                            alt={temple.name}
-                                            className="w-full md:w-56 h-36 object-cover rounded-xl border border-[#333] shrink-0"
-                                          />
-                                        )}
-                                        <div className="space-y-2 flex-1">
-                                          <div className="flex items-center gap-2">
-                                            <h3 className="text-lg font-bold text-gray-100">{temple.name}</h3>
-                                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                                              {temple.status || 'PUBLISHED'}
-                                            </span>
-                                          </div>
-                                          {temple.alternateName && (
-                                            <p className="text-gray-400"><b>Alternate Name:</b> {temple.alternateName}</p>
-                                          )}
-                                          <p className="text-gray-300">
-                                            <b>Primary Deity:</b> <span className="text-amber-400 font-semibold">{temple.primaryDeity}</span> • 📍 {temple.city}, {temple.district ? `${temple.district}, ` : ''}{temple.state}
-                                          </p>
-                                          {temple.shortDescription && (
-                                            <p className="text-gray-400 italic bg-[#151515] p-3 rounded-lg border border-[#282828] leading-relaxed">
-                                              "{temple.shortDescription}"
-                                            </p>
-                                          )}
-                                        </div>
-                                      </div>
-
-                                      <div className="space-y-4 pt-2">
-                                        <div className="bg-[#161616] border border-[#282828] p-4 rounded-xl space-y-2">
-                                          <h4 className="font-bold text-amber-300 text-xs uppercase flex items-center gap-1.5">
-                                            <Landmark className="w-4 h-4 text-amber-400" />
-                                            <span>About the Holy Temple</span>
-                                          </h4>
-                                          <p className="text-gray-300 leading-relaxed text-xs">
-                                            {temple.about || 'No detailed description recorded in database.'}
-                                          </p>
-                                        </div>
-
-                                        <div className="bg-[#161616] border border-[#282828] p-4 rounded-xl space-y-2">
-                                          <h4 className="font-bold text-amber-300 text-xs uppercase flex items-center gap-1.5">
-                                            <Scroll className="w-4 h-4 text-amber-400" />
-                                            <span>Sacred History & Divine Origins</span>
-                                          </h4>
-                                          <p className="text-gray-300 leading-relaxed text-xs">
-                                            {temple.history || 'No sacred history recorded in database.'}
-                                          </p>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  {/* TAB 2: SPECIALITY */}
-                                  {activeDkDetailTab === 'speciality' && (
-                                    <div className="space-y-4">
-                                      <div className="bg-[#161616] border border-[#282828] p-5 rounded-xl space-y-3">
-                                        <h4 className="font-bold text-amber-300 text-sm uppercase flex items-center gap-2">
-                                          <Sparkles className="w-4 h-4 text-amber-400" />
-                                          <span>Spiritual Speciality & Architectural Highlights</span>
-                                        </h4>
-                                        <p className="text-gray-200 leading-relaxed text-xs">
-                                          {temple.speciality || 'No speciality or architectural highlights recorded in database.'}
-                                        </p>
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  {/* TAB 3: CONTACT INFORMATION */}
-                                  {activeDkDetailTab === 'contact' && (
-                                    <div className="space-y-4">
-                                      <div className="bg-[#161616] border border-[#282828] p-5 rounded-xl space-y-4">
-                                        <h4 className="font-bold text-amber-300 text-xs uppercase flex items-center gap-1.5">
-                                          <Phone className="w-4 h-4 text-amber-400" />
-                                          <span>Official Administrative Contact Details</span>
-                                        </h4>
-
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                          <div className="bg-[#1A1A1A] p-3.5 rounded-lg border border-[#2C2C2C]">
-                                            <span className="text-[10px] uppercase text-gray-500 font-bold block">Office Phone / Helpline</span>
-                                            <p className="text-gray-200 font-semibold text-xs mt-1">{temple.officePhone || 'N/A'}</p>
-                                          </div>
-                                          <div className="bg-[#1A1A1A] p-3.5 rounded-lg border border-[#2C2C2C]">
-                                            <span className="text-[10px] uppercase text-gray-500 font-bold block">Official Trust Email</span>
-                                            <p className="text-gray-200 font-semibold text-xs mt-1">{temple.officialEmail || 'N/A'}</p>
-                                          </div>
-                                          <div className="bg-[#1A1A1A] p-3.5 rounded-lg border border-[#2C2C2C]">
-                                            <span className="text-[10px] uppercase text-gray-500 font-bold block">Official Website</span>
-                                            {temple.officialWebsite ? (
-                                              <a href={temple.officialWebsite} target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline flex items-center gap-1 text-xs mt-1">
-                                                <span>{temple.officialWebsite}</span>
-                                                <ExternalLink className="w-3 h-3" />
-                                              </a>
-                                            ) : (
-                                              <p className="text-gray-500 text-xs mt-1">N/A</p>
-                                            )}
-                                          </div>
-                                          <div className="bg-[#1A1A1A] p-3.5 rounded-lg border border-[#2C2C2C]">
-                                            <span className="text-[10px] uppercase text-gray-500 font-bold block">Google Maps Coordinates</span>
-                                            {temple.mapsUrl ? (
-                                              <a href={temple.mapsUrl} target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:underline flex items-center gap-1 text-xs mt-1">
-                                                <span>Open Location in Google Maps</span>
-                                                <ExternalLink className="w-3 h-3" />
-                                              </a>
-                                            ) : (
-                                              <p className="text-gray-500 text-xs mt-1">Lat: {temple.latitude || 'N/A'} • Long: {temple.longitude || 'N/A'}</p>
-                                            )}
-                                          </div>
-                                        </div>
-
-                                        <div className="bg-[#1A1A1A] p-4 rounded-lg border border-[#2C2C2C] space-y-1">
-                                          <span className="text-[10px] uppercase text-gray-500 font-bold block">Full Temple Address</span>
-                                          <p className="text-gray-200 leading-relaxed">
-                                            {temple.address || `${temple.city}, ${temple.state}`}, Pin: {temple.pincode || 'N/A'}
-                                          </p>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  {/* TAB 4: TIMINGS & AARTHI */}
-                                  {activeDkDetailTab === 'timings' && (
-                                    <div className="space-y-4">
-                                      <div className="flex items-center justify-between">
-                                        <h4 className="font-bold text-amber-300 text-xs uppercase flex items-center gap-1.5">
-                                          <Clock className="w-4 h-4 text-amber-400" />
-                                          <span>Sacred Daily Timings & Aarthi Schedule ({temple.timings?.length || 0})</span>
-                                        </h4>
-                                      </div>
-
-                                      {(!temple.timings || temple.timings.length === 0) ? (
-                                        <div className="bg-[#161616] border border-[#282828] p-8 text-center rounded-xl text-gray-500">
-                                          <Clock className="w-6 h-6 text-gray-600 mx-auto mb-2" />
-                                          <p>No daily timings or aarthi schedule configured in database for this temple.</p>
-                                        </div>
-                                      ) : (
-                                        <div className="divide-y divide-[#282828] border border-[#282828] rounded-xl overflow-hidden bg-[#161616]">
-                                          {temple.timings.map((tm: any, i: number) => (
-                                            <div key={tm.id || i} className="p-3.5 flex items-start justify-between gap-4 hover:bg-[#1A1A1A] transition">
-                                              <div className="space-y-1">
-                                                <p className="font-bold text-gray-100 flex items-center gap-2">
-                                                  <span>{tm.title}</span>
-                                                  <span className="text-amber-400 font-mono text-[11px] font-semibold">({tm.timeWindow})</span>
-                                                </p>
-                                                {tm.description && (
-                                                  <p className="text-gray-400 text-[11px]">{tm.description}</p>
-                                                )}
-                                              </div>
-                                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0">
-                                                ACTIVE
-                                              </span>
-                                            </div>
-                                          ))}
-                                        </div>
-                                      )}
-                                    </div>
-                                  )}
-
-                                  {/* TAB 5: TEMPLE EVENTS */}
-                                  {activeDkDetailTab === 'events' && (
-                                    <div className="space-y-4">
-                                      <div className="flex items-center justify-between">
-                                        <h4 className="font-bold text-amber-300 text-xs uppercase flex items-center gap-1.5">
-                                          <Calendar className="w-4 h-4 text-amber-400" />
-                                          <span>Temple Events & Seva Programmes ({temple.events?.length || 0})</span>
-                                        </h4>
-                                      </div>
-
-                                      {(!temple.events || temple.events.length === 0) ? (
-                                        <div className="bg-[#161616] border border-[#282828] p-8 text-center rounded-xl text-gray-500">
-                                          <Calendar className="w-6 h-6 text-gray-600 mx-auto mb-2" />
-                                          <p>No events registered in database for this temple.</p>
-                                        </div>
-                                      ) : (
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                          {temple.events.map((evt: any) => (
-                                            <div key={evt.id} className="bg-[#161616] border border-[#282828] p-4 rounded-xl space-y-2">
-                                              <div className="flex items-start justify-between gap-2">
-                                                <h5 className="font-bold text-gray-100 text-xs">{evt.title}</h5>
-                                                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">
-                                                  {evt.category || 'PROGRAMME'}
-                                                </span>
-                                              </div>
-                                              <p className="text-gray-400 text-[11px]">
-                                                📅 {evt.startDate ? new Date(evt.startDate).toLocaleDateString() : 'Active Date'}
-                                                {evt.timeWindow && ` • ⏰ ${evt.timeWindow}`}
-                                              </p>
-                                              {evt.description && (
-                                                <p className="text-gray-300 text-[11px] leading-relaxed">{evt.description}</p>
-                                              )}
-                                            </div>
-                                          ))}
-                                        </div>
-                                      )}
-                                    </div>
-                                  )}
-
-                                  {/* TAB 6: FESTIVALS */}
-                                  {activeDkDetailTab === 'festivals' && (
-                                    <div className="space-y-4">
-                                      <div className="flex items-center justify-between">
-                                        <h4 className="font-bold text-amber-300 text-xs uppercase flex items-center gap-1.5">
-                                          <Flame className="w-4 h-4 text-amber-400" />
-                                          <span>Sacred Festivals & Mahotsavams ({temple.festivals?.length || 0})</span>
-                                        </h4>
-                                      </div>
-
-                                      {(!temple.festivals || temple.festivals.length === 0) ? (
-                                        <div className="bg-[#161616] border border-[#282828] p-8 text-center rounded-xl text-gray-500">
-                                          <Flame className="w-6 h-6 text-gray-600 mx-auto mb-2" />
-                                          <p>No festivals registered in database for this temple.</p>
-                                        </div>
-                                      ) : (
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                          {temple.festivals.map((fest: any) => (
-                                            <div key={fest.id} className="bg-[#161616] border border-[#282828] p-4 rounded-xl space-y-2">
-                                              <div className="flex items-start justify-between gap-2">
-                                                <h5 className="font-bold text-gray-100 text-xs">{fest.name}</h5>
-                                                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-500/15 text-rose-400 border border-rose-500/30">
-                                                  {fest.category || 'FESTIVAL'}
-                                                </span>
-                                              </div>
-                                              <p className="text-gray-400 text-[11px]">
-                                                🪔 {fest.period || (fest.startDate ? new Date(fest.startDate).toLocaleDateString() : 'Annual')}
-                                              </p>
-                                              {fest.description && (
-                                                <p className="text-gray-300 text-[11px] leading-relaxed">{fest.description}</p>
-                                              )}
-                                              {fest.specialPoojaInfo && (
-                                                <p className="text-amber-400/90 text-[10px] italic border-t border-[#252525] pt-1">
-                                                  ✦ Special Ritual: {fest.specialPoojaInfo}
-                                                </p>
-                                              )}
-                                            </div>
-                                          ))}
-                                        </div>
-                                      )}
-                                    </div>
-                                  )}
-
-                                  {/* TAB 7: GALLERY */}
-                                  {activeDkDetailTab === 'gallery' && (
-                                    <div className="space-y-4">
-                                      <div className="flex items-center justify-between">
-                                        <h4 className="font-bold text-amber-300 text-xs uppercase flex items-center gap-1.5">
-                                          <ImageIcon className="w-4 h-4 text-amber-400" />
-                                          <span>Sanctum Media & Sacred Gallery ({temple.gallery?.length || 0})</span>
-                                        </h4>
-                                      </div>
-
-                                      {(!temple.gallery || temple.gallery.length === 0) ? (
-                                        <div className="bg-[#161616] border border-[#282828] p-8 text-center rounded-xl text-gray-500">
-                                          <ImageIcon className="w-6 h-6 text-gray-600 mx-auto mb-2" />
-                                          <p>No sanctum gallery photos or media uploaded in database for this temple.</p>
-                                        </div>
-                                      ) : (
-                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                          {temple.gallery.map((media: any) => (
-                                            <div key={media.id} className="bg-[#161616] border border-[#282828] rounded-xl overflow-hidden group">
-                                              <div className="aspect-video bg-[#111] overflow-hidden">
-                                                <img
-                                                  src={media.mediaUrl}
-                                                  alt={media.title || 'Sanctum photo'}
-                                                  className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                                                  onError={(e: any) => { e.target.src = '/images/temple-hero.jpg'; }}
-                                                />
-                                              </div>
-                                              <div className="p-2.5 space-y-1">
-                                                <p className="font-bold text-gray-200 text-xs truncate">{media.title || 'Sanctum Photo'}</p>
-                                                {media.caption && (
-                                                  <p className="text-gray-400 text-[10px] truncate">{media.caption}</p>
-                                                )}
-                                              </div>
-                                            </div>
-                                          ))}
-                                        </div>
-                                      )}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })()
-                        )}
-
-                        {/* Modal Bottom Footer */}
-                        <div className="p-4 border-t border-[#2C2C2C] bg-[#171717] flex items-center justify-between">
-                          <span className="text-[11px] text-gray-400 flex items-center gap-1.5">
-                            <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
-                            <span>Saranam Ayyappa Master Trustee Records • Pure Dynamic Database Synchronization</span>
-                          </span>
-                          <button
-                            onClick={() => setSelectedDkRecord(null)}
-                            className="px-4 py-1.5 bg-[#252525] hover:bg-[#333] text-gray-200 text-xs font-semibold rounded-lg transition"
-                          >
-                            Close Record
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
+          {/* TAB 7: LANGUAGES */}
+          {activeTab === 'languages' && (
+            <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] overflow-hidden">
+              <div className="p-5 border-b border-[#2C2C2C] flex items-center justify-between">
+                <div>
+                  <h2 className="text-base font-bold text-gray-100">Languages in Database ({languages.length})</h2>
+                  <p className="text-xs text-gray-400">Create, edit, or manage supported devotional languages.</p>
                 </div>
-              )}
+                <button
+                  onClick={handleOpenCreateLanguage}
+                  className="flex items-center gap-2 bg-[#D84315] hover:bg-[#BF360C] text-white px-4 py-2 rounded-lg text-xs font-bold transition shadow-md shadow-orange-950"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Create Language</span>
+                </button>
+              </div>
 
-              {/* DEDICATED SEPARATE PAGE: SOFT DELETED USERS */}
-              {activeTab === 'soft_deleted_users' && (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs text-gray-300">
+                  <thead className="bg-[#181818] uppercase text-gray-400 border-b border-[#2C2C2C]">
+                    <tr>
+                      <th className="px-6 py-3">Language ID</th>
+                      <th className="px-6 py-3">Name</th>
+                      <th className="px-6 py-3">Native</th>
+                      <th className="px-6 py-3">ISO Code</th>
+                      <th className="px-6 py-3">Translations in DB</th>
+                      <th className="px-6 py-3">Status</th>
+                      <th className="px-6 py-3 text-center font-bold text-amber-400">Options / Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#2C2C2C]">
+                    {languages.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="px-6 py-12 text-center text-gray-400">
+                          <Globe className="w-10 h-10 mx-auto text-gray-600 mb-2 opacity-50" />
+                          <p className="text-sm font-semibold">No languages found in database</p>
+                          <p className="text-xs text-gray-500 mt-1">Click &quot;Create Language&quot; to configure a new language.</p>
+                        </td>
+                      </tr>
+                    ) : (
+                      languages.map(l => (
+                        <tr key={l.code} className="hover:bg-neutral-800/40">
+                          <td className="px-6 py-4 font-mono text-gray-500">#{l.id}</td>
+                          <td className="px-6 py-4 font-semibold text-gray-100">{l.name}</td>
+                          <td className="px-6 py-4 text-orange-400 font-semibold text-sm">{l.nativeName}</td>
+                          <td className="px-6 py-4 font-mono text-amber-400">{l.code}</td>
+                          <td className="px-6 py-4 font-semibold text-emerald-400">{l.translationCount || 0} records</td>
+                          <td className="px-6 py-4">
+                            <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold">
+                              ACTIVE
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-center space-x-2 whitespace-nowrap">
+                            <button
+                              onClick={() => handleOpenEditLanguage(l)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 rounded text-amber-400 text-xs font-semibold transition"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                              <span>Edit</span>
+                            </button>
+                            <button
+                              onClick={() => handleDeleteLanguage(l.id, l.name)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-red-950/40 hover:bg-red-900/60 border border-red-800/40 rounded text-red-400 text-xs font-semibold transition"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span>Delete</span>
+                            </button>
+                          </td>
+                        </tr>
+                      )))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 8: USER MANAGEMENT & DELETION REQUESTS */}
+          {activeTab === 'users' && (
+            <div className="space-y-4">
+              {/* Sub-tab Navigation */}
+              <div className="flex items-center gap-3 bg-[#1E1E1E] p-3 rounded-xl border border-[#2C2C2C]">
+                <button
+                  onClick={() => { setUserSubTab('all'); setSelectedUserSubtitle('devotees'); }}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all ${userSubTab === 'all' && selectedUserSubtitle === 'devotees'
+                    ? 'bg-[#FFB300] text-black shadow-lg shadow-amber-950/20'
+                    : 'text-gray-400 hover:text-gray-200 hover:bg-[#252525]'
+                    }`}
+                >
+                  <Users className="w-4 h-4" />
+                  <span>Devotees ({users.filter(u => !u.isDeleted).length})</span>
+                </button>
+                <button
+                  onClick={() => { setUserSubTab('all'); setSelectedUserSubtitle('dharma_karthas'); loadDharmaKarthas(); }}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all ${userSubTab === 'all' && selectedUserSubtitle === 'dharma_karthas'
+                    ? 'bg-amber-600 text-white shadow-lg shadow-amber-950/20'
+                    : 'text-gray-400 hover:text-gray-200 hover:bg-[#252525]'
+                    }`}
+                >
+                  <ShieldCheck className="w-4 h-4" />
+                  <span>Dharma Karthas ({dharmaKarthas.length})</span>
+                </button>
+                <button
+                  onClick={() => setUserSubTab('requests')}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all relative ${userSubTab === 'requests'
+                    ? 'bg-rose-600 text-white shadow-lg shadow-rose-950/20'
+                    : 'text-gray-400 hover:text-gray-200 hover:bg-[#252525]'
+                    }`}
+                >
+                  <AlertTriangle className="w-4 h-4 text-amber-300" />
+                  <span>Deletion Requests ({deletionRequests.length})</span>
+                  {deletionRequests.length > 0 && (
+                    <span className="ml-1 px-1.5 py-0.2 text-[10px] bg-red-500 text-white font-bold rounded-full animate-pulse">
+                      {deletionRequests.length}
+                    </span>
+                  )}
+                </button>
+              </div>
+
+              {/* View 1: Pending Deletion Requests */}
+              {userSubTab === 'requests' && (
                 <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] overflow-hidden">
                   <div className="p-5 border-b border-[#2C2C2C] flex items-center justify-between">
                     <div>
                       <div className="flex items-center gap-2">
-                        <UserX className="w-5 h-5 text-rose-400" />
-                        <h2 className="text-base font-bold text-gray-100">Soft-Deleted Devotee Accounts (`is_deleted = true`)</h2>
+                        <AlertTriangle className="w-5 h-5 text-amber-400" />
+                        <h2 className="text-base font-bold text-gray-100">Devotee Account Deletion Requests</h2>
                       </div>
                       <p className="text-xs text-gray-400 mt-1">
-                        Archived accounts prevented from accessing the app. Devotee data is retained in MySQL for audit and compliance. You can restore access or permanently purge anytime.
+                        Devotees who verified their mobile OTP and submitted an account deletion request. Choose to soft-delete (deactivate) or permanently purge.
                       </p>
                     </div>
                     <button
-                      onClick={() => { loadSoftDeletedUsers(); loadUsers(); }}
+                      onClick={() => { loadDeletionRequests(); loadUsers(); }}
                       className="flex items-center gap-2 px-3 py-1.5 bg-[#252525] hover:bg-[#2F2F2F] text-xs font-semibold rounded-lg text-gray-300 border border-[#3C3C3C] transition"
                     >
                       <RefreshCw className="w-3.5 h-3.5" />
-                      <span>Refresh List</span>
+                      <span>Refresh</span>
                     </button>
                   </div>
 
                   <div className="overflow-x-auto">
-                    {softDeletedUsers.length === 0 ? (
+                    {deletionRequests.length === 0 ? (
                       <div className="p-12 text-center text-xs text-gray-400 space-y-2">
-                        <div className="w-12 h-12 rounded-full bg-neutral-800 border border-neutral-700 text-gray-400 flex items-center justify-center mx-auto mb-2">
-                          <UserX className="w-6 h-6" />
+                        <div className="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto mb-2">
+                          <CheckCircle2 className="w-6 h-6" />
                         </div>
-                        <p className="font-semibold text-gray-200">No Soft-Deleted User Accounts</p>
-                        <p className="text-gray-500">There are currently no accounts in the soft-deleted archive.</p>
+                        <p className="font-semibold text-gray-200">No Pending Account Deletion Requests</p>
+                        <p className="text-gray-500">All registered devotee accounts are in good standing.</p>
                       </div>
                     ) : (
                       <table className="w-full text-left text-xs text-gray-300">
@@ -9774,46 +9682,52 @@ export default function EnterpriseSuperAdminDashboard() {
                           <tr>
                             <th className="px-6 py-3">User ID</th>
                             <th className="px-6 py-3">Devotee / Identifier</th>
-                            <th className="px-6 py-3">Language</th>
-                            <th className="px-6 py-3">Deactivated Date</th>
+                            <th className="px-6 py-3">Request Date</th>
                             <th className="px-6 py-3">Deletion Reason</th>
                             <th className="px-6 py-3">Status</th>
-                            <th className="px-6 py-3 text-right">Actions</th>
+                            <th className="px-6 py-3 text-right">Admin Actions</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-[#2C2C2C]">
-                          {softDeletedUsers.map(u => (
+                          {deletionRequests.map(u => (
                             <tr key={u.id} className="hover:bg-neutral-800/40">
                               <td className="px-6 py-4 font-mono text-gray-500">#{u.id}</td>
                               <td className="px-6 py-4">
                                 <p className="font-semibold text-gray-100">{u.fullName || 'Devotee'}</p>
                                 <p className="text-[11px] font-mono text-gray-400">{u.phoneNumber || u.deviceUuid || 'No phone'}</p>
                               </td>
-                              <td className="px-6 py-4 uppercase font-mono text-amber-400">{u.preferredLang}</td>
                               <td className="px-6 py-4 text-gray-300">
-                                {u.deletedAt ? new Date(u.deletedAt).toLocaleString() : 'N/A'}
+                                {u.deletionRequestedAt ? new Date(u.deletionRequestedAt).toLocaleString() : 'Recent'}
                               </td>
                               <td className="px-6 py-4 max-w-xs">
-                                <span className="text-gray-400 italic block truncate" title={u.deletionReason || 'Direct admin soft-delete'}>
-                                  {u.deletionReason || 'Direct admin soft-delete'}
+                                <span className="bg-[#2A2421] text-amber-300 border border-amber-900/40 px-2.5 py-1 rounded text-[11px] block truncate" title={u.deletionReason || 'No reason provided'}>
+                                  {u.deletionReason || 'No reason provided by devotee'}
                                 </span>
                               </td>
                               <td className="px-6 py-4">
-                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20">
-                                  SOFT DELETED
-                                </span>
+                                {u.isDeleted ? (
+                                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                                    SOFT DELETED
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20 animate-pulse">
+                                    PENDING ACTION
+                                  </span>
+                                )}
                               </td>
                               <td className="px-6 py-4 text-right">
                                 <div className="flex items-center justify-end gap-2">
-                                  <button
-                                    onClick={() => handleRestoreUser(u.id, u.fullName || u.phoneNumber)}
-                                    disabled={actionLoadingId === u.id}
-                                    className="px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-600/30 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition disabled:opacity-50"
-                                    title="Reactivate devotee account"
-                                  >
-                                    <UserCheck className="w-3.5 h-3.5" />
-                                    <span>Restore Account</span>
-                                  </button>
+                                  {!u.isDeleted && (
+                                    <button
+                                      onClick={() => handleSoftDeleteUser(u.id, u.fullName || u.phoneNumber)}
+                                      disabled={actionLoadingId === u.id}
+                                      className="px-3 py-1.5 bg-amber-600/20 hover:bg-amber-600/30 text-amber-400 border border-amber-600/30 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition disabled:opacity-50"
+                                      title="Deactivate account & move to Soft-Deleted archive"
+                                    >
+                                      <Archive className="w-3.5 h-3.5" />
+                                      <span>Soft Delete</span>
+                                    </button>
+                                  )}
                                   <button
                                     onClick={() => handlePermanentDeleteUser(u.id, u.fullName || u.phoneNumber)}
                                     disabled={actionLoadingId === u.id}
@@ -9823,6 +9737,15 @@ export default function EnterpriseSuperAdminDashboard() {
                                     <Trash2 className="w-3.5 h-3.5" />
                                     <span>Permanent Delete</span>
                                   </button>
+                                  <button
+                                    onClick={() => handleDismissDeletionRequest(u.id, u.fullName || u.phoneNumber)}
+                                    disabled={actionLoadingId === u.id}
+                                    className="px-3 py-1.5 bg-neutral-700/40 hover:bg-neutral-700/60 text-gray-300 border border-neutral-600/40 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition disabled:opacity-50"
+                                    title="Dismiss deletion request and keep account active"
+                                  >
+                                    <CheckCircle2 className="w-3.5 h-3.5" />
+                                    <span>Dismiss</span>
+                                  </button>
                                 </div>
                               </td>
                             </tr>
@@ -9834,1416 +9757,2247 @@ export default function EnterpriseSuperAdminDashboard() {
                 </div>
               )}
 
-              {/* TAB 9: DASHBOARD OVERVIEW */}
-              {activeTab === 'dashboard' && (
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div className="bg-[#1E1E1E] p-4 rounded-xl border border-[#2C2C2C]">
-                      <p className="text-xs text-gray-400 font-medium">Registered App Users</p>
-                      <p className="text-2xl font-bold text-gray-100 mt-1">{users.length}</p>
-                      <span className="text-[10px] text-emerald-400 font-semibold">Real MySQL app_users</span>
-                    </div>
-                    <div className="bg-[#1E1E1E] p-4 rounded-xl border border-[#2C2C2C]">
-                      <p className="text-xs text-gray-400 font-medium">Active Categories</p>
-                      <p className="text-2xl font-bold text-[#FFB300] mt-1">{stats?.activeCategories ?? categories.length ?? 0}</p>
-                      <span className="text-[10px] text-emerald-400 font-semibold">Strict server-side paginated</span>
-                    </div>
-                    <div className="bg-[#1E1E1E] p-4 rounded-xl border border-[#2C2C2C]">
-                      <p className="text-xs text-gray-400 font-medium">Languages in DB</p>
-                      <p className="text-2xl font-bold text-emerald-400 mt-1">{stats?.totalLanguages ?? languages.length ?? 0}</p>
-                      <span className="text-[10px] text-emerald-400 font-semibold">Active configured languages</span>
-                    </div>
-                    <div className="bg-[#1E1E1E] p-4 rounded-xl border border-[#2C2C2C]">
-                      <p className="text-xs text-gray-400 font-medium">Recorded Audit Logs</p>
-                      <p className="text-2xl font-bold text-orange-400 mt-1">{auditLogs.length}</p>
-                      <span className="text-[10px] text-orange-400 font-semibold">Tamper-evident log trail</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* TAB 10: ADMIN PROFILE */}
-              {activeTab === 'profile' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] p-6 space-y-4">
-                    <h2 className="text-base font-bold text-gray-100 flex items-center gap-2">
-                      <User className="w-5 h-5 text-orange-400" />
-                      <span>Master Administrator Profile</span>
-                    </h2>
-                    <form onSubmit={handleUpdateProfile} className="space-y-4 text-xs">
-                      <div>
-                        <label className="block font-semibold text-gray-400 uppercase mb-1">Email (Identity)</label>
-                        <input
-                          type="text"
-                          value={adminProfile.email}
-                          disabled
-                          className="w-full bg-[#121212] border border-[#2C2C2C] rounded-lg px-3 py-2 text-gray-400 cursor-not-allowed font-mono"
-                        />
-                      </div>
-                      <div>
-                        <label className="block font-semibold text-gray-300 uppercase mb-1">Full Name</label>
-                        <input
-                          type="text"
-                          value={editFullName}
-                          onChange={(e) => setEditFullName(e.target.value)}
-                          className="w-full bg-[#141414] border border-[#2C2C2C] rounded-lg px-3 py-2 text-gray-100 focus:outline-none focus:border-[#FFB300]"
-                        />
-                      </div>
-                      <button
-                        type="submit"
-                        className="bg-[#D84315] hover:bg-[#BF360C] text-white px-4 py-2 rounded-lg font-semibold transition"
-                      >
-                        Save Profile Changes
-                      </button>
-                    </form>
-                  </div>
-
-                  <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] p-6 space-y-4">
-                    <h2 className="text-base font-bold text-gray-100 flex items-center gap-2">
-                      <Key className="w-5 h-5 text-emerald-400" />
-                      <span>Rotate Password (Bcrypt Salt 12)</span>
-                    </h2>
-                    <form onSubmit={handleChangePassword} className="space-y-4 text-xs">
-                      <div>
-                        <label className="block font-semibold text-gray-300 uppercase mb-1">Current Password</label>
-                        <input
-                          type="password"
-                          value={currentPassword}
-                          onChange={(e) => setCurrentPassword(e.target.value)}
-                          required
-                          className="w-full bg-[#141414] border border-[#2C2C2C] rounded-lg px-3 py-2 text-gray-100 focus:outline-none focus:border-[#FFB300]"
-                        />
-                      </div>
-                      <div>
-                        <label className="block font-semibold text-gray-300 uppercase mb-1">New Password</label>
-                        <input
-                          type="password"
-                          value={newPassword}
-                          onChange={(e) => setNewPassword(e.target.value)}
-                          required
-                          className="w-full bg-[#141414] border border-[#2C2C2C] rounded-lg px-3 py-2 text-gray-100 focus:outline-none focus:border-[#FFB300]"
-                        />
-                      </div>
-                      <div>
-                        <label className="block font-semibold text-gray-300 uppercase mb-1">Confirm New Password</label>
-                        <input
-                          type="password"
-                          value={confirmPassword}
-                          onChange={(e) => setConfirmPassword(e.target.value)}
-                          required
-                          className="w-full bg-[#141414] border border-[#2C2C2C] rounded-lg px-3 py-2 text-gray-100 focus:outline-none focus:border-[#FFB300]"
-                        />
-                      </div>
-                      <button
-                        type="submit"
-                        className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg font-semibold transition"
-                      >
-                        Rotate Password Securely
-                      </button>
-                    </form>
-                  </div>
-                </div>
-              )}
-
-              {/* TAB: TICKETS MANAGEMENT */}
-              {activeTab === 'tickets' && (
-                <div className="space-y-6">
-                  {/* Top Stats Cards */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-                    <div
-                      onClick={() => { setSelectedTicketFilter('ALL'); loadTickets('ALL'); }}
-                      className={`cursor-pointer bg-[#1E1E1E] p-4 rounded-xl border transition ${selectedTicketFilter === 'ALL' ? 'border-[#FFB300] bg-orange-950/20' : 'border-[#2C2C2C] hover:border-neutral-600'}`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <p className="text-xs text-gray-400 font-medium">All Tickets</p>
-                        <LifeBuoy className="w-4 h-4 text-gray-400" />
-                      </div>
-                      <p className="text-2xl font-bold text-gray-100 mt-1">{ticketStats.total}</p>
-                      <span className="text-[10px] text-gray-500 font-mono">Total inquiries</span>
-                    </div>
-
-                    <div
-                      onClick={() => { setSelectedTicketFilter('OPEN'); loadTickets('OPEN'); }}
-                      className={`cursor-pointer bg-[#1E1E1E] p-4 rounded-xl border transition ${selectedTicketFilter === 'OPEN' ? 'border-amber-500 bg-amber-950/20' : 'border-[#2C2C2C] hover:border-neutral-600'}`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <p className="text-xs text-amber-400 font-medium">Open Tickets</p>
-                        <Clock className="w-4 h-4 text-amber-400" />
-                      </div>
-                      <p className="text-2xl font-bold text-amber-400 mt-1">{ticketStats.open}</p>
-                      <span className="text-[10px] text-amber-500 font-semibold">Awaiting reply</span>
-                    </div>
-
-                    <div
-                      onClick={() => { setSelectedTicketFilter('IN_PROGRESS'); loadTickets('IN_PROGRESS'); }}
-                      className={`cursor-pointer bg-[#1E1E1E] p-4 rounded-xl border transition ${selectedTicketFilter === 'IN_PROGRESS' ? 'border-sky-500 bg-sky-950/20' : 'border-[#2C2C2C] hover:border-neutral-600'}`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <p className="text-xs text-sky-400 font-medium">In Progress</p>
-                        <RefreshCw className="w-4 h-4 text-sky-400" />
-                      </div>
-                      <p className="text-2xl font-bold text-sky-400 mt-1">{ticketStats.inProgress}</p>
-                      <span className="text-[10px] text-sky-400 font-mono">Under investigation</span>
-                    </div>
-
-                    <div
-                      onClick={() => { setSelectedTicketFilter('RESOLVED'); loadTickets('RESOLVED'); }}
-                      className={`cursor-pointer bg-[#1E1E1E] p-4 rounded-xl border transition ${selectedTicketFilter === 'RESOLVED' ? 'border-emerald-500 bg-emerald-950/20' : 'border-[#2C2C2C] hover:border-neutral-600'}`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <p className="text-xs text-emerald-400 font-medium">Resolved</p>
-                        <CheckCircle className="w-4 h-4 text-emerald-400" />
-                      </div>
-                      <p className="text-2xl font-bold text-emerald-400 mt-1">{ticketStats.resolved}</p>
-                      <span className="text-[10px] text-emerald-400 font-mono">Addressed by team</span>
-                    </div>
-
-                    <div
-                      onClick={() => { setSelectedTicketFilter('CLOSED'); loadTickets('CLOSED'); }}
-                      className={`cursor-pointer bg-[#1E1E1E] p-4 rounded-xl border transition ${selectedTicketFilter === 'CLOSED' ? 'border-gray-500 bg-neutral-900' : 'border-[#2C2C2C] hover:border-neutral-600'}`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <p className="text-xs text-gray-400 font-medium">Closed</p>
-                        <Archive className="w-4 h-4 text-gray-400" />
-                      </div>
-                      <p className="text-2xl font-bold text-gray-400 mt-1">{ticketStats.closed}</p>
-                      <span className="text-[10px] text-gray-500 font-mono">Archived tickets</span>
-                    </div>
-                  </div>
-
-                  {/* Tickets Table / List */}
-                  <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] overflow-hidden">
-                    <div className="p-4 border-b border-[#2C2C2C] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                      <div>
-                        <h2 className="text-sm font-bold text-gray-100 flex items-center gap-2">
-                          <LifeBuoy className="w-4 h-4 text-orange-400" />
-                          <span>Devotee Support Inquiries & Tickets</span>
-                        </h2>
-                        <p className="text-[11px] text-gray-400">
-                          Dynamically fetched from MySQL <code className="text-amber-400 font-mono">support_tickets</code> table via API.
-                        </p>
-                      </div>
+              {/* View 2A: Dedicated Dynamic Dharma Karthas Records View */}
+              {userSubTab === 'all' && selectedUserSubtitle === 'dharma_karthas' && (
+                <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] overflow-hidden">
+                  <div className="p-5 border-b border-[#2C2C2C] flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
                       <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => loadTickets(selectedTicketFilter)}
-                          className="px-3 py-1.5 bg-[#141414] hover:bg-[#252525] border border-[#2C2C2C] rounded-lg text-xs font-semibold flex items-center gap-1.5 text-gray-300 transition"
-                        >
-                          <RefreshCw className="w-3.5 h-3.5 text-orange-400" />
-                          <span>Refresh</span>
-                        </button>
+                        <ShieldCheck className="w-5 h-5 text-amber-400" />
+                        <h2 className="text-base font-bold text-gray-100">
+                          Dharma Kartha Records ({dharmaKarthas.length})
+                        </h2>
                       </div>
+                      <p className="text-xs text-gray-400 mt-1 max-w-2xl leading-relaxed">
+                        Authoritative trustee & temple management records dynamically queried from database via <code className="text-amber-400">/api/v1/admin/dharma-karthas</code>.
+                        Every record provides complete visibility into governed temples, scheduled events, festivals, administrative contacts, timings & aarthi, media gallery, speciality, and about details.
+                      </p>
                     </div>
 
-                    <div className="overflow-x-auto">
+                    <div className="flex items-center gap-2">
+                      <div className="relative">
+                        <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="text"
+                          placeholder="Search Dharma Karthas or temples..."
+                          value={dkSearch}
+                          onChange={(e) => {
+                            setDkSearch(e.target.value);
+                            loadDharmaKarthas(e.target.value);
+                          }}
+                          className="pl-8 pr-3 py-1.5 bg-[#121212] border border-[#3C3C3C] rounded-lg text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-amber-500 w-64"
+                        />
+                      </div>
+                      <button
+                        onClick={() => loadDharmaKarthas(dkSearch)}
+                        disabled={dkLoading}
+                        className="flex items-center gap-2 px-3 py-1.5 bg-[#252525] hover:bg-[#2F2F2F] text-xs font-semibold rounded-lg text-gray-300 border border-[#3C3C3C] transition disabled:opacity-50"
+                        title="Refresh live Dharma Kartha records from database"
+                      >
+                        <RefreshCw className={`w-3.5 h-3.5 ${dkLoading ? 'animate-spin text-amber-400' : ''}`} />
+                        <span>Refresh</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    {dkLoading ? (
+                      <div className="p-12 text-center text-xs text-gray-400 space-y-2">
+                        <RefreshCw className="w-6 h-6 animate-spin text-amber-400 mx-auto mb-2" />
+                        <p className="font-semibold text-gray-300">Fetching live Dharma Kartha records from database...</p>
+                      </div>
+                    ) : dharmaKarthas.length === 0 ? (
+                      <div className="p-12 text-center text-xs text-gray-400 space-y-2">
+                        <ShieldCheck className="w-8 h-8 text-gray-500 mx-auto mb-2" />
+                        <p className="font-semibold text-gray-300">No Dharma Kartha records found.</p>
+                        <p className="text-gray-500">No trustees match the search criteria or have been approved yet.</p>
+                      </div>
+                    ) : (
                       <table className="w-full text-left text-xs text-gray-300">
                         <thead className="bg-[#181818] uppercase text-gray-400 border-b border-[#2C2C2C]">
                           <tr>
-                            <th className="px-5 py-3">Ticket ID</th>
-                            <th className="px-5 py-3">Devotee / Raised By</th>
-                            <th className="px-5 py-3">Subject & Category</th>
-                            <th className="px-5 py-3">Priority</th>
-                            <th className="px-5 py-3">Status</th>
-                            <th className="px-5 py-3">Created</th>
-                            <th className="px-5 py-3 text-right">Action</th>
+                            <th className="px-5 py-3">Trustee / Dharma Kartha</th>
+                            <th className="px-5 py-3">Governed Mandir(s)</th>
+                            <th className="px-5 py-3">Sacred Modules & Assets</th>
+                            <th className="px-5 py-3">Mandir Contact & Speciality</th>
+                            <th className="px-5 py-3 text-right">Actions</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-[#2C2C2C]">
-                          {tickets.length === 0 ? (
-                            <tr>
-                              <td colSpan={7} className="px-6 py-12 text-center text-gray-400">
-                                <LifeBuoy className="w-10 h-10 mx-auto text-gray-600 mb-2 opacity-50" />
-                                <p className="text-sm font-semibold">No tickets found</p>
-                                <p className="text-xs text-gray-500 mt-1">There are no inquiries matching the selected filter.</p>
+                          {dharmaKarthas.map((dk) => (
+                            <tr key={dk.id} className="hover:bg-neutral-800/40 transition">
+                              {/* 1. Trustee Identity */}
+                              <td className="px-5 py-4 align-top">
+                                <div className="flex items-start gap-3">
+                                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-amber-600/30 to-amber-900/30 border border-amber-600/40 text-amber-300 font-bold flex items-center justify-center shrink-0">
+                                    {dk.fullName ? dk.fullName.charAt(0).toUpperCase() : 'D'}
+                                  </div>
+                                  <div>
+                                    <p className="font-bold text-gray-100 flex items-center gap-1.5">
+                                      <span>{dk.fullName || 'Dharma Kartha'}</span>
+                                      <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                                        {dk.membershipRole || 'OWNER'}
+                                      </span>
+                                    </p>
+                                    <p className="text-[11px] font-mono text-gray-400 mt-0.5">{dk.phoneNumber || 'No phone'}</p>
+                                    {dk.email && <p className="text-[11px] text-gray-500">{dk.email}</p>}
+                                    <p className="text-[10px] text-gray-400 mt-1">
+                                      📍 {dk.city}, {dk.state}
+                                    </p>
+                                  </div>
+                                </div>
+                              </td>
+
+                              {/* 2. Governed Temples */}
+                              <td className="px-5 py-4 align-top">
+                                {(!dk.temples || dk.temples.length === 0) ? (
+                                  <span className="text-gray-500 italic text-[11px]">No Temple assigned yet</span>
+                                ) : (
+                                  <div className="space-y-2">
+                                    {dk.temples.map((t: any) => (
+                                      <div key={t.id} className="bg-[#141414] border border-[#2C2C2C] p-2.5 rounded-lg">
+                                        <div className="flex items-center justify-between gap-2">
+                                          <p className="font-bold text-amber-300 text-xs flex items-center gap-1">
+                                            <span>🛕</span>
+                                            <span>{t.name}</span>
+                                          </p>
+                                          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                            {t.status || 'PUBLISHED'}
+                                          </span>
+                                        </div>
+                                        <p className="text-[11px] text-gray-400 mt-0.5">
+                                          Deity: <span className="text-gray-200 font-semibold">{t.primaryDeity}</span> • 📍 {t.city}, {t.state}
+                                        </p>
+                                        {t.alternateName && (
+                                          <p className="text-[10px] text-gray-500 italic">Local name: {t.alternateName}</p>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </td>
+
+                              {/* 3. Sacred Modules Summary Badges */}
+                              <td className="px-5 py-4 align-top">
+                                {(!dk.temples || dk.temples.length === 0) ? (
+                                  <span className="text-gray-500 italic text-[11px]">—</span>
+                                ) : (
+                                  <div className="space-y-2">
+                                    {dk.temples.map((t: any) => (
+                                      <div key={t.id} className="grid grid-cols-2 gap-1.5 text-[11px]">
+                                        <span className="bg-[#242424] border border-[#333] px-2 py-1 rounded flex items-center gap-1 text-gray-300">
+                                          <span>📅</span>
+                                          <span><b>{t.events?.length || 0}</b> Events</span>
+                                        </span>
+                                        <span className="bg-[#242424] border border-[#333] px-2 py-1 rounded flex items-center gap-1 text-gray-300">
+                                          <span>🪔</span>
+                                          <span><b>{t.festivals?.length || 0}</b> Festivals</span>
+                                        </span>
+                                        <span className="bg-[#242424] border border-[#333] px-2 py-1 rounded flex items-center gap-1 text-gray-300">
+                                          <span>⏰</span>
+                                          <span><b>{t.timings?.length || 0}</b> Timings</span>
+                                        </span>
+                                        <span className="bg-[#242424] border border-[#333] px-2 py-1 rounded flex items-center gap-1 text-gray-300">
+                                          <span>🖼️</span>
+                                          <span><b>{t.gallery?.length || 0}</b> Media</span>
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </td>
+
+                              {/* 4. Mandir Contact & Speciality */}
+                              <td className="px-5 py-4 align-top max-w-xs">
+                                {(!dk.temples || dk.temples.length === 0) ? (
+                                  <span className="text-gray-500 italic text-[11px]">—</span>
+                                ) : (
+                                  <div className="space-y-1.5 text-[11px]">
+                                    {dk.temples[0].officePhone && (
+                                      <p className="text-gray-300 flex items-center gap-1">
+                                        <Phone className="w-3 h-3 text-emerald-400 shrink-0" />
+                                        <span>{dk.temples[0].officePhone}</span>
+                                      </p>
+                                    )}
+                                    {dk.temples[0].officialEmail && (
+                                      <p className="text-gray-400 flex items-center gap-1 truncate" title={dk.temples[0].officialEmail}>
+                                        <Mail className="w-3 h-3 text-sky-400 shrink-0" />
+                                        <span className="truncate">{dk.temples[0].officialEmail}</span>
+                                      </p>
+                                    )}
+                                    {dk.temples[0].speciality && (
+                                      <p className="text-gray-400 line-clamp-2 mt-1 italic text-[10px] leading-relaxed border-t border-[#2C2C2C] pt-1">
+                                        ✨ {dk.temples[0].speciality}
+                                      </p>
+                                    )}
+                                  </div>
+                                )}
+                              </td>
+
+                              {/* 5. Actions */}
+                              <td className="px-5 py-4 align-top text-right">
+                                <div className="flex flex-col items-end gap-1.5">
+                                  <button
+                                    onClick={() => {
+                                      setSelectedDkRecord(dk);
+                                      setSelectedDkTempleIndex(0);
+                                      setActiveDkDetailTab('about');
+                                    }}
+                                    className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition shadow-sm"
+                                    title="View full sacred details (Events, Festivals, Contact, Timings, Gallery, Speciality, About)"
+                                  >
+                                    <Eye className="w-3.5 h-3.5" />
+                                    <span>View Record</span>
+                                  </button>
+
+                                  <button
+                                    onClick={() => handleSoftDeleteUser(dk.id, dk.fullName || dk.phoneNumber)}
+                                    disabled={actionLoadingId === dk.id}
+                                    className="px-2.5 py-1 bg-[#252525] hover:bg-neutral-800 text-gray-400 hover:text-amber-400 border border-[#333] rounded text-[11px] font-semibold flex items-center gap-1 transition"
+                                    title="Deactivate trustee account"
+                                  >
+                                    <Archive className="w-3 h-3" />
+                                    <span>Deactivate</span>
+                                  </button>
+                                </div>
                               </td>
                             </tr>
-                          ) : (
-                            tickets.map(t => {
-                              const statusBg =
-                                t.status === 'OPEN' ? 'bg-amber-950/60 text-amber-300 border-amber-800/40' :
-                                  t.status === 'IN_PROGRESS' ? 'bg-sky-950/60 text-sky-300 border-sky-800/40' :
-                                    t.status === 'RESOLVED' ? 'bg-emerald-950/60 text-emerald-300 border-emerald-800/40' :
-                                      'bg-neutral-800 text-gray-400 border-neutral-700';
-
-                              const priorityBg =
-                                t.priority === 'URGENT' ? 'text-rose-400 font-bold' :
-                                  t.priority === 'HIGH' ? 'text-orange-400 font-semibold' :
-                                    'text-gray-400';
-
-                              return (
-                                <tr key={t.id} className="hover:bg-neutral-800/40 transition">
-                                  <td className="px-5 py-3.5 font-mono text-orange-400 font-bold whitespace-nowrap">
-                                    {t.ticket_number}
-                                  </td>
-                                  <td className="px-5 py-3.5">
-                                    <div className="font-semibold text-gray-100">{t.user_name}</div>
-                                    <div className="text-[11px] text-gray-400 flex items-center gap-1.5 mt-0.5">
-                                      <span>{t.user_phone || 'No phone'}</span>
-                                      {t.user_email && <span>• {t.user_email}</span>}
-                                    </div>
-                                    <span className="inline-block mt-1 text-[9px] uppercase px-1.5 py-0.5 rounded bg-neutral-800 text-gray-400 border border-neutral-700 font-mono">
-                                      {t.user_role || 'DEVOTEE'}
-                                    </span>
-                                  </td>
-                                  <td className="px-5 py-3.5 max-w-md">
-                                    <div className="font-semibold text-gray-200 line-clamp-1">{t.subject}</div>
-                                    <div className="text-[11px] text-gray-400 line-clamp-1 mt-0.5">{t.message}</div>
-                                    <span className="inline-block mt-1 text-[10px] text-amber-400 font-mono">
-                                      Category: {t.category || 'GENERAL'}
-                                    </span>
-                                  </td>
-                                  <td className="px-5 py-3.5 whitespace-nowrap font-mono text-[11px]">
-                                    <span className={priorityBg}>{t.priority || 'MEDIUM'}</span>
-                                  </td>
-                                  <td className="px-5 py-3.5 whitespace-nowrap">
-                                    <span className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold border ${statusBg}`}>
-                                      {t.status}
-                                    </span>
-                                  </td>
-                                  <td className="px-5 py-3.5 text-gray-400 whitespace-nowrap text-[11px]">
-                                    {new Date(t.created_at).toLocaleDateString()}
-                                  </td>
-                                  <td className="px-5 py-3.5 text-right whitespace-nowrap">
-                                    <div className="flex items-center justify-end gap-2">
-                                      <button
-                                        onClick={() => {
-                                          setSelectedTicket(t);
-                                          setTicketReplyText(t.admin_response || '');
-                                          setIsTicketModalOpen(true);
-                                        }}
-                                        className="px-3 py-1.5 bg-[#FFB300]/15 hover:bg-[#FFB300]/25 text-[#FFB300] border border-[#FFB300]/40 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition"
-                                      >
-                                        <Eye className="w-3.5 h-3.5" />
-                                        <span>View & Reply</span>
-                                      </button>
-                                      <button
-                                        onClick={() => handleDeleteTicket(t.id)}
-                                        className="p-1.5 bg-rose-600/10 hover:bg-rose-600/20 text-rose-400 border border-rose-600/30 rounded-lg transition"
-                                        title="Delete Ticket"
-                                      >
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                      </button>
-                                    </div>
-                                  </td>
-                                </tr>
-                              );
-                            })
-                          )}
+                          ))}
                         </tbody>
                       </table>
-                    </div>
+                    )}
                   </div>
                 </div>
               )}
 
-              {/* TAB: GODS & GODDESSES (DEITIES) MANAGEMENT */}
-              {activeTab === 'gods' && (
-                <div className="space-y-6">
-                  {/* Header Card */}
-                  <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] p-6 shadow-xl">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                      <div>
-                        <h2 className="text-lg font-bold text-[#FFB300] flex items-center gap-2">
-                          <Sparkles className="w-5 h-5 text-amber-400" />
-                          <span>Gods & Goddesses Sanctum Management</span>
-                        </h2>
-                        <p className="text-xs text-gray-400 mt-1">
-                          Manage holy Deities, Avatars, Moola Mantras, Vahanas, and sacred shrines displayed in Saranam Ayyappa Web & Mobile apps.
-                        </p>
+              {/* View 2B: Devotees View */}
+              {userSubTab === 'all' && selectedUserSubtitle === 'devotees' && (
+                <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] overflow-hidden">
+                  <div className="p-5 border-b border-[#2C2C2C] flex items-center justify-between">
+                    <div>
+                      <h2 className="text-base font-bold text-gray-100">Registered Devotees (MySQL `app_users`)</h2>
+                      <p className="text-xs text-gray-400">Active devotee profiles queried directly from MySQL via Prisma.</p>
+                    </div>
+                  </div>
+                  <div className="overflow-x-auto">
+                    {users.filter(u => !u.isDeleted).length === 0 ? (
+                      <div className="p-12 text-center text-xs text-gray-400 space-y-2">
+                        <p className="font-semibold text-gray-300">No active registered mobile devotee profiles yet.</p>
                       </div>
+                    ) : (
+                      <table className="w-full text-left text-xs text-gray-300">
+                        <thead className="bg-[#181818] uppercase text-gray-400 border-b border-[#2C2C2C]">
+                          <tr>
+                            <th className="px-6 py-3">User ID</th>
+                            <th className="px-6 py-3">Phone / Identifier</th>
+                            <th className="px-6 py-3">Language</th>
+                            <th className="px-6 py-3">Status</th>
+                            <th className="px-6 py-3">Registered At</th>
+                            <th className="px-6 py-3 text-right">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#2C2C2C]">
+                          {users.filter(u => !u.isDeleted).map(u => (
+                            <tr key={u.id} className="hover:bg-neutral-800/40">
+                              <td className="px-6 py-4 font-mono text-gray-500">#{u.id}</td>
+                              <td className="px-6 py-4 font-semibold text-gray-100">
+                                {u.fullName ? `${u.fullName} (${u.phoneNumber || u.deviceUuid})` : u.phoneNumber || u.deviceUuid || 'Anonymous Client'}
+                              </td>
+                              <td className="px-6 py-4 uppercase font-mono text-amber-400">{u.preferredLang}</td>
+                              <td className="px-6 py-4">
+                                {u.deletionRequested ? (
+                                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                                    DELETION REQUESTED
+                                  </span>
+                                ) : (
+                                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${u.isSuspended ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'}`}>
+                                    {u.isSuspended ? 'SUSPENDED' : 'ACTIVE'}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-6 py-4 text-gray-400">{new Date(u.createdAt).toLocaleDateString()}</td>
+                              <td className="px-6 py-4 text-right">
+                                <div className="flex items-center justify-end gap-2">
+                                  <button
+                                    onClick={() => handleSoftDeleteUser(u.id, u.fullName || u.phoneNumber)}
+                                    disabled={actionLoadingId === u.id}
+                                    className="px-2.5 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 rounded text-[11px] font-semibold flex items-center gap-1 transition"
+                                  >
+                                    <Archive className="w-3 h-3" />
+                                    <span>Soft Delete</span>
+                                  </button>
+                                  <button
+                                    onClick={() => handlePermanentDeleteUser(u.id, u.fullName || u.phoneNumber)}
+                                    disabled={actionLoadingId === u.id}
+                                    className="px-2.5 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded text-[11px] font-semibold flex items-center gap-1 transition"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                    <span>Delete</span>
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* MODAL DIALOG: COMPLETE DYNAMIC DHARMA KARTHA & MANDIR RECORD DETAILS */}
+              {selectedDkRecord && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+                  <div className="bg-[#1C1C1C] border border-[#333] rounded-2xl w-full max-w-5xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                    {/* Modal Top Bar */}
+                    <div className="p-5 border-b border-[#2C2C2C] flex items-center justify-between bg-[#171717]">
                       <div className="flex items-center gap-3">
-                        <button
-                          onClick={loadDeities}
-                          className="px-3.5 py-2 bg-[#141414] hover:bg-[#252525] border border-[#2C2C2C] rounded-lg text-xs font-semibold flex items-center gap-1.5 text-gray-300 transition"
-                        >
-                          <RefreshCw className="w-3.5 h-3.5 text-amber-400" />
-                          <span>Refresh</span>
-                        </button>
-                        <button
-                          onClick={handleOpenCreateDeity}
-                          className="px-4 py-2 bg-gradient-to-r from-[#D84315] to-[#BF360C] hover:from-[#BF360C] hover:to-[#A32F09] text-white rounded-lg text-xs font-bold flex items-center gap-2 shadow-lg shadow-orange-950 transition"
-                        >
-                          <Plus className="w-4 h-4" />
-                          <span>Add New Deity</span>
-                        </button>
+                        <div className="w-10 h-10 rounded-full bg-amber-600/30 border border-amber-600/50 flex items-center justify-center text-amber-300 font-bold text-base shrink-0">
+                          {selectedDkRecord.fullName ? selectedDkRecord.fullName.charAt(0).toUpperCase() : 'D'}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h2 className="text-base font-bold text-gray-100">{selectedDkRecord.fullName}</h2>
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                              {selectedDkRecord.membershipRole || 'OWNER'}
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-400 mt-0.5">
+                            📞 {selectedDkRecord.phoneNumber || 'N/A'} • ✉️ {selectedDkRecord.email || 'N/A'} • 📍 {selectedDkRecord.city}, {selectedDkRecord.state}
+                          </p>
+                        </div>
                       </div>
+
+                      <button
+                        onClick={() => setSelectedDkRecord(null)}
+                        className="w-8 h-8 rounded-lg bg-[#252525] hover:bg-[#333] text-gray-400 hover:text-white flex items-center justify-center transition"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
                     </div>
 
-                    {/* Quick Summary Badges */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5">
-                      <div className="bg-[#141414] border border-[#2C2C2C] rounded-lg p-3">
-                        <span className="text-[11px] text-gray-400 uppercase tracking-wider block font-medium">Total Deities</span>
-                        <strong className="text-xl font-bold text-amber-400">{deities.length}</strong>
-                      </div>
-                      <div className="bg-[#141414] border border-[#2C2C2C] rounded-lg p-3">
-                        <span className="text-[11px] text-gray-400 uppercase tracking-wider block font-medium">Gods</span>
-                        <strong className="text-xl font-bold text-orange-400">
-                          {deities.filter(d => d.category === 'God').length}
-                        </strong>
-                      </div>
-                      <div className="bg-[#141414] border border-[#2C2C2C] rounded-lg p-3">
-                        <span className="text-[11px] text-gray-400 uppercase tracking-wider block font-medium">Goddesses</span>
-                        <strong className="text-xl font-bold text-rose-400">
-                          {deities.filter(d => d.category === 'Goddess').length}
-                        </strong>
-                      </div>
-                      <div className="bg-[#141414] border border-[#2C2C2C] rounded-lg p-3">
-                        <span className="text-[11px] text-gray-400 uppercase tracking-wider block font-medium">Active in Portal</span>
-                        <strong className="text-xl font-bold text-emerald-400">
-                          {deities.filter(d => d.isActive).length}
-                        </strong>
-                      </div>
-                    </div>
-
-                    {/* Filter and Search Bar */}
-                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-5 pt-4 border-t border-[#2C2C2C]">
-                      {/* Category Pills */}
-                      <div className="flex flex-wrap items-center gap-1.5 w-full sm:w-auto">
-                        {['ALL', 'God', 'Goddess', 'Avatar', 'Cosmic Form'].map(cat => (
+                    {/* Temple Selector (if multiple temples) */}
+                    {selectedDkRecord.temples && selectedDkRecord.temples.length > 1 && (
+                      <div className="px-5 py-2.5 bg-[#141414] border-b border-[#2C2C2C] flex items-center gap-2 overflow-x-auto">
+                        <span className="text-xs font-semibold text-gray-400">Managing Temple:</span>
+                        {selectedDkRecord.temples.map((temple: any, idx: number) => (
                           <button
-                            key={cat}
-                            onClick={() => setDeityCategoryFilter(cat)}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${deityCategoryFilter === cat
-                              ? 'bg-[#FFB300] text-black shadow-md'
-                              : 'bg-[#141414] text-gray-400 hover:text-white border border-[#2C2C2C]'
+                            key={temple.id}
+                            onClick={() => setSelectedDkTempleIndex(idx)}
+                            className={`px-3 py-1 rounded-lg text-xs font-semibold transition ${selectedDkTempleIndex === idx
+                              ? 'bg-amber-600 text-white shadow-sm'
+                              : 'bg-[#222] text-gray-300 hover:bg-[#2C2C2C]'
                               }`}
                           >
-                            {cat === 'ALL' ? 'All Deities' : cat}
+                            🛕 {temple.name}
                           </button>
                         ))}
                       </div>
+                    )}
 
-                      {/* Search Input */}
-                      <div className="relative w-full sm:w-72">
-                        <Search className="w-4 h-4 absolute left-3 top-2.5 text-gray-500" />
-                        <input
-                          type="text"
-                          placeholder="Search deity, mantra, temple..."
-                          value={deitySearch}
-                          onChange={(e) => setDeitySearch(e.target.value)}
-                          className="w-full pl-9 pr-3 py-1.5 bg-[#141414] border border-[#2C2C2C] rounded-lg text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-[#FFB300]"
-                        />
+                    {/* Modal Content Body */}
+                    {(!selectedDkRecord.temples || selectedDkRecord.temples.length === 0) ? (
+                      <div className="p-12 text-center text-xs text-gray-400 space-y-2">
+                        <Landmark className="w-8 h-8 text-gray-500 mx-auto mb-2" />
+                        <p className="font-semibold text-gray-200">No Holy Temple Associated With This Trustee Yet</p>
+                        <p className="text-gray-500">This Dharma Kartha has registered their account but has not yet linked or registered a mandir.</p>
                       </div>
+                    ) : (
+                      (() => {
+                        const temple = selectedDkRecord.temples[selectedDkTempleIndex] || selectedDkRecord.temples[0];
+                        return (
+                          <div className="flex-1 flex flex-col overflow-hidden">
+                            {/* 7 Modules Navigation Tabs */}
+                            <div className="flex items-center gap-1.5 px-5 pt-3 border-b border-[#2C2C2C] bg-[#141414] overflow-x-auto text-xs">
+                              <button
+                                onClick={() => setActiveDkDetailTab('about')}
+                                className={`px-3.5 py-2 rounded-t-lg font-semibold transition flex items-center gap-1.5 border-b-2 ${activeDkDetailTab === 'about'
+                                  ? 'border-amber-500 text-amber-400 bg-[#1E1E1E]'
+                                  : 'border-transparent text-gray-400 hover:text-gray-200'
+                                  }`}
+                              >
+                                <Landmark className="w-3.5 h-3.5" />
+                                <span>1. About & History</span>
+                              </button>
+                              <button
+                                onClick={() => setActiveDkDetailTab('speciality')}
+                                className={`px-3.5 py-2 rounded-t-lg font-semibold transition flex items-center gap-1.5 border-b-2 ${activeDkDetailTab === 'speciality'
+                                  ? 'border-amber-500 text-amber-400 bg-[#1E1E1E]'
+                                  : 'border-transparent text-gray-400 hover:text-gray-200'
+                                  }`}
+                              >
+                                <Sparkles className="w-3.5 h-3.5" />
+                                <span>2. Speciality</span>
+                              </button>
+                              <button
+                                onClick={() => setActiveDkDetailTab('contact')}
+                                className={`px-3.5 py-2 rounded-t-lg font-semibold transition flex items-center gap-1.5 border-b-2 ${activeDkDetailTab === 'contact'
+                                  ? 'border-amber-500 text-amber-400 bg-[#1E1E1E]'
+                                  : 'border-transparent text-gray-400 hover:text-gray-200'
+                                  }`}
+                              >
+                                <Phone className="w-3.5 h-3.5" />
+                                <span>3. Contact</span>
+                              </button>
+                              <button
+                                onClick={() => setActiveDkDetailTab('timings')}
+                                className={`px-3.5 py-2 rounded-t-lg font-semibold transition flex items-center gap-1.5 border-b-2 ${activeDkDetailTab === 'timings'
+                                  ? 'border-amber-500 text-amber-400 bg-[#1E1E1E]'
+                                  : 'border-transparent text-gray-400 hover:text-gray-200'
+                                  }`}
+                              >
+                                <Clock className="w-3.5 h-3.5" />
+                                <span>4. Timings & Aarthi ({temple.timings?.length || 0})</span>
+                              </button>
+                              <button
+                                onClick={() => setActiveDkDetailTab('events')}
+                                className={`px-3.5 py-2 rounded-t-lg font-semibold transition flex items-center gap-1.5 border-b-2 ${activeDkDetailTab === 'events'
+                                  ? 'border-amber-500 text-amber-400 bg-[#1E1E1E]'
+                                  : 'border-transparent text-gray-400 hover:text-gray-200'
+                                  }`}
+                              >
+                                <Calendar className="w-3.5 h-3.5" />
+                                <span>5. Events ({temple.events?.length || 0})</span>
+                              </button>
+                              <button
+                                onClick={() => setActiveDkDetailTab('festivals')}
+                                className={`px-3.5 py-2 rounded-t-lg font-semibold transition flex items-center gap-1.5 border-b-2 ${activeDkDetailTab === 'festivals'
+                                  ? 'border-amber-500 text-amber-400 bg-[#1E1E1E]'
+                                  : 'border-transparent text-gray-400 hover:text-gray-200'
+                                  }`}
+                              >
+                                <Flame className="w-3.5 h-3.5" />
+                                <span>6. Festivals ({temple.festivals?.length || 0})</span>
+                              </button>
+                              <button
+                                onClick={() => setActiveDkDetailTab('gallery')}
+                                className={`px-3.5 py-2 rounded-t-lg font-semibold transition flex items-center gap-1.5 border-b-2 ${activeDkDetailTab === 'gallery'
+                                  ? 'border-amber-500 text-amber-400 bg-[#1E1E1E]'
+                                  : 'border-transparent text-gray-400 hover:text-gray-200'
+                                  }`}
+                              >
+                                <ImageIcon className="w-3.5 h-3.5" />
+                                <span>7. Gallery ({temple.gallery?.length || 0})</span>
+                              </button>
+                            </div>
+
+                            {/* Tab Panels */}
+                            <div className="flex-1 overflow-y-auto p-6 space-y-6 text-xs text-gray-300">
+                              {/* TAB 1: ABOUT & HISTORY */}
+                              {activeDkDetailTab === 'about' && (
+                                <div className="space-y-5">
+                                  <div className="flex flex-col md:flex-row gap-5 items-start">
+                                    {temple.heroImageUrl && (
+                                      <img
+                                        src={temple.heroImageUrl}
+                                        alt={temple.name}
+                                        className="w-full md:w-56 h-36 object-cover rounded-xl border border-[#333] shrink-0"
+                                      />
+                                    )}
+                                    <div className="space-y-2 flex-1">
+                                      <div className="flex items-center gap-2">
+                                        <h3 className="text-lg font-bold text-gray-100">{temple.name}</h3>
+                                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                          {temple.status || 'PUBLISHED'}
+                                        </span>
+                                      </div>
+                                      {temple.alternateName && (
+                                        <p className="text-gray-400"><b>Alternate Name:</b> {temple.alternateName}</p>
+                                      )}
+                                      <p className="text-gray-300">
+                                        <b>Primary Deity:</b> <span className="text-amber-400 font-semibold">{temple.primaryDeity}</span> • 📍 {temple.city}, {temple.district ? `${temple.district}, ` : ''}{temple.state}
+                                      </p>
+                                      {temple.shortDescription && (
+                                        <p className="text-gray-400 italic bg-[#151515] p-3 rounded-lg border border-[#282828] leading-relaxed">
+                                          "{temple.shortDescription}"
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  <div className="space-y-4 pt-2">
+                                    <div className="bg-[#161616] border border-[#282828] p-4 rounded-xl space-y-2">
+                                      <h4 className="font-bold text-amber-300 text-xs uppercase flex items-center gap-1.5">
+                                        <Landmark className="w-4 h-4 text-amber-400" />
+                                        <span>About the Holy Temple</span>
+                                      </h4>
+                                      <p className="text-gray-300 leading-relaxed text-xs">
+                                        {temple.about || 'No detailed description recorded in database.'}
+                                      </p>
+                                    </div>
+
+                                    <div className="bg-[#161616] border border-[#282828] p-4 rounded-xl space-y-2">
+                                      <h4 className="font-bold text-amber-300 text-xs uppercase flex items-center gap-1.5">
+                                        <Scroll className="w-4 h-4 text-amber-400" />
+                                        <span>Sacred History & Divine Origins</span>
+                                      </h4>
+                                      <p className="text-gray-300 leading-relaxed text-xs">
+                                        {temple.history || 'No sacred history recorded in database.'}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* TAB 2: SPECIALITY */}
+                              {activeDkDetailTab === 'speciality' && (
+                                <div className="space-y-4">
+                                  <div className="bg-[#161616] border border-[#282828] p-5 rounded-xl space-y-3">
+                                    <h4 className="font-bold text-amber-300 text-sm uppercase flex items-center gap-2">
+                                      <Sparkles className="w-4 h-4 text-amber-400" />
+                                      <span>Spiritual Speciality & Architectural Highlights</span>
+                                    </h4>
+                                    <p className="text-gray-200 leading-relaxed text-xs">
+                                      {temple.speciality || 'No speciality or architectural highlights recorded in database.'}
+                                    </p>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* TAB 3: CONTACT INFORMATION */}
+                              {activeDkDetailTab === 'contact' && (
+                                <div className="space-y-4">
+                                  <div className="bg-[#161616] border border-[#282828] p-5 rounded-xl space-y-4">
+                                    <h4 className="font-bold text-amber-300 text-xs uppercase flex items-center gap-1.5">
+                                      <Phone className="w-4 h-4 text-amber-400" />
+                                      <span>Official Administrative Contact Details</span>
+                                    </h4>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                      <div className="bg-[#1A1A1A] p-3.5 rounded-lg border border-[#2C2C2C]">
+                                        <span className="text-[10px] uppercase text-gray-500 font-bold block">Office Phone / Helpline</span>
+                                        <p className="text-gray-200 font-semibold text-xs mt-1">{temple.officePhone || 'N/A'}</p>
+                                      </div>
+                                      <div className="bg-[#1A1A1A] p-3.5 rounded-lg border border-[#2C2C2C]">
+                                        <span className="text-[10px] uppercase text-gray-500 font-bold block">Official Trust Email</span>
+                                        <p className="text-gray-200 font-semibold text-xs mt-1">{temple.officialEmail || 'N/A'}</p>
+                                      </div>
+                                      <div className="bg-[#1A1A1A] p-3.5 rounded-lg border border-[#2C2C2C]">
+                                        <span className="text-[10px] uppercase text-gray-500 font-bold block">Official Website</span>
+                                        {temple.officialWebsite ? (
+                                          <a href={temple.officialWebsite} target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline flex items-center gap-1 text-xs mt-1">
+                                            <span>{temple.officialWebsite}</span>
+                                            <ExternalLink className="w-3 h-3" />
+                                          </a>
+                                        ) : (
+                                          <p className="text-gray-500 text-xs mt-1">N/A</p>
+                                        )}
+                                      </div>
+                                      <div className="bg-[#1A1A1A] p-3.5 rounded-lg border border-[#2C2C2C]">
+                                        <span className="text-[10px] uppercase text-gray-500 font-bold block">Google Maps Coordinates</span>
+                                        {temple.mapsUrl ? (
+                                          <a href={temple.mapsUrl} target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:underline flex items-center gap-1 text-xs mt-1">
+                                            <span>Open Location in Google Maps</span>
+                                            <ExternalLink className="w-3 h-3" />
+                                          </a>
+                                        ) : (
+                                          <p className="text-gray-500 text-xs mt-1">Lat: {temple.latitude || 'N/A'} • Long: {temple.longitude || 'N/A'}</p>
+                                        )}
+                                      </div>
+                                    </div>
+
+                                    <div className="bg-[#1A1A1A] p-4 rounded-lg border border-[#2C2C2C] space-y-1">
+                                      <span className="text-[10px] uppercase text-gray-500 font-bold block">Full Temple Address</span>
+                                      <p className="text-gray-200 leading-relaxed">
+                                        {temple.address || `${temple.city}, ${temple.state}`}, Pin: {temple.pincode || 'N/A'}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* TAB 4: TIMINGS & AARTHI */}
+                              {activeDkDetailTab === 'timings' && (
+                                <div className="space-y-4">
+                                  <div className="flex items-center justify-between">
+                                    <h4 className="font-bold text-amber-300 text-xs uppercase flex items-center gap-1.5">
+                                      <Clock className="w-4 h-4 text-amber-400" />
+                                      <span>Sacred Daily Timings & Aarthi Schedule ({temple.timings?.length || 0})</span>
+                                    </h4>
+                                  </div>
+
+                                  {(!temple.timings || temple.timings.length === 0) ? (
+                                    <div className="bg-[#161616] border border-[#282828] p-8 text-center rounded-xl text-gray-500">
+                                      <Clock className="w-6 h-6 text-gray-600 mx-auto mb-2" />
+                                      <p>No daily timings or aarthi schedule configured in database for this temple.</p>
+                                    </div>
+                                  ) : (
+                                    <div className="divide-y divide-[#282828] border border-[#282828] rounded-xl overflow-hidden bg-[#161616]">
+                                      {temple.timings.map((tm: any, i: number) => (
+                                        <div key={tm.id || i} className="p-3.5 flex items-start justify-between gap-4 hover:bg-[#1A1A1A] transition">
+                                          <div className="space-y-1">
+                                            <p className="font-bold text-gray-100 flex items-center gap-2">
+                                              <span>{tm.title}</span>
+                                              <span className="text-amber-400 font-mono text-[11px] font-semibold">({tm.timeWindow})</span>
+                                            </p>
+                                            {tm.description && (
+                                              <p className="text-gray-400 text-[11px]">{tm.description}</p>
+                                            )}
+                                          </div>
+                                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0">
+                                            ACTIVE
+                                          </span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* TAB 5: TEMPLE EVENTS */}
+                              {activeDkDetailTab === 'events' && (
+                                <div className="space-y-4">
+                                  <div className="flex items-center justify-between">
+                                    <h4 className="font-bold text-amber-300 text-xs uppercase flex items-center gap-1.5">
+                                      <Calendar className="w-4 h-4 text-amber-400" />
+                                      <span>Temple Events & Seva Programmes ({temple.events?.length || 0})</span>
+                                    </h4>
+                                  </div>
+
+                                  {(!temple.events || temple.events.length === 0) ? (
+                                    <div className="bg-[#161616] border border-[#282828] p-8 text-center rounded-xl text-gray-500">
+                                      <Calendar className="w-6 h-6 text-gray-600 mx-auto mb-2" />
+                                      <p>No events registered in database for this temple.</p>
+                                    </div>
+                                  ) : (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                      {temple.events.map((evt: any) => (
+                                        <div key={evt.id} className="bg-[#161616] border border-[#282828] p-4 rounded-xl space-y-2">
+                                          <div className="flex items-start justify-between gap-2">
+                                            <h5 className="font-bold text-gray-100 text-xs">{evt.title}</h5>
+                                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                                              {evt.category || 'PROGRAMME'}
+                                            </span>
+                                          </div>
+                                          <p className="text-gray-400 text-[11px]">
+                                            📅 {evt.startDate ? new Date(evt.startDate).toLocaleDateString() : 'Active Date'}
+                                            {evt.timeWindow && ` • ⏰ ${evt.timeWindow}`}
+                                          </p>
+                                          {evt.description && (
+                                            <p className="text-gray-300 text-[11px] leading-relaxed">{evt.description}</p>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* TAB 6: FESTIVALS */}
+                              {activeDkDetailTab === 'festivals' && (
+                                <div className="space-y-4">
+                                  <div className="flex items-center justify-between">
+                                    <h4 className="font-bold text-amber-300 text-xs uppercase flex items-center gap-1.5">
+                                      <Flame className="w-4 h-4 text-amber-400" />
+                                      <span>Sacred Festivals & Mahotsavams ({temple.festivals?.length || 0})</span>
+                                    </h4>
+                                  </div>
+
+                                  {(!temple.festivals || temple.festivals.length === 0) ? (
+                                    <div className="bg-[#161616] border border-[#282828] p-8 text-center rounded-xl text-gray-500">
+                                      <Flame className="w-6 h-6 text-gray-600 mx-auto mb-2" />
+                                      <p>No festivals registered in database for this temple.</p>
+                                    </div>
+                                  ) : (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                      {temple.festivals.map((fest: any) => (
+                                        <div key={fest.id} className="bg-[#161616] border border-[#282828] p-4 rounded-xl space-y-2">
+                                          <div className="flex items-start justify-between gap-2">
+                                            <h5 className="font-bold text-gray-100 text-xs">{fest.name}</h5>
+                                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-500/15 text-rose-400 border border-rose-500/30">
+                                              {fest.category || 'FESTIVAL'}
+                                            </span>
+                                          </div>
+                                          <p className="text-gray-400 text-[11px]">
+                                            🪔 {fest.period || (fest.startDate ? new Date(fest.startDate).toLocaleDateString() : 'Annual')}
+                                          </p>
+                                          {fest.description && (
+                                            <p className="text-gray-300 text-[11px] leading-relaxed">{fest.description}</p>
+                                          )}
+                                          {fest.specialPoojaInfo && (
+                                            <p className="text-amber-400/90 text-[10px] italic border-t border-[#252525] pt-1">
+                                              ✦ Special Ritual: {fest.specialPoojaInfo}
+                                            </p>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* TAB 7: GALLERY */}
+                              {activeDkDetailTab === 'gallery' && (
+                                <div className="space-y-4">
+                                  <div className="flex items-center justify-between">
+                                    <h4 className="font-bold text-amber-300 text-xs uppercase flex items-center gap-1.5">
+                                      <ImageIcon className="w-4 h-4 text-amber-400" />
+                                      <span>Sanctum Media & Sacred Gallery ({temple.gallery?.length || 0})</span>
+                                    </h4>
+                                  </div>
+
+                                  {(!temple.gallery || temple.gallery.length === 0) ? (
+                                    <div className="bg-[#161616] border border-[#282828] p-8 text-center rounded-xl text-gray-500">
+                                      <ImageIcon className="w-6 h-6 text-gray-600 mx-auto mb-2" />
+                                      <p>No sanctum gallery photos or media uploaded in database for this temple.</p>
+                                    </div>
+                                  ) : (
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                      {temple.gallery.map((media: any) => (
+                                        <div key={media.id} className="bg-[#161616] border border-[#282828] rounded-xl overflow-hidden group">
+                                          <div className="aspect-video bg-[#111] overflow-hidden">
+                                            <img
+                                              src={media.mediaUrl}
+                                              alt={media.title || 'Sanctum photo'}
+                                              className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                                              onError={(e: any) => { e.target.src = '/images/temple-hero.jpg'; }}
+                                            />
+                                          </div>
+                                          <div className="p-2.5 space-y-1">
+                                            <p className="font-bold text-gray-200 text-xs truncate">{media.title || 'Sanctum Photo'}</p>
+                                            {media.caption && (
+                                              <p className="text-gray-400 text-[10px] truncate">{media.caption}</p>
+                                            )}
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })()
+                    )}
+
+                    {/* Modal Bottom Footer */}
+                    <div className="p-4 border-t border-[#2C2C2C] bg-[#171717] flex items-center justify-between">
+                      <span className="text-[11px] text-gray-400 flex items-center gap-1.5">
+                        <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Saranam Ayyappa Master Trustee Records • Pure Dynamic Database Synchronization</span>
+                      </span>
+                      <button
+                        onClick={() => setSelectedDkRecord(null)}
+                        className="px-4 py-1.5 bg-[#252525] hover:bg-[#333] text-gray-200 text-xs font-semibold rounded-lg transition"
+                      >
+                        Close Record
+                      </button>
                     </div>
                   </div>
+                </div>
+              )}
+            </div>
+          )}
 
-                  {/* Deity Cards Grid */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                    {deities
-                      .filter(deity => {
-                        if (deityCategoryFilter !== 'ALL' && deity.category !== deityCategoryFilter) return false;
-                        if (deitySearch.trim()) {
-                          const q = deitySearch.toLowerCase();
-                          const matchName = deity.name?.toLowerCase().includes(q);
-                          const matchAlt = deity.alternateName?.toLowerCase().includes(q);
-                          const matchMantra = deity.moolaMantra?.toLowerCase().includes(q);
-                          const matchTemple = deity.primaryTemple?.toLowerCase().includes(q);
-                          return matchName || matchAlt || matchMantra || matchTemple;
-                        }
-                        return true;
-                      })
-                      .map((deity) => (
-                        <div
-                          key={deity.id}
-                          className={`bg-[#1E1E1E] rounded-xl border transition-all duration-200 hover:shadow-2xl flex flex-col justify-between overflow-hidden ${deity.isActive
-                            ? 'border-[#2C2C2C] hover:border-[#FFB300]/60'
-                            : 'border-red-900/30 opacity-75'
-                            }`}
-                        >
-                          {/* Card Banner Image or Header */}
-                          <div className="relative h-32 bg-gradient-to-br from-[#121212] to-[#252525] border-b border-[#2C2C2C] overflow-hidden">
-                            {deity.imageUrl ? (
+          {/* DEDICATED SEPARATE PAGE: SOFT DELETED USERS */}
+          {activeTab === 'soft_deleted_users' && (
+            <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] overflow-hidden">
+              <div className="p-5 border-b border-[#2C2C2C] flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <UserX className="w-5 h-5 text-rose-400" />
+                    <h2 className="text-base font-bold text-gray-100">Soft-Deleted Devotee Accounts (`is_deleted = true`)</h2>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Archived accounts prevented from accessing the app. Devotee data is retained in MySQL for audit and compliance. You can restore access or permanently purge anytime.
+                  </p>
+                </div>
+                <button
+                  onClick={() => { loadSoftDeletedUsers(); loadUsers(); }}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-[#252525] hover:bg-[#2F2F2F] text-xs font-semibold rounded-lg text-gray-300 border border-[#3C3C3C] transition"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>Refresh List</span>
+                </button>
+              </div>
+
+              <div className="overflow-x-auto">
+                {softDeletedUsers.length === 0 ? (
+                  <div className="p-12 text-center text-xs text-gray-400 space-y-2">
+                    <div className="w-12 h-12 rounded-full bg-neutral-800 border border-neutral-700 text-gray-400 flex items-center justify-center mx-auto mb-2">
+                      <UserX className="w-6 h-6" />
+                    </div>
+                    <p className="font-semibold text-gray-200">No Soft-Deleted User Accounts</p>
+                    <p className="text-gray-500">There are currently no accounts in the soft-deleted archive.</p>
+                  </div>
+                ) : (
+                  <table className="w-full text-left text-xs text-gray-300">
+                    <thead className="bg-[#181818] uppercase text-gray-400 border-b border-[#2C2C2C]">
+                      <tr>
+                        <th className="px-6 py-3">User ID</th>
+                        <th className="px-6 py-3">Devotee / Identifier</th>
+                        <th className="px-6 py-3">Language</th>
+                        <th className="px-6 py-3">Deactivated Date</th>
+                        <th className="px-6 py-3">Deletion Reason</th>
+                        <th className="px-6 py-3">Status</th>
+                        <th className="px-6 py-3 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#2C2C2C]">
+                      {softDeletedUsers.map(u => (
+                        <tr key={u.id} className="hover:bg-neutral-800/40">
+                          <td className="px-6 py-4 font-mono text-gray-500">#{u.id}</td>
+                          <td className="px-6 py-4">
+                            <p className="font-semibold text-gray-100">{u.fullName || 'Devotee'}</p>
+                            <p className="text-[11px] font-mono text-gray-400">{u.phoneNumber || u.deviceUuid || 'No phone'}</p>
+                          </td>
+                          <td className="px-6 py-4 uppercase font-mono text-amber-400">{u.preferredLang}</td>
+                          <td className="px-6 py-4 text-gray-300">
+                            {u.deletedAt ? new Date(u.deletedAt).toLocaleString() : 'N/A'}
+                          </td>
+                          <td className="px-6 py-4 max-w-xs">
+                            <span className="text-gray-400 italic block truncate" title={u.deletionReason || 'Direct admin soft-delete'}>
+                              {u.deletionReason || 'Direct admin soft-delete'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                              SOFT DELETED
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={() => handleRestoreUser(u.id, u.fullName || u.phoneNumber)}
+                                disabled={actionLoadingId === u.id}
+                                className="px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-600/30 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition disabled:opacity-50"
+                                title="Reactivate devotee account"
+                              >
+                                <UserCheck className="w-3.5 h-3.5" />
+                                <span>Restore Account</span>
+                              </button>
+                              <button
+                                onClick={() => handlePermanentDeleteUser(u.id, u.fullName || u.phoneNumber)}
+                                disabled={actionLoadingId === u.id}
+                                className="px-3 py-1.5 bg-rose-600/20 hover:bg-rose-600/30 text-rose-400 border border-rose-600/30 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition disabled:opacity-50"
+                                title="Permanently erase from MySQL database"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                <span>Permanent Delete</span>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 9: DASHBOARD OVERVIEW */}
+          {activeTab === 'dashboard' && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-[#1E1E1E] p-4 rounded-xl border border-[#2C2C2C]">
+                  <p className="text-xs text-gray-400 font-medium">Registered App Users</p>
+                  <p className="text-2xl font-bold text-gray-100 mt-1">{users.length}</p>
+                  <span className="text-[10px] text-emerald-400 font-semibold">Real MySQL app_users</span>
+                </div>
+                <div className="bg-[#1E1E1E] p-4 rounded-xl border border-[#2C2C2C]">
+                  <p className="text-xs text-gray-400 font-medium">Active Categories</p>
+                  <p className="text-2xl font-bold text-[#FFB300] mt-1">{stats?.activeCategories ?? categories.length ?? 0}</p>
+                  <span className="text-[10px] text-emerald-400 font-semibold">Strict server-side paginated</span>
+                </div>
+                <div className="bg-[#1E1E1E] p-4 rounded-xl border border-[#2C2C2C]">
+                  <p className="text-xs text-gray-400 font-medium">Languages in DB</p>
+                  <p className="text-2xl font-bold text-emerald-400 mt-1">{stats?.totalLanguages ?? languages.length ?? 0}</p>
+                  <span className="text-[10px] text-emerald-400 font-semibold">Active configured languages</span>
+                </div>
+                <div className="bg-[#1E1E1E] p-4 rounded-xl border border-[#2C2C2C]">
+                  <p className="text-xs text-gray-400 font-medium">Recorded Audit Logs</p>
+                  <p className="text-2xl font-bold text-orange-400 mt-1">{auditLogs.length}</p>
+                  <span className="text-[10px] text-orange-400 font-semibold">Tamper-evident log trail</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 10: ADMIN PROFILE */}
+          {activeTab === 'profile' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] p-6 space-y-4">
+                <h2 className="text-base font-bold text-gray-100 flex items-center gap-2">
+                  <User className="w-5 h-5 text-orange-400" />
+                  <span>Master Administrator Profile</span>
+                </h2>
+                <form onSubmit={handleUpdateProfile} className="space-y-4 text-xs">
+                  <div>
+                    <label className="block font-semibold text-gray-400 uppercase mb-1">Email (Identity)</label>
+                    <input
+                      type="text"
+                      value={adminProfile.email}
+                      disabled
+                      className="w-full bg-[#121212] border border-[#2C2C2C] rounded-lg px-3 py-2 text-gray-400 cursor-not-allowed font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-gray-300 uppercase mb-1">Full Name</label>
+                    <input
+                      type="text"
+                      value={editFullName}
+                      onChange={(e) => setEditFullName(e.target.value)}
+                      className="w-full bg-[#141414] border border-[#2C2C2C] rounded-lg px-3 py-2 text-gray-100 focus:outline-none focus:border-[#FFB300]"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="bg-[#D84315] hover:bg-[#BF360C] text-white px-4 py-2 rounded-lg font-semibold transition"
+                  >
+                    Save Profile Changes
+                  </button>
+                </form>
+              </div>
+
+              <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] p-6 space-y-4">
+                <h2 className="text-base font-bold text-gray-100 flex items-center gap-2">
+                  <Key className="w-5 h-5 text-emerald-400" />
+                  <span>Rotate Password (Bcrypt Salt 12)</span>
+                </h2>
+                <form onSubmit={handleChangePassword} className="space-y-4 text-xs">
+                  <div>
+                    <label className="block font-semibold text-gray-300 uppercase mb-1">Current Password</label>
+                    <input
+                      type="password"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      required
+                      className="w-full bg-[#141414] border border-[#2C2C2C] rounded-lg px-3 py-2 text-gray-100 focus:outline-none focus:border-[#FFB300]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-gray-300 uppercase mb-1">New Password</label>
+                    <input
+                      type="password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      required
+                      className="w-full bg-[#141414] border border-[#2C2C2C] rounded-lg px-3 py-2 text-gray-100 focus:outline-none focus:border-[#FFB300]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-gray-300 uppercase mb-1">Confirm New Password</label>
+                    <input
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      required
+                      className="w-full bg-[#141414] border border-[#2C2C2C] rounded-lg px-3 py-2 text-gray-100 focus:outline-none focus:border-[#FFB300]"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg font-semibold transition"
+                  >
+                    Rotate Password Securely
+                  </button>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: TICKETS MANAGEMENT */}
+          {activeTab === 'tickets' && (
+            <div className="space-y-6">
+              {/* Top Stats Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                <div
+                  onClick={() => { setSelectedTicketFilter('ALL'); loadTickets('ALL'); }}
+                  className={`cursor-pointer bg-[#1E1E1E] p-4 rounded-xl border transition ${selectedTicketFilter === 'ALL' ? 'border-[#FFB300] bg-orange-950/20' : 'border-[#2C2C2C] hover:border-neutral-600'}`}
+                >
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-gray-400 font-medium">All Tickets</p>
+                    <LifeBuoy className="w-4 h-4 text-gray-400" />
+                  </div>
+                  <p className="text-2xl font-bold text-gray-100 mt-1">{ticketStats.total}</p>
+                  <span className="text-[10px] text-gray-500 font-mono">Total inquiries</span>
+                </div>
+
+                <div
+                  onClick={() => { setSelectedTicketFilter('OPEN'); loadTickets('OPEN'); }}
+                  className={`cursor-pointer bg-[#1E1E1E] p-4 rounded-xl border transition ${selectedTicketFilter === 'OPEN' ? 'border-amber-500 bg-amber-950/20' : 'border-[#2C2C2C] hover:border-neutral-600'}`}
+                >
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-amber-400 font-medium">Open Tickets</p>
+                    <Clock className="w-4 h-4 text-amber-400" />
+                  </div>
+                  <p className="text-2xl font-bold text-amber-400 mt-1">{ticketStats.open}</p>
+                  <span className="text-[10px] text-amber-500 font-semibold">Awaiting reply</span>
+                </div>
+
+                <div
+                  onClick={() => { setSelectedTicketFilter('IN_PROGRESS'); loadTickets('IN_PROGRESS'); }}
+                  className={`cursor-pointer bg-[#1E1E1E] p-4 rounded-xl border transition ${selectedTicketFilter === 'IN_PROGRESS' ? 'border-sky-500 bg-sky-950/20' : 'border-[#2C2C2C] hover:border-neutral-600'}`}
+                >
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-sky-400 font-medium">In Progress</p>
+                    <RefreshCw className="w-4 h-4 text-sky-400" />
+                  </div>
+                  <p className="text-2xl font-bold text-sky-400 mt-1">{ticketStats.inProgress}</p>
+                  <span className="text-[10px] text-sky-400 font-mono">Under investigation</span>
+                </div>
+
+                <div
+                  onClick={() => { setSelectedTicketFilter('RESOLVED'); loadTickets('RESOLVED'); }}
+                  className={`cursor-pointer bg-[#1E1E1E] p-4 rounded-xl border transition ${selectedTicketFilter === 'RESOLVED' ? 'border-emerald-500 bg-emerald-950/20' : 'border-[#2C2C2C] hover:border-neutral-600'}`}
+                >
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-emerald-400 font-medium">Resolved</p>
+                    <CheckCircle className="w-4 h-4 text-emerald-400" />
+                  </div>
+                  <p className="text-2xl font-bold text-emerald-400 mt-1">{ticketStats.resolved}</p>
+                  <span className="text-[10px] text-emerald-400 font-mono">Addressed by team</span>
+                </div>
+
+                <div
+                  onClick={() => { setSelectedTicketFilter('CLOSED'); loadTickets('CLOSED'); }}
+                  className={`cursor-pointer bg-[#1E1E1E] p-4 rounded-xl border transition ${selectedTicketFilter === 'CLOSED' ? 'border-gray-500 bg-neutral-900' : 'border-[#2C2C2C] hover:border-neutral-600'}`}
+                >
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-gray-400 font-medium">Closed</p>
+                    <Archive className="w-4 h-4 text-gray-400" />
+                  </div>
+                  <p className="text-2xl font-bold text-gray-400 mt-1">{ticketStats.closed}</p>
+                  <span className="text-[10px] text-gray-500 font-mono">Archived tickets</span>
+                </div>
+              </div>
+
+              {/* Tickets Table / List */}
+              <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] overflow-hidden">
+                <div className="p-4 border-b border-[#2C2C2C] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-sm font-bold text-gray-100 flex items-center gap-2">
+                      <LifeBuoy className="w-4 h-4 text-orange-400" />
+                      <span>Devotee Support Inquiries & Tickets</span>
+                    </h2>
+                    <p className="text-[11px] text-gray-400">
+                      Dynamically fetched from MySQL <code className="text-amber-400 font-mono">support_tickets</code> table via API.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => loadTickets(selectedTicketFilter)}
+                      className="px-3 py-1.5 bg-[#141414] hover:bg-[#252525] border border-[#2C2C2C] rounded-lg text-xs font-semibold flex items-center gap-1.5 text-gray-300 transition"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5 text-orange-400" />
+                      <span>Refresh</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs text-gray-300">
+                    <thead className="bg-[#181818] uppercase text-gray-400 border-b border-[#2C2C2C]">
+                      <tr>
+                        <th className="px-5 py-3">Ticket ID</th>
+                        <th className="px-5 py-3">Devotee / Raised By</th>
+                        <th className="px-5 py-3">Subject & Category</th>
+                        <th className="px-5 py-3">Priority</th>
+                        <th className="px-5 py-3">Status</th>
+                        <th className="px-5 py-3">Created</th>
+                        <th className="px-5 py-3 text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#2C2C2C]">
+                      {tickets.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="px-6 py-12 text-center text-gray-400">
+                            <LifeBuoy className="w-10 h-10 mx-auto text-gray-600 mb-2 opacity-50" />
+                            <p className="text-sm font-semibold">No tickets found</p>
+                            <p className="text-xs text-gray-500 mt-1">There are no inquiries matching the selected filter.</p>
+                          </td>
+                        </tr>
+                      ) : (
+                        tickets.map(t => {
+                          const statusBg =
+                            t.status === 'OPEN' ? 'bg-amber-950/60 text-amber-300 border-amber-800/40' :
+                              t.status === 'IN_PROGRESS' ? 'bg-sky-950/60 text-sky-300 border-sky-800/40' :
+                                t.status === 'RESOLVED' ? 'bg-emerald-950/60 text-emerald-300 border-emerald-800/40' :
+                                  'bg-neutral-800 text-gray-400 border-neutral-700';
+
+                          const priorityBg =
+                            t.priority === 'URGENT' ? 'text-rose-400 font-bold' :
+                              t.priority === 'HIGH' ? 'text-orange-400 font-semibold' :
+                                'text-gray-400';
+
+                          return (
+                            <tr key={t.id} className="hover:bg-neutral-800/40 transition">
+                              <td className="px-5 py-3.5 font-mono text-orange-400 font-bold whitespace-nowrap">
+                                {t.ticket_number}
+                              </td>
+                              <td className="px-5 py-3.5">
+                                <div className="font-semibold text-gray-100">{t.user_name}</div>
+                                <div className="text-[11px] text-gray-400 flex items-center gap-1.5 mt-0.5">
+                                  <span>{t.user_phone || 'No phone'}</span>
+                                  {t.user_email && <span>• {t.user_email}</span>}
+                                </div>
+                                <span className="inline-block mt-1 text-[9px] uppercase px-1.5 py-0.5 rounded bg-neutral-800 text-gray-400 border border-neutral-700 font-mono">
+                                  {t.user_role || 'DEVOTEE'}
+                                </span>
+                              </td>
+                              <td className="px-5 py-3.5 max-w-md">
+                                <div className="font-semibold text-gray-200 line-clamp-1">{t.subject}</div>
+                                <div className="text-[11px] text-gray-400 line-clamp-1 mt-0.5">{t.message}</div>
+                                <span className="inline-block mt-1 text-[10px] text-amber-400 font-mono">
+                                  Category: {t.category || 'GENERAL'}
+                                </span>
+                              </td>
+                              <td className="px-5 py-3.5 whitespace-nowrap font-mono text-[11px]">
+                                <span className={priorityBg}>{t.priority || 'MEDIUM'}</span>
+                              </td>
+                              <td className="px-5 py-3.5 whitespace-nowrap">
+                                <span className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold border ${statusBg}`}>
+                                  {t.status}
+                                </span>
+                              </td>
+                              <td className="px-5 py-3.5 text-gray-400 whitespace-nowrap text-[11px]">
+                                {new Date(t.created_at).toLocaleDateString()}
+                              </td>
+                              <td className="px-5 py-3.5 text-right whitespace-nowrap">
+                                <div className="flex items-center justify-end gap-2">
+                                  <button
+                                    onClick={() => {
+                                      setSelectedTicket(t);
+                                      setTicketReplyText(t.admin_response || '');
+                                      setIsTicketModalOpen(true);
+                                    }}
+                                    className="px-3 py-1.5 bg-[#FFB300]/15 hover:bg-[#FFB300]/25 text-[#FFB300] border border-[#FFB300]/40 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition"
+                                  >
+                                    <Eye className="w-3.5 h-3.5" />
+                                    <span>View & Reply</span>
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteTicket(t.id)}
+                                    className="p-1.5 bg-rose-600/10 hover:bg-rose-600/20 text-rose-400 border border-rose-600/30 rounded-lg transition"
+                                    title="Delete Ticket"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: GODS & GODDESSES (DEITIES) MANAGEMENT */}
+          {activeTab === 'gods' && (
+            <div className="space-y-6">
+              {/* Header Card */}
+              <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] p-6 shadow-xl">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-lg font-bold text-[#FFB300] flex items-center gap-2">
+                      <Sparkles className="w-5 h-5 text-amber-400" />
+                      <span>Gods & Goddesses Sanctum Management</span>
+                    </h2>
+                    <p className="text-xs text-gray-400 mt-1">
+                      Manage holy Deities, Avatars, Moola Mantras, Vahanas, and sacred shrines displayed in Saranam Ayyappa Web & Mobile apps.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => loadDeities()}
+                      className="px-3.5 py-2 bg-[#141414] hover:bg-[#252525] border border-[#2C2C2C] rounded-lg text-xs font-semibold flex items-center gap-1.5 text-gray-300 transition"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Refresh</span>
+                    </button>
+                    <button
+                      onClick={handleOpenCreateDeity}
+                      className="px-4 py-2 bg-gradient-to-r from-[#D84315] to-[#BF360C] hover:from-[#BF360C] hover:to-[#A32F09] text-white rounded-lg text-xs font-bold flex items-center gap-2 shadow-lg shadow-orange-950 transition"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Add New Deity</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Quick Summary Badges */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5">
+                  <div className="bg-[#141414] border border-[#2C2C2C] rounded-lg p-3">
+                    <span className="text-[11px] text-gray-400 uppercase tracking-wider block font-medium">Total Deities</span>
+                    <strong className="text-xl font-bold text-amber-400">{deities.length}</strong>
+                  </div>
+                  <div className="bg-[#141414] border border-[#2C2C2C] rounded-lg p-3">
+                    <span className="text-[11px] text-gray-400 uppercase tracking-wider block font-medium">Gods</span>
+                    <strong className="text-xl font-bold text-orange-400">
+                      {deities.filter(d => d.category === 'God').length}
+                    </strong>
+                  </div>
+                  <div className="bg-[#141414] border border-[#2C2C2C] rounded-lg p-3">
+                    <span className="text-[11px] text-gray-400 uppercase tracking-wider block font-medium">Goddesses</span>
+                    <strong className="text-xl font-bold text-rose-400">
+                      {deities.filter(d => d.category === 'Goddess').length}
+                    </strong>
+                  </div>
+                  <div className="bg-[#141414] border border-[#2C2C2C] rounded-lg p-3">
+                    <span className="text-[11px] text-gray-400 uppercase tracking-wider block font-medium">Active in Portal</span>
+                    <strong className="text-xl font-bold text-emerald-400">
+                      {deities.filter(d => d.isActive).length}
+                    </strong>
+                  </div>
+                </div>
+
+                {/* Filter and Search Bar */}
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-5 pt-4 border-t border-[#2C2C2C]">
+                  {/* Category Pills */}
+                  <div className="flex flex-wrap items-center gap-1.5 w-full sm:w-auto">
+                    {['ALL', 'God', 'Goddess', 'Avatar', 'Cosmic Form'].map(cat => (
+                      <button
+                        key={cat}
+                        onClick={() => setDeityCategoryFilter(cat)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${deityCategoryFilter === cat
+                          ? 'bg-[#FFB300] text-black shadow-md'
+                          : 'bg-[#141414] text-gray-400 hover:text-white border border-[#2C2C2C]'
+                          }`}
+                      >
+                        {cat === 'ALL' ? 'All Deities' : cat}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Search Input */}
+                  <div className="relative w-full sm:w-72">
+                    <Search className="w-4 h-4 absolute left-3 top-2.5 text-gray-500" />
+                    <input
+                      type="text"
+                      placeholder="Search deity, mantra, temple..."
+                      value={deitySearch}
+                      onChange={(e) => setDeitySearch(e.target.value)}
+                      className="w-full pl-9 pr-3 py-1.5 bg-[#141414] border border-[#2C2C2C] rounded-lg text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-[#FFB300]"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Deity Cards Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {deities
+                  .filter(deity => {
+                    if (deityCategoryFilter !== 'ALL' && deity.category !== deityCategoryFilter) return false;
+                    if (deitySearch.trim()) {
+                      const q = deitySearch.toLowerCase();
+                      const matchName = deity.name?.toLowerCase().includes(q);
+                      const matchAlt = deity.alternateName?.toLowerCase().includes(q);
+                      const matchMantra = deity.moolaMantra?.toLowerCase().includes(q);
+                      const matchTemple = deity.primaryTemple?.toLowerCase().includes(q);
+                      return matchName || matchAlt || matchMantra || matchTemple;
+                    }
+                    return true;
+                  })
+                  .map((deity) => (
+                    <div
+                      key={deity.id}
+                      className={`bg-[#1E1E1E] rounded-xl border transition-all duration-200 hover:shadow-2xl flex flex-col justify-between overflow-hidden ${deity.isActive
+                        ? 'border-[#2C2C2C] hover:border-[#FFB300]/60'
+                        : 'border-red-900/30 opacity-75'
+                        }`}
+                    >
+                      {/* Card Banner Image or Header */}
+                      <div className="relative h-32 bg-gradient-to-br from-[#121212] to-[#252525] border-b border-[#2C2C2C] overflow-hidden">
+                        {deity.imageUrl ? (
+                          <img
+                            src={resolveDeityImageUrl(deity.imageUrl)}
+                            alt={deity.name}
+                            className="w-full h-full object-cover opacity-85 hover:opacity-100 transition duration-300"
+                            onError={(e: any) => {
+                              const target = e.currentTarget;
+                              if (!target.src.includes('saranamayyappa.in') && !target.src.startsWith('data:')) {
+                                target.src = `https://saranamayyappa.in${deity.imageUrl?.startsWith('/') ? '' : '/'}${deity.imageUrl}`;
+                              } else {
+                                target.src = 'https://saranamayyappa.in/images/temples/banner-sabarimala-hd.png';
+                              }
+                            }}
+                          />
+                        ) : null}
+                        <div className="absolute inset-0 bg-gradient-to-t from-[#1E1E1E] via-transparent to-transparent" />
+
+                        {/* Top Badges */}
+                        <div className="absolute top-3 left-3 right-3 flex items-center justify-between">
+                          <span
+                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${deity.category === 'Goddess'
+                              ? 'bg-rose-950/80 text-rose-300 border border-rose-800/40'
+                              : deity.category === 'Avatar'
+                                ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/40'
+                                : 'bg-amber-950/80 text-amber-300 border border-amber-800/40'
+                              }`}
+                          >
+                            {deity.category}
+                          </span>
+
+                          <button
+                            onClick={() => handleToggleDeityStatus(deity)}
+                            title={deity.isActive ? 'Active in Portal' : 'Inactive'}
+                            className={`px-2 py-0.5 rounded text-[10px] font-semibold flex items-center gap-1 transition ${deity.isActive
+                              ? 'bg-emerald-900/60 text-emerald-300 border border-emerald-700/50'
+                              : 'bg-gray-800 text-gray-400 border border-gray-700'
+                              }`}
+                          >
+                            <span className={`w-1.5 h-1.5 rounded-full ${deity.isActive ? 'bg-emerald-400 animate-pulse' : 'bg-gray-500'}`} />
+                            {deity.isActive ? 'Active' : 'Hidden'}
+                          </button>
+                        </div>
+
+                        {/* Title Overlay */}
+                        <div className="absolute bottom-2 left-3 right-3">
+                          <h3 className="text-base font-bold text-gray-100 drop-shadow flex items-center gap-1.5">
+                            <span>{(deity as any).translations?.[selectedLang]?.name || deity.name}</span>
+                          </h3>
+                          {((deity as any).translations?.[selectedLang]?.alternateName || deity.alternateName) && (
+                            <p className="text-[11px] text-amber-300/90 font-medium truncate">
+                              {(deity as any).translations?.[selectedLang]?.alternateName || deity.alternateName}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Card Body */}
+                      <div className="p-4 space-y-3 flex-1 flex flex-col justify-between">
+                        <div className="space-y-2">
+                          {/* Moola Mantra Box */}
+                          {((deity as any).translations?.[selectedLang]?.moolaMantra || deity.moolaMantra) && (
+                            <div className="bg-[#141414] border border-amber-900/30 rounded-lg p-2.5">
+                              <span className="text-[10px] font-bold text-amber-400 block uppercase tracking-wider">
+                                Sacred Moola Mantra
+                              </span>
+                              <p className="text-xs text-amber-100/90 font-serif italic mt-0.5">
+                                "{(deity as any).translations?.[selectedLang]?.moolaMantra || deity.moolaMantra}"
+                              </p>
+                            </div>
+                          )}
+
+                          {/* Vahana and Kshetram */}
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            {((deity as any).translations?.[selectedLang]?.vahana || deity.vahana) && (
+                              <div className="bg-[#161616] border border-[#2C2C2C] rounded p-2">
+                                <span className="text-[10px] text-gray-400 block font-medium">Sacred Vahana</span>
+                                <span className="text-gray-200 font-semibold truncate block mt-0.5">
+                                  {(deity as any).translations?.[selectedLang]?.vahana || deity.vahana}
+                                </span>
+                              </div>
+                            )}
+                            {((deity as any).translations?.[selectedLang]?.primaryTemple || deity.primaryTemple) && (
+                              <div className="bg-[#161616] border border-[#2C2C2C] rounded p-2">
+                                <span className="text-[10px] text-gray-400 block font-medium">Primary Kshetram</span>
+                                <span className="text-gray-200 font-semibold truncate block mt-0.5" title={(deity as any).translations?.[selectedLang]?.primaryTemple || deity.primaryTemple}>
+                                  {(deity as any).translations?.[selectedLang]?.primaryTemple || deity.primaryTemple}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Description */}
+                          {((deity as any).translations?.[selectedLang]?.description || deity.description) && (
+                            <p className="text-[11px] text-gray-400 leading-relaxed line-clamp-2">
+                              {(deity as any).translations?.[selectedLang]?.description || deity.description}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Card Actions */}
+                        <div className="pt-3 border-t border-[#2C2C2C] flex items-center justify-between">
+                          <span className="text-[11px] text-gray-500 font-mono">
+                            Order #{deity.displayOrder || 1}
+                          </span>
+
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleOpenEditDeity(deity)}
+                              className="px-2.5 py-1 bg-[#141414] hover:bg-[#252525] border border-[#2C2C2C] hover:border-amber-500/50 rounded text-xs font-semibold text-gray-300 hover:text-amber-400 flex items-center gap-1 transition"
+                            >
+                              <Edit className="w-3 h-3 text-amber-400" />
+                              <span>Edit</span>
+                            </button>
+                            <button
+                              onClick={() => handleDeleteDeity(deity.id)}
+                              className="p-1 hover:bg-red-950/40 border border-transparent hover:border-red-800/40 rounded text-gray-400 hover:text-red-400 transition"
+                              title="Delete Deity"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+
+              {/* Empty State */}
+              {deities.length === 0 && (
+                <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] p-12 text-center">
+                  <Sparkles className="w-12 h-12 text-amber-400/50 mx-auto mb-3" />
+                  <h3 className="text-base font-bold text-gray-200">No Deities Found</h3>
+                  <p className="text-xs text-gray-400 mt-1 max-w-md mx-auto">
+                    Click "Add New Deity" above to register and consecrate a holy shrine deity entry.
+                  </p>
+                </div>
+              )}
+
+              {/* CREATE / EDIT DEITY MODAL */}
+              {isDeityModalOpen && editingDeity && (
+                <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+                  <div className="bg-[#1E1E1E] border border-[#FFB300]/40 rounded-2xl w-full max-w-xl p-6 shadow-2xl space-y-4 my-8">
+                    <div className="flex items-center justify-between border-b border-[#2C2C2C] pb-3">
+                      <h3 className="text-base font-bold text-[#FFB300] flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-amber-400" />
+                        <span>{editingDeity.id ? 'Edit Deity Details' : 'Register New Deity'}</span>
+                      </h3>
+                      <button
+                        onClick={() => { setIsDeityModalOpen(false); setEditingDeity(null); }}
+                        className="text-gray-400 hover:text-white p-1 rounded-lg hover:bg-[#252525] transition"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <form onSubmit={handleSaveDeity} className="space-y-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-xs font-semibold text-gray-300 block mb-1">
+                            Deity Name <span className="text-red-400">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            placeholder="e.g. Lord Ayyappa"
+                            value={editingDeity.name || ''}
+                            onChange={(e) => setEditingDeity({ ...editingDeity, name: e.target.value })}
+                            className="w-full px-3 py-2 bg-[#141414] border border-[#2C2C2C] rounded-lg text-xs text-gray-100 focus:outline-none focus:border-[#FFB300]"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-xs font-semibold text-gray-300 block mb-1">
+                            Alternate Name / Titles
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="e.g. Dharma Sastha / Manikanta Swamy"
+                            value={editingDeity.alternateName || ''}
+                            onChange={(e) => setEditingDeity({ ...editingDeity, alternateName: e.target.value })}
+                            className="w-full px-3 py-2 bg-[#141414] border border-[#2C2C2C] rounded-lg text-xs text-gray-100 focus:outline-none focus:border-[#FFB300]"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                          <label className="text-xs font-semibold text-gray-300 block mb-1">
+                            Category / Form
+                          </label>
+                          <select
+                            value={editingDeity.category || 'God'}
+                            onChange={(e) => setEditingDeity({ ...editingDeity, category: e.target.value })}
+                            className="w-full px-3 py-2 bg-[#141414] border border-[#2C2C2C] rounded-lg text-xs text-amber-400 focus:outline-none focus:border-[#FFB300]"
+                          >
+                            <option value="God">God (Deva)</option>
+                            <option value="Goddess">Goddess (Devi / Shakthi)</option>
+                            <option value="Avatar">Avatar</option>
+                            <option value="Cosmic Form">Cosmic Form</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="text-xs font-semibold text-gray-300 block mb-1">
+                            Sacred Vahana (Vehicle)
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="e.g. Tiger, Mouse, Garuda, Nandi"
+                            value={editingDeity.vahana || ''}
+                            onChange={(e) => setEditingDeity({ ...editingDeity, vahana: e.target.value })}
+                            className="w-full px-3 py-2 bg-[#141414] border border-[#2C2C2C] rounded-lg text-xs text-gray-100 focus:outline-none focus:border-[#FFB300]"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-xs font-semibold text-gray-300 block mb-1">
+                            Display Order
+                          </label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={editingDeity.displayOrder || 1}
+                            onChange={(e) => setEditingDeity({ ...editingDeity, displayOrder: parseInt(e.target.value, 10) || 1 })}
+                            className="w-full px-3 py-2 bg-[#141414] border border-[#2C2C2C] rounded-lg text-xs text-gray-100 focus:outline-none focus:border-[#FFB300]"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-semibold text-gray-300 block mb-1">
+                          Primary Moola Mantra
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Om Swamiye Saranam Ayyappa"
+                          value={editingDeity.moolaMantra || ''}
+                          onChange={(e) => setEditingDeity({ ...editingDeity, moolaMantra: e.target.value })}
+                          className="w-full px-3 py-2 bg-[#141414] border border-[#2C2C2C] rounded-lg text-xs text-amber-300 font-serif focus:outline-none focus:border-[#FFB300]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-semibold text-gray-300 block mb-1">
+                          Primary Kshetram / Temple
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Sabarimala Sri Ayyappa Temple"
+                          value={editingDeity.primaryTemple || ''}
+                          onChange={(e) => setEditingDeity({ ...editingDeity, primaryTemple: e.target.value })}
+                          className="w-full px-3 py-2 bg-[#141414] border border-[#2C2C2C] rounded-lg text-xs text-gray-100 focus:outline-none focus:border-[#FFB300]"
+                        />
+                      </div>
+
+                      {/* Deity Banner / Image File Upload with Preview */}
+                      <div>
+                        <label className="text-xs font-semibold text-gray-300 block mb-1 flex items-center justify-between">
+                          <span className="flex items-center gap-1.5">
+                            <ImageIcon className="w-3.5 h-3.5 text-orange-400" />
+                            <span>Banner / Deity Image</span>
+                          </span>
+                          <span className="text-[10px] text-gray-400 font-normal">Supports PNG, JPG, WebP file upload</span>
+                        </label>
+
+                        <div className="bg-[#141414] border border-[#2C2C2C] rounded-lg p-3 flex flex-col sm:flex-row items-center gap-4">
+                          {/* Image Preview Box */}
+                          <div className="w-24 h-24 rounded-lg bg-[#1E1E1E] border border-[#333] overflow-hidden flex-shrink-0 flex items-center justify-center relative shadow-inner">
+                            {editingDeity.imageUrl ? (
                               <img
-                                src={resolveDeityImageUrl(deity.imageUrl)}
-                                alt={deity.name}
-                                className="w-full h-full object-cover opacity-85 hover:opacity-100 transition duration-300"
+                                src={resolveDeityImageUrl(editingDeity.imageUrl)}
+                                alt="Deity Preview"
+                                className="w-full h-full object-cover"
                                 onError={(e: any) => {
                                   const target = e.currentTarget;
                                   if (!target.src.includes('saranamayyappa.in') && !target.src.startsWith('data:')) {
-                                    target.src = `https://saranamayyappa.in${deity.imageUrl?.startsWith('/') ? '' : '/'}${deity.imageUrl}`;
+                                    target.src = `https://saranamayyappa.in${editingDeity.imageUrl?.startsWith('/') ? '' : '/'}${editingDeity.imageUrl}`;
                                   } else {
                                     target.src = 'https://saranamayyappa.in/images/temples/banner-sabarimala-hd.png';
                                   }
                                 }}
                               />
-                            ) : null}
-                            <div className="absolute inset-0 bg-gradient-to-t from-[#1E1E1E] via-transparent to-transparent" />
-
-                            {/* Top Badges */}
-                            <div className="absolute top-3 left-3 right-3 flex items-center justify-between">
-                              <span
-                                className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${deity.category === 'Goddess'
-                                  ? 'bg-rose-950/80 text-rose-300 border border-rose-800/40'
-                                  : deity.category === 'Avatar'
-                                    ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/40'
-                                    : 'bg-amber-950/80 text-amber-300 border border-amber-800/40'
-                                  }`}
-                              >
-                                {deity.category}
-                              </span>
-
-                              <button
-                                onClick={() => handleToggleDeityStatus(deity)}
-                                title={deity.isActive ? 'Active in Portal' : 'Inactive'}
-                                className={`px-2 py-0.5 rounded text-[10px] font-semibold flex items-center gap-1 transition ${deity.isActive
-                                  ? 'bg-emerald-900/60 text-emerald-300 border border-emerald-700/50'
-                                  : 'bg-gray-800 text-gray-400 border border-gray-700'
-                                  }`}
-                              >
-                                <span className={`w-1.5 h-1.5 rounded-full ${deity.isActive ? 'bg-emerald-400 animate-pulse' : 'bg-gray-500'}`} />
-                                {deity.isActive ? 'Active' : 'Hidden'}
-                              </button>
-                            </div>
-
-                            {/* Title Overlay */}
-                            <div className="absolute bottom-2 left-3 right-3">
-                              <h3 className="text-base font-bold text-gray-100 drop-shadow flex items-center gap-1.5">
-                                <span>{(deity as any).translations?.[selectedLang]?.name || deity.name}</span>
-                              </h3>
-                              {((deity as any).translations?.[selectedLang]?.alternateName || deity.alternateName) && (
-                                <p className="text-[11px] text-amber-300/90 font-medium truncate">
-                                  {(deity as any).translations?.[selectedLang]?.alternateName || deity.alternateName}
-                                </p>
-                              )}
-                            </div>
+                            ) : (
+                              <div className="text-center text-gray-500 p-2">
+                                <ImageIcon className="w-6 h-6 mx-auto mb-1 text-gray-600" />
+                                <span className="text-[10px] block">No Image</span>
+                              </div>
+                            )}
                           </div>
 
-                          {/* Card Body */}
-                          <div className="p-4 space-y-3 flex-1 flex flex-col justify-between">
-                            <div className="space-y-2">
-                              {/* Moola Mantra Box */}
-                              {((deity as any).translations?.[selectedLang]?.moolaMantra || deity.moolaMantra) && (
-                                <div className="bg-[#141414] border border-amber-900/30 rounded-lg p-2.5">
-                                  <span className="text-[10px] font-bold text-amber-400 block uppercase tracking-wider">
-                                    Sacred Moola Mantra
-                                  </span>
-                                  <p className="text-xs text-amber-100/90 font-serif italic mt-0.5">
-                                    "{(deity as any).translations?.[selectedLang]?.moolaMantra || deity.moolaMantra}"
-                                  </p>
-                                </div>
-                              )}
+                          {/* Upload Actions */}
+                          <div className="flex-1 space-y-2 w-full">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <label className="cursor-pointer px-3.5 py-1.5 bg-[#D84315] hover:bg-[#BF360C] text-white rounded-lg text-xs font-bold inline-flex items-center gap-1.5 shadow-md shadow-orange-950/40 transition">
+                                <Upload className="w-3.5 h-3.5" />
+                                <span>Upload Image File</span>
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={handleDeityImageFileUpload}
+                                  className="hidden"
+                                />
+                              </label>
 
-                              {/* Vahana and Kshetram */}
-                              <div className="grid grid-cols-2 gap-2 text-xs">
-                                {((deity as any).translations?.[selectedLang]?.vahana || deity.vahana) && (
-                                  <div className="bg-[#161616] border border-[#2C2C2C] rounded p-2">
-                                    <span className="text-[10px] text-gray-400 block font-medium">Sacred Vahana</span>
-                                    <span className="text-gray-200 font-semibold truncate block mt-0.5">
-                                      {(deity as any).translations?.[selectedLang]?.vahana || deity.vahana}
-                                    </span>
-                                  </div>
-                                )}
-                                {((deity as any).translations?.[selectedLang]?.primaryTemple || deity.primaryTemple) && (
-                                  <div className="bg-[#161616] border border-[#2C2C2C] rounded p-2">
-                                    <span className="text-[10px] text-gray-400 block font-medium">Primary Kshetram</span>
-                                    <span className="text-gray-200 font-semibold truncate block mt-0.5" title={(deity as any).translations?.[selectedLang]?.primaryTemple || deity.primaryTemple}>
-                                      {(deity as any).translations?.[selectedLang]?.primaryTemple || deity.primaryTemple}
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
-
-                              {/* Description */}
-                              {((deity as any).translations?.[selectedLang]?.description || deity.description) && (
-                                <p className="text-[11px] text-gray-400 leading-relaxed line-clamp-2">
-                                  {(deity as any).translations?.[selectedLang]?.description || deity.description}
-                                </p>
-                              )}
-                            </div>
-
-                            {/* Card Actions */}
-                            <div className="pt-3 border-t border-[#2C2C2C] flex items-center justify-between">
-                              <span className="text-[11px] text-gray-500 font-mono">
-                                Order #{deity.displayOrder || 1}
-                              </span>
-
-                              <div className="flex items-center gap-2">
+                              {editingDeity.imageUrl && (
                                 <button
-                                  onClick={() => handleOpenEditDeity(deity)}
-                                  className="px-2.5 py-1 bg-[#141414] hover:bg-[#252525] border border-[#2C2C2C] hover:border-amber-500/50 rounded text-xs font-semibold text-gray-300 hover:text-amber-400 flex items-center gap-1 transition"
-                                >
-                                  <Edit className="w-3 h-3 text-amber-400" />
-                                  <span>Edit</span>
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteDeity(deity.id)}
-                                  className="p-1 hover:bg-red-950/40 border border-transparent hover:border-red-800/40 rounded text-gray-400 hover:text-red-400 transition"
-                                  title="Delete Deity"
+                                  type="button"
+                                  onClick={() => setEditingDeity({ ...editingDeity, imageUrl: '' })}
+                                  className="px-2.5 py-1.5 bg-red-950/60 hover:bg-red-900 border border-red-800/40 text-red-300 rounded-lg text-xs font-medium flex items-center gap-1 transition"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
+                                  <span>Remove</span>
                                 </button>
-                              </div>
+                              )}
                             </div>
-                          </div>
-                        </div>
-                      ))}
-                  </div>
 
-                  {/* Empty State */}
-                  {deities.length === 0 && (
-                    <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] p-12 text-center">
-                      <Sparkles className="w-12 h-12 text-amber-400/50 mx-auto mb-3" />
-                      <h3 className="text-base font-bold text-gray-200">No Deities Found</h3>
-                      <p className="text-xs text-gray-400 mt-1 max-w-md mx-auto">
-                        Click "Add New Deity" above to register and consecrate a holy shrine deity entry.
-                      </p>
-                    </div>
-                  )}
-
-                  {/* CREATE / EDIT DEITY MODAL */}
-                  {isDeityModalOpen && editingDeity && (
-                    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-                      <div className="bg-[#1E1E1E] border border-[#FFB300]/40 rounded-2xl w-full max-w-xl p-6 shadow-2xl space-y-4 my-8">
-                        <div className="flex items-center justify-between border-b border-[#2C2C2C] pb-3">
-                          <h3 className="text-base font-bold text-[#FFB300] flex items-center gap-2">
-                            <Sparkles className="w-4 h-4 text-amber-400" />
-                            <span>{editingDeity.id ? 'Edit Deity Details' : 'Register New Deity'}</span>
-                          </h3>
-                          <button
-                            onClick={() => { setIsDeityModalOpen(false); setEditingDeity(null); }}
-                            className="text-gray-400 hover:text-white p-1 rounded-lg hover:bg-[#252525] transition"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-
-                        <form onSubmit={handleSaveDeity} className="space-y-4">
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div>
-                              <label className="text-xs font-semibold text-gray-300 block mb-1">
-                                Deity Name <span className="text-red-400">*</span>
-                              </label>
+                            {/* Direct URL / Path field fallback */}
+                            <div className="pt-1">
+                              <span className="text-[10px] text-gray-400 block mb-0.5">Or Direct URL / Path:</span>
                               <input
                                 type="text"
-                                required
-                                placeholder="e.g. Lord Ayyappa"
-                                value={editingDeity.name || ''}
-                                onChange={(e) => setEditingDeity({ ...editingDeity, name: e.target.value })}
-                                className="w-full px-3 py-2 bg-[#141414] border border-[#2C2C2C] rounded-lg text-xs text-gray-100 focus:outline-none focus:border-[#FFB300]"
-                              />
-                            </div>
-
-                            <div>
-                              <label className="text-xs font-semibold text-gray-300 block mb-1">
-                                Alternate Name / Titles
-                              </label>
-                              <input
-                                type="text"
-                                placeholder="e.g. Dharma Sastha / Manikanta Swamy"
-                                value={editingDeity.alternateName || ''}
-                                onChange={(e) => setEditingDeity({ ...editingDeity, alternateName: e.target.value })}
-                                className="w-full px-3 py-2 bg-[#141414] border border-[#2C2C2C] rounded-lg text-xs text-gray-100 focus:outline-none focus:border-[#FFB300]"
+                                placeholder="https://... or /images/..."
+                                value={editingDeity.imageUrl?.startsWith('data:') ? '[New Uploaded Image File Selected]' : (editingDeity.imageUrl || '')}
+                                onChange={(e) => setEditingDeity({ ...editingDeity, imageUrl: e.target.value })}
+                                className="w-full px-2.5 py-1 bg-[#1A1A1A] border border-[#2C2C2C] rounded text-[11px] text-gray-200 focus:outline-none focus:border-[#FFB300]"
                               />
                             </div>
                           </div>
-
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                            <div>
-                              <label className="text-xs font-semibold text-gray-300 block mb-1">
-                                Category / Form
-                              </label>
-                              <select
-                                value={editingDeity.category || 'God'}
-                                onChange={(e) => setEditingDeity({ ...editingDeity, category: e.target.value })}
-                                className="w-full px-3 py-2 bg-[#141414] border border-[#2C2C2C] rounded-lg text-xs text-amber-400 focus:outline-none focus:border-[#FFB300]"
-                              >
-                                <option value="God">God (Deva)</option>
-                                <option value="Goddess">Goddess (Devi / Shakthi)</option>
-                                <option value="Avatar">Avatar</option>
-                                <option value="Cosmic Form">Cosmic Form</option>
-                              </select>
-                            </div>
-
-                            <div>
-                              <label className="text-xs font-semibold text-gray-300 block mb-1">
-                                Sacred Vahana (Vehicle)
-                              </label>
-                              <input
-                                type="text"
-                                placeholder="e.g. Tiger, Mouse, Garuda, Nandi"
-                                value={editingDeity.vahana || ''}
-                                onChange={(e) => setEditingDeity({ ...editingDeity, vahana: e.target.value })}
-                                className="w-full px-3 py-2 bg-[#141414] border border-[#2C2C2C] rounded-lg text-xs text-gray-100 focus:outline-none focus:border-[#FFB300]"
-                              />
-                            </div>
-
-                            <div>
-                              <label className="text-xs font-semibold text-gray-300 block mb-1">
-                                Display Order
-                              </label>
-                              <input
-                                type="number"
-                                min="1"
-                                value={editingDeity.displayOrder || 1}
-                                onChange={(e) => setEditingDeity({ ...editingDeity, displayOrder: parseInt(e.target.value, 10) || 1 })}
-                                className="w-full px-3 py-2 bg-[#141414] border border-[#2C2C2C] rounded-lg text-xs text-gray-100 focus:outline-none focus:border-[#FFB300]"
-                              />
-                            </div>
-                          </div>
-
-                          <div>
-                            <label className="text-xs font-semibold text-gray-300 block mb-1">
-                              Primary Moola Mantra
-                            </label>
-                            <input
-                              type="text"
-                              placeholder="e.g. Om Swamiye Saranam Ayyappa"
-                              value={editingDeity.moolaMantra || ''}
-                              onChange={(e) => setEditingDeity({ ...editingDeity, moolaMantra: e.target.value })}
-                              className="w-full px-3 py-2 bg-[#141414] border border-[#2C2C2C] rounded-lg text-xs text-amber-300 font-serif focus:outline-none focus:border-[#FFB300]"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="text-xs font-semibold text-gray-300 block mb-1">
-                              Primary Kshetram / Temple
-                            </label>
-                            <input
-                              type="text"
-                              placeholder="e.g. Sabarimala Sri Ayyappa Temple"
-                              value={editingDeity.primaryTemple || ''}
-                              onChange={(e) => setEditingDeity({ ...editingDeity, primaryTemple: e.target.value })}
-                              className="w-full px-3 py-2 bg-[#141414] border border-[#2C2C2C] rounded-lg text-xs text-gray-100 focus:outline-none focus:border-[#FFB300]"
-                            />
-                          </div>
-
-                          {/* Deity Banner / Image File Upload with Preview */}
-                          <div>
-                            <label className="text-xs font-semibold text-gray-300 block mb-1 flex items-center justify-between">
-                              <span className="flex items-center gap-1.5">
-                                <ImageIcon className="w-3.5 h-3.5 text-orange-400" />
-                                <span>Banner / Deity Image</span>
-                              </span>
-                              <span className="text-[10px] text-gray-400 font-normal">Supports PNG, JPG, WebP file upload</span>
-                            </label>
-
-                            <div className="bg-[#141414] border border-[#2C2C2C] rounded-lg p-3 flex flex-col sm:flex-row items-center gap-4">
-                              {/* Image Preview Box */}
-                              <div className="w-24 h-24 rounded-lg bg-[#1E1E1E] border border-[#333] overflow-hidden flex-shrink-0 flex items-center justify-center relative shadow-inner">
-                                {editingDeity.imageUrl ? (
-                                  <img
-                                    src={resolveDeityImageUrl(editingDeity.imageUrl)}
-                                    alt="Deity Preview"
-                                    className="w-full h-full object-cover"
-                                    onError={(e: any) => {
-                                      const target = e.currentTarget;
-                                      if (!target.src.includes('saranamayyappa.in') && !target.src.startsWith('data:')) {
-                                        target.src = `https://saranamayyappa.in${editingDeity.imageUrl?.startsWith('/') ? '' : '/'}${editingDeity.imageUrl}`;
-                                      } else {
-                                        target.src = 'https://saranamayyappa.in/images/temples/banner-sabarimala-hd.png';
-                                      }
-                                    }}
-                                  />
-                                ) : (
-                                  <div className="text-center text-gray-500 p-2">
-                                    <ImageIcon className="w-6 h-6 mx-auto mb-1 text-gray-600" />
-                                    <span className="text-[10px] block">No Image</span>
-                                  </div>
-                                )}
-                              </div>
-
-                              {/* Upload Actions */}
-                              <div className="flex-1 space-y-2 w-full">
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <label className="cursor-pointer px-3.5 py-1.5 bg-[#D84315] hover:bg-[#BF360C] text-white rounded-lg text-xs font-bold inline-flex items-center gap-1.5 shadow-md shadow-orange-950/40 transition">
-                                    <Upload className="w-3.5 h-3.5" />
-                                    <span>Upload Image File</span>
-                                    <input
-                                      type="file"
-                                      accept="image/*"
-                                      onChange={handleDeityImageFileUpload}
-                                      className="hidden"
-                                    />
-                                  </label>
-
-                                  {editingDeity.imageUrl && (
-                                    <button
-                                      type="button"
-                                      onClick={() => setEditingDeity({ ...editingDeity, imageUrl: '' })}
-                                      className="px-2.5 py-1.5 bg-red-950/60 hover:bg-red-900 border border-red-800/40 text-red-300 rounded-lg text-xs font-medium flex items-center gap-1 transition"
-                                    >
-                                      <Trash2 className="w-3.5 h-3.5" />
-                                      <span>Remove</span>
-                                    </button>
-                                  )}
-                                </div>
-
-                                {/* Direct URL / Path field fallback */}
-                                <div className="pt-1">
-                                  <span className="text-[10px] text-gray-400 block mb-0.5">Or Direct URL / Path:</span>
-                                  <input
-                                    type="text"
-                                    placeholder="https://... or /images/..."
-                                    value={editingDeity.imageUrl?.startsWith('data:') ? '[New Uploaded Image File Selected]' : (editingDeity.imageUrl || '')}
-                                    onChange={(e) => setEditingDeity({ ...editingDeity, imageUrl: e.target.value })}
-                                    className="w-full px-2.5 py-1 bg-[#1A1A1A] border border-[#2C2C2C] rounded text-[11px] text-gray-200 focus:outline-none focus:border-[#FFB300]"
-                                  />
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div>
-                            <label className="text-xs font-semibold text-gray-300 block mb-1">
-                              Description & Spiritual Mahatyam
-                            </label>
-                            <textarea
-                              rows={3}
-                              placeholder="Spiritual significance, lore, and divine attributes..."
-                              value={editingDeity.description || ''}
-                              onChange={(e) => setEditingDeity({ ...editingDeity, description: e.target.value })}
-                              className="w-full px-3 py-2 bg-[#141414] border border-[#2C2C2C] rounded-lg text-xs text-gray-100 focus:outline-none focus:border-[#FFB300]"
-                            />
-                          </div>
-
-                          <div className="flex items-center gap-2 pt-1">
-                            <input
-                              type="checkbox"
-                              id="deityIsActive"
-                              checked={editingDeity.isActive !== false}
-                              onChange={(e) => setEditingDeity({ ...editingDeity, isActive: e.target.checked })}
-                              className="rounded border-[#2C2C2C] text-[#FFB300] focus:ring-0 bg-[#141414]"
-                            />
-                            <label htmlFor="deityIsActive" className="text-xs font-medium text-gray-300">
-                              Publish & Display Deity in Saranam Ayyappa Apps
-                            </label>
-                          </div>
-
-                          <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#2C2C2C]">
-                            <button
-                              type="button"
-                              onClick={() => { setIsDeityModalOpen(false); setEditingDeity(null); }}
-                              className="px-4 py-2 bg-[#141414] hover:bg-[#252525] border border-[#2C2C2C] rounded-lg text-xs font-semibold text-gray-300 transition"
-                            >
-                              Cancel
-                            </button>
-                            <button
-                              type="submit"
-                              className="px-5 py-2 bg-gradient-to-r from-[#D84315] to-[#BF360C] hover:from-[#BF360C] hover:to-[#A32F09] text-white rounded-lg text-xs font-bold shadow-lg shadow-orange-950 transition"
-                            >
-                              Save Deity Entry
-                            </button>
-                          </div>
-                        </form>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* TAB: TEMPLE TYPES MANAGEMENT (Create, Update, Delete, View) */}
-              {activeTab === 'temple_types' && (
-                <div className="space-y-6">
-                  {/* Header Card */}
-                  <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] p-6">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                      <div>
-                        <h2 className="text-base font-bold text-[#FFB300] flex items-center gap-2">
-                          <Landmark className="w-5 h-5 text-orange-400" />
-                          <span>Temple Types & Sanctum Classification</span>
-                        </h2>
-                        <p className="text-xs text-gray-400 mt-1">
-                          Manage dynamic temple classifications (Main Temple, Sub Temple, Multi Temple complex, etc.). Devotees & Dharma Karthas select from these types when registering shrines. Stored dynamically in MySQL <code className="text-amber-400">app_settings</code>.
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <button
-                          onClick={loadTempleTypes}
-                          className="px-3 py-1.5 bg-[#141414] hover:bg-[#252525] border border-[#2C2C2C] rounded-lg text-xs font-semibold flex items-center gap-1.5 text-gray-300 transition"
-                        >
-                          <RefreshCw className="w-3.5 h-3.5 text-orange-400" />
-                          <span>Refresh</span>
-                        </button>
-                        <button
-                          onClick={handleOpenCreateTempleType}
-                          className="px-4 py-2 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white rounded-lg text-xs font-bold transition shadow-lg flex items-center gap-2"
-                        >
-                          <Plus className="w-4 h-4" />
-                          <span>Add Temple Type</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Temple Types Grid / Table Card */}
-                  <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] overflow-hidden">
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left text-xs text-gray-300">
-                        <thead className="bg-[#181818] uppercase text-gray-400 border-b border-[#2C2C2C]">
-                          <tr>
-                            <th className="px-6 py-3.5">Type Identifier (Code)</th>
-                            <th className="px-6 py-3.5">Display Name</th>
-                            <th className="px-6 py-3.5">Description & Purpose</th>
-                            <th className="px-6 py-3.5 text-right">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-[#2C2C2C]">
-                          {templeTypes.length === 0 ? (
-                            <tr>
-                              <td colSpan={4} className="px-6 py-12 text-center text-gray-400">
-                                <Landmark className="w-10 h-10 mx-auto text-gray-600 mb-2 opacity-50" />
-                                <p className="text-sm font-semibold">No temple types configured</p>
-                                <p className="text-xs text-gray-500 mt-1">Click "Add Temple Type" above to create your first category.</p>
-                              </td>
-                            </tr>
-                          ) : (
-                            templeTypes.map(t => (
-                              <tr key={t.id} className="hover:bg-neutral-800/40 transition">
-                                <td className="px-6 py-4">
-                                  <span className="font-mono text-xs font-bold text-amber-400 bg-amber-950/40 border border-amber-800/40 px-2.5 py-1 rounded">
-                                    {t.id}
-                                  </span>
-                                </td>
-                                <td className="px-6 py-4">
-                                  <span className="font-semibold text-sm text-gray-100 flex items-center gap-2">
-                                    <span className="text-orange-400">🛕</span>
-                                    {t.name}
-                                  </span>
-                                </td>
-                                <td className="px-6 py-4 text-gray-400 max-w-md">
-                                  {t.description || '—'}
-                                </td>
-                                <td className="px-6 py-4 text-right">
-                                  <div className="flex items-center justify-end gap-2">
-                                    <button
-                                      onClick={() => handleOpenEditTempleType(t)}
-                                      className="px-3 py-1.5 bg-[#141414] hover:bg-[#252525] border border-[#2C2C2C] hover:border-amber-400 text-gray-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition"
-                                    >
-                                      <Edit className="w-3.5 h-3.5 text-amber-400" />
-                                      <span>Edit</span>
-                                    </button>
-                                    <button
-                                      onClick={() => handleDeleteTempleType(t.id, t.name)}
-                                      className="p-1.5 bg-rose-600/10 hover:bg-rose-600/20 text-rose-400 border border-rose-600/30 rounded-lg transition"
-                                      title="Delete Temple Type"
-                                    >
-                                      <Trash2 className="w-3.5 h-3.5" />
-                                    </button>
-                                  </div>
-                                </td>
-                              </tr>
-                            ))
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* TAB: SETTINGS (ONLY MANAGE LOGO, COLORS, TEXT TITLE, DESCRIPTION) */}
-              {activeTab === 'settings' && (
-                <div className="space-y-6">
-                  {/* Header Card */}
-                  <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] p-6">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                      <div>
-                        <h2 className="text-base font-bold text-[#FFB300] flex items-center gap-2">
-                          <Settings className="w-5 h-5 text-orange-400" />
-                          <span>Platform Settings: Logo, Colors, Title & Description</span>
-                        </h2>
-                        <p className="text-xs text-gray-400 mt-1">
-                          Configure your official sacred emblem, platform name, spiritual motto tagline, meta description, and primary devotional palette. All values are stored directly in MySQL <code className="text-amber-400">app_settings</code>.
-                        </p>
-                      </div>
-                      <button
-                        onClick={handleSaveBrandingSettings}
-                        disabled={isSavingSettings}
-                        className="bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white px-6 py-2.5 rounded-lg text-xs font-bold transition shadow-lg flex items-center gap-2 flex-shrink-0 disabled:opacity-50"
-                      >
-                        <Save className="w-4 h-4" />
-                        <span>{isSavingSettings ? 'Saving Settings...' : 'Save All Settings to MySQL'}</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* 1. Official Sacred Logo & Emblem Management */}
-                  <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] p-6 space-y-5">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-[#2C2C2C] pb-4">
-                      <div>
-                        <h3 className="text-sm font-bold text-gray-100 flex items-center gap-2">
-                          <ImageIcon className="w-4 h-4 text-orange-400" />
-                          <span>1. Official Sacred Emblem & Logo</span>
-                        </h3>
-                        <p className="text-xs text-gray-400 mt-0.5">
-                          Syncs dynamically with Website header, Role Selection screen, Admin portal, and Mobile Application.
-                        </p>
-                      </div>
-                      <span className="text-[11px] font-mono text-emerald-400 bg-emerald-950/60 border border-emerald-800/40 px-3 py-1 rounded-full">
-                        ● MySQL Synced
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                      {/* Current Active Logo Preview */}
-                      <div className="lg:col-span-4 bg-[#141414] border border-[#2C2C2C] rounded-xl p-5 flex flex-col items-center justify-center text-center">
-                        <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-3">
-                          Active Portal Emblem
-                        </span>
-                        <div className="relative group w-44 h-44 rounded-2xl bg-black/60 border-2 border-[var(--admin-gold)]/60 flex items-center justify-center p-3 shadow-2xl overflow-hidden">
-                          <img
-                            src={resolveLogoDisplayUrl(appLogoUrl)}
-                            alt="Active Saranam Ayyappa Logo"
-                            className="max-w-full max-h-full object-contain drop-shadow-[0_4px_12px_rgba(255,179,0,0.25)] transition duration-300 group-hover:scale-105"
-                            onError={(e: any) => { console.warn('Active emblem load error:', e.target.src); }}
-                          />
-                        </div>
-                        <p className="text-[10px] text-gray-500 font-mono mt-3 truncate max-w-full">
-                          {appLogoUrl.startsWith('data:') ? 'Base64 Encoded Image Data' : appLogoUrl}
-                        </p>
-                      </div>
-
-                      {/* Upload & Direct URL Controls */}
-                      <div className="lg:col-span-8 space-y-4">
-                        <div>
-                          <label className="block text-xs font-semibold text-gray-300 uppercase mb-2">
-                            Upload New Sacred Emblem / Logo File
-                          </label>
-                          <label className="flex flex-col items-center justify-center border-2 border-dashed border-[#3A3A3A] hover:border-orange-500/80 rounded-xl p-6 bg-[#161616] cursor-pointer transition group">
-                            <Upload className="w-8 h-8 text-orange-400 group-hover:scale-110 transition mb-2" />
-                            <span className="text-xs font-semibold text-gray-200">
-                              Click to browse and upload image
-                            </span>
-                            <span className="text-[11px] text-gray-500 mt-1">
-                              PNG, JPG, or WEBP (Max 5MB) • Instantly stores to database
-                            </span>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              onChange={handleLogoUpload}
-                              className="hidden"
-                            />
-                          </label>
-                        </div>
-
-                        <div className="relative flex items-center justify-center my-3">
-                          <div className="border-t border-[#2C2C2C] w-full" />
-                          <span className="bg-[#1E1E1E] px-3 text-[11px] text-gray-500 font-semibold uppercase">Or Set Direct Path</span>
-                          <div className="border-t border-[#2C2C2C] w-full" />
-                        </div>
-
-                        <div>
-                          <label className="block text-xs font-semibold text-gray-300 uppercase mb-1.5">
-                            Direct Static Image Path / External CDN URL
-                          </label>
-                          <div className="flex gap-2">
-                            <input
-                              type="text"
-                              value={customLogoInput}
-                              onChange={(e) => setCustomLogoInput(e.target.value)}
-                              placeholder="/images/saranam-ayyappa-official-emblem.jpg"
-                              className="flex-1 bg-[#141414] border border-[#2C2C2C] rounded-lg px-3.5 py-2.5 text-xs text-gray-100 focus:outline-none focus:border-[#FFB300] font-mono"
-                            />
-                            <button
-                              onClick={() => handleSaveAppLogo()}
-                              disabled={isUpdatingLogo}
-                              className="bg-[#D84315] hover:bg-[#BF360C] disabled:opacity-50 text-white px-5 py-2.5 rounded-lg text-xs font-semibold transition flex items-center gap-2 flex-shrink-0"
-                            >
-                              <Save className="w-4 h-4" />
-                              <span>{isUpdatingLogo ? 'Saving...' : 'Sync Logo'}</span>
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 2. Platform Text Title & Description Management */}
-                  <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] p-6 space-y-4">
-                    <div className="flex items-center justify-between border-b border-[#2C2C2C] pb-3">
-                      <h3 className="text-sm font-bold text-gray-100 flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-orange-400" />
-                        <span>2. Platform Title, Tagline & Meta Description</span>
-                      </h3>
-                      <button
-                        type="button"
-                        onClick={() => openTranslationModal('branding', 'branding_settings', [
-                          { key: 'title', label: 'Platform Name / Title', value: appTitle },
-                          { key: 'tagline', label: 'Sacred Motto / Tagline', value: appTagline },
-                          { key: 'description', label: 'Platform Devotional Description', value: appDescription }
-                        ], (trans) => {
-                          if (trans.title) setAppTitle(trans.title);
-                          if (trans.tagline) setAppTagline(trans.tagline);
-                          if (trans.description) setAppDescription(trans.description);
-                        })}
-                        className="bg-amber-600/20 hover:bg-amber-600/40 text-amber-300 border border-amber-500/40 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5"
-                      >
-                        <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                        <span>✨ Translate (v3)</span>
-                      </button>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-300 uppercase mb-1.5">
-                          Platform Name / Header Title
-                        </label>
-                        <input
-                          type="text"
-                          value={appTitle}
-                          onChange={(e) => setAppTitle(e.target.value)}
-                          placeholder="e.g. Saranam Ayyappa"
-                          className="w-full bg-[#141414] border border-[#2C2C2C] rounded-lg px-3.5 py-2.5 text-xs text-gray-100 focus:outline-none focus:border-[#FFB300]"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-300 uppercase mb-1.5">
-                          Sacred Motto / Tagline
-                        </label>
-                        <input
-                          type="text"
-                          value={appTagline}
-                          onChange={(e) => setAppTagline(e.target.value)}
-                          placeholder="e.g. Connect.. Pray.. Serve.."
-                          className="w-full bg-[#141414] border border-[#2C2C2C] rounded-lg px-3.5 py-2.5 text-xs text-gray-100 focus:outline-none focus:border-[#FFB300]"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-300 uppercase mb-1.5">
-                        Platform Devotional Description & Meta Summary
-                      </label>
-                      <textarea
-                        rows={3}
-                        value={appDescription}
-                        onChange={(e) => setAppDescription(e.target.value)}
-                        placeholder="Enter platform devotional description..."
-                        className="w-full bg-[#141414] border border-[#2C2C2C] rounded-lg p-3 text-xs text-gray-100 focus:outline-none focus:border-[#FFB300]"
-                      />
-                    </div>
-                  </div>
-
-                  {/* 3. Devotional Theme Colors Management */}
-                  <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] p-6 space-y-4">
-                    <h3 className="text-sm font-bold text-gray-100 flex items-center gap-2 border-b border-[#2C2C2C] pb-3">
-                      <Palette className="w-4 h-4 text-orange-400" />
-                      <span>3. Platform Devotional Color Palette</span>
-                    </h3>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                      {/* Primary Color */}
-                      <div className="bg-[#141414] border border-[#2C2C2C] p-3.5 rounded-lg space-y-2">
-                        <label className="block text-[11px] font-semibold text-gray-300 uppercase">
-                          Primary Sacred Green
-                        </label>
-                        <div className="flex items-center gap-3">
-                          <input
-                            type="color"
-                            value={themePrimaryColor}
-                            onChange={(e) => setThemePrimaryColor(e.target.value)}
-                            className="w-10 h-10 rounded cursor-pointer border border-[#2C2C2C] bg-transparent"
-                          />
-                          <input
-                            type="text"
-                            value={themePrimaryColor}
-                            onChange={(e) => setThemePrimaryColor(e.target.value)}
-                            className="flex-1 bg-[#1E1E1E] border border-[#2C2C2C] rounded px-2.5 py-1.5 text-xs font-mono text-gray-200"
-                          />
                         </div>
                       </div>
 
-                      {/* Secondary Color */}
-                      <div className="bg-[#141414] border border-[#2C2C2C] p-3.5 rounded-lg space-y-2">
-                        <label className="block text-[11px] font-semibold text-gray-300 uppercase">
-                          Accent Devotional Gold
-                        </label>
-                        <div className="flex items-center gap-3">
-                          <input
-                            type="color"
-                            value={themeSecondaryColor}
-                            onChange={(e) => setThemeSecondaryColor(e.target.value)}
-                            className="w-10 h-10 rounded cursor-pointer border border-[#2C2C2C] bg-transparent"
-                          />
-                          <input
-                            type="text"
-                            value={themeSecondaryColor}
-                            onChange={(e) => setThemeSecondaryColor(e.target.value)}
-                            className="flex-1 bg-[#1E1E1E] border border-[#2C2C2C] rounded px-2.5 py-1.5 text-xs font-mono text-gray-200"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Background Color */}
-                      <div className="bg-[#141414] border border-[#2C2C2C] p-3.5 rounded-lg space-y-2">
-                        <label className="block text-[11px] font-semibold text-gray-300 uppercase">
-                          Background Ivory Tone
-                        </label>
-                        <div className="flex items-center gap-3">
-                          <input
-                            type="color"
-                            value={themeBackgroundColor}
-                            onChange={(e) => setThemeBackgroundColor(e.target.value)}
-                            className="w-10 h-10 rounded cursor-pointer border border-[#2C2C2C] bg-transparent"
-                          />
-                          <input
-                            type="text"
-                            value={themeBackgroundColor}
-                            onChange={(e) => setThemeBackgroundColor(e.target.value)}
-                            className="flex-1 bg-[#1E1E1E] border border-[#2C2C2C] rounded px-2.5 py-1.5 text-xs font-mono text-gray-200"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Surface / Dark Base Color */}
-                      <div className="bg-[#141414] border border-[#2C2C2C] p-3.5 rounded-lg space-y-2">
-                        <label className="block text-[11px] font-semibold text-gray-300 uppercase">
-                          Dark Surface / Console Base
-                        </label>
-                        <div className="flex items-center gap-3">
-                          <input
-                            type="color"
-                            value={themeSurfaceColor}
-                            onChange={(e) => setThemeSurfaceColor(e.target.value)}
-                            className="w-10 h-10 rounded cursor-pointer border border-[#2C2C2C] bg-transparent"
-                          />
-                          <input
-                            type="text"
-                            value={themeSurfaceColor}
-                            onChange={(e) => setThemeSurfaceColor(e.target.value)}
-                            className="flex-1 bg-[#1E1E1E] border border-[#2C2C2C] rounded px-2.5 py-1.5 text-xs font-mono text-gray-200"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 4. Mobile Application Download Links */}
-                  <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] p-6 space-y-4">
-                    <h3 className="text-sm font-bold text-gray-100 flex items-center gap-2 border-b border-[#2C2C2C] pb-3">
-                      <Smartphone className="w-4 h-4 text-orange-400" />
-                      <span>4. Mobile Application Store Links</span>
-                    </h3>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {/* Google Play Store */}
                       <div>
-                        <label className="block text-xs font-semibold text-gray-300 uppercase mb-1.5 flex items-center justify-between">
-                          <span>Google Play Store URL (Android)</span>
-                          <a href={playStoreUrl} target="_blank" rel="noreferrer" className="text-amber-400 hover:underline flex items-center gap-1 text-[11px] font-normal lowercase">
-                            <span>test link</span>
-                            <ExternalLink className="w-3 h-3" />
-                          </a>
+                        <label className="text-xs font-semibold text-gray-300 block mb-1">
+                          Description & Spiritual Mahatyam
                         </label>
-                        <input
-                          type="url"
-                          value={playStoreUrl}
-                          onChange={(e) => setPlayStoreUrl(e.target.value)}
-                          placeholder="https://play.google.com/store/apps/details?id=com.saranamayyappa.app"
-                          className="w-full bg-[#141414] border border-[#2C2C2C] rounded-lg px-3.5 py-2.5 text-xs text-gray-100 focus:outline-none focus:border-[#FFB300] font-mono"
-                        />
-                        <p className="text-[10px] text-gray-500 mt-1">
-                          Targeted by the footer &quot;Get it on Google Play&quot; download badge.
-                        </p>
-                      </div>
-
-                      {/* Apple App Store */}
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-300 uppercase mb-1.5 flex items-center justify-between">
-                          <span>Apple App Store URL (iOS)</span>
-                          <a href={appStoreUrl} target="_blank" rel="noreferrer" className="text-amber-400 hover:underline flex items-center gap-1 text-[11px] font-normal lowercase">
-                            <span>test link</span>
-                            <ExternalLink className="w-3 h-3" />
-                          </a>
-                        </label>
-                        <input
-                          type="url"
-                          value={appStoreUrl}
-                          onChange={(e) => setAppStoreUrl(e.target.value)}
-                          placeholder="https://apps.apple.com/app/saranam-ayyappa/id123456789"
-                          className="w-full bg-[#141414] border border-[#2C2C2C] rounded-lg px-3.5 py-2.5 text-xs text-gray-100 focus:outline-none focus:border-[#FFB300] font-mono"
-                        />
-                        <p className="text-[10px] text-gray-500 mt-1">
-                          Targeted by the footer &quot;Download on the App Store&quot; badge.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 5. Official Social Media & Community Handles */}
-                  <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] p-6 space-y-4">
-                    <h3 className="text-sm font-bold text-gray-100 flex items-center gap-2 border-b border-[#2C2C2C] pb-3">
-                      <Share2 className="w-4 h-4 text-orange-400" />
-                      <span>5. Official Devotional Social Media & Channel Links</span>
-                    </h3>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {/* YouTube */}
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-300 uppercase mb-1.5">
-                          YouTube Devotional Channel
-                        </label>
-                        <input
-                          type="url"
-                          value={socialYoutubeUrl}
-                          onChange={(e) => setSocialYoutubeUrl(e.target.value)}
-                          placeholder="https://www.youtube.com/@SaranamAyyappaOfficial"
-                          className="w-full bg-[#141414] border border-[#2C2C2C] rounded-lg px-3.5 py-2.5 text-xs text-gray-100 focus:outline-none focus:border-[#FFB300] font-mono"
+                        <textarea
+                          rows={3}
+                          placeholder="Spiritual significance, lore, and divine attributes..."
+                          value={editingDeity.description || ''}
+                          onChange={(e) => setEditingDeity({ ...editingDeity, description: e.target.value })}
+                          className="w-full px-3 py-2 bg-[#141414] border border-[#2C2C2C] rounded-lg text-xs text-gray-100 focus:outline-none focus:border-[#FFB300]"
                         />
                       </div>
 
-                      {/* Telegram */}
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-300 uppercase mb-1.5">
-                          Telegram Devotee Satsang Group
-                        </label>
+                      <div className="flex items-center gap-2 pt-1">
                         <input
-                          type="url"
-                          value={socialTelegramUrl}
-                          onChange={(e) => setSocialTelegramUrl(e.target.value)}
-                          placeholder="https://t.me/saranam_ayyappa_satsang"
-                          className="w-full bg-[#141414] border border-[#2C2C2C] rounded-lg px-3.5 py-2.5 text-xs text-gray-100 focus:outline-none focus:border-[#FFB300] font-mono"
+                          type="checkbox"
+                          id="deityIsActive"
+                          checked={editingDeity.isActive !== false}
+                          onChange={(e) => setEditingDeity({ ...editingDeity, isActive: e.target.checked })}
+                          className="rounded border-[#2C2C2C] text-[#FFB300] focus:ring-0 bg-[#141414]"
                         />
+                        <label htmlFor="deityIsActive" className="text-xs font-medium text-gray-300">
+                          Publish & Display Deity in Saranam Ayyappa Apps
+                        </label>
                       </div>
 
-                      {/* WhatsApp Channel */}
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-300 uppercase mb-1.5">
-                          WhatsApp Updates Channel
-                        </label>
-                        <input
-                          type="url"
-                          value={socialWhatsappUrl}
-                          onChange={(e) => setSocialWhatsappUrl(e.target.value)}
-                          placeholder="https://whatsapp.com/channel/saranamayyappa"
-                          className="w-full bg-[#141414] border border-[#2C2C2C] rounded-lg px-3.5 py-2.5 text-xs text-gray-100 focus:outline-none focus:border-[#FFB300] font-mono"
-                        />
-                      </div>
-
-                      {/* Instagram */}
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-300 uppercase mb-1.5">
-                          Instagram Devotional Profile
-                        </label>
-                        <input
-                          type="url"
-                          value={socialInstagramUrl}
-                          onChange={(e) => setSocialInstagramUrl(e.target.value)}
-                          placeholder="https://www.instagram.com/saranamayyappa_official"
-                          className="w-full bg-[#141414] border border-[#2C2C2C] rounded-lg px-3.5 py-2.5 text-xs text-gray-100 focus:outline-none focus:border-[#FFB300] font-mono"
-                        />
-                      </div>
-
-                      {/* Facebook */}
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-300 uppercase mb-1.5">
-                          Facebook Community Page
-                        </label>
-                        <input
-                          type="url"
-                          value={socialFacebookUrl}
-                          onChange={(e) => setSocialFacebookUrl(e.target.value)}
-                          placeholder="https://www.facebook.com/saranamayyappaportal"
-                          className="w-full bg-[#141414] border border-[#2C2C2C] rounded-lg px-3.5 py-2.5 text-xs text-gray-100 focus:outline-none focus:border-[#FFB300] font-mono"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 6. Devotional Announcement Ticker */}
-                  <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] p-6 space-y-4">
-                    <div className="flex items-center justify-between border-b border-[#2C2C2C] pb-3">
-                      <h3 className="text-sm font-bold text-gray-100 flex items-center gap-2">
-                        <BellRing className="w-4 h-4 text-orange-400" />
-                        <span>6. Devotional Announcement Ticker</span>
-                      </h3>
-                      <button
-                        type="button"
-                        onClick={() => openTranslationModal('ticker', 'announcement_ticker', [
-                          { key: 'ticker', label: 'Announcement Ticker Text', value: tickerText }
-                        ], (trans) => {
-                          if (trans.ticker) setTickerText(trans.ticker);
-                        })}
-                        className="bg-amber-600/20 hover:bg-amber-600/40 text-amber-300 border border-amber-500/40 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5"
-                      >
-                        <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                        <span>✨ Translate (v3)</span>
-                      </button>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-300 uppercase mb-1.5">
-                        Live Scrolling Announcement Text (Devotee Apps &amp; Web Header)
-                      </label>
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={tickerText}
-                          onChange={(e) => setTickerText(e.target.value)}
-                          placeholder="e.g. స్వామియే శరణం అయ్యప్ప! శబరిమల మండల పూజ దర్శన సమయాలు ప్రారంభమైనవి..."
-                          className="flex-1 bg-[#141414] border border-[#2C2C2C] rounded-lg px-3.5 py-2.5 text-xs text-gray-100 focus:outline-none focus:border-[#FFB300]"
-                        />
+                      <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#2C2C2C]">
                         <button
                           type="button"
-                          onClick={handleSaveTicker}
-                          className="bg-[#D84315] hover:bg-[#BF360C] text-white px-5 py-2.5 rounded-lg text-xs font-semibold transition flex items-center gap-2 flex-shrink-0"
+                          onClick={() => { setIsDeityModalOpen(false); setEditingDeity(null); }}
+                          className="px-4 py-2 bg-[#141414] hover:bg-[#252525] border border-[#2C2C2C] rounded-lg text-xs font-semibold text-gray-300 transition"
                         >
-                          <Save className="w-4 h-4" />
-                          <span>Save Ticker</span>
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          className="px-5 py-2 bg-gradient-to-r from-[#D84315] to-[#BF360C] hover:from-[#BF360C] hover:to-[#A32F09] text-white rounded-lg text-xs font-bold shadow-lg shadow-orange-950 transition"
+                        >
+                          Save Deity Entry
                         </button>
                       </div>
-                    </div>
-                  </div>
-
-                  {/* Bottom Save Action Button */}
-                  <div className="flex justify-end pt-2">
-                    <button
-                      onClick={handleSaveBrandingSettings}
-                      disabled={isSavingSettings}
-                      className="bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white px-8 py-3 rounded-lg text-xs font-bold transition shadow-xl flex items-center gap-2 disabled:opacity-50"
-                    >
-                      <Save className="w-4 h-4" />
-                      <span>{isSavingSettings ? 'Saving Settings...' : 'Save Settings to MySQL Database'}</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* TAB 12: AUDIT LOGS */}
-              {activeTab === 'audit' && (
-                <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] overflow-hidden">
-                  <div className="p-5 border-b border-[#2C2C2C] flex items-center justify-between">
-                    <div>
-                      <h2 className="text-base font-bold text-gray-100">Tamper-Evident Admin Audit Trail</h2>
-                      <p className="text-xs text-gray-400">All administrative operations recorded in MySQL `admin_audit_logs`.</p>
-                    </div>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs text-gray-300">
-                      <thead className="bg-[#181818] uppercase text-gray-400 border-b border-[#2C2C2C]">
-                        <tr>
-                          <th className="px-6 py-3">Timestamp</th>
-                          <th className="px-6 py-3">Admin</th>
-                          <th className="px-6 py-3">Action</th>
-                          <th className="px-6 py-3">Target</th>
-                          <th className="px-6 py-3">Details</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-[#2C2C2C]">
-                        {auditLogs.length === 0 ? (
-                          <tr>
-                            <td colSpan={5} className="px-6 py-12 text-center text-gray-400">
-                              <Database className="w-10 h-10 mx-auto text-gray-600 mb-2 opacity-50" />
-                              <p className="text-sm font-semibold">No audit logs recorded in database yet</p>
-                              <p className="text-xs text-gray-500 mt-1">Actions performed by administrators will appear here in chronological order.</p>
-                            </td>
-                          </tr>
-                        ) : (
-                          auditLogs.map(log => (
-                            <tr key={log.id} className="hover:bg-neutral-800/40">
-                              <td className="px-6 py-4 font-mono text-gray-500 whitespace-nowrap">{new Date(log.createdAt).toLocaleString()}</td>
-                              <td className="px-6 py-4 font-semibold text-gray-200">{log.admin?.fullName || 'System Master'}</td>
-                              <td className="px-6 py-4 font-mono text-orange-400">{log.action}</td>
-                              <td className="px-6 py-4">{log.targetType} {log.targetId ? `#${log.targetId}` : ''}</td>
-                              <td className="px-6 py-4 text-gray-400 max-w-xs truncate">{log.detailsJson || '—'}</td>
-                            </tr>
-                          )))}
-                      </tbody>
-                    </table>
+                    </form>
                   </div>
                 </div>
               )}
             </div>
+          )}
+
+          {/* TAB: TEMPLE TYPES MANAGEMENT (Create, Update, Delete, View) */}
+          {activeTab === 'temple_types' && (
+            <div className="space-y-6">
+              {/* Header Card */}
+              <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] p-6">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-base font-bold text-[#FFB300] flex items-center gap-2">
+                      <Landmark className="w-5 h-5 text-orange-400" />
+                      <span>Temple Types & Sanctum Classification</span>
+                    </h2>
+                    <p className="text-xs text-gray-400 mt-1">
+                      Manage dynamic temple classifications (Main Temple, Sub Temple, Multi Temple complex, etc.). Devotees & Dharma Karthas select from these types when registering shrines. Stored dynamically in MySQL <code className="text-amber-400">app_settings</code>.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={loadTempleTypes}
+                      className="px-3 py-1.5 bg-[#141414] hover:bg-[#252525] border border-[#2C2C2C] rounded-lg text-xs font-semibold flex items-center gap-1.5 text-gray-300 transition"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5 text-orange-400" />
+                      <span>Refresh</span>
+                    </button>
+                    <button
+                      onClick={handleOpenCreateTempleType}
+                      className="px-4 py-2 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white rounded-lg text-xs font-bold transition shadow-lg flex items-center gap-2"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Add Temple Type</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Temple Types Grid / Table Card */}
+              <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs text-gray-300">
+                    <thead className="bg-[#181818] uppercase text-gray-400 border-b border-[#2C2C2C]">
+                      <tr>
+                        <th className="px-6 py-3.5">Type Identifier (Code)</th>
+                        <th className="px-6 py-3.5">Display Name</th>
+                        <th className="px-6 py-3.5">Description & Purpose</th>
+                        <th className="px-6 py-3.5 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#2C2C2C]">
+                      {templeTypes.length === 0 ? (
+                        <tr>
+                          <td colSpan={4} className="px-6 py-12 text-center text-gray-400">
+                            <Landmark className="w-10 h-10 mx-auto text-gray-600 mb-2 opacity-50" />
+                            <p className="text-sm font-semibold">No temple types configured</p>
+                            <p className="text-xs text-gray-500 mt-1">Click "Add Temple Type" above to create your first category.</p>
+                          </td>
+                        </tr>
+                      ) : (
+                        templeTypes.map(t => (
+                          <tr key={t.id} className="hover:bg-neutral-800/40 transition">
+                            <td className="px-6 py-4">
+                              <span className="font-mono text-xs font-bold text-amber-400 bg-amber-950/40 border border-amber-800/40 px-2.5 py-1 rounded">
+                                {t.id}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className="font-semibold text-sm text-gray-100 flex items-center gap-2">
+                                <span className="text-orange-400">🛕</span>
+                                {t.name}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-gray-400 max-w-md">
+                              {t.description || '—'}
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <button
+                                  onClick={() => handleOpenEditTempleType(t)}
+                                  className="px-3 py-1.5 bg-[#141414] hover:bg-[#252525] border border-[#2C2C2C] hover:border-amber-400 text-gray-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition"
+                                >
+                                  <Edit className="w-3.5 h-3.5 text-amber-400" />
+                                  <span>Edit</span>
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteTempleType(t.id, t.name)}
+                                  className="p-1.5 bg-rose-600/10 hover:bg-rose-600/20 text-rose-400 border border-rose-600/30 rounded-lg transition"
+                                  title="Delete Temple Type"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: SETTINGS (ONLY MANAGE LOGO, COLORS, TEXT TITLE, DESCRIPTION) */}
+          {activeTab === 'settings' && (
+            <div className="space-y-6">
+              {/* Header Card */}
+              <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] p-6">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-base font-bold text-[#FFB300] flex items-center gap-2">
+                      <Settings className="w-5 h-5 text-orange-400" />
+                      <span>Platform Settings: Logo, Colors, Title & Description</span>
+                    </h2>
+                    <p className="text-xs text-gray-400 mt-1">
+                      Configure your official sacred emblem, platform name, spiritual motto tagline, meta description, and primary devotional palette. All values are stored directly in MySQL <code className="text-amber-400">app_settings</code>.
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleSaveBrandingSettings}
+                    disabled={isSavingSettings}
+                    className="bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white px-6 py-2.5 rounded-lg text-xs font-bold transition shadow-lg flex items-center gap-2 flex-shrink-0 disabled:opacity-50"
+                  >
+                    <Save className="w-4 h-4" />
+                    <span>{isSavingSettings ? 'Saving Settings...' : 'Save All Settings to MySQL'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* 1. Official Sacred Logo & Emblem Management */}
+              <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] p-6 space-y-5">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-[#2C2C2C] pb-4">
+                  <div>
+                    <h3 className="text-sm font-bold text-gray-100 flex items-center gap-2">
+                      <ImageIcon className="w-4 h-4 text-orange-400" />
+                      <span>1. Official Sacred Emblem & Logo</span>
+                    </h3>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      Syncs dynamically with Website header, Role Selection screen, Admin portal, and Mobile Application.
+                    </p>
+                  </div>
+                  <span className="text-[11px] font-mono text-emerald-400 bg-emerald-950/60 border border-emerald-800/40 px-3 py-1 rounded-full">
+                    ● MySQL Synced
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                  {/* Current Active Logo Preview */}
+                  <div className="lg:col-span-4 bg-[#141414] border border-[#2C2C2C] rounded-xl p-5 flex flex-col items-center justify-center text-center">
+                    <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-3">
+                      Active Portal Emblem
+                    </span>
+                    <div className="relative group w-44 h-44 rounded-2xl bg-black/60 border-2 border-[var(--admin-gold)]/60 flex items-center justify-center p-3 shadow-2xl overflow-hidden">
+                      <img
+                        suppressHydrationWarning
+                        src={resolveLogoDisplayUrl(appLogoUrl)}
+                        alt="Active Saranam Ayyappa Logo"
+                        className="max-w-full max-h-full object-contain drop-shadow-[0_4px_12px_rgba(255,179,0,0.25)] transition duration-300 group-hover:scale-105"
+                        onError={(e: any) => { console.warn('Active emblem load error:', e.target.src); }}
+                      />
+                    </div>
+                    <p className="text-[10px] text-gray-500 font-mono mt-3 truncate max-w-full">
+                      {appLogoUrl.startsWith('data:') ? 'Base64 Encoded Image Data' : appLogoUrl}
+                    </p>
+                  </div>
+
+                  {/* Upload & Direct URL Controls */}
+                  <div className="lg:col-span-8 space-y-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-300 uppercase mb-2">
+                        Upload New Sacred Emblem / Logo File
+                      </label>
+                      <label className="flex flex-col items-center justify-center border-2 border-dashed border-[#3A3A3A] hover:border-orange-500/80 rounded-xl p-6 bg-[#161616] cursor-pointer transition group">
+                        <Upload className="w-8 h-8 text-orange-400 group-hover:scale-110 transition mb-2" />
+                        <span className="text-xs font-semibold text-gray-200">
+                          Click to browse and upload image
+                        </span>
+                        <span className="text-[11px] text-gray-500 mt-1">
+                          PNG, JPG, or WEBP (Max 5MB) • Instantly stores to database
+                        </span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleLogoUpload}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+
+                    <div className="relative flex items-center justify-center my-3">
+                      <div className="border-t border-[#2C2C2C] w-full" />
+                      <span className="bg-[#1E1E1E] px-3 text-[11px] text-gray-500 font-semibold uppercase">Or Set Direct Path</span>
+                      <div className="border-t border-[#2C2C2C] w-full" />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-300 uppercase mb-1.5">
+                        Direct Static Image Path / External CDN URL
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={customLogoInput}
+                          onChange={(e) => setCustomLogoInput(e.target.value)}
+                          placeholder="/images/saranam-ayyappa-official-emblem.jpg"
+                          className="flex-1 bg-[#141414] border border-[#2C2C2C] rounded-lg px-3.5 py-2.5 text-xs text-gray-100 focus:outline-none focus:border-[#FFB300] font-mono"
+                        />
+                        <button
+                          onClick={() => handleSaveAppLogo()}
+                          disabled={isUpdatingLogo}
+                          className="bg-[#D84315] hover:bg-[#BF360C] disabled:opacity-50 text-white px-5 py-2.5 rounded-lg text-xs font-semibold transition flex items-center gap-2 flex-shrink-0"
+                        >
+                          <Save className="w-4 h-4" />
+                          <span>{isUpdatingLogo ? 'Saving...' : 'Sync Logo'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 2. Platform Text Title & Description Management */}
+              <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] p-6 space-y-4">
+                <div className="flex items-center justify-between border-b border-[#2C2C2C] pb-3">
+                  <h3 className="text-sm font-bold text-gray-100 flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-orange-400" />
+                    <span>2. Platform Title, Tagline & Meta Description</span>
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => openTranslationModal('branding', 'branding_settings', [
+                      { key: 'title', label: 'Platform Name / Title', value: appTitle },
+                      { key: 'tagline', label: 'Sacred Motto / Tagline', value: appTagline },
+                      { key: 'description', label: 'Platform Devotional Description', value: appDescription }
+                    ], (trans) => {
+                      if (trans.title) setAppTitle(trans.title);
+                      if (trans.tagline) setAppTagline(trans.tagline);
+                      if (trans.description) setAppDescription(trans.description);
+                    })}
+                    className="bg-amber-600/20 hover:bg-amber-600/40 text-amber-300 border border-amber-500/40 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                    <span>✨ Translate (v3)</span>
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-300 uppercase mb-1.5">
+                      Platform Name / Header Title
+                    </label>
+                    <input
+                      type="text"
+                      value={appTitle}
+                      onChange={(e) => setAppTitle(e.target.value)}
+                      placeholder="e.g. Saranam Ayyappa"
+                      className="w-full bg-[#141414] border border-[#2C2C2C] rounded-lg px-3.5 py-2.5 text-xs text-gray-100 focus:outline-none focus:border-[#FFB300]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-300 uppercase mb-1.5">
+                      Sacred Motto / Tagline
+                    </label>
+                    <input
+                      type="text"
+                      value={appTagline}
+                      onChange={(e) => setAppTagline(e.target.value)}
+                      placeholder="e.g. Connect.. Pray.. Serve.."
+                      className="w-full bg-[#141414] border border-[#2C2C2C] rounded-lg px-3.5 py-2.5 text-xs text-gray-100 focus:outline-none focus:border-[#FFB300]"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-300 uppercase mb-1.5">
+                    Platform Devotional Description & Meta Summary
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={appDescription}
+                    onChange={(e) => setAppDescription(e.target.value)}
+                    placeholder="Enter platform devotional description..."
+                    className="w-full bg-[#141414] border border-[#2C2C2C] rounded-lg p-3 text-xs text-gray-100 focus:outline-none focus:border-[#FFB300]"
+                  />
+                </div>
+              </div>
+
+              {/* 3. Devotional Theme Colors Management */}
+              <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] p-6 space-y-4">
+                <h3 className="text-sm font-bold text-gray-100 flex items-center gap-2 border-b border-[#2C2C2C] pb-3">
+                  <Palette className="w-4 h-4 text-orange-400" />
+                  <span>3. Platform Devotional Color Palette</span>
+                </h3>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {/* Primary Color */}
+                  <div className="bg-[#141414] border border-[#2C2C2C] p-3.5 rounded-lg space-y-2">
+                    <label className="block text-[11px] font-semibold text-gray-300 uppercase">
+                      Primary Sacred Green
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="color"
+                        value={themePrimaryColor}
+                        onChange={(e) => setThemePrimaryColor(e.target.value)}
+                        className="w-10 h-10 rounded cursor-pointer border border-[#2C2C2C] bg-transparent"
+                      />
+                      <input
+                        type="text"
+                        value={themePrimaryColor}
+                        onChange={(e) => setThemePrimaryColor(e.target.value)}
+                        className="flex-1 bg-[#1E1E1E] border border-[#2C2C2C] rounded px-2.5 py-1.5 text-xs font-mono text-gray-200"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Secondary Color */}
+                  <div className="bg-[#141414] border border-[#2C2C2C] p-3.5 rounded-lg space-y-2">
+                    <label className="block text-[11px] font-semibold text-gray-300 uppercase">
+                      Accent Devotional Gold
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="color"
+                        value={themeSecondaryColor}
+                        onChange={(e) => setThemeSecondaryColor(e.target.value)}
+                        className="w-10 h-10 rounded cursor-pointer border border-[#2C2C2C] bg-transparent"
+                      />
+                      <input
+                        type="text"
+                        value={themeSecondaryColor}
+                        onChange={(e) => setThemeSecondaryColor(e.target.value)}
+                        className="flex-1 bg-[#1E1E1E] border border-[#2C2C2C] rounded px-2.5 py-1.5 text-xs font-mono text-gray-200"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Background Color */}
+                  <div className="bg-[#141414] border border-[#2C2C2C] p-3.5 rounded-lg space-y-2">
+                    <label className="block text-[11px] font-semibold text-gray-300 uppercase">
+                      Background Ivory Tone
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="color"
+                        value={themeBackgroundColor}
+                        onChange={(e) => setThemeBackgroundColor(e.target.value)}
+                        className="w-10 h-10 rounded cursor-pointer border border-[#2C2C2C] bg-transparent"
+                      />
+                      <input
+                        type="text"
+                        value={themeBackgroundColor}
+                        onChange={(e) => setThemeBackgroundColor(e.target.value)}
+                        className="flex-1 bg-[#1E1E1E] border border-[#2C2C2C] rounded px-2.5 py-1.5 text-xs font-mono text-gray-200"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Surface / Dark Base Color */}
+                  <div className="bg-[#141414] border border-[#2C2C2C] p-3.5 rounded-lg space-y-2">
+                    <label className="block text-[11px] font-semibold text-gray-300 uppercase">
+                      Dark Surface / Console Base
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="color"
+                        value={themeSurfaceColor}
+                        onChange={(e) => setThemeSurfaceColor(e.target.value)}
+                        className="w-10 h-10 rounded cursor-pointer border border-[#2C2C2C] bg-transparent"
+                      />
+                      <input
+                        type="text"
+                        value={themeSurfaceColor}
+                        onChange={(e) => setThemeSurfaceColor(e.target.value)}
+                        className="flex-1 bg-[#1E1E1E] border border-[#2C2C2C] rounded px-2.5 py-1.5 text-xs font-mono text-gray-200"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 4. Mobile Application Download Links */}
+              <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] p-6 space-y-4">
+                <h3 className="text-sm font-bold text-gray-100 flex items-center gap-2 border-b border-[#2C2C2C] pb-3">
+                  <Smartphone className="w-4 h-4 text-orange-400" />
+                  <span>4. Mobile Application Store Links</span>
+                </h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Google Play Store */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-300 uppercase mb-1.5 flex items-center justify-between">
+                      <span>Google Play Store URL (Android)</span>
+                      <a href={playStoreUrl} target="_blank" rel="noreferrer" className="text-amber-400 hover:underline flex items-center gap-1 text-[11px] font-normal lowercase">
+                        <span>test link</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </label>
+                    <input
+                      type="url"
+                      value={playStoreUrl}
+                      onChange={(e) => setPlayStoreUrl(e.target.value)}
+                      placeholder="https://play.google.com/store/apps/details?id=com.saranamayyappa.app"
+                      className="w-full bg-[#141414] border border-[#2C2C2C] rounded-lg px-3.5 py-2.5 text-xs text-gray-100 focus:outline-none focus:border-[#FFB300] font-mono"
+                    />
+                    <p className="text-[10px] text-gray-500 mt-1">
+                      Targeted by the footer &quot;Get it on Google Play&quot; download badge.
+                    </p>
+                  </div>
+
+                  {/* Apple App Store */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-300 uppercase mb-1.5 flex items-center justify-between">
+                      <span>Apple App Store URL (iOS)</span>
+                      <a href={appStoreUrl} target="_blank" rel="noreferrer" className="text-amber-400 hover:underline flex items-center gap-1 text-[11px] font-normal lowercase">
+                        <span>test link</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </label>
+                    <input
+                      type="url"
+                      value={appStoreUrl}
+                      onChange={(e) => setAppStoreUrl(e.target.value)}
+                      placeholder="https://apps.apple.com/app/saranam-ayyappa/id123456789"
+                      className="w-full bg-[#141414] border border-[#2C2C2C] rounded-lg px-3.5 py-2.5 text-xs text-gray-100 focus:outline-none focus:border-[#FFB300] font-mono"
+                    />
+                    <p className="text-[10px] text-gray-500 mt-1">
+                      Targeted by the footer &quot;Download on the App Store&quot; badge.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* 5. Official Social Media & Community Handles */}
+              <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] p-6 space-y-4">
+                <h3 className="text-sm font-bold text-gray-100 flex items-center gap-2 border-b border-[#2C2C2C] pb-3">
+                  <Share2 className="w-4 h-4 text-orange-400" />
+                  <span>5. Official Devotional Social Media & Channel Links</span>
+                </h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {/* YouTube */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-300 uppercase mb-1.5">
+                      YouTube Devotional Channel
+                    </label>
+                    <input
+                      type="url"
+                      value={socialYoutubeUrl}
+                      onChange={(e) => setSocialYoutubeUrl(e.target.value)}
+                      placeholder="https://www.youtube.com/@SaranamAyyappaOfficial"
+                      className="w-full bg-[#141414] border border-[#2C2C2C] rounded-lg px-3.5 py-2.5 text-xs text-gray-100 focus:outline-none focus:border-[#FFB300] font-mono"
+                    />
+                  </div>
+
+                  {/* Telegram */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-300 uppercase mb-1.5">
+                      Telegram Devotee Satsang Group
+                    </label>
+                    <input
+                      type="url"
+                      value={socialTelegramUrl}
+                      onChange={(e) => setSocialTelegramUrl(e.target.value)}
+                      placeholder="https://t.me/saranam_ayyappa_satsang"
+                      className="w-full bg-[#141414] border border-[#2C2C2C] rounded-lg px-3.5 py-2.5 text-xs text-gray-100 focus:outline-none focus:border-[#FFB300] font-mono"
+                    />
+                  </div>
+
+                  {/* WhatsApp Channel */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-300 uppercase mb-1.5">
+                      WhatsApp Updates Channel
+                    </label>
+                    <input
+                      type="url"
+                      value={socialWhatsappUrl}
+                      onChange={(e) => setSocialWhatsappUrl(e.target.value)}
+                      placeholder="https://whatsapp.com/channel/saranamayyappa"
+                      className="w-full bg-[#141414] border border-[#2C2C2C] rounded-lg px-3.5 py-2.5 text-xs text-gray-100 focus:outline-none focus:border-[#FFB300] font-mono"
+                    />
+                  </div>
+
+                  {/* Instagram */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-300 uppercase mb-1.5">
+                      Instagram Devotional Profile
+                    </label>
+                    <input
+                      type="url"
+                      value={socialInstagramUrl}
+                      onChange={(e) => setSocialInstagramUrl(e.target.value)}
+                      placeholder="https://www.instagram.com/saranamayyappa_official"
+                      className="w-full bg-[#141414] border border-[#2C2C2C] rounded-lg px-3.5 py-2.5 text-xs text-gray-100 focus:outline-none focus:border-[#FFB300] font-mono"
+                    />
+                  </div>
+
+                  {/* Facebook */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-300 uppercase mb-1.5">
+                      Facebook Community Page
+                    </label>
+                    <input
+                      type="url"
+                      value={socialFacebookUrl}
+                      onChange={(e) => setSocialFacebookUrl(e.target.value)}
+                      placeholder="https://www.facebook.com/saranamayyappaportal"
+                      className="w-full bg-[#141414] border border-[#2C2C2C] rounded-lg px-3.5 py-2.5 text-xs text-gray-100 focus:outline-none focus:border-[#FFB300] font-mono"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* 6. Devotional Announcement Ticker */}
+              <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] p-6 space-y-4">
+                <div className="flex items-center justify-between border-b border-[#2C2C2C] pb-3">
+                  <h3 className="text-sm font-bold text-gray-100 flex items-center gap-2">
+                    <BellRing className="w-4 h-4 text-orange-400" />
+                    <span>6. Devotional Announcement Ticker</span>
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => openTranslationModal('ticker', 'announcement_ticker', [
+                      { key: 'ticker', label: 'Announcement Ticker Text', value: tickerText }
+                    ], (trans) => {
+                      if (trans.ticker) setTickerText(trans.ticker);
+                    })}
+                    className="bg-amber-600/20 hover:bg-amber-600/40 text-amber-300 border border-amber-500/40 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                    <span>✨ Translate (v3)</span>
+                  </button>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-300 uppercase mb-1.5">
+                    Live Scrolling Announcement Text (Devotee Apps &amp; Web Header)
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={tickerText}
+                      onChange={(e) => setTickerText(e.target.value)}
+                      placeholder="e.g. స్వామియే శరణం అయ్యప్ప! శబరిమల మండల పూజ దర్శన సమయాలు ప్రారంభమైనవి..."
+                      className="flex-1 bg-[#141414] border border-[#2C2C2C] rounded-lg px-3.5 py-2.5 text-xs text-gray-100 focus:outline-none focus:border-[#FFB300]"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleSaveTicker}
+                      className="bg-[#D84315] hover:bg-[#BF360C] text-white px-5 py-2.5 rounded-lg text-xs font-semibold transition flex items-center gap-2 flex-shrink-0"
+                    >
+                      <Save className="w-4 h-4" />
+                      <span>Save Ticker</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bottom Save Action Button */}
+              <div className="flex justify-end pt-2">
+                <button
+                  onClick={handleSaveBrandingSettings}
+                  disabled={isSavingSettings}
+                  className="bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white px-8 py-3 rounded-lg text-xs font-bold transition shadow-xl flex items-center gap-2 disabled:opacity-50"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>{isSavingSettings ? 'Saving Settings...' : 'Save Settings to MySQL Database'}</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 12: AUDIT LOGS */}
+          {activeTab === 'audit' && (
+            <div className="bg-[#1E1E1E] rounded-xl border border-[#2C2C2C] overflow-hidden">
+              <div className="p-5 border-b border-[#2C2C2C] flex items-center justify-between">
+                <div>
+                  <h2 className="text-base font-bold text-gray-100">Tamper-Evident Admin Audit Trail</h2>
+                  <p className="text-xs text-gray-400">All administrative operations recorded in MySQL `admin_audit_logs`.</p>
+                </div>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs text-gray-300">
+                  <thead className="bg-[#181818] uppercase text-gray-400 border-b border-[#2C2C2C]">
+                    <tr>
+                      <th className="px-6 py-3">Timestamp</th>
+                      <th className="px-6 py-3">Admin</th>
+                      <th className="px-6 py-3">Action</th>
+                      <th className="px-6 py-3">Target</th>
+                      <th className="px-6 py-3">Details</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#2C2C2C]">
+                    {auditLogs.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="px-6 py-12 text-center text-gray-400">
+                          <Database className="w-10 h-10 mx-auto text-gray-600 mb-2 opacity-50" />
+                          <p className="text-sm font-semibold">No audit logs recorded in database yet</p>
+                          <p className="text-xs text-gray-500 mt-1">Actions performed by administrators will appear here in chronological order.</p>
+                        </td>
+                      </tr>
+                    ) : (
+                      auditLogs.map(log => (
+                        <tr key={log.id} className="hover:bg-neutral-800/40">
+                          <td className="px-6 py-4 font-mono text-gray-500 whitespace-nowrap">{new Date(log.createdAt).toLocaleString()}</td>
+                          <td className="px-6 py-4 font-semibold text-gray-200">{log.admin?.fullName || 'System Master'}</td>
+                          <td className="px-6 py-4 font-mono text-orange-400">{log.action}</td>
+                          <td className="px-6 py-4">{log.targetType} {log.targetId ? `#${log.targetId}` : ''}</td>
+                          <td className="px-6 py-4 text-gray-400 max-w-xs truncate">{log.detailsJson || '—'}</td>
+                        </tr>
+                      )))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
       </main>
 
       {/* In-page views active: floating modals replaced with in-page pageMode views */}
